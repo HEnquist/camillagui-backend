@@ -1,26 +1,22 @@
 import React from 'react';
-import logo from './logo.svg';
+import ReactDOM from 'react-dom';
 import './App.css';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+class Frequency extends React.Component {
+  constructor(props) {
+    super(props);    
+    this.state = {
+      value: 1000.0,
+    };  
+  }
+  render() {
+    return (
+      <input type="number" className="freq">{this.props.value}</input>
+    );
+  }
 }
 
-export default App;
+ReactDOM.render(
+  <Frequency />,
+  document.getElementById('root')
+);

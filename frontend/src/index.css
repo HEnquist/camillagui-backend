@@ -11,3 +11,11 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.filter {
+  background: #fff;
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px
+}
