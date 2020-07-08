@@ -7,15 +7,7 @@ class InputField extends React.Component {
   constructor(props) {
     super(props);
     console.log(this.props)
-    if (this.props.type==="number") {
-      this.state = {value: 1000.0};
-    }
-    else if (this.props.type==="text") {
-      this.state = {value: ""};
-    }
-    else {
-      this.state = {value: 0};
-    }
+    this.state = {value: this.props.value};
     this.handleChange = this.handleChange.bind(this);
   }
 
@@ -48,7 +40,7 @@ class ParameterInput extends React.Component {
             (val, i) => {   
               return (
                 <div>
-                  <InputField desc={val} type={this.props.values[val]} />
+                  <InputField desc={val} type={this.props.values[val].type} value={this.props.values[val].value} />
                 </div>
               )
             }
@@ -63,6 +55,7 @@ class BiquadSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
+    this.state = {value: this.props.value};
   }
 
   handleChange(event) {    
@@ -73,7 +66,7 @@ class BiquadSelect extends React.Component {
   render() {
     return (
       <div>
-        <select name="biquad" id="biquad" onChange={this.handleChange}>
+        <select name="biquad" id="biquad" onChange={this.handleChange} value={this.state.value}>
           <option value="lowpass">Lowpass</option>
           <option value="highpass">Highpass</option>
           <option value="highshelf">Higlshelf</option>
@@ -111,6 +104,7 @@ class FilterSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
+    this.state = {value: this.props.value};
   }
 
   handleChange(event) {    
@@ -121,7 +115,7 @@ class FilterSelect extends React.Component {
   render() {
     return (
       <div>
-        <select name="filter" id="filter" onChange={this.handleChange}>
+        <select name="filter" id="filter" onChange={this.handleChange} value={this.state.value}>
           <option value="biquad">Biquad</option>
           <option value="conv">Conv</option>
         </select>
@@ -134,7 +128,8 @@ class Biquad extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {value: "lowpass"};
+    this.state = {type: this.props.type, parameters: this.props.parameters};
+    console.log(this.state);
   }
 
   handleChange(event) {    
@@ -147,26 +142,26 @@ class Biquad extends React.Component {
 
   render() {
     var filterselect;
-    if (this.state.value==="lowpass") {
-      const vals = {'Freq': 'number', 'Q': 'number'};
+    if (this.state.parameters.type==="lowpass") {
+      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Q': {type: 'number', value: this.state.parameters.Q}};
       filterselect = <ParameterInput  values={vals} />;    
     }
-    else if (this.state.value==="highpass") {
-      const vals = {'Freq': 'number', 'Q': 'number'};
+    else if (this.state.parameters.type==="highpass") {
+      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Q': {type: 'number', value: this.state.parameters.Q}};
       filterselect = <ParameterInput  values={vals} />;    
     }
-    else if (this.state.value==="highshelf") {
-      const vals = {'Freq': 'number', 'Slope': 'number'};
+    else if (this.state.parameters.type==="highshelf") {
+      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Slope': {type: 'number', value: this.state.parameters.Q}};
       filterselect = <ParameterInput  values={vals} />;    
     }
-    else if (this.state.value==="lowshelf") {
-      const vals = {'Freq': 'number', 'Slope': 'number'};
+    else if (this.state.parameters.type==="lowshelf") {
+      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Slope': {type: 'number', value: this.state.parameters.Q}};
       filterselect = <ParameterInput  values={vals} />;    
     }
     return (
       <div>
       <div>
-        <BiquadSelect onSelectFilter={this.handleFilter}/>
+        <BiquadSelect value={this.state.parameters.type} onSelectFilter={this.handleFilter}/>
       </div>
       <div>
         {filterselect}
@@ -218,7 +213,8 @@ class Filter extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {value: "biquad"};
+    this.state = {type: this.props.type, parameters: this.props.parameters};
+    //this.state = {value: "biquad"};
   }
 
   handleChange(event) {    
@@ -231,15 +227,14 @@ class Filter extends React.Component {
 
   render() {
     var filterselect;
-    if (this.state.value==="biquad") {
-      filterselect = <Biquad />;    
+    if (this.props.type==="biquad") {
+      filterselect = <Biquad type={this.state.type} parameters={this.state.parameters}/>;    
     }
     else {
-      filterselect = <Conv />;  
+      filterselect = <Conv params={this.state.parameters}/>;  
     };
     return (
       <div className="filter">
-        <div><InputField desc="Name" type="text" /></div>
         <div>
           <FilterSelect onSelectFilter={this.handleFilter}/>
         </div>
@@ -255,7 +250,7 @@ class FilterList extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {filters: []};
+    this.state = {filters: {}, nbr: 0};
   }
 
   handleChange(event) {    
@@ -269,9 +264,13 @@ class FilterList extends React.Component {
   addFilter = (event) => {
     event.preventDefault();
     this.setState(state => {
-      const filters = state.filters.concat(<Filter />);
+      const nbr = state.nbr + 1;
+      const newname = "new"+nbr.toString();
+      const filters = Object.assign({}, state.filters, {[newname]: {"type": "biquad", "parameters": {"type": "lowpass", "Q": 0.5, "freq": 1000}}});
+      console.log(filters);
       return {
         filters,
+        nbr,
       };
     });
   }
@@ -293,12 +292,13 @@ class FilterList extends React.Component {
       <div>
         <div className="desc">Filters</div>
         {
-          this.state.filters.map(
+          Object.keys(this.state.filters).map(
             (filt, i) => {   
               return (
                 <div>
+                  <div><InputField desc="Name" type="text" value={filt}/></div>
                   <div>
-                    {filt}
+                    <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} />
                   </div>
                   <div>
                     <button onClick={this.removeFilter} id={i}>del</button>
