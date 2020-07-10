@@ -19,3 +19,13 @@ code {
   text-align: left;
   padding: 5px
 }
+
+.listitem {
+  background: rgb(170, 170, 170);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
