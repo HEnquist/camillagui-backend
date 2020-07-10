@@ -31,22 +31,49 @@ class ParameterInput extends React.Component {
     super(props);
   }
 
+  handleChange = (event) => {
+    event.preventDefault();
+    var id = event.target.id;
+    console.log("change", id);
+    this.setState(state => {
+      const parameters = Object.assign({}, state.parameters);
+      parameters[id] = event.target.value;
+      return {
+        parameters
+      };
+    });
+  };
+
   render() {
+    console.log("ParameterInput", this.props.parameters)
+    var fields = Object.keys(this.props.parameters).map(
+      (val, i) => {  
+        var input;
+        switch(val) {
+          case "q":
+            input = <div key={val}><InputField desc="Q" id="q" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "freq":
+            input = <div key={val}><InputField desc="freq" id="freq" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "slope":
+            input = <div key={val}><InputField desc="slope" id="slope" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "file":
+            input = <div key={val}><InputField desc="file" id="file" type="text" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          default:
+            input = null;
+        }  
+        return (
+          input
+        )
+      }
+    )
     return (
       <div>
-        <div className="desc">{this.props.desc}</div>
-        {
-          Object.keys(this.props.values).map(
-            (val, i) => {   
-              return (
-                <div>
-                  <InputField desc={val} type={this.props.values[val].type} value={this.props.values[val].value} />
-                </div>
-              )
-            }
-          )
-        }
-      </div> 
+        {fields}
+      </div>
     );
   }
 }
@@ -128,40 +155,50 @@ class Biquad extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {type: this.props.type, parameters: this.props.parameters};
+    this.state = {parameters: this.props.parameters};
     console.log(this.state);
   }
 
-  handleChange(event) {    
-    this.setState({value: event.target.value}); 
+  handleChange(parameters) {    
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState);
+      state.parameters = parameters;
+      return state;
+    })
+    this.getState((curState) => { this.props.onChange(curState) });
   }
 
-  handleFilter = (bqValue) => {
-    this.setState({value: bqValue});
-}
+  getBiquadTemplate(type) {
+    if (type === "lowpass") {
+      return {"type": "lowpass", "q": 0.5, "freq": 1000};
+    }
+    else if (type === "highpass") {
+      return {"type": "highpass", "q": 0.5, "freq": 1000};
+    }
+    else if (type === "lowshelf") {
+      return {"type": "lowshelf", "slope": 6, "freq": 1000};
+    }
+    else if (type === "highshelf") {
+      return {"type": "highshelf", "slope": 6, "freq": 1000};
+    }
+  }
+
+  handleSelect = (selectValue) => {
+    this.setState(prevState => {
+      const template = this.getBiquadTemplate(selectValue);
+      const state = {parameters: template};
+      this.props.onModifyFilter(state);
+      return state;
+    })
+  }
 
   render() {
     var filterselect;
-    if (this.state.parameters.type==="lowpass") {
-      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Q': {type: 'number', value: this.state.parameters.Q}};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
-    else if (this.state.parameters.type==="highpass") {
-      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Q': {type: 'number', value: this.state.parameters.Q}};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
-    else if (this.state.parameters.type==="highshelf") {
-      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Slope': {type: 'number', value: this.state.parameters.Q}};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
-    else if (this.state.parameters.type==="lowshelf") {
-      const vals = {'Freq': {type: 'number', value: this.state.parameters.freq}, 'Slope': {type: 'number', value: this.state.parameters.Q}};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
+      filterselect = <ParameterInput  parameters={this.state.parameters} onChange={this.handleChange}/>;
     return (
       <div>
       <div>
-        <BiquadSelect value={this.state.parameters.type} onSelectFilter={this.handleFilter}/>
+        <BiquadSelect value={this.state.parameters.type} onSelectFilter={this.handleSelect}/>
       </div>
       <div>
         {filterselect}
@@ -221,14 +258,37 @@ class Filter extends React.Component {
     this.setState({value: event.target.value}); 
   }
 
-  handleFilter = (filtValue) => {
-    this.setState({value: filtValue});
+
+  getFilterTemplate(type) {
+    if (type === "biquad") {
+      return {type: "biquad", parameters: {"type": "lowpass", "q": 0.5, "freq": 1000}};
+    }
+    else if (type === "conv") {
+      return {type: "conv", parameters: {"type": "file", "path": ""}};
+    }
+  }
+
+  handleFilterSelect = (filtValue) => {
+    this.setState(prevState => {
+      const state = this.getFilterTemplate(filtValue);
+      this.props.onFilter(state);
+      return state;
+    })
+  }
+
+  handleModifyFilter = (filtParams) => {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState);
+      state.parameters = filtParams;
+      this.props.onFilter(state)
+      return state;
+    })
   }
 
   render() {
     var filterselect;
     if (this.props.type==="biquad") {
-      filterselect = <Biquad type={this.state.type} parameters={this.state.parameters}/>;    
+      filterselect = <Biquad type={this.state.type} parameters={this.state.parameters} onModifyFilter={this.handleModifyFilter}/>;    
     }
     else {
       filterselect = <Conv params={this.state.parameters}/>;  
@@ -236,7 +296,7 @@ class Filter extends React.Component {
     return (
       <div className="filter">
         <div>
-          <FilterSelect onSelectFilter={this.handleFilter}/>
+          <FilterSelect onSelectFilter={this.handleFilterSelect}/>
         </div>
         <div>
           {filterselect}
@@ -249,24 +309,21 @@ class Filter extends React.Component {
 class FilterList extends React.Component {
   constructor(props) {
     super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.state = {filters: {}, nbr: 0};
+    //this.handleChange = this.handleChange.bind(this);
+    this.state = {filters: {test1: {"type": "biquad", "parameters": {"type": "lowpass", "q": 0.7, "freq": 500}}, test2: {"type": "biquad", "parameters": {"type": "highpass", "q": 0.5, "freq": 1500}}}, nbr: 3};
+    //this.state = {filters: {}, nbr: 0};
   }
 
-  handleChange(event) {    
-    this.setState({value: event.target.value}); 
-  }
-
-  handleFilter = (filtValue) => {
+  handleFilterUpdate = (filtValue) => {
     this.setState({value: filtValue});
   }
 
   addFilter = (event) => {
-    event.preventDefault();
+    //event.preventDefault();
     this.setState(state => {
       const nbr = state.nbr + 1;
       const newname = "new"+nbr.toString();
-      const filters = Object.assign({}, state.filters, {[newname]: {"type": "biquad", "parameters": {"type": "lowpass", "Q": 0.5, "freq": 1000}}});
+      const filters = Object.assign({}, state.filters, {[newname]: {"type": "biquad", "parameters": {"type": "lowpass", "q": 0.5, "freq": 1000}}});
       console.log(filters);
       return {
         filters,
@@ -276,18 +333,22 @@ class FilterList extends React.Component {
   }
 
   removeFilter = (event) => {
-    console.log(event.target);
-    var i = parseInt(event.target.id);
+    var i = event.target.id;
+    console.log("delete", i);
     this.setState(state => {
-      const filters = state.filters.filter((item, j) => i !== j);
+      const nbr = state.nbr;
+      const filters = Object.assign({}, state.filters);
+      delete filters[i];
       console.log(filters);
       return {
         filters,
+        nbr,
       };
     });
   };
 
   render() {
+    console.log("render:", this.state);
     return (
       <div>
         <div className="desc">Filters</div>
@@ -295,13 +356,13 @@ class FilterList extends React.Component {
           Object.keys(this.state.filters).map(
             (filt, i) => {   
               return (
-                <div>
+                <div key={filt}>
                   <div><InputField desc="Name" type="text" value={filt}/></div>
                   <div>
-                    <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} />
+                    <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} onFilter={this.handleFilterUpdate} />
                   </div>
                   <div>
-                    <button onClick={this.removeFilter} id={i}>del</button>
+                    <button onClick={this.removeFilter} id={filt}>del</button>
                   </div>
                 </div>
               )
