@@ -20,9 +20,36 @@ code {
   padding: 5px
 }
 
-.listitem {
-  background: rgb(170, 170, 170);
+.device {
+  background: #fff;
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px
+}
+
+.devices {
+  background: rgb(200, 200, 200);
   border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
+
+.listitem {
+  background: rgb(200, 200, 200);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
+
+.configapp {
+  background: white;
   float: left;
   text-align: left;
   padding: 5px;
