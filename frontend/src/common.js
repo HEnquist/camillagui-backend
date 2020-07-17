@@ -57,13 +57,22 @@ export class FormatSelect extends React.Component {
 export class InputField extends React.Component {
   constructor(props) {
     super(props);
-    console.log(this.props)
+    //console.log(this.props)
     this.state = { value: this.props.value };
     this.handleChange = this.handleChange.bind(this);
   }
 
-  handleChange(event) {
-    this.setState({ value: event.target.value });
+  //handleChange(event) {
+  //  this.setState(_prevState => {
+  //    //console.log("field:", event.target.value)
+  //    //this.props.onChange(event.target.value);
+  //    return { value: event.target.value }
+  //  })
+  //}
+  handleChange(event) {   
+    console.log("field:", event.target.value);
+    this.props.onChange({id: this.props.id, value: event.target.value});
+    this.setState({value: event.target.value});  
   }
 
   render() {
@@ -84,24 +93,21 @@ export class ParameterInput extends React.Component {
   }
 
   handleChange = (event) => {
-    event.preventDefault();
-    var id = event.target.id;
+    //event.preventDefault();
+    console.log("parameterinput", event)
+    var id = event.id;
     console.log("change", id);
     this.setState(state => {
-      const parameters = Object.assign({}, state.parameters);
-      parameters[id] = event.target.value;
+      console.log("state before", state);
+      var parameters = Object.assign({}, state);
+      parameters[id] = event.value;
+      console.log("state after", parameters);
+      this.props.onChange(parameters);
       return {
         parameters
       };
     });
   };
-
-  //chunksize: 1024,
-  //target_level: 1024,
-  //adjust_period: 3,
-  //enable_resampling: true,
-  //resampler_type: "FastAsync",
-  //capture_samplerate":
 
   render() {
     console.log("ParameterInput", this.props.parameters)
@@ -129,6 +135,15 @@ export class ParameterInput extends React.Component {
             break;
           case "samplerate":
             input = <div key={val}><InputField desc="samplerate" id="samplerate" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "extra_samples":
+            input = <div key={val}><InputField desc="extra_samples" id="extra_samples" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "read_bytes":
+            input = <div key={val}><InputField desc="read_bytes" id="read_bytes" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
+            break;
+          case "skip_bytes":
+            input = <div key={val}><InputField desc="skip_bytes" id="skip_bytes" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
             break;
           case "chunksize":
             input = <div key={val}><InputField desc="chunksize" id="chunksize" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;

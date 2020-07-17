@@ -5,18 +5,25 @@ import { ParameterInput, InputField, FormatSelect } from './common.js';
 export class Devices extends React.Component {
   constructor(props) {
     super(props);
-    //this.handleChange = this.handleChange.bind(this);
+    this.handleChangeParams = this.handleChangeParams.bind(this);
     this.state = {config: this.props.config};
 
   }
 
-
+  handleChangeParams(params) {
+    this.setState(prevState => {
+      console.log("devices got:", params)
+      const state = Object.assign(prevState, params);
+      console.log("devices new:", state)
+      return state;
+    })
+  }
 
   render() {
     return (
       <div className="devices">
         <div>
-          <ParameterInput parameters={this.state.config}/>
+          <ParameterInput parameters={this.state.config} onChange={this.handleChangeParams}/>
         </div>
         <div>
           <Playback />
@@ -106,7 +113,7 @@ export class Capture extends React.Component {
       return { channels: 2, format: "S32LE", device: "hw:0" };
     }
     else if (type === "file") {
-      return { channels: 2, format: "S32LE", file: "hw:0" };
+      return { channels: 2, format: "S32LE", file: "hw:0" , extra_samples: 0, skip_bytes: 0, read_bytes: 0 };
     }
     else if (type === "pulseaudio") {
       return { channels: 2, format: "S32LE", device: "something.monitor" };
