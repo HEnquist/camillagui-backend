@@ -1,83 +1,9 @@
 import React from 'react';
 import './index.css';
-import { ParameterInput, InputField } from './common.js';
+import { ParameterInput, InputField, EnumSelect} from './common.js';
 
 
-
-class BiquadSelect extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.state = {value: this.props.value};
-  }
-
-  handleChange(event) {    
-    this.setState({value: event.target.value});
-    this.props.onSelectFilter(event.target.value);  
-  }
-
-  render() {
-    return (
-      <div>
-        <select name="biquad" id="biquad" onChange={this.handleChange} value={this.state.value}>
-          <option value="lowpass">Lowpass</option>
-          <option value="highpass">Highpass</option>
-          <option value="highshelf">Higlshelf</option>
-          <option value="lowshelf">Lowshelf</option>
-        </select>
-      </div> 
-    );
-  }
-}
-
-class ConvSelect extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-  }
-
-  handleChange(event) {    
-    this.setState({value: event.target.value});
-    this.props.onSelectFilter(event.target.value);  
-  }
-
-  render() {
-    return (
-      <div>
-        <select name="conv" id="conv" onChange={this.handleChange}>
-          <option value="file">File</option>
-          <option value="values">Values</option>
-        </select>
-      </div> 
-    );
-  }
-}
-
-class FilterSelect extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.state = {value: this.props.value};
-  }
-
-  handleChange(event) {    
-    this.setState({value: event.target.value});  
-    this.props.onSelectFilter(event.target.value);  
-  }
-
-  render() {
-    return (
-      <div>
-        <select name="filter" id="filter" onChange={this.handleChange} value={this.state.value}>
-          <option value="biquad">Biquad</option>
-          <option value="conv">Conv</option>
-        </select>
-      </div> 
-    );
-  }
-}
-
-class Biquad extends React.Component {
+class FilterParams extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
@@ -89,29 +15,31 @@ class Biquad extends React.Component {
     this.setState(prevState => {
       const state = Object.assign({}, prevState);
       state.parameters = parameters;
+      this.props.onChange(state)
       return state;
     })
-    this.getState((curState) => { this.props.onChange(curState) });
   }
 
-  getBiquadTemplate(type) {
-    if (type === "lowpass") {
-      return {"type": "lowpass", "q": 0.5, "freq": 1000};
-    }
-    else if (type === "highpass") {
-      return {"type": "highpass", "q": 0.5, "freq": 1000};
-    }
-    else if (type === "lowshelf") {
-      return {"type": "lowshelf", "slope": 6, "freq": 1000};
-    }
-    else if (type === "highshelf") {
-      return {"type": "highshelf", "slope": 6, "freq": 1000};
+  templates = {
+    Biquad: {
+      Lowpass: {type: "Lowpass", q: 0.5, freq: 1000},
+      Highpass: {type: "Highpass", q: 0.5, freq: 1000},
+      Lowshelf: {type: "Lowshelf", gain: 6, slope: 6, freq: 1000},
+      Highshelf: {type: "Highshelf", gain: 6, slope: 6, freq: 1000},
+      LowpassFO: {type: "LowpassFO", freq: 1000},
+      HighpassFO: {type: "HighpassFO", freq: 1000},
+      LowshelfFO: {type: "LowshelfFO", gain: 6, freq: 1000},
+      HighshelfFO: {type: "HighshelfFO", gain: 6, freq: 1000},
+    },
+    Conv: {
+      File: {type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0},
+      Values: {type: "Values", values: "[1.0, 0.0, 0.0, 0.0]"},
     }
   }
 
   handleSelect = (selectValue) => {
     this.setState(prevState => {
-      const template = this.getBiquadTemplate(selectValue);
+      const template = this.templates[this.props.type][selectValue];
       const state = {parameters: template};
       this.props.onModifyFilter(state);
       return state;
@@ -119,12 +47,13 @@ class Biquad extends React.Component {
   }
 
   render() {
+    console.log("--FilterParams, type:", this.props.type)
     var filterselect;
       filterselect = <ParameterInput  parameters={this.state.parameters} onChange={this.handleChange}/>;
     return (
       <div>
       <div>
-        <BiquadSelect value={this.state.parameters.type} onSelectFilter={this.handleSelect}/>
+        <EnumSelect desc="type" type={this.props.type} value={this.state.parameters.type} onSelect={this.handleSelect} />
       </div>
       <div>
         {filterselect}
@@ -134,43 +63,9 @@ class Biquad extends React.Component {
   }
 }
 
-class Conv extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.state = {value: "file"};
-  }
 
-  handleChange(event) {    
-    this.setState({value: event.target.value}); 
-  }
 
-  handleFilter = (value) => {
-    this.setState({value: value});
-}
 
-  render() {
-    var filterselect;
-    if (this.state.value==="file") {
-      const vals = {'Path': 'text'};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
-    else if (this.state.value==="values") {
-      const vals = {'Values': 'text'};
-      filterselect = <ParameterInput  values={vals} />;    
-    }
-    return (
-      <div>
-      <div>
-        <ConvSelect onSelectFilter={this.handleFilter}/>
-      </div>
-      <div>
-        {filterselect}
-      </div>
-      </div> 
-    );
-  }
-}
 
 class Filter extends React.Component {
   constructor(props) {
@@ -180,24 +75,26 @@ class Filter extends React.Component {
     //this.state = {value: "biquad"};
   }
 
+  templates = {
+    "Biquad": {type: "Lowpass", q: 0.5, freq: 1000},
+    "BiquadGroup": {type: "ButterworthHighpass", order: 2, freq: 1000},
+    "Conv": {type: "File", filename: "", format: "TEXT", read_bytes_lines: 0, skip_bytes_lines:0},
+    "Delay": { delay: 0.0,  unit: "ms"},
+    "Gain": { gain: 0.0,  inverted: false },
+    "DiffEq": { type: "PulseAudio",  channels: 2, format: "S32LE", device: "something" },
+    "Dither": { type: "Simple" },
+  }
   handleChange(event) {    
     this.setState({value: event.target.value}); 
   }
 
-
-  getFilterTemplate(type) {
-    if (type === "biquad") {
-      return {type: "biquad", parameters: {"type": "lowpass", "q": 0.5, "freq": 1000}};
-    }
-    else if (type === "conv") {
-      return {type: "conv", parameters: {"type": "file", "path": ""}};
-    }
-  }
-
   handleFilterSelect = (filtValue) => {
     this.setState(prevState => {
-      const state = this.getFilterTemplate(filtValue);
+      const state = Object.assign({}, prevState);
+      state.parameters = this.templates[filtValue];
+      state.type=filtValue;
       this.props.onFilter(state);
+      console.log("--==Filter", state)
       return state;
     })
   }
@@ -207,36 +104,33 @@ class Filter extends React.Component {
       const state = Object.assign({}, prevState);
       state.parameters = filtParams;
       this.props.onFilter(state)
+      console.log("--==--Filter", state)
       return state;
     })
   }
 
   render() {
-    var filterselect;
-    if (this.props.type==="biquad") {
-      filterselect = <Biquad type={this.state.type} parameters={this.state.parameters} onModifyFilter={this.handleModifyFilter}/>;    
-    }
-    else {
-      filterselect = <Conv params={this.state.parameters}/>;  
-    };
+    console.log("--Filter, state:", this.state)
     return (
       <div className="filter">
         <div>
-          <FilterSelect onSelectFilter={this.handleFilterSelect}/>
+          <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
         </div>
         <div>
-          {filterselect}
+          <FilterParams key={this.state.type} type={this.state.type} parameters={this.state.parameters} onModifyFilter={this.handleModifyFilter}/>
         </div>
       </div> 
     );
   }
 }
 
+
+
 export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {filters: {test1: {"type": "biquad", "parameters": {"type": "lowpass", "q": 0.7, "freq": 500}}, test2: {"type": "biquad", "parameters": {"type": "highpass", "q": 0.5, "freq": 1500}}}, nbr: 3};
+    this.state = {filters: {test1: {"type": "Biquad", "parameters": {"type": "Lowpass", "q": 0.7, "freq": 500}}, test2: {"type": "Biquad", "parameters": {"type": "Highpass", "q": 0.5, "freq": 1500}}}, nbr: 3};
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -249,7 +143,7 @@ export class FilterList extends React.Component {
     this.setState(state => {
       const nbr = state.nbr + 1;
       const newname = "new"+nbr.toString();
-      const filters = Object.assign({}, state.filters, {[newname]: {"type": "biquad", "parameters": {"type": "lowpass", "q": 0.5, "freq": 1000}}});
+      const filters = Object.assign({}, state.filters, {[newname]: {"type": "Biquad", "parameters": {"type": "Lowpass", "q": 0.5, "freq": 1000}}});
       console.log(filters);
       return {
         filters,

@@ -7,15 +7,26 @@ import { Devices } from './devices.js';
 class CamillaConfig extends React.Component {
   constructor(props) {
     super(props);
-    //this.handleChange = this.handleChange.bind(this);
+    this.handleDevices = this.handleDevices.bind(this);
     //this.state = {value: this.props.value};
-    this.state = {devices: this.getDevicesTemplate()};
+    this.state = {config: {devices: this.getDevicesTemplate()}};
   }
 
   //handleChange(event) {    
   //  this.setState({value: event.target.value});  
   //  this.props.onSelectFilter(event.target.value);  
   //}
+
+  handleDevices(devices) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState);
+      //const devs = devices
+      state.config.devices = devices;
+      console.log("config", state);
+      return { config: state.config };
+    })
+  }
+
   getDevicesTemplate() {
     return ({
       samplerate: 48000,
@@ -32,7 +43,7 @@ class CamillaConfig extends React.Component {
     return (
       <div className="configapp">
         <div>
-          <Devices config={this.state.devices}/>
+          <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
         </div>
         <div>
           <FilterList />

@@ -10,7 +10,7 @@ export class BoolSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    this.props.onSelect(event.target.value);
+    this.props.onChange(event.target.value);
   }
 
   render() {
@@ -26,10 +26,24 @@ export class BoolSelect extends React.Component {
   }
 }
 
-export class FormatSelect extends React.Component {
+
+export class EnumSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
+  }
+
+  enums = {
+    "filter": ["Biquad", "BiquadGroup", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
+    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf","LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO"],
+    "biquadgroup": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
+    "coeffformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
+    "sampleformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE"],
+    "resampler": ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"],
+    "delayunit": ["ms", "samples"],
+    "Conv": ["File", "Values"],
+    "backend": ["Alsa", "PulseAudio", "Wasapi", "CoreAudio", "File"],
+    "dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"]
   }
 
   handleChange(event) {
@@ -38,16 +52,18 @@ export class FormatSelect extends React.Component {
   }
 
   render() {
+    var fields = this.enums[this.props.type].map(
+      (val) => {
+        return (
+          <option key={val} value={val}>{val}</option>
+        )
+      }
+    )
     return (
       <div>
         {this.props.desc}:
-        <select name="format" id="format" onChange={this.handleChange}>
-          <option value="s16le">S16LE</option>
-          <option value="s24le">S24LE</option>
-          <option value="s24le3">S24LE3</option>
-          <option value="s32le">S32LE</option>
-          <option value="float32le">FLOAT32LE</option>
-          <option value="float64le">FLOAT64LE</option>
+        <select name={this.props.desc} id={this.props.desc} onChange={this.handleChange}>
+          {fields}
         </select>
       </div>
     );
@@ -103,9 +119,7 @@ export class ParameterInput extends React.Component {
       parameters[id] = event.value;
       console.log("state after", parameters);
       this.props.onChange(parameters);
-      return {
-        parameters
-      };
+      return (parameters);
     });
   };
 
@@ -125,13 +139,26 @@ export class ParameterInput extends React.Component {
     "chunksize": { type: "number", desc: "chunksize" },
     "capture_samplerate": { type: "number", desc: "capture_samplerate" },
     "enable_resampling": { type: "bool", desc: "enable_resampling" },
+    "format": { type: "enum", desc: "format", subtype: "sampleformat" },
+    "order": { type: "number", desc: "order" },
+    "gain": { type: "number", desc: "gain" },
+    "inverted": { type: "bool", desc: "inverted" },
+    "unit": { type: "enum", desc: "format", subtype: "delayunit" },
+    "values": { type: "text", desc: "values" },
+    "filename": { type: "text", desc: "filename" },
+    "skip_bytes_lines": { type: "number", desc: "skip_bytes_lines" },
+    "read_bytes_lines": { type: "number", desc: "read_bytes_lines" },
+
   };
 
   get_input(par, value) {
     var pars = this.type_dict[par];
     if (pars) {
-      if (pars.type == "bool") {
+      if (pars.type === "bool") {
         return <div key={par}><BoolSelect desc={pars.desc} id={par} value={value} onChange={this.handleChange} /></div>;
+      }
+      else if (pars.type === "enum") {
+        return <div key={par}><EnumSelect desc={pars.desc} type={pars.subtype} value={value} onSelect={this.handleChange} /></div>;
       }
       else {
         return <div key={par}><InputField desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} /></div>;
