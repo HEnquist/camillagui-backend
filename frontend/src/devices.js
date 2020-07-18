@@ -13,7 +13,8 @@ export class Devices extends React.Component {
   handleChangeParams(params) {
     this.setState(prevState => {
       console.log("devices got:", params)
-      const state = Object.assign(prevState, params);
+      var state = Object.assign({}, prevState);
+      state.config = params;
       console.log("devices new:", state)
       return state;
     })

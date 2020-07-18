@@ -69,10 +69,10 @@ export class InputField extends React.Component {
   //    return { value: event.target.value }
   //  })
   //}
-  handleChange(event) {   
+  handleChange(event) {
     console.log("field:", event.target.value);
-    this.props.onChange({id: this.props.id, value: event.target.value});
-    this.setState({value: event.target.value});  
+    this.props.onChange({ id: this.props.id, value: event.target.value });
+    this.setState({ value: event.target.value });
   }
 
   render() {
@@ -109,60 +109,41 @@ export class ParameterInput extends React.Component {
     });
   };
 
+  type_dict = {
+    "q": { type: "number", desc: "Q" },
+    "freq": { type: "number", desc: "freq" },
+    "slope": { type: "number", desc: "slope" },
+    "file": { type: "text", desc: "file" },
+    "device": { type: "text", desc: "device" },
+    "channels": { type: "number", desc: "channels" },
+    "samplerate": { type: "number", desc: "sampelrate" },
+    "read_bytes": { type: "number", desc: "read_bytes" },
+    "extra_samples": { type: "number", desc: "extra_samples" },
+    "skip_bytes": { type: "number", desc: "skip_bytes" },
+    "target_level": { type: "number", desc: "target_level" },
+    "adjust_period": { type: "number", desc: "adjust_period" },
+    "chunksize": { type: "number", desc: "chunksize" },
+    "capture_samplerate": { type: "number", desc: "capture_samplerate" },
+    "enable_resampling": { type: "bool", desc: "enable_resampling" },
+  };
+
+  get_input(par, value) {
+    var pars = this.type_dict[par];
+    if (pars) {
+      if (pars.type == "bool") {
+        return <div key={par}><BoolSelect desc={pars.desc} id={par} value={value} onChange={this.handleChange} /></div>;
+      }
+      else {
+        return <div key={par}><InputField desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} /></div>;
+      }
+    } 
+  }
+
   render() {
     console.log("ParameterInput", this.props.parameters)
     var fields = Object.keys(this.props.parameters).map(
       (val, i) => {
-        var input;
-        switch (val) {
-          case "q":
-            input = <div key={val}><InputField desc="Q" id="q" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "freq":
-            input = <div key={val}><InputField desc="freq" id="freq" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "slope":
-            input = <div key={val}><InputField desc="slope" id="slope" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "file":
-            input = <div key={val}><InputField desc="file" id="file" type="text" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "device":
-            input = <div key={val}><InputField desc="device" id="device" type="text" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "channels":
-            input = <div key={val}><InputField desc="channels" id="channels" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "samplerate":
-            input = <div key={val}><InputField desc="samplerate" id="samplerate" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "extra_samples":
-            input = <div key={val}><InputField desc="extra_samples" id="extra_samples" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "read_bytes":
-            input = <div key={val}><InputField desc="read_bytes" id="read_bytes" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "skip_bytes":
-            input = <div key={val}><InputField desc="skip_bytes" id="skip_bytes" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "chunksize":
-            input = <div key={val}><InputField desc="chunksize" id="chunksize" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "target_level":
-            input = <div key={val}><InputField desc="target_level" id="target_level" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "adjust_period":
-            input = <div key={val}><InputField desc="adjust_period" id="adjust_period" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "capture_samplerate":
-            input = <div key={val}><InputField desc="capture_samplerate" id="capture_samplerate" type="number" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          case "enable_resampling":
-            input = <div key={val}><BoolSelect desc="enable_resampling" id="enable_resampling" value={this.props.parameters[val]} onChange={this.handleChange} /></div>;
-            break;
-          default:
-            input = null;
-        }
+        var input = this.get_input(val, this.props.parameters[val]);
         return (
           input
         )
