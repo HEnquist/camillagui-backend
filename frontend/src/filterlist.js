@@ -117,7 +117,7 @@ class Filter extends React.Component {
           <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
         </div>
         <div>
-          <FilterParams key={this.state.type} type={this.state.type} parameters={this.state.parameters} onModifyFilter={this.handleModifyFilter}/>
+          <FilterParams key={this.state.type} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
         </div>
       </div> 
     );
@@ -182,14 +182,14 @@ export class FilterList extends React.Component {
                     <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} onFilter={this.handleFilterUpdate} />
                   </div>
                   <div>
-                    <button onClick={this.removeFilter} id={filt}>del</button>
+                    <button onClick={this.removeFilter} id={filt}>✖</button>
                   </div>
                 </div>
               )
             }
           )
         }
-        <button onClick={this.addFilter}>+</button>
+        <button onClick={this.addFilter}>➕</button>
       </div> 
     );
   }
