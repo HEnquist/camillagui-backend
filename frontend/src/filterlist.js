@@ -31,9 +31,33 @@ class FilterParams extends React.Component {
       LowshelfFO: {type: "LowshelfFO", gain: 6, freq: 1000},
       HighshelfFO: {type: "HighshelfFO", gain: 6, freq: 1000},
     },
+    BiquadGroup: {
+      ButterworthLowpass: {type: "ButterworthLowpass", order: 2, freq: 1000},
+      ButterworthHighpass: {type: "ButterworthHighpass", order: 2, freq: 1000},
+      LinkwitzRileyLowpass: {type: "LinkwitzRileyLowpass", order: 2, freq: 1000},
+      LinkwitzRileyHighpass: {type: "LinkwitzRileyHighpass", order: 2, freq: 1000},
+    },
     Conv: {
       File: {type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0},
       Values: {type: "Values", values: "[1.0, 0.0, 0.0, 0.0]"},
+    },
+    Delay: {
+      Default: { delay: 0.0,  unit: "ms"},
+    },
+    Gain: {
+      Default: { gain: 0.0,  inverted: false },
+    },
+    DiffEq: {
+      Default: { a: "[1.0]", b: "[1.0]"}
+    },
+    Dither: {
+      Simple: {bits: 16},
+      Uniform: {bits: 16, amplitude: 1.0},
+      Lipshitz441: {bits: 16},
+      Fweighted441: {bits: 16},
+      Shibata441: {bits: 16},
+      Shibata48: {bits: 16},
+      None: {bits: 16},
     }
   }
 
@@ -41,7 +65,7 @@ class FilterParams extends React.Component {
     this.setState(prevState => {
       const template = this.templates[this.props.type][selectValue];
       const state = {parameters: template};
-      this.props.onModifyFilter(state);
+      this.props.onChange(state);
       return state;
     })
   }
@@ -81,8 +105,8 @@ class Filter extends React.Component {
     "Conv": {type: "File", filename: "", format: "TEXT", read_bytes_lines: 0, skip_bytes_lines:0},
     "Delay": { delay: 0.0,  unit: "ms"},
     "Gain": { gain: 0.0,  inverted: false },
-    "DiffEq": { type: "PulseAudio",  channels: 2, format: "S32LE", device: "something" },
-    "Dither": { type: "Simple" },
+    "DiffEq": { a: "[1.0, 0.0]", b: "[1.0, 0.0]"},
+    "Dither": { type: "Simple", bits: 16 },
   }
   handleChange(event) {    
     this.setState({value: event.target.value}); 
@@ -138,6 +162,22 @@ export class FilterList extends React.Component {
     this.setState({value: filtValue});
   }
 
+  updateName = (value) => {
+    console.log("new name:", value);
+    this.setState({value: value});
+  }
+
+  handleChange(params) {
+    this.setState(prevState => {
+      console.log("filters got:", params)
+      var state = Object.assign({}, prevState);
+      state.config = params;
+      console.log("filters new:", state)
+      this.props.onChange(state.config);
+      return state;
+    })
+  }
+
   addFilter = (event) => {
     //event.preventDefault();
     this.setState(state => {
@@ -177,7 +217,7 @@ export class FilterList extends React.Component {
             (filt, i) => {   
               return (
                 <div key={filt} className="listitem">
-                  <div><InputField desc="Name" type="text" value={filt}/></div>
+                  <div><InputField key={filt} id={filt} desc="Name" type="text" value={filt} onChange={this.updateName}/></div>
                   <div>
                     <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} onFilter={this.handleFilterUpdate} />
                   </div>
@@ -189,7 +229,7 @@ export class FilterList extends React.Component {
             }
           )
         }
-        <button onClick={this.addFilter}>➕</button>
+        <button onClick={this.addFilter}>+</button>
       </div> 
     );
   }

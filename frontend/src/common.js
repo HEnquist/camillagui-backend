@@ -36,14 +36,14 @@ export class EnumSelect extends React.Component {
   enums = {
     "filter": ["Biquad", "BiquadGroup", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
     "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf","LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO"],
-    "biquadgroup": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
+    "BiquadGroup": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
     "coeffformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
     "sampleformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE"],
     "resampler": ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"],
     "delayunit": ["ms", "samples"],
     "Conv": ["File", "Values"],
     "backend": ["Alsa", "PulseAudio", "Wasapi", "CoreAudio", "File"],
-    "dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"]
+    "Dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"]
   }
 
   handleChange(event) {
@@ -52,7 +52,11 @@ export class EnumSelect extends React.Component {
   }
 
   render() {
-    var fields = this.enums[this.props.type].map(
+    var vals = this.enums[this.props.type];
+    if (!vals) {
+      return "";
+    }
+    var fields = vals.map(
       (val) => {
         return (
           <option key={val} value={val}>{val}</option>
@@ -148,7 +152,14 @@ export class ParameterInput extends React.Component {
     "filename": { type: "text", desc: "filename" },
     "skip_bytes_lines": { type: "number", desc: "skip_bytes_lines" },
     "read_bytes_lines": { type: "number", desc: "read_bytes_lines" },
-
+    "bits": { type: "number", desc: "bits" },
+    "amplitude": { type: "number", desc: "amplitude" },
+    "delay": { type: "number", desc: "delay" },
+    "a": { type: "text", desc: "a" },
+    "b": { type: "text", desc: "b" },
+    "queuelimit": { type: "number", desc: "queuelimit" },
+    "silence_threshold": { type: "number", desc: "silence_threshold" },
+    "silence_timeout": { type: "number", desc: "silence_timeout" },
   };
 
   get_input(par, value) {

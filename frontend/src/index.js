@@ -27,6 +27,15 @@ class CamillaConfig extends React.Component {
     })
   }
 
+  handleFilters(filters) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState);
+      state.config.filters = filters;
+      console.log("config", state);
+      return { config: state.config };
+    })
+  }
+
   getDevicesTemplate() {
     return ({
       samplerate: 48000,
@@ -46,7 +55,7 @@ class CamillaConfig extends React.Component {
           <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
         </div>
         <div>
-          <FilterList />
+          <FilterList onChange={this.handleFilters}/>
         </div>
       </div>
     );
