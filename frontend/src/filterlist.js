@@ -117,7 +117,7 @@ class Filter extends React.Component {
       const state = Object.assign({}, prevState);
       state.parameters = this.templates[filtValue];
       state.type=filtValue;
-      this.props.onFilter(state);
+      this.props.onFilter({name: this.props.name, type: state.type, parameters: state.parameters})
       console.log("--==Filter", state)
       return state;
     })
@@ -127,7 +127,7 @@ class Filter extends React.Component {
     this.setState(prevState => {
       const state = Object.assign({}, prevState);
       state.parameters = filtParams;
-      this.props.onFilter(state)
+      this.props.onFilter({name: this.props.name, type: state.type, parameters: filtParams.parameters})
       console.log("--==--Filter", state)
       return state;
     })
@@ -159,12 +159,21 @@ export class FilterList extends React.Component {
   }
 
   handleFilterUpdate = (filtValue) => {
-    this.setState({value: filtValue});
+    console.log("FilterList got:", filtValue)
+    this.setState(prevState => {
+      prevState.filters[filtValue.name] = {type: filtValue.type, parameters: filtValue.parameters};
+      return prevState;
+    })
   }
 
-  updateName = (value) => {
-    console.log("new name:", value);
-    this.setState({value: value});
+  updateName = (event) => {
+    console.log("new name:", event);
+    this.setState(prevState => {
+      var filters = prevState.filters;
+      delete Object.assign(filters, {[event.value]: filters[event.id] })[event.id];
+      //this.setState({value: value});
+      return prevState;
+    })
   }
 
   handleChange(params) {
@@ -219,7 +228,7 @@ export class FilterList extends React.Component {
                 <div key={filt} className="listitem">
                   <div><InputField key={filt} id={filt} desc="Name" type="text" value={filt} onChange={this.updateName}/></div>
                   <div>
-                    <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} onFilter={this.handleFilterUpdate} />
+                    <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} name={filt} onFilter={this.handleFilterUpdate} />
                   </div>
                   <div>
                     <button onClick={this.removeFilter} id={filt}>✖</button>

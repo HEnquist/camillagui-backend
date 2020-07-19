@@ -134,7 +134,7 @@ export class ParameterInput extends React.Component {
     "file": { type: "text", desc: "file" },
     "device": { type: "text", desc: "device" },
     "channels": { type: "number", desc: "channels" },
-    "samplerate": { type: "number", desc: "sampelrate" },
+    "samplerate": { type: "number", desc: "samplerate" },
     "read_bytes": { type: "number", desc: "read_bytes" },
     "extra_samples": { type: "number", desc: "extra_samples" },
     "skip_bytes": { type: "number", desc: "skip_bytes" },
@@ -160,6 +160,10 @@ export class ParameterInput extends React.Component {
     "queuelimit": { type: "number", desc: "queuelimit" },
     "silence_threshold": { type: "number", desc: "silence_threshold" },
     "silence_timeout": { type: "number", desc: "silence_timeout" },
+    "in": { type: "number", desc: "in" },
+    "out": { type: "number", desc: "out" },
+    "dest": { type: "number", desc: "dest" },
+    "channel": { type: "number", desc: "channel" },
   };
 
   get_input(par, value) {

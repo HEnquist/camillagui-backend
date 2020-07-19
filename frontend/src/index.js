@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import { FilterList } from './filterlist.js';
 import { Devices } from './devices.js';
+import { MixerList } from './mixerlist.js';
 
 class CamillaConfig extends React.Component {
   constructor(props) {
@@ -36,6 +37,15 @@ class CamillaConfig extends React.Component {
     })
   }
 
+  handleMixers(filters) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState);
+      state.config.filters = filters;
+      console.log("config", state);
+      return { config: state.config };
+    })
+  }
+
   getDevicesTemplate() {
     return ({
       samplerate: 48000,
@@ -56,6 +66,9 @@ class CamillaConfig extends React.Component {
         </div>
         <div>
           <FilterList onChange={this.handleFilters}/>
+        </div>
+        <div>
+          <MixerList onChange={this.handleMixers}/>
         </div>
       </div>
     );

@@ -20,6 +20,30 @@ code {
   padding: 5px
 }
 
+.mixer {
+  background: #fff;
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px
+}
+
+.mixersource {
+  background: #fff;
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px
+}
+
+.mixermapping {
+  background: #fff;
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px
+}
+
 .device {
   background: #fff;
   border: 2px solid #999;
@@ -29,6 +53,16 @@ code {
 }
 
 .devices {
+  background: rgb(200, 200, 200);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
+
+.mixers {
   background: rgb(200, 200, 200);
   border: 4px solidwhite;
   float: left;
