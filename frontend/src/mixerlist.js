@@ -15,7 +15,7 @@ class MixerMapping extends React.Component {
 
   template = { channel: 0, gain: 0, inverted: false };
 
-  handleChange(event) {
+  handleChange = (event) => {
     console.log("field:", event.target.value);
     this.props.onChange({ id: this.props.id, value: event.target.value });
     this.setState({ value: event.target.value });
@@ -24,7 +24,7 @@ class MixerMapping extends React.Component {
   addSource = (event) => {
     console.log("Add a source")
     this.setState(prevState => {
-      prevState.config.sources.push(this.template);
+      prevState.config.sources.push(Object.assign({}, this.template));
       return prevState;
     })
   }
@@ -91,6 +91,16 @@ class Mixer extends React.Component {
     this.setState({ value: event.target.value });
   }
 
+  handleChannels = (event) => {
+    console.log("field:", event);
+    this.setState(prevState => { 
+      prevState.config.channels[event.id] = event.value;
+      //this.onChange(do something)
+      return prevState;
+
+    })
+  }
+
   template = { 
     dest: 0, 
     sources: [
@@ -101,7 +111,7 @@ class Mixer extends React.Component {
   addMapping = (event) => {
     console.log("Add a mapping")
     this.setState(prevState => {
-      prevState.config.mapping.push(this.template);
+      prevState.config.mapping.push(Object.assign({}, this.template));
       return prevState;
     })
   }
@@ -151,7 +161,7 @@ export class MixerList extends React.Component {
     ]
   }
 
-  handleFilterUpdate = (mixValue) => {
+  handleMixerUpdate = (mixValue) => {
     console.log("MixerList got:", mixValue)
     this.setState(prevState => {
       prevState.mixers[mixValue.name] = { type: mixValue.type, parameters: mixValue.parameters };
@@ -185,7 +195,7 @@ export class MixerList extends React.Component {
     this.setState(state => {
       const nbr = state.nbr + 1;
       const newname = "new" + nbr.toString();
-      const mixers = Object.assign({}, state.mixers, { [newname]: this.template });
+      const mixers = Object.assign({}, state.mixers, { [newname]: Object.assign({}, this.template) });
       console.log(mixers);
       return {
         mixers,
