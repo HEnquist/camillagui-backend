@@ -8,7 +8,7 @@ export class Devices extends React.Component {
     this.handleChangeParams = this.handleChangeParams.bind(this);
     this.handlePlayback = this.handlePlayback.bind(this);
     this.handleCapture = this.handleCapture.bind(this);
-    this.state = {config: this.props.config};
+    this.state = { config: this.props.config };
 
   }
 
@@ -49,10 +49,10 @@ export class Devices extends React.Component {
     return (
       <div className="devices">
         <div>
-          <ParameterInput parameters={this.state.config} onChange={this.handleChangeParams}/>
+          <ParameterInput parameters={this.state.config} onChange={this.handleChangeParams} />
         </div>
         <div>
-          <Playback parameters={this.state.config.playback} onChange={this.handlePlayback}/>
+          <Playback parameters={this.state.config.playback} onChange={this.handlePlayback} />
         </div>
         <div>
           <Capture parameters={this.state.config.capture} onChange={this.handleCapture} />
@@ -84,10 +84,10 @@ export class Capture extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File",  channels: 2, format: "S32LE", file: "/path/to/file" },
-    "PulseAudio": { type: "PulseAudio",  channels: 2, format: "S32LE", device: "something" },
-    "Wasapi": { type: "Wasapi",  channels: 2, format: "FLOAT32LE", device: "blablawin" },
-    "CoreAudio": { type: "CoreAudio",  channels: 2, format: "FLOAT32LE", device: "blablamac" }
+    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
+    "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
+    "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
   }
 
   handleBackend = (selectValue) => {
@@ -106,9 +106,9 @@ export class Capture extends React.Component {
       <div>
         <div className="desc">Capture device</div>
         <div className="device">
-          <div>
+        <table><tbody>
             <EnumSelect desc="type" type="backend" value={this.state.parameters.type} onSelect={this.handleBackend} />
-          </div>
+            </tbody></table>
           <div>
             {backendparams}
           </div>
@@ -138,10 +138,10 @@ export class Playback extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File",  channels: 2, format: "S32LE", file: "/path/to/file" },
-    "PulseAudio": { type: "PulseAudio",  channels: 2, format: "S32LE", device: "something" },
-    "Wasapi": { type: "Wasapi",  channels: 2, format: "FLOAT32LE", device: "blablawin" },
-    "CoreAudio": { type: "CoreAudio",  channels: 2, format: "FLOAT32LE", device: "blablamac" }
+    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
+    "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
+    "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
   }
 
   handleBackend = (selectValue) => {
@@ -160,9 +160,9 @@ export class Playback extends React.Component {
       <div>
         <div className="desc">Playback device</div>
         <div className="device">
-          <div>
+          <table><tbody>
             <EnumSelect key="backend" desc="type" type="backend" value={this.state.parameters.type} onSelect={this.handleBackend} />
-          </div>
+          </tbody></table>
           <div>
             {backendparams}
           </div>

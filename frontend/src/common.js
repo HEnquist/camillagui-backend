@@ -10,18 +10,19 @@ export class BoolSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    this.props.onChange(event.target.value);
+    this.props.onChange({id: this.props.id, value: event.target.checked});
   }
 
   render() {
     return (
-      <div>
-        {this.props.desc}:
-        <select name="truefalse" id="truefalse" onChange={this.handleChange}>
-          <option value="true">True</option>
-          <option value="false">False</option>
-        </select>
-      </div>
+      <tr className="formrow">
+        <td>
+        {this.props.desc}
+        </td>
+        <td>
+        <input type="checkbox" name={this.props.id}  id={this.props.id} onChange={this.handleChange}></input>
+        </td>
+      </tr>
     );
   }
 }
@@ -64,12 +65,16 @@ export class EnumSelect extends React.Component {
       }
     )
     return (
-      <div>
-        {this.props.desc}:
+      <tr className="formrow">
+        <td>
+        {this.props.desc}
+        </td>
+        <td>
         <select name={this.props.desc} id={this.props.desc} onChange={this.handleChange}>
           {fields}
         </select>
-      </div>
+        </td>
+      </tr>
     );
   }
 }
@@ -82,13 +87,6 @@ export class InputField extends React.Component {
     this.handleChange = this.handleChange.bind(this);
   }
 
-  //handleChange(event) {
-  //  this.setState(_prevState => {
-  //    //console.log("field:", event.target.value)
-  //    //this.props.onChange(event.target.value);
-  //    return { value: event.target.value }
-  //  })
-  //}
   handleChange(event) {
     console.log("field:", event.target.value);
     this.props.onChange({ id: this.props.id, value: event.target.value });
@@ -97,10 +95,10 @@ export class InputField extends React.Component {
 
   render() {
     return (
-      <label>
-        {this.props.desc}:
-        <input type={this.props.type} value={this.state.value} onChange={this.handleChange} />
-      </label>
+      <tr className="formrow">
+        <td>{this.props.desc}</td>
+        <td><input type={this.props.type} value={this.state.value} onChange={this.handleChange} /></td>
+      </tr>
     );
   }
 }
@@ -147,7 +145,7 @@ export class ParameterInput extends React.Component {
     "order": { type: "number", desc: "order" },
     "gain": { type: "number", desc: "gain" },
     "inverted": { type: "bool", desc: "inverted" },
-    "unit": { type: "enum", desc: "format", subtype: "delayunit" },
+    "unit": { type: "enum", desc: "unit", subtype: "delayunit" },
     "values": { type: "text", desc: "values" },
     "filename": { type: "text", desc: "filename" },
     "skip_bytes_lines": { type: "number", desc: "skip_bytes_lines" },
@@ -170,13 +168,13 @@ export class ParameterInput extends React.Component {
     var pars = this.type_dict[par];
     if (pars) {
       if (pars.type === "bool") {
-        return <div key={par}><BoolSelect desc={pars.desc} id={par} value={value} onChange={this.handleChange} /></div>;
+        return <BoolSelect key={par} desc={pars.desc} id={par} value={value} onChange={this.handleChange} />;
       }
       else if (pars.type === "enum") {
-        return <div key={par}><EnumSelect desc={pars.desc} type={pars.subtype} value={value} onSelect={this.handleChange} /></div>;
+        return <EnumSelect key={par} desc={pars.desc} type={pars.subtype} value={value} onSelect={this.handleChange} />;
       }
       else {
-        return <div key={par}><InputField desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} /></div>;
+        return <InputField key={par} desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} />;
       }
     } 
   }
@@ -192,9 +190,11 @@ export class ParameterInput extends React.Component {
       }
     )
     return (
-      <div>
+      <table className="parameterinput">
+        <tbody>
         {fields}
-      </div>
+        </tbody>
+      </table>
     );
   }
 }

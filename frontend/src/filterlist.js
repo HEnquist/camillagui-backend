@@ -76,9 +76,9 @@ class FilterParams extends React.Component {
       filterselect = <ParameterInput  parameters={this.state.parameters} onChange={this.handleChange}/>;
     return (
       <div>
-      <div>
+      <table><tbody>
         <EnumSelect desc="type" type={this.props.type} value={this.state.parameters.type} onSelect={this.handleSelect} />
-      </div>
+        </tbody></table>
       <div>
         {filterselect}
       </div>
@@ -136,10 +136,10 @@ class Filter extends React.Component {
   render() {
     console.log("--Filter, state:", this.state)
     return (
-      <div className="filter">
-        <div>
+      <div>
+        <table><tbody>
           <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
-        </div>
+        </tbody></table>
         <div>
           <FilterParams key={this.state.type} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
         </div>
@@ -221,13 +221,14 @@ export class FilterList extends React.Component {
     return (
       <div>
         <div className="desc">Filters</div>
+        <div className="filters">
         {
           Object.keys(this.state.filters).map(
             (filt, i) => {   
               return (
-                <div key={filt} className="listitem">
-                  <div><InputField key={filt} id={filt} desc="Name" type="text" value={filt} onChange={this.updateName}/></div>
-                  <div>
+                <div key={filt} className="filter">
+                  <table><tbody><InputField key={filt} id={filt} desc="Name" type="text" value={filt} onChange={this.updateName}/></tbody></table>
+                  <div className="filterparams">
                     <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} name={filt} onFilter={this.handleFilterUpdate} />
                   </div>
                   <div>
@@ -239,6 +240,7 @@ export class FilterList extends React.Component {
           )
         }
         <button onClick={this.addFilter}>+</button>
+        </div>
       </div> 
     );
   }

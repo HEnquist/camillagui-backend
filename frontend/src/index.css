@@ -13,19 +13,43 @@ code {
 }
 
 .filter {
-  background: #fff;
+  background: rgb(200, 200, 200);
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
 }
 
-.mixer {
-  background: #fff;
+.filterparams {
+  background: rgb(255, 255, 255);
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
+}
+
+.mixers {
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+}
+
+.filters {
+  background: rgb(200, 200, 200);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+
+}
+
+.mappings {
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
 }
 
 .mixersource {
@@ -41,7 +65,9 @@ code {
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
+  display: flex;
+  flex-direction: column
 }
 
 .device {
@@ -49,7 +75,7 @@ code {
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
 }
 
 .devices {
@@ -62,14 +88,12 @@ code {
   flex-direction: column
 }
 
-.mixers {
+.mixer {
   background: rgb(200, 200, 200);
   border: 4px solidwhite;
   float: left;
   text-align: left;
   padding: 5px;
-  display: flex;
-  flex-direction: column
 }
 
 .listitem {
@@ -90,3 +114,6 @@ code {
   display: flex;
   flex-direction: column
 }
+
+
+
