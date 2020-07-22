@@ -1,12 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
+import * as React from "react"
+import * as ReactDOM from "react-dom"
 import './index.css';
 import { FilterList } from './filterlist.js';
 import { Devices } from './devices.js';
 import { MixerList } from './mixerlist.js';
 
-class CamillaConfig extends React.Component {
-  constructor(props) {
+class CamillaConfig extends React.Component<any, any> {
+  constructor(props: any) {
     super(props);
     this.handleDevices = this.handleDevices.bind(this);
     //this.state = {value: this.props.value};
@@ -18,8 +18,8 @@ class CamillaConfig extends React.Component {
   //  this.props.onSelectFilter(event.target.value);  
   //}
 
-  handleDevices(devices) {
-    this.setState(prevState => {
+  handleDevices(devices: any) {
+    this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
       //const devs = devices
       state.config.devices = devices;
@@ -28,8 +28,8 @@ class CamillaConfig extends React.Component {
     })
   }
 
-  handleFilters(filters) {
-    this.setState(prevState => {
+  handleFilters(filters: any) {
+    this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
       state.config.filters = filters;
       console.log("config", state);
@@ -37,8 +37,8 @@ class CamillaConfig extends React.Component {
     })
   }
 
-  handleMixers(filters) {
-    this.setState(prevState => {
+  handleMixers(filters: any) {
+    this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
       state.config.filters = filters;
       console.log("config", state);
@@ -60,7 +60,7 @@ class CamillaConfig extends React.Component {
 
   render() {
     return (
-      <div className="configapp">
+      <div className="configapp" >
         <div>
           <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
         </div>
