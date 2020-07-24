@@ -46,7 +46,8 @@ export class EnumSelect extends React.Component {
     "delayunit": ["ms", "samples"],
     "Conv": ["File", "Values"],
     "backend": ["Alsa", "PulseAudio", "Wasapi", "CoreAudio", "File"],
-    "Dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"]
+    "Dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"],
+    "pipelineitem": ["Mixer", "Filter"]
   }
 
   handleChange(event) {

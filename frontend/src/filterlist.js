@@ -1,4 +1,5 @@
 import React from 'react';
+import cloneDeep from 'lodash/cloneDeep';
 import './index.css';
 import { ParameterInput, InputField, EnumSelect} from './common.js';
 
@@ -63,7 +64,7 @@ class FilterParams extends React.Component {
 
   handleSelect = (selectValue) => {
     this.setState(prevState => {
-      const template = this.templates[this.props.type][selectValue];
+      const template = cloneDeep(this.templates[this.props.type][selectValue]);
       const state = {parameters: template};
       this.props.onChange(state);
       return state;
@@ -115,7 +116,7 @@ class Filter extends React.Component {
   handleFilterSelect = (filtValue) => {
     this.setState(prevState => {
       const state = Object.assign({}, prevState);
-      state.parameters = this.templates[filtValue];
+      state.parameters = cloneDeep(this.templates[filtValue]);
       state.type=filtValue;
       this.props.onFilter({name: this.props.name, type: state.type, parameters: state.parameters})
       console.log("--==Filter", state)

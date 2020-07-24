@@ -1,6 +1,7 @@
 import React from 'react';
 import './index.css';
 import { ParameterInput, EnumSelect } from './common.js';
+import cloneDeep from 'lodash/cloneDeep';
 
 export class Devices extends React.Component {
   constructor(props) {
@@ -68,7 +69,7 @@ export class Capture extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...this.templates["Alsa"] } };
+    this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -93,7 +94,7 @@ export class Capture extends React.Component {
   handleBackend = (selectValue) => {
     this.setState(prevState => {
       const type = selectValue;
-      const parameters = this.templates[type];
+      const parameters = cloneDeep(this.templates[type]);
       console.log("capture", parameters);
       this.props.onChange(parameters);
       return { parameters };
@@ -122,7 +123,7 @@ export class Playback extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...this.templates["Alsa"] } };
+    this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -147,7 +148,7 @@ export class Playback extends React.Component {
   handleBackend = (selectValue) => {
     this.setState(prevState => {
       const type = selectValue;
-      const parameters = this.templates[type];
+      const parameters = cloneDeep(this.templates[type]);
       console.log("playback", parameters);
       this.props.onChange(parameters);
       return { parameters };
