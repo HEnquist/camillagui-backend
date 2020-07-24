@@ -6,10 +6,11 @@ export class BoolSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
+    this.state = {value: this.props.value};
   }
 
   handleChange(event) {
-    this.setState({ value: event.target.value });
+    this.setState({ value: event.target.checked });
     this.props.onChange({id: this.props.id, value: event.target.checked});
   }
 
@@ -20,7 +21,7 @@ export class BoolSelect extends React.Component {
         {this.props.desc}
         </td>
         <td>
-        <input type="checkbox" name={this.props.id}  id={this.props.id} onChange={this.handleChange}></input>
+        <input type="checkbox" name={this.props.id}  id={this.props.id} checked={this.state.value} onChange={this.handleChange}></input>
         </td>
       </tr>
     );
@@ -32,6 +33,7 @@ export class EnumSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
+    this.state = {value: this.props.value};
   }
 
   enums = {
@@ -70,7 +72,7 @@ export class EnumSelect extends React.Component {
         {this.props.desc}
         </td>
         <td>
-        <select name={this.props.desc} id={this.props.desc} onChange={this.handleChange}>
+        <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
           {fields}
         </select>
         </td>

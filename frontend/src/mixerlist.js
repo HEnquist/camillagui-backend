@@ -1,6 +1,7 @@
 import React from 'react';
 import './index.css';
 import { ParameterInput, InputField } from './common.js';
+import cloneDeep from 'lodash/cloneDeep';
 
 
 
@@ -10,14 +11,14 @@ class MixerMapping extends React.Component {
     super(props);
     //console.log(this.props)
     this.state = { config: this.props.config };
-    this.handleDestChange = this.handleDestChange.bind(this);
+    //this.handleDestChange = this.handleDestChange.bind(this);
   }
 
   template = { channel: 0, gain: 0, inverted: false };
 
   handleDestChange = (value) => {
-    console.log("value:", value);
-    this.props.onChange({ id: this.props.id, value: value });
+    console.log("MixerMapping::handleDestChange", value);
+    //this.props.onChange({ id: this.props.id, value: value });
     this.setState(prevState => {
       prevState.config.dest = value.dest;
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
@@ -38,7 +39,7 @@ class MixerMapping extends React.Component {
   addSource = (event) => {
     console.log("Add a source")
     this.setState(prevState => {
-      prevState.config.sources.push(Object.assign({}, this.template));
+      prevState.config.sources.push(cloneDeep(this.template));
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
     })
@@ -57,8 +58,8 @@ class MixerMapping extends React.Component {
     var fields = this.state.config.sources.map(
       (source, idx) => {
         return (
-          <div key={idx} className="mixersource">
-            <MixerSource key={what??} idx={idx} config={source} onChange={this.handleSourceChange} />
+          <div key={Math.floor(Math.random() * 1000000)} className="mixersource">
+            <MixerSource key={idx} idx={idx} config={source} onChange={this.handleSourceChange} />
             <div><button id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
           </div>
         )
@@ -145,7 +146,17 @@ class Mixer extends React.Component {
   addMapping = (event) => {
     console.log("Add a mapping")
     this.setState(prevState => {
-      prevState.config.mapping.push(Object.assign({}, this.template));
+      prevState.config.mapping.push(cloneDeep(this.template));
+      this.props.onChange({ name: this.props.name, value: prevState.config });
+      return prevState;
+    })
+  }
+
+  deleteMapping = (idx) => {
+    console.log("Delete a mapping", idx)
+    this.setState(prevState => {
+      prevState.config.mapping.splice(idx, 1);
+      this.props.onChange({ name: this.props.name, value: prevState.config });
       return prevState;
     })
   }
@@ -155,7 +166,8 @@ class Mixer extends React.Component {
       (mapping, idx) => {
         return (
           <div key={idx}>
-            <MixerMapping idx={idx} config={mapping} onChange={this.handleMappingChange} />
+            <MixerMapping key={Math.random()} idx={idx} config={mapping} onChange={this.handleMappingChange} />
+            <div><button id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
           </div>
         )
       }
@@ -229,7 +241,7 @@ export class MixerList extends React.Component {
     this.setState(state => {
       const nbr = state.nbr + 1;
       const newname = "new" + nbr.toString();
-      const mixers = Object.assign({}, state.mixers, { [newname]: Object.assign({}, this.template) });
+      const mixers = Object.assign({}, state.mixers, { [newname]: cloneDeep(this.template) });
       console.log(mixers);
       return {
         mixers,

@@ -90,7 +90,7 @@ code {
 
 .mixer {
   background: rgb(200, 200, 200);
-  border: 4px solidwhite;
+  border: 2px solid #999;
   float: left;
   text-align: left;
   padding: 5px;
