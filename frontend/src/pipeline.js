@@ -1,6 +1,6 @@
 import React from 'react';
 import './index.css';
-import { ParameterInput, InputField } from './common.js';
+//import { ParameterInput, InputField } from './common.js';
 import cloneDeep from 'lodash/cloneDeep';
 
 
@@ -189,7 +189,7 @@ export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = [];
+    this.state = {config: []};
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -264,7 +264,7 @@ export class Pipeline extends React.Component {
         <div className="desc">Pipeline</div>
         <div className="pipeline">
           {
-            this.state.map(
+            this.state.config.map(
               (step, i) => {
                 return (
                   <div key={Math.random()} className="pipelinestep">
