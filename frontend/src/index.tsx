@@ -68,6 +68,14 @@ class CamillaConfig extends React.Component<any, any> {
     });
   }
 
+  getFilterNames() {
+    return ["filt1", "filt2"]
+  }
+
+  getMixerNames() {
+    return ["mix1", "mix2"]
+  }
+
   render() {
     return (
       <div className="configapp" >
@@ -81,7 +89,7 @@ class CamillaConfig extends React.Component<any, any> {
           <MixerList onChange={this.handleMixers}/>
         </div>
         <div>
-          <Pipeline onChange={this.handlePipeline}/>
+          <Pipeline filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline}/>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React from 'react';
 import './index.css';
 //import { ParameterInput, InputField } from './common.js';
+import { ParameterInput, EnumSelect } from './common.js';
 import cloneDeep from 'lodash/cloneDeep';
 
 
@@ -13,10 +14,10 @@ export class NameSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    this.props.onSelect(event.target.value);
+    //this.props.onSelect(event.target.value);
   }
 
-  deleteName() {
+  deleteName = () => {
     this.props.onDelete(this.props.idx)
   }
 
@@ -76,7 +77,7 @@ export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {name: this.props.name};
+    this.state = {config: this.props.config};
   }
 
   handleChange(event) {
@@ -84,14 +85,25 @@ export class FilterStep extends React.Component {
     this.props.onSelect(event.target.value);
   }
 
+  handleParChange = (event) => {
+    this.setState({ value: event.target.value });
+    //this.props.onSelect(event.target.value);
+  }
+
   render() {
     return (
+      <div>
+      <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
+      <table><tbody>
       <tr className="formrow">
         <td>name</td>
         <td>
-        <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
+        <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
         </td>
       </tr>
+      </tbody>
+      </table>
+      </div>
     );
   }
 }
@@ -102,25 +114,39 @@ class NameList extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
-    this.handleChange = this.handleChange.bind(this);
+    this.state = { names: this.props.names };
+    //this.handleChange = this.handleChange.bind(this);
   }
 
-  addName() {}
+  addName = () => {
+    //event.preventDefault();
+    this.setState(state => {
+      state.names.push(cloneDeep(this.props.allnames[0]))
+      return state;
+    });
+  }
+
+  deleteName = (idx) => {
+    console.log("Delete a name", idx)
+    this.setState(prevState => {
+      prevState.names.splice(idx, 1);
+      //this.props.onChange({ idx: this.props.idx, value: prevState.config });
+      return prevState;
+    })
+  }
 
   render() {
     var names = this.state.names.map(
       (name, idx) => {
         return (
-          <div key={idx}>
-            <NameSelect key={Math.random()} idx={idx} name={name} allnames={this.props.allnames} onChange={this.handleMappingChange} />
+          <div key={Math.random()}>
+            <NameSelect key={Math.random()} idx={idx} name={name} allnames={this.props.allnames} onChange={this.handleMappingChange} onDelete={this.deleteName} />
           </div>
         )
       }
     )
     return (
       <div className="namelist">
-        <div>names</div>
         <div className="names">
           {names}
           <div><button onClick={this.addName}>+</button></div>
@@ -160,24 +186,22 @@ class PipelineStep extends React.Component {
     var fields;
     if (this.state.config.type === "Mixer") {
       fields = 
-        <div className="pipelinestep">
-          <MixerStep key={Math.random()} idx={this.props.idx} config={this.state.config} onChange={this.handleMixerChange} />
-        </div>;
+        <tr className="pipelinestep">
+          <MixerStep key={Math.random()} idx={this.props.idx} config={this.state.config} allnames={this.props.mixers} onChange={this.handleMixerChange} />
+        </tr>;
     }
     else {
       fields = 
-        <div className="pipelinestep">
-          <FilterStep key={Math.random()} idx={this.props.idx} config={this.state.config} onChange={this.handleFilterChange} />
-        </div>;
+        <tr className="pipelinestep">
+          <FilterStep key={Math.random()} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
+          </tr>;
     }
     return (
       <div>
       <table><tbody>
-        <NameSelect desc="type" type="pipelineitem" value={this.state.parameters.type} onSelect={this.handleSelect} />
+        <EnumSelect desc="type" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
         </tbody></table>
-      <div>
         {fields}
-      </div>
       </div> 
     );
   }
@@ -228,17 +252,11 @@ export class Pipeline extends React.Component {
     })
   }
 
-  addStep = (event) => {
+  addStep = () => {
     //event.preventDefault();
     this.setState(state => {
-      const nbr = state.nbr + 1;
-      const newname = "new" + nbr.toString();
-      const mixers = Object.assign({}, state.mixers, { [newname]: cloneDeep(this.template) });
-      console.log(mixers);
-      return {
-        mixers,
-        nbr,
-      };
+      state.config.push(cloneDeep(this.template))
+      return state;
     });
   }
 
@@ -269,7 +287,7 @@ export class Pipeline extends React.Component {
                 return (
                   <div key={Math.random()} className="pipelinestep">
                     <div>
-                      <PipelineStep config={step} idx={i} onChange={this.handleMixerUpdate} />
+                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleMixerUpdate} />
                     </div>
                     <div>
                       <button onClick={this.removeStep} id={i}>✖</button>
