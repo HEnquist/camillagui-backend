@@ -88,7 +88,25 @@ code {
   flex-direction: column
 }
 
+.pipeline {
+  background: rgb(200, 200, 200);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
+
 .mixer {
+  background: rgb(200, 200, 200);
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px;
+}
+
+.pipelinestep {
   background: rgb(200, 200, 200);
   border: 2px solid #999;
   float: left;
