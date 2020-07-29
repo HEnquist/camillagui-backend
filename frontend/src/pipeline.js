@@ -14,7 +14,7 @@ export class NameSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    //this.props.onSelect(event.target.value);
+    this.props.onChange({idx: this.props.idx, value: event.target.value});
   }
 
   deleteName = () => {
@@ -33,6 +33,12 @@ export class NameSelect extends React.Component {
         )
       }
     )
+    var button;
+    if (this.props.show_button) {
+      button = <td>
+        <button onClick={this.deleteName}>✖</button>
+      </td>;
+    }
     return (
       <tr className="formrow">
         <td>
@@ -40,9 +46,7 @@ export class NameSelect extends React.Component {
           {fields}
         </select>
         </td>
-        <td>
-          <button onClick={this.deleteName}>✖</button>
-        </td>
+        {button}
       </tr>
     );
   }
@@ -65,7 +69,7 @@ export class MixerStep extends React.Component {
       <tr className="formrow">
         <td>name</td>
         <td>
-        <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
+        <NameSelect value={this.state.name} allnames={this.props.allnames} onSelect={this.handleChange} />
         </td>
       </tr>
     );
@@ -76,18 +80,25 @@ export class MixerStep extends React.Component {
 export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
-    this.handleChange = this.handleChange.bind(this);
+    //this.handleChange = this.handleChange.bind(this);
     this.state = {config: this.props.config};
   }
 
-  handleChange(event) {
-    this.setState({ value: event.target.value });
-    this.props.onSelect(event.target.value);
+  handleChange = (event) => {
+    console.log("new names", event)
+    this.setState(state => {
+      state.config.names = event;
+      this.props.onChange({ idx: this.props.idx, value: state.config });
+      return state;
+    });
   }
 
   handleParChange = (event) => {
-    this.setState({ value: event.target.value });
-    //this.props.onSelect(event.target.value);
+    this.setState(state => {
+      state.config.channel = event.channel;
+      this.props.onChange({ idx: this.props.idx, value: state.config });
+      return state;
+    });
   }
 
   render() {
@@ -122,6 +133,7 @@ class NameList extends React.Component {
     //event.preventDefault();
     this.setState(state => {
       state.names.push(cloneDeep(this.props.allnames[0]))
+      this.props.onChange(state.names);
       return state;
     });
   }
@@ -130,7 +142,16 @@ class NameList extends React.Component {
     console.log("Delete a name", idx)
     this.setState(prevState => {
       prevState.names.splice(idx, 1);
-      //this.props.onChange({ idx: this.props.idx, value: prevState.config });
+      this.props.onChange(prevState.names);
+      return prevState;
+    })
+  }
+
+  handleChange = (event) => {
+    console.log("change name", event)
+    this.setState(prevState => {
+      prevState.names[event.idx] = event.value;
+      this.props.onChange(prevState.names);
       return prevState;
     })
   }
@@ -140,7 +161,7 @@ class NameList extends React.Component {
       (name, idx) => {
         return (
           <div key={Math.random()}>
-            <NameSelect key={Math.random()} idx={idx} name={name} allnames={this.props.allnames} onChange={this.handleMappingChange} onDelete={this.deleteName} />
+            <NameSelect key={Math.random()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
           </div>
         )
       }
@@ -162,7 +183,7 @@ class PipelineStep extends React.Component {
     super(props);
     //console.log(this.props)
     this.state = { config: this.props.config };
-    this.handleChange = this.handleChange.bind(this);
+    this.handleSelect = this.handleSelect.bind(this);
   }
 
   templates = {
@@ -180,14 +201,21 @@ class PipelineStep extends React.Component {
 
   handleFilterChange() {}
 
-  handleChange() {}
+  handleSelect(event) {
+    console.log("change name", event)
+    this.setState(prevState => {
+      prevState.config.type = event;
+      this.props.onChange(prevState.config);
+      return prevState;
+    })
+  }
 
   render() {
     var fields;
     if (this.state.config.type === "Mixer") {
       fields = 
         <tr className="pipelinestep">
-          <MixerStep key={Math.random()} idx={this.props.idx} config={this.state.config} allnames={this.props.mixers} onChange={this.handleMixerChange} />
+          <MixerStep key={Math.random()} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
         </tr>;
     }
     else {
@@ -225,10 +253,10 @@ export class Pipeline extends React.Component {
 
   handleMixerUpdate = (mixValue) => {
     console.log("MixerList got:", mixValue)
-    this.setState(prevState => {
-      prevState.mixers[mixValue.name] = mixValue.value;
-      return prevState;
-    })
+    //this.setState(prevState => {
+    //  prevState.config.mixers[mixValue.name] = mixValue.value;
+    //  return prevState;
+    //})
   }
 
   updateName = (event) => {
