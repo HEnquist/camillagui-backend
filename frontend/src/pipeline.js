@@ -105,13 +105,9 @@ export class FilterStep extends React.Component {
     return (
       <div>
       <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
+      Names
       <table><tbody>
-      <tr className="formrow">
-        <td>name</td>
-        <td>
         <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
-        </td>
-      </tr>
       </tbody>
       </table>
       </div>
@@ -160,18 +156,16 @@ class NameList extends React.Component {
     var names = this.state.names.map(
       (name, idx) => {
         return (
-          <div key={Math.random()}>
+          <tr key={Math.random()}>
             <NameSelect key={Math.random()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
-          </div>
+          </tr>
         )
       }
     )
     return (
       <div className="namelist">
-        <div className="names">
           {names}
           <div><button onClick={this.addName}>+</button></div>
-        </div>
       </div>
     );
   }

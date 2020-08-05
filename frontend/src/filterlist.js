@@ -16,7 +16,7 @@ class FilterParams extends React.Component {
     this.setState(prevState => {
       const state = Object.assign({}, prevState);
       state.parameters = parameters;
-      this.props.onChange(state)
+      this.props.onChange(parameters)
       return state;
     })
   }
@@ -128,7 +128,7 @@ class Filter extends React.Component {
     this.setState(prevState => {
       const state = Object.assign({}, prevState);
       state.parameters = filtParams;
-      this.props.onFilter({name: this.props.name, type: state.type, parameters: filtParams.parameters})
+      this.props.onFilter({name: this.props.name, type: state.type, parameters: filtParams})
       console.log("--==--Filter", state)
       return state;
     })

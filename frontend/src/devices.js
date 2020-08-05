@@ -14,10 +14,9 @@ export class Devices extends React.Component {
   }
 
   handleChangeParams(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
-      state.config = params;
+      state.config = Object.assign(state.config, params);
       console.log("devices new:", state)
       this.props.onChange(state.config);
       return state;
@@ -25,24 +24,22 @@ export class Devices extends React.Component {
   }
 
   handlePlayback(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
       state.config.playback = params;
       console.log("devices new:", state)
       this.props.onChange(state.config);
-      return state.config;
+      return state;
     })
   }
 
   handleCapture(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
       state.config.capture = params;
       console.log("devices new:", state)
       this.props.onChange(state.config);
-      return state.config;
+      return state;
     })
   }
 
