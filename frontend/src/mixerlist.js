@@ -18,7 +18,6 @@ class MixerMapping extends React.Component {
 
   handleDestChange = (value) => {
     console.log("MixerMapping::handleDestChange", value);
-    //this.props.onChange({ id: this.props.id, value: value });
     this.setState(prevState => {
       prevState.config.dest = value.dest;
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
@@ -28,7 +27,6 @@ class MixerMapping extends React.Component {
 
   handleSourceChange = (value) => {
     console.log("value:", value);
-    //this.props.onChange({ id: this.props.id, value: value });
     this.setState(prevState => {
       prevState.config.sources[value.idx] = value.value;
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
@@ -211,6 +209,7 @@ export class MixerList extends React.Component {
     console.log("MixerList got:", mixValue)
     this.setState(prevState => {
       prevState.mixers[mixValue.name] = mixValue.value;
+      this.props.onChange(prevState.mixers);
       return prevState;
     })
   }
@@ -221,6 +220,7 @@ export class MixerList extends React.Component {
       var mixers = prevState.mixers;
       delete Object.assign(mixers, { [event.value]: mixers[event.id] })[event.id];
       //this.setState({value: value});
+      this.props.onChange(mixers);
       return prevState;
     })
   }
@@ -243,6 +243,7 @@ export class MixerList extends React.Component {
       const newname = "new" + nbr.toString();
       const mixers = Object.assign({}, state.mixers, { [newname]: cloneDeep(this.template) });
       console.log(mixers);
+      this.props.onChange(mixers);
       return {
         mixers,
         nbr,
@@ -258,6 +259,7 @@ export class MixerList extends React.Component {
       const mixers = Object.assign({}, state.mixers);
       delete mixers[i];
       console.log(mixers);
+      this.props.onChange(mixers);
       return {
         mixers,
         nbr,

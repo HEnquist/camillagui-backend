@@ -10,6 +10,9 @@ class CamillaConfig extends React.Component<any, any> {
   constructor(props: any) {
     super(props);
     this.handleDevices = this.handleDevices.bind(this);
+    this.handleFilters = this.handleFilters.bind(this);
+    this.handleMixers = this.handleMixers.bind(this);
+    this.handlePipeline = this.handlePipeline.bind(this);
     //this.state = {value: this.props.value};
     this.state = {config: {devices: this.getDevicesTemplate()}};
   }
@@ -38,10 +41,10 @@ class CamillaConfig extends React.Component<any, any> {
     })
   }
 
-  handleMixers(filters: any) {
+  handleMixers(mixers: any) {
     this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
-      state.config.filters = filters;
+      state.config.mixers = mixers;
       console.log("config", state);
       return { config: state.config };
     })

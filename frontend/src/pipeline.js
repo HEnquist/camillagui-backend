@@ -60,8 +60,12 @@ export class MixerStep extends React.Component {
   }
 
   handleChange(event) {
-    this.setState({ value: event.target.value });
-    this.props.onSelect(event.target.value);
+    console.log("change name", event)
+    this.setState(prevState => {
+      prevState.value = event.value;
+      this.props.onChange(prevState.value);
+      return prevState;
+    })
   }
 
   render() {
@@ -69,7 +73,7 @@ export class MixerStep extends React.Component {
       <tr className="formrow">
         <td>name</td>
         <td>
-        <NameSelect value={this.state.name} allnames={this.props.allnames} onSelect={this.handleChange} />
+        <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
         </td>
       </tr>
     );
@@ -182,6 +186,7 @@ class PipelineStep extends React.Component {
 
   templates = {
     "Mixer": {
+      type: "Mixer",
       name: "",
     },
     "Filter": {
@@ -191,14 +196,30 @@ class PipelineStep extends React.Component {
     }
   }
 
-  handleMixerChange() {}
+  handleMixerChange = (mixer) => {
+    console.log("handleMixerChange", mixer)
+    this.setState(prevState => {
+      prevState.config = mixer.value;
+      this.props.onChange({ idx: this.props.idx, value: prevState.config });
+      return prevState;
+    })
+  }
 
-  handleFilterChange() {}
+  handleFilterChange = (filter) => {
+    console.log("handleFilterChange", filter)
+    this.setState(prevState => {
+      prevState.config = filter.value;
+      //this.props.onChange(filter);
+      this.props.onChange({ idx: this.props.idx, value: prevState.config });
+      return prevState;
+    })
+  }
 
   handleSelect(event) {
-    console.log("change name", event)
+    console.log("change step type", event)
     this.setState(prevState => {
-      prevState.config.type = event;
+      var templ = cloneDeep(this.templates[event])
+      prevState.config = templ;
       this.props.onChange(prevState.config);
       return prevState;
     })

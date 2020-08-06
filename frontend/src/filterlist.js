@@ -163,6 +163,7 @@ export class FilterList extends React.Component {
     console.log("FilterList got:", filtValue)
     this.setState(prevState => {
       prevState.filters[filtValue.name] = {type: filtValue.type, parameters: filtValue.parameters};
+      this.props.onChange(prevState.filters);
       return prevState;
     })
   }
@@ -173,6 +174,7 @@ export class FilterList extends React.Component {
       var filters = prevState.filters;
       delete Object.assign(filters, {[event.value]: filters[event.id] })[event.id];
       //this.setState({value: value});
+      this.props.onChange(prevState.filters);
       return prevState;
     })
   }
@@ -183,7 +185,7 @@ export class FilterList extends React.Component {
       var state = Object.assign({}, prevState);
       state.config = params;
       console.log("filters new:", state)
-      this.props.onChange(state.config);
+      this.props.onChange(state.filters);
       return state;
     })
   }
@@ -195,6 +197,7 @@ export class FilterList extends React.Component {
       const newname = "new"+nbr.toString();
       const filters = Object.assign({}, state.filters, {[newname]: {"type": "Biquad", "parameters": {"type": "Lowpass", "q": 0.5, "freq": 1000}}});
       console.log(filters);
+      this.props.onChange(filters);
       return {
         filters,
         nbr,
@@ -210,6 +213,7 @@ export class FilterList extends React.Component {
       const filters = Object.assign({}, state.filters);
       delete filters[i];
       console.log(filters);
+      this.props.onChange(filters);
       return {
         filters,
         nbr,
