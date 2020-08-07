@@ -92,15 +92,32 @@ export class InputField extends React.Component {
 
   handleChange(event) {
     console.log("field:", event.target.value);
-    this.props.onChange({ id: this.props.id, value: event.target.value });
-    this.setState({ value: event.target.value });
+    var value;
+    if (this.props.type === "float") {
+      value = parseFloat(event.target.value);
+    }
+    else if (this.props.type === "int") {
+      value = parseInt(event.target.value);
+    }
+    else {
+      value = event.target.value;
+    }
+    this.props.onChange({ id: this.props.id, value: value });
+    this.setState({ value: value });
   }
 
   render() {
+    var type;
+    if (["int", "float"].includes(this.props.type)) {
+      type = "number";
+    }
+    else {
+      type = this.props.type;
+    }
     return (
       <tr className="formrow">
         <td>{this.props.desc}</td>
-        <td><input type={this.props.type} value={this.state.value} onChange={this.handleChange} /></td>
+        <td><input type={type} value={this.state.value} onChange={this.handleChange} /></td>
       </tr>
     );
   }
@@ -129,42 +146,42 @@ export class ParameterInput extends React.Component {
   };
 
   type_dict = {
-    "q": { type: "number", desc: "Q" },
-    "freq": { type: "number", desc: "freq" },
-    "slope": { type: "number", desc: "slope" },
+    "q": { type: "float", desc: "Q" },
+    "freq": { type: "float", desc: "freq" },
+    "slope": { type: "float", desc: "slope" },
     "file": { type: "text", desc: "file" },
     "device": { type: "text", desc: "device" },
-    "channels": { type: "number", desc: "channels" },
-    "samplerate": { type: "number", desc: "samplerate" },
-    "read_bytes": { type: "number", desc: "read_bytes" },
-    "extra_samples": { type: "number", desc: "extra_samples" },
-    "skip_bytes": { type: "number", desc: "skip_bytes" },
-    "target_level": { type: "number", desc: "target_level" },
-    "adjust_period": { type: "number", desc: "adjust_period" },
-    "chunksize": { type: "number", desc: "chunksize" },
-    "capture_samplerate": { type: "number", desc: "capture_samplerate" },
+    "channels": { type: "int", desc: "channels" },
+    "samplerate": { type: "int", desc: "samplerate" },
+    "read_bytes": { type: "int", desc: "read_bytes" },
+    "extra_samples": { type: "int", desc: "extra_samples" },
+    "skip_bytes": { type: "int", desc: "skip_bytes" },
+    "target_level": { type: "int", desc: "target_level" },
+    "adjust_period": { type: "int", desc: "adjust_period" },
+    "chunksize": { type: "int", desc: "chunksize" },
+    "capture_samplerate": { type: "int", desc: "capture_samplerate" },
     "enable_resampling": { type: "bool", desc: "enable_resampling" },
     "format": { type: "enum", desc: "format", subtype: "sampleformat" },
-    "order": { type: "number", desc: "order" },
-    "gain": { type: "number", desc: "gain" },
+    "order": { type: "int", desc: "order" },
+    "gain": { type: "float", desc: "gain" },
     "inverted": { type: "bool", desc: "inverted" },
     "unit": { type: "enum", desc: "unit", subtype: "delayunit" },
     "values": { type: "text", desc: "values" },
     "filename": { type: "text", desc: "filename" },
-    "skip_bytes_lines": { type: "number", desc: "skip_bytes_lines" },
-    "read_bytes_lines": { type: "number", desc: "read_bytes_lines" },
-    "bits": { type: "number", desc: "bits" },
-    "amplitude": { type: "number", desc: "amplitude" },
-    "delay": { type: "number", desc: "delay" },
+    "skip_bytes_lines": { type: "int", desc: "skip_bytes_lines" },
+    "read_bytes_lines": { type: "int", desc: "read_bytes_lines" },
+    "bits": { type: "int", desc: "bits" },
+    "amplitude": { type: "float", desc: "amplitude" },
+    "delay": { type: "float", desc: "delay" },
     "a": { type: "text", desc: "a" },
     "b": { type: "text", desc: "b" },
-    "queuelimit": { type: "number", desc: "queuelimit" },
-    "silence_threshold": { type: "number", desc: "silence_threshold" },
-    "silence_timeout": { type: "number", desc: "silence_timeout" },
-    "in": { type: "number", desc: "in" },
-    "out": { type: "number", desc: "out" },
-    "dest": { type: "number", desc: "dest" },
-    "channel": { type: "number", desc: "channel" },
+    "queuelimit": { type: "int", desc: "queuelimit" },
+    "silence_threshold": { type: "float", desc: "silence_threshold" },
+    "silence_timeout": { type: "float", desc: "silence_timeout" },
+    "in": { type: "int", desc: "in" },
+    "out": { type: "int", desc: "out" },
+    "dest": { type: "int", desc: "dest" },
+    "channel": { type: "int", desc: "channel" },
   };
 
   get_input(par, value) {
