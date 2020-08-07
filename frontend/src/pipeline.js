@@ -199,7 +199,7 @@ class PipelineStep extends React.Component {
   handleMixerChange = (mixer) => {
     console.log("handleMixerChange", mixer)
     this.setState(prevState => {
-      prevState.config = mixer.value;
+      prevState.config.name = mixer;
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
     })
@@ -220,7 +220,7 @@ class PipelineStep extends React.Component {
     this.setState(prevState => {
       var templ = cloneDeep(this.templates[event])
       prevState.config = templ;
-      this.props.onChange(prevState.config);
+      this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
     })
   }
@@ -266,12 +266,13 @@ export class Pipeline extends React.Component {
     names: [],
   }
 
-  handleMixerUpdate = (mixValue) => {
+  handleStepUpdate = (mixValue) => {
     console.log("MixerList got:", mixValue)
-    //this.setState(prevState => {
-    //  prevState.config.mixers[mixValue.name] = mixValue.value;
-    //  return prevState;
-    //})
+    this.setState(prevState => {
+      prevState.config[mixValue.idx] = mixValue.value;
+      this.props.onChange(prevState.config);
+      return prevState;
+    })
   }
 
   updateName = (event) => {
@@ -279,19 +280,8 @@ export class Pipeline extends React.Component {
     this.setState(prevState => {
       var mixers = prevState.mixers;
       delete Object.assign(mixers, { [event.value]: mixers[event.id] })[event.id];
-      //this.setState({value: value});
+      this.props.onChange(prevState.config);
       return prevState;
-    })
-  }
-
-  handleChange(params) {
-    this.setState(prevState => {
-      console.log("mixers got:", params)
-      var state = Object.assign({}, prevState);
-      state.config = params;
-      console.log("mixers new:", state)
-      this.props.onChange(state.config);
-      return state;
     })
   }
 
@@ -299,6 +289,7 @@ export class Pipeline extends React.Component {
     //event.preventDefault();
     this.setState(state => {
       state.config.push(cloneDeep(this.template))
+      this.props.onChange(state.config);
       return state;
     });
   }
@@ -307,14 +298,9 @@ export class Pipeline extends React.Component {
     var i = event.target.id;
     console.log("delete", i);
     this.setState(state => {
-      const nbr = state.nbr;
-      const mixers = Object.assign({}, state.mixers);
-      delete mixers[i];
-      console.log(mixers);
-      return {
-        mixers,
-        nbr,
-      };
+      state.config.splice(i, 1);
+      this.props.onChange(state.config);
+      return state;
     });
   };
 
@@ -330,7 +316,7 @@ export class Pipeline extends React.Component {
                 return (
                   <div key={Math.random()} className="pipelinestep">
                     <div>
-                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleMixerUpdate} />
+                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} />
                     </div>
                     <div>
                       <button onClick={this.removeStep} id={i}>✖</button>

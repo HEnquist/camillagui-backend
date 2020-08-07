@@ -50,10 +50,10 @@ class CamillaConfig extends React.Component<any, any> {
     })
   }
 
-  handlePipeline(filters: any) {
+  handlePipeline(pipeline: any) {
     this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
-      state.config.filters = filters;
+      state.config.pipeline = pipeline;
       console.log("config", state);
       return { config: state.config };
     })
