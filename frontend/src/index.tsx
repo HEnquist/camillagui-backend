@@ -17,11 +17,6 @@ class CamillaConfig extends React.Component<any, any> {
     this.state = {config: {devices: this.getDevicesTemplate()}};
   }
 
-  //handleChange(event) {    
-  //  this.setState({value: event.target.value});  
-  //  this.props.onSelectFilter(event.target.value);  
-  //}
-
   handleDevices(devices: any) {
     this.setState((prevState: any) => {
       const state = Object.assign({}, prevState);
@@ -72,11 +67,23 @@ class CamillaConfig extends React.Component<any, any> {
   }
 
   getFilterNames() {
-    return ["filt1", "filt2"]
+    if (this.state.config.filters) {
+      var filternames = Object.keys(this.state.config.filters);
+      return filternames
+    }
+    else {
+      return []
+    }
   }
 
-  getMixerNames() {
-    return ["mix1", "mix2"]
+  getMixerNames():any {
+    if (this.state.config.mixers) {
+      var mixernames = Object.keys(this.state.config.mixers);
+      return mixernames
+    }
+    else {
+      return []
+    }
   }
 
   render() {
