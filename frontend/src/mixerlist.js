@@ -190,7 +190,7 @@ export class MixerList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { nbr: 1, mixers: props.config};
+    this.state = { mixers: props.config};
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -215,11 +215,10 @@ export class MixerList extends React.Component {
   }
 
   updateName = (event) => {
-    console.log("new name:", event);
+    console.log("new name:", event.id, event.value);
     this.setState(prevState => {
       var mixers = prevState.mixers;
       delete Object.assign(mixers, { [event.value]: mixers[event.id] })[event.id];
-      //this.setState({value: value});
       this.props.onChange(mixers);
       return prevState;
     })
@@ -236,17 +235,24 @@ export class MixerList extends React.Component {
     })
   }
 
+  getNewName(state) {
+    var nbr=1;
+    while (Object.keys(state.mixers).includes("new" + nbr.toString())) {
+      nbr = nbr +1;
+    }
+    const newname = "new" + nbr.toString();
+    return newname;
+  }
+
   addMixer = (event) => {
     //event.preventDefault();
     this.setState(state => {
-      const nbr = state.nbr + 1;
-      const newname = "new" + nbr.toString();
+      var newname = this.getNewName(state);
       const mixers = Object.assign({}, state.mixers, { [newname]: cloneDeep(this.template) });
       console.log(mixers);
       this.props.onChange(mixers);
       return {
         mixers,
-        nbr,
       };
     });
   }
@@ -255,14 +261,12 @@ export class MixerList extends React.Component {
     var i = event.target.id;
     console.log("delete", i);
     this.setState(state => {
-      const nbr = state.nbr;
       const mixers = Object.assign({}, state.mixers);
       delete mixers[i];
       console.log(mixers);
       this.props.onChange(mixers);
       return {
         mixers,
-        nbr,
       };
     });
   };

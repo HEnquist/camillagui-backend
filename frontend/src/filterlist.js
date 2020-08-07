@@ -168,11 +168,10 @@ export class FilterList extends React.Component {
   }
 
   updateName = (event) => {
-    console.log("new name:", event);
+    console.log("new name:", event.id, event.value);
     this.setState(prevState => {
       var filters = prevState.filters;
       delete Object.assign(filters, {[event.value]: filters[event.id] })[event.id];
-      //this.setState({value: value});
       this.props.onChange(prevState.filters);
       return prevState;
     })
@@ -189,17 +188,24 @@ export class FilterList extends React.Component {
     })
   }
 
+  getNewName(state) {
+    var nbr=1;
+    while (Object.keys(state.filters).includes("new" + nbr.toString())) {
+      nbr = nbr +1;
+    }
+    const newname = "new" + nbr.toString();
+    return newname;
+  }
+
   addFilter = (event) => {
     //event.preventDefault();
     this.setState(state => {
-      const nbr = state.nbr + 1;
-      const newname = "new"+nbr.toString();
+      const newname = this.getNewName(state);
       const filters = Object.assign({}, state.filters, {[newname]: {"type": "Biquad", "parameters": {"type": "Lowpass", "q": 0.5, "freq": 1000}}});
       console.log(filters);
       this.props.onChange(filters);
       return {
         filters,
-        nbr,
       };
     });
   }
@@ -208,14 +214,12 @@ export class FilterList extends React.Component {
     var i = event.target.id;
     console.log("delete", i);
     this.setState(state => {
-      const nbr = state.nbr;
       const filters = Object.assign({}, state.filters);
       delete filters[i];
       console.log(filters);
       this.props.onChange(filters);
       return {
         filters,
-        nbr,
       };
     });
   };
