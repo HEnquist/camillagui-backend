@@ -5,6 +5,8 @@ import { FilterList } from './filterlist.js';
 import { Devices } from './devices.js';
 import { MixerList } from './mixerlist.js';
 import { Pipeline } from './pipeline.js';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
 
 class CamillaConfig extends React.Component<any, any> {
   constructor(props: any) {
@@ -14,7 +16,14 @@ class CamillaConfig extends React.Component<any, any> {
     this.handleMixers = this.handleMixers.bind(this);
     this.handlePipeline = this.handlePipeline.bind(this);
     //this.state = {value: this.props.value};
-    this.state = {config: {devices: this.getDevicesTemplate()}};
+    this.state = {
+      config: {
+        devices: this.getDevicesTemplate(),
+        filters: this.getFiltersTemplate(),
+        mixers: this.getMixersTemplate(),
+        pipeline: this.getPipelineTemplate(),
+      }
+    };
   }
 
   handleDevices(devices: any) {
@@ -66,6 +75,27 @@ class CamillaConfig extends React.Component<any, any> {
     });
   }
 
+  getFiltersTemplate() {
+    return ({
+      test1: {
+        "type": "Biquad", 
+        "parameters": {
+          "type": "Lowpass", 
+          "q": 0.7, 
+          "freq": 500,
+        }
+      }
+    });
+  }
+
+  getMixersTemplate() {
+    return ({});
+  }
+
+  getPipelineTemplate() {
+    return ([]);
+  }
+
   getFilterNames() {
     if (this.state.config.filters) {
       var filternames = Object.keys(this.state.config.filters);
@@ -88,20 +118,27 @@ class CamillaConfig extends React.Component<any, any> {
 
   render() {
     return (
-      <div className="configapp" >
-        <div>
+      <Tabs >
+        <TabList >
+          <Tab>Devices</Tab>
+          <Tab>Filters</Tab>
+          <Tab>Mixers</Tab>
+          <Tab>Pipeline</Tab>
+        </TabList>
+
+        <TabPanel>
           <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
-        </div>
-        <div>
-          <FilterList onChange={this.handleFilters}/>
-        </div>
-        <div>
-          <MixerList onChange={this.handleMixers}/>
-        </div>
-        <div>
-          <Pipeline filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline}/>
-        </div>
-      </div>
+        </TabPanel>
+        <TabPanel>
+          <FilterList config={this.state.config.filters} onChange={this.handleFilters}/>
+        </TabPanel>
+        <TabPanel>
+          <MixerList config={this.state.config.mixers} onChange={this.handleMixers}/>
+        </TabPanel>
+        <TabPanel>
+          <Pipeline config={this.state.config.pipeline} filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline}/>
+        </TabPanel>
+      </Tabs>
     );
   }
 }

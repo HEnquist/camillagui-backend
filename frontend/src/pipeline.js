@@ -256,7 +256,7 @@ export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {config: []};
+    this.state = {config: props.config};
     //this.state = {filters: {}, nbr: 0};
   }
 

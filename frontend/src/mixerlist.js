@@ -190,7 +190,7 @@ export class MixerList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { nbr: 2, mixers: { test1: { channels: { in: 2, out: 4 }, mapping: [{ dest: 0, sources: [{ channel: 0, gain: 0, inverted: false }] }] } } };
+    this.state = { nbr: 1, mixers: props.config};
     //this.state = {filters: {}, nbr: 0};
   }
 

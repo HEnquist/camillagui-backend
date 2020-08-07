@@ -8,10 +8,12 @@
     "@testing-library/user-event": "^7.2.1",
     "@types/react": "^16.9.43",
     "@types/react-dom": "^16.9.8",
+    "@types/react-tabs": "^2.3.2",
     "awesome-typescript-loader": "^5.2.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-scripts": "3.4.1"
+    "react-scripts": "3.4.1",
+    "react-tabs": "^3.1.1"
   },
   "scripts": {
     "start": "react-scripts start",

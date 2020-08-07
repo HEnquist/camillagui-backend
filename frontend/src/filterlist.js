@@ -155,8 +155,7 @@ export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {filters: {test1: {"type": "Biquad", "parameters": {"type": "Lowpass", "q": 0.7, "freq": 500}}, test2: {"type": "Biquad", "parameters": {"type": "Highpass", "q": 0.5, "freq": 1500}}}, nbr: 3};
-    //this.state = {filters: {}, nbr: 0};
+    this.state = {filters: props.config, nbr: 2}
   }
 
   handleFilterUpdate = (filtValue) => {
