@@ -33,8 +33,9 @@ def get_param(name):
 
 @view.route('/setparam/<name>', methods=['GET', 'POST'])
 def set_param(name):
-    value = request.get_data()
+    value = request.get_data().decode()
     name = name.lower()
+    print(name, value)
     cdsp = current_app.config['CAMILLA']
     if name == "updateinterval":
         cdsp.set_update_interval(value)
@@ -44,30 +45,26 @@ def set_param(name):
         cdsp.set_config_raw(value)
     return "OK"
 
-@view.route('/filter/<name>', methods=['GET', 'POST'])
-def eval_filter(name):
+@view.route('/filter', methods=['GET', 'POST'])
+def eval_filter():
     content = request.get_json(silent=True)
-    # print(content) # Do your processing
-    image=plot_filter((name, content), 44100, toimage=True)
+    image=plot_filter((content["name"], content["config"]), 44100, toimage=True)
     return send_file(image, mimetype='image/svg+xml')
 
 @view.route('/pipeline', methods=['GET', 'POST'])
 def eval_pipeline():
     content = request.get_json(silent=True)
-    # print(content) # Do your processing
     image=plot_pipeline(content, toimage=True)
     return send_file(image, mimetype='image/svg+xml')
 
 @view.route('/getconfig', methods=['GET', 'POST'])
 def get_config():
-    # print(content) # Do your processing
     cdsp = current_app.config['CAMILLA']
     config = cdsp.get_config()
     return config
 
 @view.route('/version', methods=['GET', 'POST'])
 def get_version():
-    # print(content) # Do your processing
     cdsp = current_app.config['CAMILLA']
     vers_tup = cdsp.get_version()
     version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
