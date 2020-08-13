@@ -1,4 +1,5 @@
 import React from 'react';
+import Popup from "reactjs-popup";
 import cloneDeep from 'lodash/cloneDeep';
 import './index.css';
 import { ParameterInput, InputField, EnumSelect} from './common.js';
@@ -155,7 +156,7 @@ export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {filters: props.config, nbr: 2}
+    this.state = {filters: props.config, nbr: 2, popup: false, image: null}
   }
 
   handleFilterUpdate = (filtValue) => {
@@ -224,6 +225,41 @@ export class FilterList extends React.Component {
     });
   };
 
+
+  plotFilter = (event) => {
+    var i = event.target.id;
+    console.log("PLot!!!", i, )
+    this.setState(state => {
+      var image
+      var popup
+      console.log(state.filters[i]);
+      fetch("http://127.0.0.1:5000/filter", {
+        method: 'POST', // *GET, POST, PUT, DELETE, etc.
+        mode: 'cors', // no-cors, *cors, same-origin
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+        body: JSON.stringify({"name": i, "config": state.filters[i], "samplerate": 44100 }) // body data type must match "Content-Type" header
+      })
+      .then(
+        (result) => {
+          result.blob().then(data => {
+            console.log("data", popup, image);
+            this.setState(state => {
+              return {popup: true, image: data}
+            });
+          })
+          console.log("OK", result);
+        },
+        (error) => {
+          console.log("Failed", error);
+        }
+      )
+      console.log("data2", popup, image);
+    });
+  }
+
   render() {
     console.log("render:", this.state);
     return (
@@ -241,7 +277,9 @@ export class FilterList extends React.Component {
                   </div>
                   <div>
                     <button onClick={this.removeFilter} id={filt}>✖</button>
+                    <button onClick={this.plotFilter} id={filt}>Plot</button>
                   </div>
+                  <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} /> 
                 </div>
               )
             }
@@ -255,7 +293,45 @@ export class FilterList extends React.Component {
 }
 
 
+class ControlledPopup extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { open: props.open};
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+  }
+  openModal() {
+    this.setState({ open: true });
+  }
+  closeModal() {
+    this.setState({ open: false });
+  }
 
+  render() {
+    var url;
+    if (this.props.image) {
+      url = URL.createObjectURL(this.props.image);
+    }
+    return (
+      <div>
+        <Popup
+          open={this.state.open}
+          closeOnDocumentClick
+          onClose={this.closeModal}
+        >
+          <div className="modal">
+            <a className="close" onClick={this.closeModal}>
+              &times;
+            </a>
+            <div>
+              <img src={url} />
+            </div>
+          </div>
+        </Popup>
+      </div>
+    );
+  }
+}
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
