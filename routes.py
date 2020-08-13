@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template
 from flask import Flask, request, send_file, current_app
-from camilladsp.plot_pipeline import plot_pipeline
-from camilladsp.plot_filters import plot_filter
+from camilladsp import plot_pipeline
+from camilladsp import plot_filter
 
 view = Blueprint("view", __name__)
 
@@ -48,7 +48,8 @@ def set_param(name):
 @view.route('/filter', methods=['GET', 'POST'])
 def eval_filter():
     content = request.get_json(silent=True)
-    image=plot_filter((content["name"], content["config"]), 44100, toimage=True)
+    print("content", content)
+    image=plot_filter((content["name"], content["config"]), content["samplerate"], npoints=1000, toimage=True)
     return send_file(image, mimetype='image/svg+xml')
 
 @view.route('/pipeline', methods=['GET', 'POST'])
