@@ -49,12 +49,13 @@ def set_param(name):
 def eval_filter():
     content = request.get_json(silent=True)
     print("content", content)
-    image=plot_filter((content["name"], content["config"]), content["samplerate"], npoints=1000, toimage=True)
+    image=plot_filter(content["config"], name=content["name"], samplerate=content["samplerate"], npoints=1000, toimage=True)
     return send_file(image, mimetype='image/svg+xml')
 
 @view.route('/pipeline', methods=['GET', 'POST'])
 def eval_pipeline():
     content = request.get_json(silent=True)
+    print("content", content)
     image=plot_pipeline(content, toimage=True)
     return send_file(image, mimetype='image/svg+xml')
 
