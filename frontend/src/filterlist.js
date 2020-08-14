@@ -1,8 +1,7 @@
 import React from 'react';
-import Popup from "reactjs-popup";
 import cloneDeep from 'lodash/cloneDeep';
 import './index.css';
-import { ParameterInput, InputField, EnumSelect} from './common.js';
+import { ParameterInput, InputField, EnumSelect, ControlledPopup} from './common.js';
 
 
 class FilterParams extends React.Component {
@@ -32,8 +31,10 @@ class FilterParams extends React.Component {
       HighpassFO: {type: "HighpassFO", freq: 1000},
       LowshelfFO: {type: "LowshelfFO", gain: 6, freq: 1000},
       HighshelfFO: {type: "HighshelfFO", gain: 6, freq: 1000},
+      Peaking: {type: "Peaking", gain: 6, q: 1.5, freq: 1000},
+      Notch: {type: "Notch", q: 1.5, freq: 1000},
     },
-    BiquadGroup: {
+    BiquadCombo: {
       ButterworthLowpass: {type: "ButterworthLowpass", order: 2, freq: 1000},
       ButterworthHighpass: {type: "ButterworthHighpass", order: 2, freq: 1000},
       LinkwitzRileyLowpass: {type: "LinkwitzRileyLowpass", order: 2, freq: 1000},
@@ -41,7 +42,7 @@ class FilterParams extends React.Component {
     },
     Conv: {
       File: {type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0},
-      Values: {type: "Values", values: "[1.0, 0.0, 0.0, 0.0]"},
+      Values: {type: "Values", values: [1.0, 0.0, 0.0, 0.0]},
     },
     Delay: {
       Default: { delay: 0.0,  unit: "ms"},
@@ -50,7 +51,7 @@ class FilterParams extends React.Component {
       Default: { gain: 0.0,  inverted: false },
     },
     DiffEq: {
-      Default: { a: "[1.0]", b: "[1.0]"}
+      Default: { a: [1.0, 0.0], b: [1.0, 0.0]}
     },
     Dither: {
       Simple: {bits: 16},
@@ -67,7 +68,7 @@ class FilterParams extends React.Component {
     this.setState(prevState => {
       const template = cloneDeep(this.templates[this.props.type][selectValue]);
       const state = {parameters: template};
-      this.props.onChange(state);
+      this.props.onChange(state.parameters);
       return state;
     })
   }
@@ -103,11 +104,11 @@ class Filter extends React.Component {
 
   templates = {
     "Biquad": {type: "Lowpass", q: 0.5, freq: 1000},
-    "BiquadGroup": {type: "ButterworthHighpass", order: 2, freq: 1000},
+    "BiquadCombo": {type: "ButterworthHighpass", order: 2, freq: 1000},
     "Conv": {type: "File", filename: "", format: "TEXT", read_bytes_lines: 0, skip_bytes_lines:0},
     "Delay": { delay: 0.0,  unit: "ms"},
     "Gain": { gain: 0.0,  inverted: false },
-    "DiffEq": { a: "[1.0, 0.0]", b: "[1.0, 0.0]"},
+    "DiffEq": { a: [1.0, 0.0], b: [1.0, 0.0]},
     "Dither": { type: "Simple", bits: 16 },
   }
   handleChange(event) {    
@@ -126,12 +127,13 @@ class Filter extends React.Component {
   }
 
   handleModifyFilter = (filtParams) => {
+    console.log("handleModifyFilter", filtParams)
     this.setState(prevState => {
-      const state = Object.assign({}, prevState);
-      state.parameters = filtParams;
-      this.props.onFilter({name: this.props.name, type: state.type, parameters: filtParams})
-      console.log("--==--Filter", state)
-      return state;
+      //const state = Object.assign({}, prevState);
+      prevState.parameters = filtParams;
+      this.props.onFilter({name: this.props.name, type: prevState.type, parameters: filtParams})
+      console.log("--==--Filter", prevState)
+      return prevState;
     })
   }
 
@@ -143,7 +145,7 @@ class Filter extends React.Component {
           <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
         </tbody></table>
         <div>
-          <FilterParams key={this.state.type} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
+          <FilterParams key={Math.random()} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
         </div>
       </div> 
     );
@@ -229,35 +231,36 @@ export class FilterList extends React.Component {
   plotFilter = (event) => {
     var i = event.target.id;
     console.log("PLot!!!", i, )
+    var filter;
+    console.log(filter);
+    fetch("http://127.0.0.1:5000/filter", {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      mode: 'cors', // no-cors, *cors, same-origin
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      body: JSON.stringify({"name": i, "config": this.state.filters[i], "samplerate": 44100 }) // body data type must match "Content-Type" header
+    })
+    .then(
+      (result) => {
+        result.blob().then(data => {
+          this.setState(state => {
+            return {popup: true, image: data}
+          });
+        })
+        console.log("OK", result);
+      },
+      (error) => {
+        console.log("Failed", error);
+      }
+    )
+  }
+
+  handleClose = () => {
     this.setState(state => {
-      var image
-      var popup
-      console.log(state.filters[i]);
-      fetch("http://127.0.0.1:5000/filter", {
-        method: 'POST', // *GET, POST, PUT, DELETE, etc.
-        mode: 'cors', // no-cors, *cors, same-origin
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-        body: JSON.stringify({"name": i, "config": state.filters[i], "samplerate": 44100 }) // body data type must match "Content-Type" header
-      })
-      .then(
-        (result) => {
-          result.blob().then(data => {
-            console.log("data", popup, image);
-            this.setState(state => {
-              return {popup: true, image: data}
-            });
-          })
-          console.log("OK", result);
-        },
-        (error) => {
-          console.log("Failed", error);
-        }
-      )
-      console.log("data2", popup, image);
-    });
+      return  {popup: false};
+    })
   }
 
   render() {
@@ -279,7 +282,7 @@ export class FilterList extends React.Component {
                     <button onClick={this.removeFilter} id={filt}>✖</button>
                     <button onClick={this.plotFilter} id={filt}>Plot</button>
                   </div>
-                  <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} /> 
+                  <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
                 </div>
               )
             }
@@ -293,45 +296,6 @@ export class FilterList extends React.Component {
 }
 
 
-class ControlledPopup extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { open: props.open};
-    this.openModal = this.openModal.bind(this);
-    this.closeModal = this.closeModal.bind(this);
-  }
-  openModal() {
-    this.setState({ open: true });
-  }
-  closeModal() {
-    this.setState({ open: false });
-  }
-
-  render() {
-    var url;
-    if (this.props.image) {
-      url = URL.createObjectURL(this.props.image);
-    }
-    return (
-      <div>
-        <Popup
-          open={this.state.open}
-          closeOnDocumentClick
-          onClose={this.closeModal}
-        >
-          <div className="modal">
-            <a className="close" onClick={this.closeModal}>
-              &times;
-            </a>
-            <div>
-              <img src={url} />
-            </div>
-          </div>
-        </Popup>
-      </div>
-    );
-  }
-}
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

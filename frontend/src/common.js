@@ -1,5 +1,6 @@
 import React from 'react';
 import './index.css';
+import Popup from "reactjs-popup";
 
 
 export class BoolSelect extends React.Component {
@@ -37,9 +38,9 @@ export class EnumSelect extends React.Component {
   }
 
   enums = {
-    "filter": ["Biquad", "BiquadGroup", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
-    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf","LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO"],
-    "BiquadGroup": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
+    "filter": ["Biquad", "BiquadCombo", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
+    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf","LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO", "Peaking", "Notch"],
+    "BiquadCombo": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
     "coeffformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
     "sampleformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE"],
     "resampler": ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"],
@@ -99,6 +100,15 @@ export class InputField extends React.Component {
     else if (this.props.type === "int") {
       value = parseInt(event.target.value);
     }
+    else if (this.props.type === "floatlist") {
+      value = [];
+      var values = event.target.value.split(",");
+      console.log("---split", values)
+      for (var i = 0; i < values.length; i++) { 
+        value.push(parseFloat(values[i]));
+      }
+      console.log("string to array", value)
+    }
     else {
       value = event.target.value;
     }
@@ -108,16 +118,24 @@ export class InputField extends React.Component {
 
   render() {
     var type;
+    var value;
     if (["int", "float"].includes(this.props.type)) {
       type = "number";
+      value = this.state.value;
+    }
+    else if (this.props.type === "floatlist") {
+      type = "text";
+      value = this.state.value.join(", ");
+      console.log("array to string", value)
     }
     else {
       type = this.props.type;
+      value = this.state.value;
     }
     return (
       <tr className="formrow">
         <td>{this.props.desc}</td>
-        <td><input type={type} value={this.state.value} onChange={this.handleChange} /></td>
+        <td><input type={type} value={value} onChange={this.handleChange} /></td>
       </tr>
     );
   }
@@ -166,15 +184,15 @@ export class ParameterInput extends React.Component {
     "gain": { type: "float", desc: "gain" },
     "inverted": { type: "bool", desc: "inverted" },
     "unit": { type: "enum", desc: "unit", subtype: "delayunit" },
-    "values": { type: "text", desc: "values" },
+    "values": { type: "floatlist", desc: "values" },
     "filename": { type: "text", desc: "filename" },
     "skip_bytes_lines": { type: "int", desc: "skip_bytes_lines" },
     "read_bytes_lines": { type: "int", desc: "read_bytes_lines" },
     "bits": { type: "int", desc: "bits" },
     "amplitude": { type: "float", desc: "amplitude" },
     "delay": { type: "float", desc: "delay" },
-    "a": { type: "text", desc: "a" },
-    "b": { type: "text", desc: "b" },
+    "a": { type: "floatlist", desc: "a" },
+    "b": { type: "floatlist", desc: "b" },
     "queuelimit": { type: "int", desc: "queuelimit" },
     "silence_threshold": { type: "float", desc: "silence_threshold" },
     "silence_timeout": { type: "float", desc: "silence_timeout" },
@@ -215,6 +233,48 @@ export class ParameterInput extends React.Component {
         {fields}
         </tbody>
       </table>
+    );
+  }
+}
+
+
+export class ControlledPopup extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { open: props.open};
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+  }
+  openModal() {
+    this.setState({ open: true });
+  }
+  closeModal() {
+    this.setState({ open: false });
+    this.props.onClose(this.props.id);
+  }
+
+  render() {
+    var url;
+    if (this.props.image) {
+      url = URL.createObjectURL(this.props.image);
+    }
+    return (
+      <div>
+        <Popup
+          open={this.state.open}
+          closeOnDocumentClick
+          onClose={this.closeModal}
+        >
+          <div className="modal">
+            <span className="close" onClick={this.closeModal}>
+             ✖
+            </span>
+            <div>
+              <img src={url} alt="graph" width="100%" height="100%" />
+            </div>
+          </div>
+        </Popup>
+      </div>
     );
   }
 }

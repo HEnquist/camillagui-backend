@@ -15,6 +15,7 @@ class CamillaConfig extends React.Component<any, any> {
     this.handleFilters = this.handleFilters.bind(this);
     this.handleMixers = this.handleMixers.bind(this);
     this.handlePipeline = this.handlePipeline.bind(this);
+    this.getFullConfig = this.getFullConfig.bind(this);
     //this.state = {value: this.props.value};
     this.state = {
       config: {
@@ -106,6 +107,10 @@ class CamillaConfig extends React.Component<any, any> {
     }
   }
 
+  getFullConfig():any {
+    return this.state.config;
+  }
+
   getMixerNames():any {
     if (this.state.config.mixers) {
       var mixernames = Object.keys(this.state.config.mixers);
@@ -136,7 +141,7 @@ class CamillaConfig extends React.Component<any, any> {
           <MixerList config={this.state.config.mixers} onChange={this.handleMixers}/>
         </TabPanel>
         <TabPanel>
-          <Pipeline config={this.state.config.pipeline} filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline}/>
+          <Pipeline config={this.state.config.pipeline} filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline} getConfig={this.getFullConfig}/>
         </TabPanel>
       </Tabs>
     );

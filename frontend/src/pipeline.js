@@ -1,7 +1,7 @@
 import React from 'react';
 import './index.css';
 //import { ParameterInput, InputField } from './common.js';
-import { ParameterInput, EnumSelect } from './common.js';
+import { ParameterInput, EnumSelect, ControlledPopup } from './common.js';
 import cloneDeep from 'lodash/cloneDeep';
 
 
@@ -256,7 +256,7 @@ export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {config: props.config};
+    this.state = {config: props.config, popup: false, image: null};
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -304,6 +304,39 @@ export class Pipeline extends React.Component {
     });
   };
 
+  plotPipeline = (event) => {
+    var i = event.target.id;
+    console.log("PLot!!!", i, )
+    fetch("http://127.0.0.1:5000/pipeline", {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      mode: 'cors', // no-cors, *cors, same-origin
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      body: JSON.stringify(this.props.getConfig()) // body data type must match "Content-Type" header
+    })
+    .then(
+      (result) => {
+        result.blob().then(data => {
+          this.setState(state => {
+            return {popup: true, image: data}
+          });
+        })
+        console.log("OK", result);
+      },
+      (error) => {
+        console.log("Failed", error);
+      }
+    )
+  }
+
+  handleClose = () => {
+    this.setState(state => {
+      return  {popup: false};
+    })
+  }
+
   render() {
     console.log("render:", this.state);
     return (
@@ -327,6 +360,8 @@ export class Pipeline extends React.Component {
             )
           }
           <button onClick={this.addStep}>+</button>
+          <button onClick={this.plotPipeline} id="plot" >Plot</button>
+          <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
         </div>
       </div>
     );
