@@ -5,6 +5,7 @@ import { FilterList } from './filterlist.js';
 import { Devices } from './devices.js';
 import { MixerList } from './mixerlist.js';
 import { Pipeline } from './pipeline.js';
+import { CommPanel } from './commpanel.js';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 
@@ -15,6 +16,7 @@ class CamillaConfig extends React.Component<any, any> {
     this.handleFilters = this.handleFilters.bind(this);
     this.handleMixers = this.handleMixers.bind(this);
     this.handlePipeline = this.handlePipeline.bind(this);
+    this.handleConfig = this.handleConfig.bind(this);
     this.getFullConfig = this.getFullConfig.bind(this);
     //this.state = {value: this.props.value};
     this.state = {
@@ -64,6 +66,12 @@ class CamillaConfig extends React.Component<any, any> {
     })
   }
 
+  handleConfig(config: any) {
+    this.setState((prevState: any) => {
+      return { config: config };
+    })
+  }
+
   getDevicesTemplate() {
     return ({
       samplerate: 48000,
@@ -73,6 +81,8 @@ class CamillaConfig extends React.Component<any, any> {
       enable_resampling: true,
       resampler_type: "FastAsync",
       capture_samplerate: 44100,
+      capture: { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
+      playback: { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
     });
   }
 
@@ -125,12 +135,16 @@ class CamillaConfig extends React.Component<any, any> {
     return (
       <Tabs >
         <TabList >
+          <Tab>Status</Tab>
           <Tab>Devices</Tab>
           <Tab>Filters</Tab>
           <Tab>Mixers</Tab>
           <Tab>Pipeline</Tab>
         </TabList>
 
+        <TabPanel>
+          <CommPanel config={this.state.config} onChange={this.handleConfig} />
+        </TabPanel>
         <TabPanel>
           <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
         </TabPanel>

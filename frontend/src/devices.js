@@ -66,7 +66,8 @@ export class Capture extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
+    this.state = { parameters: props.parameters };
+    //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -82,7 +83,7 @@ export class Capture extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file", extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
@@ -120,7 +121,8 @@ export class Playback extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
+    this.state = { parameters: props.parameters };
+    //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -136,7 +138,7 @@ export class Playback extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file" },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
