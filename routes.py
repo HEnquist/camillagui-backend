@@ -8,19 +8,20 @@ view = Blueprint("view", __name__)
 @view.route('/getparam/<name>', methods=['GET', 'POST'])
 def get_param(name):
     name = name.lower()
+    print(name)
     cdsp = current_app.config['CAMILLA']
     if name == "state":
         result = cdsp.get_state()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
-    elif name == "signalrangedB":
+    elif name == "signalrangedb":
         result = cdsp.get_signal_range_dB()
     elif name == "capturerateraw":
         result = cdsp.get_capture_rate_raw()
     elif name == "capturerate":
         result = cdsp.get_capture_rate()
     elif name == "rateadjust":
-        result = cdsp.get_capture_rate_raw()
+        result = cdsp.get_rate_adjust()
     elif name == "updateinterval":
         result = cdsp.get_update_interval()
     elif name == "configname":
@@ -29,6 +30,7 @@ def get_param(name):
         result = cdsp.get_config_raw()
     else:
         result = "ERROR"
+    print(result)
     return str(result)
 
 @view.route('/setparam/<name>', methods=['GET', 'POST'])
