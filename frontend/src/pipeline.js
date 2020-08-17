@@ -307,7 +307,7 @@ export class Pipeline extends React.Component {
   plotPipeline = (event) => {
     var i = event.target.id;
     console.log("PLot!!!", i, )
-    fetch("http://127.0.0.1:5000/pipeline", {
+    fetch("http://127.0.0.1:5000/api/evalpipeline", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {

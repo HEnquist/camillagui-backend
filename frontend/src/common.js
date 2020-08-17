@@ -89,10 +89,20 @@ export class InputField extends React.Component {
     //console.log(this.props)
     this.state = { value: this.props.value };
     this.handleChange = this.handleChange.bind(this);
+    this.debounceChange = this.debounceChange.bind(this);
+    this.delayTimer = null;
+    this.newValue = null;
+  }
+
+  debounceChange() {
+    clearTimeout(this.delayTimer);
+    this.delayTimer = setTimeout(() => {
+      this.props.onChange({ id: this.props.id, value: this.newValue });
+    }, 1000);
   }
 
   handleChange(event) {
-    console.log("field:", event.target.value);
+    console.log("event value:", event.target.value);
     var value;
     if (this.props.type === "float") {
       value = parseFloat(event.target.value);
@@ -112,7 +122,9 @@ export class InputField extends React.Component {
     else {
       value = event.target.value;
     }
-    this.props.onChange({ id: this.props.id, value: value });
+    this.newValue = value;
+    this.debounceChange();
+    //this.props.onChange({ id: this.props.id, value: value });
     this.setState({ value: value });
   }
 

@@ -233,7 +233,7 @@ export class FilterList extends React.Component {
     console.log("PLot!!!", i, )
     var filter;
     console.log(filter);
-    fetch("http://127.0.0.1:5000/filter", {
+    fetch("http://127.0.0.1:5000/api/evalfilter", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {
