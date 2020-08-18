@@ -85,9 +85,10 @@ def config_to_yml():
 
 @view.route('/api/ymltojson', methods=['GET', 'POST'])
 def yml_to_json():
-    data_yml = request.get_data().decode()
-    data = yaml.safe_load(data_yml)
-    return data
+    config_ymlstr = request.get_data().decode()
+    cdsp = current_app.config['CAMILLA']
+    config = cdsp.read_config(config_ymlstr)
+    return config
 
 @view.route('/api/version', methods=['GET', 'POST'])
 def get_version():
