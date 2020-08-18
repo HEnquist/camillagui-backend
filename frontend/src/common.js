@@ -254,13 +254,14 @@ export class ParameterInput extends React.Component {
 export class ControlledPopup extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { open: props.open};
+    this.state = { open: props.open, image: props.image};
     this.openModal = this.openModal.bind(this);
     this.closeModal = this.closeModal.bind(this);
   }
   openModal() {
     this.setState({ open: true });
   }
+
   closeModal() {
     this.setState({ open: false });
     this.props.onClose(this.props.id);
@@ -268,7 +269,7 @@ export class ControlledPopup extends React.Component {
 
   render() {
     var url;
-    if (this.props.image) {
+    if (this.state.image) {
       url = URL.createObjectURL(this.props.image);
     }
     return (

@@ -160,8 +160,8 @@ class NameList extends React.Component {
     var names = this.state.names.map(
       (name, idx) => {
         return (
-          <tr key={Math.random()}>
-            <NameSelect key={Math.random()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
+          <tr key={name + "_" + idx.toString()}>
+            <NameSelect key={name + "_" + idx.toString()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
           </tr>
         )
       }
@@ -230,13 +230,13 @@ class PipelineStep extends React.Component {
     if (this.state.config.type === "Mixer") {
       fields = 
         <tr className="pipelinestep">
-          <MixerStep key={Math.random()} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
+          <MixerStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
         </tr>;
     }
     else {
       fields = 
         <tr className="pipelinestep">
-          <FilterStep key={Math.random()} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
+          <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
           </tr>;
     }
     return (
@@ -347,7 +347,7 @@ export class Pipeline extends React.Component {
             this.state.config.map(
               (step, i) => {
                 return (
-                  <div key={Math.random()} className="pipelinestep">
+                  <div key={i.toString() + JSON.stringify(step)} className="pipelinestep">
                     <div>
                       <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} />
                     </div>
@@ -361,7 +361,7 @@ export class Pipeline extends React.Component {
           }
           <button onClick={this.addStep}>+</button>
           <button onClick={this.plotPipeline} id="plot" >Plot</button>
-          <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
+          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
         </div>
       </div>
     );

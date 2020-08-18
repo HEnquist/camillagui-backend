@@ -145,7 +145,7 @@ class Filter extends React.Component {
           <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
         </tbody></table>
         <div>
-          <FilterParams key={Math.random()} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
+          <FilterParams key={JSON.stringify(this.state)} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter}/>
         </div>
       </div> 
     );
@@ -282,7 +282,7 @@ export class FilterList extends React.Component {
                     <button onClick={this.removeFilter} id={filt}>✖</button>
                     <button onClick={this.plotFilter} id={filt}>Plot</button>
                   </div>
-                  <ControlledPopup key={Math.random()} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
+                  <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
                 </div>
               )
             }

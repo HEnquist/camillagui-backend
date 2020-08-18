@@ -56,7 +56,7 @@ class MixerMapping extends React.Component {
     var fields = this.state.config.sources.map(
       (source, idx) => {
         return (
-          <div key={Math.floor(Math.random() * 1000000)} className="mixersource">
+          <div key={idx.toString()+JSON.stringify(source)} className="mixersource">
             <MixerSource key={idx} idx={idx} config={source} onChange={this.handleSourceChange} />
             <div><button id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
           </div>
@@ -164,7 +164,7 @@ class Mixer extends React.Component {
       (mapping, idx) => {
         return (
           <div key={idx}>
-            <MixerMapping key={Math.random()} idx={idx} config={mapping} onChange={this.handleMappingChange} />
+            <MixerMapping key={idx.toString()+JSON.stringify(mapping)} idx={idx} config={mapping} onChange={this.handleMappingChange} />
             <div><button id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
           </div>
         )
