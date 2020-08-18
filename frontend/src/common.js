@@ -175,6 +175,12 @@ export class ParameterInput extends React.Component {
     });
   };
 
+  special_types = {
+    "Conv": {
+      "format": { type: "enum", desc: "format", subtype: "coeffformat" },
+    }
+  }
+
   type_dict = {
     "a": { type: "floatlist", desc: "a" },
     "adjust_period": { type: "int", desc: "adjust_period" },
@@ -216,7 +222,18 @@ export class ParameterInput extends React.Component {
   };
 
   get_input(par, value) {
-    var pars = this.type_dict[par];
+    var pars;
+    if (this.special_types.hasOwnProperty(this.props.context)) {
+      if (this.special_types[this.props.context].hasOwnProperty(par)) {
+        pars = this.special_types[this.props.context][par];
+      }
+      else {
+        pars = this.type_dict[par];
+      } 
+    }
+    else {
+      pars = this.type_dict[par];
+    }
     if (pars) {
       if (pars.type === "bool") {
         return <BoolSelect key={par} desc={pars.desc} id={par} value={value} onChange={this.handleChange} />;

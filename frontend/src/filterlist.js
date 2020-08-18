@@ -76,7 +76,7 @@ class FilterParams extends React.Component {
   render() {
     console.log("--FilterParams, type:", this.props.type)
     var filterselect;
-      filterselect = <ParameterInput  parameters={this.state.parameters} onChange={this.handleChange}/>;
+      filterselect = <ParameterInput  parameters={this.state.parameters} context={this.props.type} onChange={this.handleChange}/>;
     return (
       <div>
       <table><tbody>
