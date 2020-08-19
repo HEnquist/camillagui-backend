@@ -1,10 +1,15 @@
 from flask import Blueprint, render_template
-from flask import Flask, request, send_file, current_app
+from flask import Flask, request, send_file, current_app, send_from_directory
 from camilladsp import plot_pipeline
 from camilladsp import plot_filter
 import yaml
 
 view = Blueprint("view", __name__)
+
+@view.route('/gui/<path:path>')
+def send_static(path):
+    print("get", path)
+    return send_from_directory('build', path)
 
 @view.route('/api/getparam/<name>', methods=['GET', 'POST'])
 def get_param(name):
