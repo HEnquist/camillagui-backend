@@ -88,9 +88,27 @@ code {
   flex-direction: column
 }
 
-.mixer {
+.pipeline {
   background: rgb(200, 200, 200);
   border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column
+}
+
+.mixer {
+  background: rgb(200, 200, 200);
+  border: 2px solid #999;
+  float: left;
+  text-align: left;
+  padding: 5px;
+}
+
+.pipelinestep {
+  background: rgb(200, 200, 200);
+  border: 2px solid #999;
   float: left;
   text-align: left;
   padding: 5px;
@@ -112,8 +130,34 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: row;
 }
 
+.sidepanel {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidepanelelement {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.configtabs {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
 
 

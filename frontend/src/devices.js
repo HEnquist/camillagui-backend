@@ -1,6 +1,7 @@
 import React from 'react';
 import './index.css';
 import { ParameterInput, EnumSelect } from './common.js';
+import cloneDeep from 'lodash/cloneDeep';
 
 export class Devices extends React.Component {
   constructor(props) {
@@ -13,10 +14,9 @@ export class Devices extends React.Component {
   }
 
   handleChangeParams(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
-      state.config = params;
+      state.config = Object.assign(state.config, params);
       console.log("devices new:", state)
       this.props.onChange(state.config);
       return state;
@@ -24,24 +24,22 @@ export class Devices extends React.Component {
   }
 
   handlePlayback(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
       state.config.playback = params;
       console.log("devices new:", state)
       this.props.onChange(state.config);
-      return state.config;
+      return state;
     })
   }
 
   handleCapture(params) {
-    this.setState(prevState => {
+    this.setState(state => {
       console.log("devices got:", params)
-      var state = Object.assign({}, prevState);
       state.config.capture = params;
       console.log("devices new:", state)
       this.props.onChange(state.config);
-      return state.config;
+      return state;
     })
   }
 
@@ -68,7 +66,8 @@ export class Capture extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...this.templates["Alsa"] } };
+    this.state = { parameters: props.parameters };
+    //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -84,7 +83,7 @@ export class Capture extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file", extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
@@ -93,7 +92,7 @@ export class Capture extends React.Component {
   handleBackend = (selectValue) => {
     this.setState(prevState => {
       const type = selectValue;
-      const parameters = this.templates[type];
+      const parameters = cloneDeep(this.templates[type]);
       console.log("capture", parameters);
       this.props.onChange(parameters);
       return { parameters };
@@ -122,7 +121,8 @@ export class Playback extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: { type: "Alsa", ...this.templates["Alsa"] } };
+    this.state = { parameters: props.parameters };
+    //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
@@ -138,7 +138,7 @@ export class Playback extends React.Component {
 
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    "File": { type: "File", channels: 2, format: "S32LE", file: "/path/to/file" },
+    "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file" },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
@@ -147,7 +147,7 @@ export class Playback extends React.Component {
   handleBackend = (selectValue) => {
     this.setState(prevState => {
       const type = selectValue;
-      const parameters = this.templates[type];
+      const parameters = cloneDeep(this.templates[type]);
       console.log("playback", parameters);
       this.props.onChange(parameters);
       return { parameters };
