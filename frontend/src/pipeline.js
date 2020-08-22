@@ -3,6 +3,7 @@ import './index.css';
 //import { ParameterInput, InputField } from './common.js';
 import { ParameterInput, EnumSelect, ControlledPopup } from './common.js';
 import cloneDeep from 'lodash/cloneDeep';
+import { FLASKURL } from './index.tsx'
 
 
 export class NameSelect extends React.Component {
@@ -307,7 +308,7 @@ export class Pipeline extends React.Component {
   plotPipeline = (event) => {
     var i = event.target.id;
     console.log("PLot!!!", i, )
-    fetch("http://127.0.0.1:5000/api/evalpipeline", {
+    fetch(FLASKURL + "/api/evalpipeline", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {

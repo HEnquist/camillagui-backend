@@ -130,8 +130,34 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: row;
 }
 
+.sidepanel {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidepanelelement {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.configtabs {
+  background: white;
+  float: left;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
 
 

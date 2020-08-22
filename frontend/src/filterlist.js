@@ -2,7 +2,7 @@ import React from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import './index.css';
 import { ParameterInput, InputField, EnumSelect, ControlledPopup} from './common.js';
-
+import { FLASKURL } from './index.tsx'
 
 class FilterParams extends React.Component {
   constructor(props) {
@@ -233,7 +233,7 @@ export class FilterList extends React.Component {
     console.log("PLot!!!", i, )
     var filter;
     console.log(filter);
-    fetch("http://127.0.0.1:5000/api/evalfilter", {
+    fetch(FLASKURL + "/api/evalfilter", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {

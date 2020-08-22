@@ -1,9 +1,9 @@
 import React from 'react';
 import './index.css';
-import { ParameterInput, EnumSelect } from './common.js';
-import cloneDeep from 'lodash/cloneDeep';
+import { FLASKURL } from './index.tsx'
+import camillalogo from './camilladsp.svg';
 
-export class CommPanel extends React.Component {
+export class SidePanel extends React.Component {
   constructor(props) {
     super(props);
     this.state = { config: this.props.config, msg: "", signalrange: 0.0, state: "IDLE", rateadjust: 0.0, capturerate: 0 };
@@ -35,10 +35,10 @@ export class CommPanel extends React.Component {
     //"rateadjust"
     //"updateinterval"
     //"configname"
-    const state_req = await fetch("http://127.0.0.1:5000/api/getparam/state");
-    const sigrange_req = await fetch("http://127.0.0.1:5000/api/getparam/signalrangedB");
-    const capturerate_req = await fetch("http://127.0.0.1:5000/api/getparam/capturerate");
-    const rateadjust_req = await fetch("http://127.0.0.1:5000/api/getparam/rateadjust");
+    const state_req = await fetch(FLASKURL + "/api/getparam/state");
+    const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedB");
+    const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate");
+    const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust");
     const processingstate = await state_req.text();
     const signalrange = parseFloat(await sigrange_req.text());
     const capturerate = parseInt(await capturerate_req.text());
@@ -49,7 +49,7 @@ export class CommPanel extends React.Component {
   }
 
   async fetchConfig() {
-    const conf_req = await fetch("http://127.0.0.1:5000/api/getconfig");
+    const conf_req = await fetch(FLASKURL + "/api/getconfig");
     const config = await conf_req.json();
     console.log(config)
     this.setState(state => { return {config: config, msg: "OK"}});
@@ -57,7 +57,7 @@ export class CommPanel extends React.Component {
   }
 
   async applyConfig() {
-    const conf_req = await fetch("http://127.0.0.1:5000/api/setconfig", {
+    const conf_req = await fetch(FLASKURL + "/api/setconfig", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {
@@ -72,7 +72,7 @@ export class CommPanel extends React.Component {
   }
 
   async saveConfig() {
-    const conf_req = await fetch("http://127.0.0.1:5000/api/configtoyml", {
+    const conf_req = await fetch(FLASKURL + "/api/configtoyml", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
       headers: {
@@ -107,7 +107,7 @@ export class CommPanel extends React.Component {
   }
 
   async loadYaml(data) {
-    const conf_req = await fetch("http://127.0.0.1:5000/api/ymltojson", {
+    const conf_req = await fetch(FLASKURL + "/api/ymltojson", {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -134,24 +134,25 @@ export class CommPanel extends React.Component {
 
   render() {
     return (
-      <section>
-        <div>
+      <section className="sidepanel">
+        <div className="sidepanelelement"><img src={camillalogo} alt="graph" width="100%" height="100%" /></div>
+        <div className="sidepanelelement">
           State: {this.state.state} 
         </div>
-        <div>
+        <div className="sidepanelelement">
           Signal range: {this.state.signalrange}
         </div>
-        <div>
+        <div className="sidepanelelement">
           Capture samplerate: {this.state.capturerate}
         </div>
-        <div>
+        <div className="sidepanelelement">
           Rate adjust: {this.state.rateadjust}
         </div>
-        <div>{this.state.msg}</div>
-        <div><button onClick={this.fetchConfig}>Get</button></div>
-        <div><button onClick={this.applyConfig}>Apply</button></div>
-        <div><button onClick={this.saveConfig}>Save to file</button></div>
-        <div><input type="file" onChange={this.loadFile}></input></div>
+        <div className="sidepanelelement">{this.state.msg}</div>
+        <div className="sidepanelelement"><button onClick={this.fetchConfig}>Get</button></div>
+        <div className="sidepanelelement"><button onClick={this.applyConfig}>Apply</button></div>
+        <div className="sidepanelelement"><button onClick={this.saveConfig}>Save to file</button></div>
+        <div className="sidepanelelement"><input type="file" onChange={this.loadFile}></input></div>
       </section>
     );
   }

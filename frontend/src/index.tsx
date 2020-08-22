@@ -5,9 +5,13 @@ import { FilterList } from './filterlist.js';
 import { Devices } from './devices.js';
 import { MixerList } from './mixerlist.js';
 import { Pipeline } from './pipeline.js';
-import { CommPanel } from './commpanel.js';
+import { SidePanel } from './sidepanel.js';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
+
+export const FLASKURL = "http://127.0.0.1:5000";
+//export const FLASKURL = "";
+
 
 class CamillaConfig extends React.Component<any, any> {
   constructor(props: any) {
@@ -133,18 +137,18 @@ class CamillaConfig extends React.Component<any, any> {
 
   render() {
     return (
-      <Tabs >
+      <div className="configapp">
+        <div>
+          <SidePanel config={this.state.config} onChange={this.handleConfig} />
+        </div>
+        <div>
+      <Tabs className="configtabs">
         <TabList >
-          <Tab>Status</Tab>
           <Tab>Devices</Tab>
           <Tab>Filters</Tab>
           <Tab>Mixers</Tab>
           <Tab>Pipeline</Tab>
         </TabList>
-
-        <TabPanel>
-          <CommPanel config={this.state.config} onChange={this.handleConfig} />
-        </TabPanel>
         <TabPanel>
           <Devices config={this.state.config.devices} onChange={this.handleDevices}/>
         </TabPanel>
@@ -158,6 +162,8 @@ class CamillaConfig extends React.Component<any, any> {
           <Pipeline config={this.state.config.pipeline} filters={this.getFilterNames()} mixers={this.getMixerNames()} onChange={this.handlePipeline} getConfig={this.getFullConfig}/>
         </TabPanel>
       </Tabs>
+      </div>
+      </div>
     );
   }
 }
