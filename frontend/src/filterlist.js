@@ -282,13 +282,13 @@ export class FilterList extends React.Component {
                     <button onClick={this.removeFilter} id={filt}>✖</button>
                     <button onClick={this.plotFilter} id={filt}>Plot</button>
                   </div>
-                  <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
                 </div>
               )
             }
           )
         }
         <button onClick={this.addFilter}>+</button>
+        <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
         </div>
       </div> 
     );
