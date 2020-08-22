@@ -4,12 +4,12 @@ import sys
 from camilladsp import CamillaConnection
 from matplotlib import pyplot as plt
 from flask import Flask, request, send_file, current_app
-#from flask_cors import CORS
+from flask_cors import CORS
 
 
 def create_app(port=1234):
     app = Flask(__name__, static_url_path='')
-    #cors = CORS(app, resources={r"/*": {"origins": "*"}})
+    cors = CORS(app, resources={r"/*": {"origins": "*"}})
     camillaconnection = CamillaConnection("127.0.0.1", port)
     camillaconnection.connect()
     app.config['CAMILLA'] = camillaconnection
