@@ -33,6 +33,10 @@ class FilterParams extends React.Component {
       HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
       Peaking: { type: "Peaking", gain: 6, q: 1.5, freq: 1000 },
       Notch: { type: "Notch", q: 1.5, freq: 1000 },
+      Allpass: { type: "Allpass", q: 0.5, freq: 1000 },
+      AllpassFO: { type: "AllpassFO", freq: 1000 },
+      LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
+      Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
     },
     BiquadCombo: {
       ButterworthLowpass: { type: "ButterworthLowpass", order: 2, freq: 1000 },

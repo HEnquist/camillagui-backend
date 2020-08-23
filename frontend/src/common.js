@@ -39,7 +39,7 @@ export class EnumSelect extends React.Component {
 
   enums = {
     "filter": ["Biquad", "BiquadCombo", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
-    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf", "LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO", "Peaking", "Notch"],
+    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf", "LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO", "Peaking", "Notch", "Allpass", "AllpassFO", "LinkwitzTransform", "Free"],
     "BiquadCombo": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
     "coeffformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
     "sampleformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE"],
@@ -188,6 +188,11 @@ export class ParameterInput extends React.Component {
 
   type_dict = {
     "a": { type: "floatlist", desc: "a" },
+    "a1": { type: "float", desc: "a1" },
+    "a2": { type: "float", desc: "a2" },
+    "b0": { type: "float", desc: "b0" },
+    "b1": { type: "float", desc: "b1" },
+    "b2": { type: "float", desc: "b2" },
     "adjust_period": { type: "int", desc: "adjust_period" },
     "amplitude": { type: "float", desc: "amplitude" },
     "b": { type: "floatlist", desc: "b" },
@@ -206,12 +211,16 @@ export class ParameterInput extends React.Component {
     "filename": { type: "text", desc: "filename" },
     "format": { type: "enum", desc: "format", subtype: "sampleformat" },
     "freq": { type: "float", desc: "freq" },
+    "freq_act": { type: "float", desc: "freq_act" },
+    "freq_target": { type: "float", desc: "freq_target" },
     "gain": { type: "float", desc: "gain" },
     "in": { type: "int", desc: "in" },
     "inverted": { type: "bool", desc: "inverted" },
     "order": { type: "int", desc: "order" },
     "out": { type: "int", desc: "out" },
     "q": { type: "float", desc: "Q" },
+    "q_act": { type: "float", desc: "Q actual" },
+    "q_target": { type: "float", desc: "Q target" },
     "queuelimit": { type: "int", desc: "queuelimit" },
     "read_bytes": { type: "int", desc: "read_bytes" },
     "read_bytes_lines": { type: "int", desc: "read_bytes_lines" },
