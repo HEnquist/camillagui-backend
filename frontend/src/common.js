@@ -224,6 +224,7 @@ export class ParameterInput extends React.Component {
     "queuelimit": { type: "int", desc: "queuelimit" },
     "read_bytes": { type: "int", desc: "read_bytes" },
     "read_bytes_lines": { type: "int", desc: "read_bytes_lines" },
+    "resampler_type": { type: "enum", desc: "resampler type", subtype: "resampler" },
     "samplerate": { type: "int", desc: "samplerate" },
     "silence_threshold": { type: "float", desc: "silence_threshold" },
     "silence_timeout": { type: "float", desc: "silence_timeout" },
