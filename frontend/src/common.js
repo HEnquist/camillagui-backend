@@ -7,24 +7,24 @@ export class BoolSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {value: this.props.value};
+    this.state = { value: this.props.value };
   }
 
   handleChange(event) {
     this.setState({ value: event.target.checked });
-    this.props.onChange({id: this.props.id, value: event.target.checked});
+    this.props.onChange({ id: this.props.id, value: event.target.checked });
   }
 
   render() {
     return (
-      <tr className="formrow">
-        <td>
-        {this.props.desc}
-        </td>
-        <td>
-        <input type="checkbox" name={this.props.id}  id={this.props.id} checked={this.state.value} onChange={this.handleChange}></input>
-        </td>
-      </tr>
+      <div className="row">
+        <div className="column left">
+          {this.props.desc}
+        </div>
+        <div className="column right">
+          <input type="checkbox" name={this.props.id} id={this.props.id} checked={this.state.value} onChange={this.handleChange}></input>
+        </div>
+      </div>
     );
   }
 }
@@ -34,12 +34,12 @@ export class EnumSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {value: this.props.value};
+    this.state = { value: this.props.value };
   }
 
   enums = {
     "filter": ["Biquad", "BiquadCombo", "Conv", "Delay", "Gain", "Dither", "DiffEq"],
-    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf","LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO", "Peaking", "Notch"],
+    "Biquad": ["Lowpass", "Highpass", "Highshelf", "Lowshelf", "LowpassFO", "HighpassFO", "HighshelfFO", "LowshelfFO", "Peaking", "Notch"],
     "BiquadCombo": ["ButterworthHighpass", "ButterworthLowpass", "LinkwitzRileyHighpass", "LinkwitzRileyLowpass"],
     "coeffformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
     "sampleformat": ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE"],
@@ -69,16 +69,16 @@ export class EnumSelect extends React.Component {
       }
     )
     return (
-      <tr className="formrow">
-        <td>
-        {this.props.desc}
-        </td>
-        <td>
-        <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
-          {fields}
-        </select>
-        </td>
-      </tr>
+      <div className="row">
+        <div className="column left">
+          {this.props.desc}
+        </div>
+        <div className="column right">
+          <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
+            {fields}
+          </select>
+        </div>
+      </div>
     );
   }
 }
@@ -114,7 +114,7 @@ export class InputField extends React.Component {
       value = [];
       var values = event.target.value.split(",");
       console.log("---split", values)
-      for (var i = 0; i < values.length; i++) { 
+      for (var i = 0; i < values.length; i++) {
         value.push(parseFloat(values[i]));
       }
       console.log("string to array", value)
@@ -145,10 +145,14 @@ export class InputField extends React.Component {
       value = this.state.value;
     }
     return (
-      <tr className="formrow">
-        <td>{this.props.desc}</td>
-        <td><input type={type} value={value} onChange={this.handleChange} /></td>
-      </tr>
+      <div className="row">
+        <div className="column left">
+          {this.props.desc}
+        </div>
+        <div className="column left">
+          <input type={type} value={value} onChange={this.handleChange} />
+        </div>
+      </div>
     );
   }
 }
@@ -229,7 +233,7 @@ export class ParameterInput extends React.Component {
       }
       else {
         pars = this.type_dict[par];
-      } 
+      }
     }
     else {
       pars = this.type_dict[par];
@@ -244,7 +248,7 @@ export class ParameterInput extends React.Component {
       else {
         return <InputField key={par} desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} />;
       }
-    } 
+    }
   }
 
   render() {
@@ -258,11 +262,9 @@ export class ParameterInput extends React.Component {
       }
     )
     return (
-      <table className="parameterinput">
-        <tbody>
+      <div className="parameterinput">
         {fields}
-        </tbody>
-      </table>
+      </div>
     );
   }
 }
@@ -271,7 +273,7 @@ export class ParameterInput extends React.Component {
 export class ControlledPopup extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { open: props.open, image: props.image};
+    this.state = { open: props.open, image: props.image };
     this.openModal = this.openModal.bind(this);
     this.closeModal = this.closeModal.bind(this);
   }
@@ -298,7 +300,7 @@ export class ControlledPopup extends React.Component {
         >
           <div className="modal">
             <span className="close" onClick={this.closeModal}>
-             ✖
+              ✖
             </span>
             <div>
               <img src={url} alt="graph" width="100%" height="100%" />

@@ -12,12 +12,23 @@ code {
     monospace;
 }
 
+input{
+  box-sizing: border-box;
+  width : 100%; 
+} 
+
+select{
+  box-sizing: border-box;
+  width : 100%; 
+} 
+
 .filter {
   background: rgb(200, 200, 200);
   border: 2px solid #999;
   float: left;
   text-align: left;
   padding: 5px;
+  width: 400px;
 }
 
 .filterparams {
@@ -26,6 +37,8 @@ code {
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mixers {
@@ -33,6 +46,7 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
+  flex-wrap: wrap;
 }
 
 .filters {
@@ -42,6 +56,7 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
+  flex-wrap: wrap;
 
 }
 
@@ -50,6 +65,8 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mixersource {
@@ -57,7 +74,9 @@ code {
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mixermapping {
@@ -67,7 +86,9 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .device {
@@ -76,6 +97,8 @@ code {
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .devices {
@@ -85,7 +108,8 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 450px;
 }
 
 .pipeline {
@@ -95,7 +119,8 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 500px;
 }
 
 .mixer {
@@ -112,6 +137,8 @@ code {
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .listitem {
@@ -121,7 +148,7 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
 }
 
 .configapp {
@@ -158,6 +185,20 @@ code {
   padding: 10px;
   display: flex;
   flex-direction: column;
+}
+
+.column {
+  float: left;
+}
+
+.left {
+  width: 40%;
+}
+  
+.right {
+  width: 60%;
+  float: left;
+  display: flex;
 }
 
 

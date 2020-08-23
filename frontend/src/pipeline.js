@@ -10,12 +10,12 @@ export class NameSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {value: this.props.value};
+    this.state = { value: this.props.value };
   }
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    this.props.onChange({idx: this.props.idx, value: event.target.value});
+    this.props.onChange({ idx: this.props.idx, value: event.target.value });
   }
 
   deleteName = () => {
@@ -36,19 +36,19 @@ export class NameSelect extends React.Component {
     )
     var button;
     if (this.props.show_button) {
-      button = <td>
+      button = <div className="column right">
         <button onClick={this.deleteName}>✖</button>
-      </td>;
+      </div>;
     }
     return (
-      <tr className="formrow">
-        <td>
-        <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
-          {fields}
-        </select>
-        </td>
+      <div className="row">
+        <div className="column left">
+          <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
+            {fields}
+          </select>
+        </div>
         {button}
-      </tr>
+      </div>
     );
   }
 }
@@ -57,7 +57,7 @@ export class MixerStep extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = {name: this.props.name};
+    this.state = { name: this.props.name };
   }
 
   handleChange(event) {
@@ -71,12 +71,12 @@ export class MixerStep extends React.Component {
 
   render() {
     return (
-      <tr className="formrow">
-        <td>name</td>
-        <td>
-        <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
-        </td>
-      </tr>
+      <div className="row">
+        <div className="column left">name</div>
+        <div className="column right">
+          <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
+        </div>
+      </div>
     );
   }
 }
@@ -86,7 +86,7 @@ export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {config: this.props.config};
+    this.state = { config: this.props.config };
   }
 
   handleChange = (event) => {
@@ -109,13 +109,12 @@ export class FilterStep extends React.Component {
   render() {
     return (
       <div>
-      <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
-      Names
-      <table><tbody>
-        <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
-      </tbody>
-      </table>
-      </div>
+        <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
+        Names
+        <div className="row">
+          <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
+        </div>
+      </div >
     );
   }
 }
@@ -169,8 +168,8 @@ class NameList extends React.Component {
     )
     return (
       <div className="namelist">
-          {names}
-          <div><button onClick={this.addName}>+</button></div>
+        {names}
+        <div><button onClick={this.addName}>+</button></div>
       </div>
     );
   }
@@ -229,24 +228,24 @@ class PipelineStep extends React.Component {
   render() {
     var fields;
     if (this.state.config.type === "Mixer") {
-      fields = 
+      fields =
         <tr className="pipelinestep">
           <MixerStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
         </tr>;
     }
     else {
-      fields = 
+      fields =
         <tr className="pipelinestep">
           <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
-          </tr>;
+        </tr>;
     }
     return (
       <div>
-      <table><tbody>
-        <EnumSelect desc="type" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
-        </tbody></table>
+        <div className="row">
+          <EnumSelect desc="type" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
+        </div>
         {fields}
-      </div> 
+      </div>
     );
   }
 }
@@ -257,7 +256,7 @@ export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = {config: props.config, popup: false, image: null};
+    this.state = { config: props.config, popup: false, image: null };
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -307,7 +306,7 @@ export class Pipeline extends React.Component {
 
   plotPipeline = (event) => {
     var i = event.target.id;
-    console.log("PLot!!!", i, )
+    console.log("PLot!!!", i,)
     fetch(FLASKURL + "/api/evalpipeline", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       mode: 'cors', // no-cors, *cors, same-origin
@@ -317,24 +316,24 @@ export class Pipeline extends React.Component {
       cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
       body: JSON.stringify(this.props.getConfig()) // body data type must match "Content-Type" header
     })
-    .then(
-      (result) => {
-        result.blob().then(data => {
-          this.setState(state => {
-            return {popup: true, image: data}
-          });
-        })
-        console.log("OK", result);
-      },
-      (error) => {
-        console.log("Failed", error);
-      }
-    )
+      .then(
+        (result) => {
+          result.blob().then(data => {
+            this.setState(state => {
+              return { popup: true, image: data }
+            });
+          })
+          console.log("OK", result);
+        },
+        (error) => {
+          console.log("Failed", error);
+        }
+      )
   }
 
   handleClose = () => {
     this.setState(state => {
-      return  {popup: false};
+      return { popup: false };
     })
   }
 
@@ -362,7 +361,7 @@ export class Pipeline extends React.Component {
           }
           <button onClick={this.addStep}>+</button>
           <button onClick={this.plotPipeline} id="plot" >Plot</button>
-          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} /> 
+          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>
     );

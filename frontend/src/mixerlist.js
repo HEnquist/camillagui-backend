@@ -282,9 +282,9 @@ export class MixerList extends React.Component {
               (mix, i) => {
                 return (
                   <div key={mix} className="mixer">
-                    <table><tbody>
+                    <div className="row">
                       <InputField key={mix} id={mix} desc="Name" type="text" value={mix} onChange={this.updateName} />
-                    </tbody></table>
+                    </div>
                     <div>
                       <Mixer config={this.state.mixers[mix]} name={mix} onChange={this.handleMixerUpdate} />
                     </div>
