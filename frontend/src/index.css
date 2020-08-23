@@ -112,6 +112,17 @@ select{
   width: 450px;
 }
 
+.namelist {
+  background: rgb(200, 200, 200);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  width: 450px;
+}
+
 .pipeline {
   background: rgb(200, 200, 200);
   border: 4px solidwhite;
@@ -139,6 +150,7 @@ select{
   padding: 5px;
   width: 100%;
   box-sizing: border-box;
+  flex-direction: column;
 }
 
 .listitem {
@@ -185,6 +197,12 @@ select{
   padding: 10px;
   display: flex;
   flex-direction: column;
+}
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
 .column {

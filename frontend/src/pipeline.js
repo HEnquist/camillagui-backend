@@ -27,7 +27,7 @@ export class NameSelect extends React.Component {
     if (!vals) {
       return "";
     }
-    var fields = vals.map(
+    var options = vals.map(
       (val) => {
         return (
           <option key={val} value={val}>{val}</option>
@@ -44,7 +44,7 @@ export class NameSelect extends React.Component {
       <div className="row">
         <div className="column left">
           <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
-            {fields}
+            {options}
           </select>
         </div>
         {button}
@@ -71,12 +71,7 @@ export class MixerStep extends React.Component {
 
   render() {
     return (
-      <div className="row">
-        <div className="column left">name</div>
-        <div className="column right">
-          <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
-        </div>
-      </div>
+      <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
     );
   }
 }
@@ -108,12 +103,10 @@ export class FilterStep extends React.Component {
 
   render() {
     return (
-      <div>
+      <div className="pipelinestep">
         <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
-        Names
-        <div className="row">
-          <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
-        </div>
+        <div>Names</div>
+        <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
       </div >
     );
   }
@@ -160,9 +153,7 @@ class NameList extends React.Component {
     var names = this.state.names.map(
       (name, idx) => {
         return (
-          <tr key={name + "_" + idx.toString()}>
-            <NameSelect key={name + "_" + idx.toString()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
-          </tr>
+          <NameSelect key={name + "_" + idx.toString()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
         )
       }
     )
@@ -229,15 +220,15 @@ class PipelineStep extends React.Component {
     var fields;
     if (this.state.config.type === "Mixer") {
       fields =
-        <tr className="pipelinestep">
+        <div className="row">
           <MixerStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
-        </tr>;
+        </div>;
     }
     else {
       fields =
-        <tr className="pipelinestep">
+        <div className="row">
           <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
-        </tr>;
+        </div>;
     }
     return (
       <div>

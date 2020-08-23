@@ -93,7 +93,7 @@ class MixerSource extends React.Component {
 
   render() {
     return (
-      <div>
+      <div className="row">
         <ParameterInput parameters={this.state.config} onChange={this.handleChange} />
       </div>
     );
