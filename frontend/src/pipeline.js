@@ -37,7 +37,7 @@ export class NameSelect extends React.Component {
     var button;
     if (this.props.show_button) {
       button = <div className="column right">
-        <button onClick={this.deleteName}>✖</button>
+        <button className="deletebutton" onClick={this.deleteName}>✖</button>
       </div>;
     }
     return (
@@ -160,7 +160,7 @@ class NameList extends React.Component {
     return (
       <div className="namelist">
         {names}
-        <div><button onClick={this.addName}>+</button></div>
+        <div><button className="addbutton" onClick={this.addName}>+</button></div>
       </div>
     );
   }
@@ -343,15 +343,15 @@ export class Pipeline extends React.Component {
                       <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} />
                     </div>
                     <div>
-                      <button onClick={this.removeStep} id={i}>✖</button>
+                      <button className="deletebutton" onClick={this.removeStep} id={i}>✖</button>
                     </div>
                   </div>
                 )
               }
             )
           }
-          <button onClick={this.addStep}>+</button>
-          <button onClick={this.plotPipeline} id="plot" >Plot</button>
+          <button className="addbutton" onClick={this.addStep}>+</button>
+          <button className="plotbutton" onClick={this.plotPipeline} id="plot" >Plot</button>
           <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>
