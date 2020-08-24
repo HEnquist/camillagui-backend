@@ -149,10 +149,10 @@ export class SidePanel extends React.Component {
           Rate adjust: {this.state.rateadjust}
         </div>
         <div className="sidepanelelement">{this.state.msg}</div>
-        <div className="sidepanelelement"><button onClick={this.fetchConfig}>Get</button></div>
-        <div className="sidepanelelement"><button onClick={this.applyConfig}>Apply</button></div>
-        <div className="sidepanelelement"><button onClick={this.saveConfig}>Save to file</button></div>
-        <div className="sidepanelelement"><input type="file" onChange={this.loadFile}></input></div>
+        <div className="sidepanelelement"><button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button></div>
+        <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
+        <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
+        <div className="sidepanelelement"><input data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
       </section>
     );
   }

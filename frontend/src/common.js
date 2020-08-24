@@ -19,10 +19,10 @@ export class BoolSelect extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-        <div className="inputlabel">{this.props.desc}</div>
+        <div className="inputlabel" data-tip={this.props["data-tip"]} >{this.props.desc}</div>
         </div>
         <div className="column right">
-          <input type="checkbox" name={this.props.id} id={this.props.id} checked={this.state.value} onChange={this.handleChange}></input>
+          <input type="checkbox" name={this.props.id} id={this.props.id} checked={this.state.value} onChange={this.handleChange} data-tip={this.props["data-tip"]} ></input>
         </div>
       </div>
     );
@@ -72,10 +72,10 @@ export class EnumSelect extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-          <div className="inputlabel">{this.props.desc}</div>
+          <div className="inputlabel" data-tip={this.props["data-tip"]} >{this.props.desc}</div>
         </div>
         <div className="column right">
-          <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
+          <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange} data-tip={this.props["data-tip"]} >
             {fields}
           </select>
         </div>
@@ -148,10 +148,10 @@ export class InputField extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-          <div className="inputlabel">{this.props.desc}</div>
+          <div className="inputlabel" data-tip={this.props["data-tip"]} >{this.props.desc}</div>
         </div>
         <div className="column left">
-          <input type={type} value={value} onChange={this.handleChange} />
+          <input type={type} value={value} onChange={this.handleChange} data-tip={this.props["data-tip"]} />
         </div>
       </div>
     );
@@ -182,58 +182,58 @@ export class ParameterInput extends React.Component {
 
   special_types = {
     "Conv": {
-      "format": { type: "enum", desc: "format", subtype: "coeffformat" },
+      "format": { type: "enum", desc: "format", subtype: "coeffformat", tooltip: "Sample format" },
     }
   }
 
   type_dict = {
-    "a": { type: "floatlist", desc: "a" },
-    "a1": { type: "float", desc: "a1" },
-    "a2": { type: "float", desc: "a2" },
-    "b0": { type: "float", desc: "b0" },
-    "b1": { type: "float", desc: "b1" },
-    "b2": { type: "float", desc: "b2" },
-    "adjust_period": { type: "int", desc: "adjust_period" },
-    "amplitude": { type: "float", desc: "amplitude" },
-    "b": { type: "floatlist", desc: "b" },
-    "bits": { type: "int", desc: "bits" },
-    "capture_samplerate": { type: "int", desc: "capture_samplerate" },
-    "channel": { type: "int", desc: "channel" },
-    "channels": { type: "int", desc: "channels" },
-    "chunksize": { type: "int", desc: "chunksize" },
-    "delay": { type: "float", desc: "delay" },
-    "dest": { type: "int", desc: "dest" },
-    "device": { type: "text", desc: "device" },
-    "enable_rate_adjust": { type: "bool", desc: "enable_rate_adjust" },
-    "enable_resampling": { type: "bool", desc: "enable_resampling" },
-    "extra_samples": { type: "int", desc: "extra_samples" },
-    "file": { type: "text", desc: "file" },
-    "filename": { type: "text", desc: "filename" },
-    "format": { type: "enum", desc: "format", subtype: "sampleformat" },
-    "freq": { type: "float", desc: "freq" },
-    "freq_act": { type: "float", desc: "freq_act" },
-    "freq_target": { type: "float", desc: "freq_target" },
-    "gain": { type: "float", desc: "gain" },
-    "in": { type: "int", desc: "in" },
-    "inverted": { type: "bool", desc: "inverted" },
-    "order": { type: "int", desc: "order" },
-    "out": { type: "int", desc: "out" },
-    "q": { type: "float", desc: "Q" },
-    "q_act": { type: "float", desc: "Q actual" },
-    "q_target": { type: "float", desc: "Q target" },
-    "queuelimit": { type: "int", desc: "queuelimit" },
-    "read_bytes": { type: "int", desc: "read_bytes" },
-    "read_bytes_lines": { type: "int", desc: "read_bytes_lines" },
-    "resampler_type": { type: "enum", desc: "resampler type", subtype: "resampler" },
-    "samplerate": { type: "int", desc: "samplerate" },
-    "silence_threshold": { type: "float", desc: "silence_threshold" },
-    "silence_timeout": { type: "float", desc: "silence_timeout" },
-    "skip_bytes": { type: "int", desc: "skip_bytes" },
-    "skip_bytes_lines": { type: "int", desc: "skip_bytes_lines" },
-    "slope": { type: "float", desc: "slope" },
-    "target_level": { type: "int", desc: "target_level" },
-    "unit": { type: "enum", desc: "unit", subtype: "delayunit" },
-    "values": { type: "floatlist", desc: "values" },
+    "a": { type: "floatlist", desc: "a", tooltip: "Comma-separated list of coefficients for a" },
+    "a1": { type: "float", desc: "a1", tooltip: "Value for Biquad a1 coefficient" },
+    "a2": { type: "float", desc: "a2", tooltip: "Value for Biquad a2 coefficient" },
+    "b0": { type: "float", desc: "b0", tooltip: "Value for Biquad b0 coefficient" },
+    "b1": { type: "float", desc: "b1", tooltip: "Value for Biquad b1 coefficient" },
+    "b2": { type: "float", desc: "b2", tooltip: "Value for Biquad b2 coefficient" },
+    "adjust_period": { type: "int", desc: "adjust_period", tooltip: "Delay in seconds between rate adjustments" },
+    "amplitude": { type: "float", desc: "amplitude", tooltip: "Dither amplitude relative to target LSB" },
+    "b": { type: "floatlist", desc: "b", tooltip: "Comma-separated list of coefficients for b"},
+    "bits": { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
+    "capture_samplerate": { type: "int", desc: "capture_samplerate", tooltip: "Sample rate for capture device.<br>If different than 'samplerate' then resampling must be enabled" },
+    "channel": { type: "int", desc: "channel", tooltip: "Channel number" },
+    "channels": { type: "int", desc: "channels", tooltip: "Number of channels" },
+    "chunksize": { type: "int", desc: "chunksize", tooltip: "Chunksize for the processing" },
+    "delay": { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
+    "dest": { type: "int", desc: "dest", tooltip: "Destination channel" },
+    "device": { type: "text", desc: "device", tooltip: "Name of device" },
+    "enable_rate_adjust": { type: "bool", desc: "enable_rate_adjust", tooltip: "Enable rate adjust" },
+    "enable_resampling": { type: "bool", desc: "enable_resampling", tooltip: "Enable rasampling" },
+    "extra_samples": { type: "int", desc: "extra_samples", tooltip: "Number of extra samples to insert after end of file" },
+    "file": { type: "text", desc: "file", tooltip: "Filename including path" },
+    "filename": { type: "text", desc: "filename", tooltip: "Filename including path" },
+    "format": { type: "enum", desc: "format", subtype: "sampleformat", tooltip: "Sample format" },
+    "freq": { type: "float", desc: "freq", tooltip: "Frequency" },
+    "freq_act": { type: "float", desc: "freq_act", tooltip: "Frequency of actual system" },
+    "freq_target": { type: "float", desc: "freq_target", tooltip: "Target frequency" },
+    "gain": { type: "float", desc: "gain", tooltip: "Gain in dB" },
+    "in": { type: "int", desc: "in", tooltip: "Number of channels in" },
+    "inverted": { type: "bool", desc: "inverted", tooltip: "Invert signal" },
+    "order": { type: "int", desc: "order", tooltip: "Filter order" },
+    "out": { type: "int", desc: "out", tooltip: "Number of channels in" },
+    "q": { type: "float", desc: "Q", tooltip: "Q-value" },
+    "q_act": { type: "float", desc: "Q actual", tooltip: "Q-value of actual system" },
+    "q_target": { type: "float", desc: "Q target", tooltip: "Target Q-value" },
+    "queuelimit": { type: "int", desc: "queuelimit", tooltip: "Length limit for internal queues" },
+    "read_bytes": { type: "int", desc: "read_bytes", tooltip: "Read up to this number of bytes" },
+    "read_bytes_lines": { type: "int", desc: "read_bytes_lines", tooltip: "Read up to this number of bytes or lines" },
+    "resampler_type": { type: "enum", desc: "resampler type", subtype: "resampler", tooltip: "Resampler type" },
+    "samplerate": { type: "int", desc: "samplerate", tooltip: "Sample rate for processing and output" },
+    "silence_threshold": { type: "float", desc: "silence_threshold", tooltip: "Threshold for silence in dB" },
+    "silence_timeout": { type: "float", desc: "silence_timeout", tooltip: "Pause processing after this many seconds of silence" },
+    "skip_bytes": { type: "int", desc: "skip_bytes", tooltip: "Number of bytes to skip at beginning of file" },
+    "skip_bytes_lines": { type: "int", desc: "skip_bytes_lines", tooltip: "Number of bytes or lines to skip at beginning of file" },
+    "slope": { type: "float", desc: "slope", tooltip: "Filter slope in dB per octave" },
+    "target_level": { type: "int", desc: "target_level", tooltip: "Target output buffer fill level for rate adjust" },
+    "unit": { type: "enum", desc: "unit", subtype: "delayunit", tooltip: "Unit for delay" },
+    "values": { type: "floatlist", desc: "values", tooltip: "Comma separated list of filter coefficients"},
   };
 
   get_input(par, value) {
@@ -250,14 +250,15 @@ export class ParameterInput extends React.Component {
       pars = this.type_dict[par];
     }
     if (pars) {
+      var tooltip = pars["tooltip"]; 
       if (pars.type === "bool") {
-        return <BoolSelect key={par} desc={pars.desc} id={par} value={value} onChange={this.handleChange} />;
+        return <BoolSelect data-tip={tooltip} key={par} desc={pars.desc} id={par} value={value} onChange={this.handleChange} />;
       }
       else if (pars.type === "enum") {
-        return <EnumSelect key={par} desc={pars.desc} type={pars.subtype} value={value} onSelect={this.handleChange} />;
+        return <EnumSelect data-tip={tooltip} key={par} desc={pars.desc} type={pars.subtype} value={value} onSelect={this.handleChange} />;
       }
       else {
-        return <InputField key={par} desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} />;
+        return <InputField data-tip={tooltip} key={par} desc={pars.desc} id={par} type={pars.type} value={value} onChange={this.handleChange} />;
       }
     }
   }

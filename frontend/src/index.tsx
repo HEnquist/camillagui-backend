@@ -7,6 +7,7 @@ import { MixerList } from './mixerlist.js';
 import { Pipeline } from './pipeline.js';
 import { SidePanel } from './sidepanel.js';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import ReactTooltip from 'react-tooltip';
 import 'react-tabs/style/react-tabs.css';
 
 export const FLASKURL = "http://127.0.0.1:5000";
@@ -140,6 +141,7 @@ class CamillaConfig extends React.Component<any, any> {
   render() {
     return (
       <div className="configapp">
+        <ReactTooltip multiline={true} />
         <div>
           <SidePanel config={this.state.config} onChange={this.handleConfig} />
         </div>
