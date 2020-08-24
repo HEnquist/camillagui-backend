@@ -58,7 +58,7 @@ class MixerMapping extends React.Component {
         return (
           <div key={idx.toString()+JSON.stringify(source)} className="mixersource">
             <MixerSource key={idx} idx={idx} config={source} onChange={this.handleSourceChange} />
-            <div><button id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
+            <div><button className="deletebutton" id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
           </div>
         )
       }
@@ -68,7 +68,7 @@ class MixerMapping extends React.Component {
         <ParameterInput parameters={this.state.config} onChange={this.handleDestChange} />
         <div>Sources</div>
         {fields}
-        <div><button onClick={this.addSource}>+</button></div>
+        <div><button className="addbutton" onClick={this.addSource}>+</button></div>
       </div>
 
     );
@@ -165,19 +165,19 @@ class Mixer extends React.Component {
         return (
           <div key={idx}>
             <MixerMapping key={idx.toString()+JSON.stringify(mapping)} idx={idx} config={mapping} onChange={this.handleMappingChange} />
-            <div><button id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
+            <div><button className="deletebutton" id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
           </div>
         )
       }
     )
     return (
-      <div className="mixer">
+      <div className="mixerparams">
         <div>Channels</div>
         <ParameterInput parameters={this.state.config.channels} onChange={this.handleChannels} />
         <div>Mapping</div>
         <div className="mappings">
         {fields}
-        <div><button onClick={this.addMapping}>+</button></div>
+        <div><button className="addbutton" onClick={this.addMapping}>+</button></div>
         </div>
       </div>
     );
@@ -289,14 +289,14 @@ export class MixerList extends React.Component {
                       <Mixer config={this.state.mixers[mix]} name={mix} onChange={this.handleMixerUpdate} />
                     </div>
                     <div>
-                      <button onClick={this.removeMixer} id={mix}>✖</button>
+                      <button className="deletebutton" onClick={this.removeMixer} id={mix}>✖</button>
                     </div>
                   </div>
                 )
               }
             )
           }
-          <button onClick={this.addMixer}>+</button>
+          <button className="addbutton" onClick={this.addMixer}>+</button>
         </div>
       </div>
     );

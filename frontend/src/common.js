@@ -19,7 +19,7 @@ export class BoolSelect extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-          {this.props.desc}
+        <div className="inputlabel">{this.props.desc}</div>
         </div>
         <div className="column right">
           <input type="checkbox" name={this.props.id} id={this.props.id} checked={this.state.value} onChange={this.handleChange}></input>
@@ -72,7 +72,7 @@ export class EnumSelect extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-          {this.props.desc}
+          <div className="inputlabel">{this.props.desc}</div>
         </div>
         <div className="column right">
           <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
@@ -148,7 +148,7 @@ export class InputField extends React.Component {
     return (
       <div className="row">
         <div className="column left">
-          {this.props.desc}
+          <div className="inputlabel">{this.props.desc}</div>
         </div>
         <div className="column left">
           <input type={type} value={value} onChange={this.handleChange} />
