@@ -1,5 +1,6 @@
 import React from 'react';
 import cloneDeep from 'lodash/cloneDeep';
+import ReactTooltip from 'react-tooltip';
 import './index.css';
 import { ParameterInput, InputField, EnumSelect, ControlledPopup } from './common.js';
 import { FLASKURL } from './index.tsx'
@@ -211,6 +212,7 @@ export class FilterList extends React.Component {
       const filters = Object.assign({}, state.filters, { [newname]: { "type": "Biquad", "parameters": { "type": "Lowpass", "q": 0.5, "freq": 1000 } } });
       console.log(filters);
       this.props.onChange(filters);
+      ReactTooltip.rebuild();
       return {
         filters,
       };

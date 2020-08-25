@@ -23,8 +23,10 @@ class CamillaConfig extends React.Component<any, any> {
     this.handlePipeline = this.handlePipeline.bind(this);
     this.handleConfig = this.handleConfig.bind(this);
     this.getFullConfig = this.getFullConfig.bind(this);
+    this.switchTab = this.switchTab.bind(this);
     //this.state = {value: this.props.value};
     this.state = {
+      activetab: 0,
       config: {
         devices: this.getDevicesTemplate(),
         filters: this.getFiltersTemplate(),
@@ -138,6 +140,17 @@ class CamillaConfig extends React.Component<any, any> {
     }
   }
 
+  componentDidUpdate(prevProps: any) {
+    ReactTooltip.rebuild();
+    console.log("=============rebuild tooltips")
+  }
+
+  switchTab(index: number, lastIndex: number, event: Event) {
+    this.setState((prevState: any) => {
+      return { activetab: index };
+    })
+  }
+
   render() {
     return (
       <div className="configapp">
@@ -146,7 +159,7 @@ class CamillaConfig extends React.Component<any, any> {
           <SidePanel config={this.state.config} onChange={this.handleConfig} />
         </div>
         <div>
-      <Tabs className="configtabs">
+      <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab} >
         <TabList >
           <Tab>Devices</Tab>
           <Tab>Filters</Tab>
