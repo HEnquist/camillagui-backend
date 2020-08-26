@@ -1,6 +1,5 @@
 import React from 'react';
 import cloneDeep from 'lodash/cloneDeep';
-import ReactTooltip from 'react-tooltip';
 import './index.css';
 import { ParameterInput, InputField, EnumSelect, ControlledPopup } from './common.js';
 import { FLASKURL } from './index.tsx'
@@ -85,7 +84,7 @@ class FilterParams extends React.Component {
     return (
       <div>
         <div className="row">
-          <EnumSelect desc="type" type={this.props.type} value={this.state.parameters.type} onSelect={this.handleSelect} />
+          <EnumSelect desc="subtype" data-tip="Filter subtype" type={this.props.type} value={this.state.parameters.type} onSelect={this.handleSelect} />
         </div>
         <div>
           {filterselect}
@@ -147,7 +146,7 @@ class Filter extends React.Component {
     return (
       <div className="row">
         <div className="row">
-          <EnumSelect desc="type" type="filter" value={this.state.type} onSelect={this.handleFilterSelect} />
+          <EnumSelect desc="type" type="filter" data-tip="Filter type" value={this.state.type} onSelect={this.handleFilterSelect} />
         </div>
         <div className="row">
           <FilterParams key={JSON.stringify(this.state)} type={this.state.type} parameters={this.state.parameters} onChange={this.handleModifyFilter} />
@@ -212,7 +211,6 @@ export class FilterList extends React.Component {
       const filters = Object.assign({}, state.filters, { [newname]: { "type": "Biquad", "parameters": { "type": "Lowpass", "q": 0.5, "freq": 1000 } } });
       console.log(filters);
       this.props.onChange(filters);
-      ReactTooltip.rebuild();
       return {
         filters,
       };
@@ -280,20 +278,20 @@ export class FilterList extends React.Component {
               (filt, i) => {
                 return (
                   <div key={filt} className="filter">
-                    <div className="row"><InputField key={filt} id={filt} desc="Name" type="text" value={filt} onChange={this.updateName} /></div>
+                    <div className="row"><InputField key={filt} id={filt} data-tip="Filter name, must be unique" desc="Name" type="text" value={filt} onChange={this.updateName} /></div>
                     <div className="filterparams">
                       <Filter type={this.state.filters[filt].type} parameters={this.state.filters[filt].parameters} name={filt} onFilter={this.handleFilterUpdate} />
                     </div>
                     <div>
-                      <button className="deletebutton" onClick={this.removeFilter} id={filt}>✖</button>
-                      <button className="plotbutton" onClick={this.plotFilter} id={filt}>Plot</button>
+                      <button className="deletebutton" data-tip="Delete this filter" onClick={this.removeFilter} id={filt}>✖</button>
+                      <button className="plotbutton" data-tip="Plot frequency response of this filter" onClick={this.plotFilter} id={filt}>Plot</button>
                     </div>
                   </div>
                 )
               }
             )
           }
-          <button className="addbutton" onClick={this.addFilter}>+</button>
+          <button className="addbutton" data-tip="Add a new filter" onClick={this.addFilter}>+</button>
           <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>

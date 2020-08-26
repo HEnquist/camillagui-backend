@@ -37,13 +37,13 @@ export class NameSelect extends React.Component {
     var button;
     if (this.props.show_button) {
       button = <div className="column right">
-        <button className="deletebutton" onClick={this.deleteName}>✖</button>
+        <button className="deletebutton" data-tip="Remove this item from the list" onClick={this.deleteName}>✖</button>
       </div>;
     }
     return (
       <div className="row">
         <div className="column left">
-          <select name={this.props.desc} id={this.props.desc} value={this.state.value} onChange={this.handleChange}>
+          <select name={this.props.desc} id={this.props.desc} value={this.state.value} data-tip="Name of the item" onChange={this.handleChange}>
             {options}
           </select>
         </div>
@@ -160,7 +160,7 @@ class NameList extends React.Component {
     return (
       <div className="namelist">
         {names}
-        <div><button className="addbutton" onClick={this.addName}>+</button></div>
+        <div><button className="addbutton" data-tip="Add a filter to the list" onClick={this.addName}>+</button></div>
       </div>
     );
   }
@@ -233,7 +233,7 @@ class PipelineStep extends React.Component {
     return (
       <div>
         <div className="row">
-          <EnumSelect desc="type" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
+          <EnumSelect desc="type" data-tip="Step type, Mixer or Filter" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
         </div>
         {fields}
       </div>
@@ -343,15 +343,15 @@ export class Pipeline extends React.Component {
                       <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} />
                     </div>
                     <div>
-                      <button className="deletebutton" onClick={this.removeStep} id={i}>✖</button>
+                      <button className="deletebutton" data-tip="Delete this step" onClick={this.removeStep} id={i}>✖</button>
                     </div>
                   </div>
                 )
               }
             )
           }
-          <button className="addbutton" onClick={this.addStep}>+</button>
-          <button className="plotbutton" onClick={this.plotPipeline} id="plot" >Plot</button>
+          <button className="addbutton" data-tip="Add a pipeline step" onClick={this.addStep}>+</button>
+          <button className="plotbutton" data-tip="Plot the pipeline" onClick={this.plotPipeline} id="plot" >Plot</button>
           <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>

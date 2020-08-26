@@ -107,7 +107,7 @@ export class Capture extends React.Component {
         <div className="desc">Capture device</div>
         <div className="device">
           <div className="row">
-            <EnumSelect desc="type" type="backend_capture" value={this.state.parameters.type} onSelect={this.handleBackend} />
+            <EnumSelect desc="type" data-tip="Audio backend for capture" type="backend_capture" value={this.state.parameters.type} onSelect={this.handleBackend} />
           </div>
           <div className="row">
             {backendparams}
@@ -163,7 +163,7 @@ export class Playback extends React.Component {
         <div className="desc">Playback device</div>
         <div className="device">
           <div className="row">
-            <EnumSelect key="backend" desc="type" type="backend_playback" value={this.state.parameters.type} onSelect={this.handleBackend} />
+            <EnumSelect key="backend" data-tip="Audio backend for playback" desc="type" type="backend_playback" value={this.state.parameters.type} onSelect={this.handleBackend} />
           </div>
           <div className="row">
             {backendparams}
