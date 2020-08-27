@@ -36,14 +36,22 @@ export class SidePanel extends React.Component {
     //"updateinterval"
     //"configname"
     const state_req = await fetch(FLASKURL + "/api/getparam/state");
-    const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedB");
-    const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate");
-    const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust");
     const processingstate = await state_req.text();
-    const signalrange = parseFloat(await sigrange_req.text());
-    const capturerate = parseInt(await capturerate_req.text());
-    const rateadjust = parseFloat(await rateadjust_req.text());
-    //console.log(processingstate,  signalrange, capturerate, rateadjust)
+    var signalrange = "";
+    var capturerate = "";
+    var rateadjust =  "";
+    try {
+      const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedB");
+      const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate");
+      const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust");
+      signalrange = parseFloat(await sigrange_req.text());
+      capturerate = parseInt(await capturerate_req.text());
+      rateadjust = parseFloat(await rateadjust_req.text());
+    }
+    catch(err) {
+      console.log("camilladsp offline")
+    }
+    console.log(processingstate,  signalrange, capturerate, rateadjust)
     this.setState(state => { return {state: processingstate, signalrange: signalrange, capturerate: capturerate, rateadjust: rateadjust}});
 
   }
