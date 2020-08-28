@@ -1,29 +1,34 @@
-# Flask server for CamillaGUI
+# backend server for CamillaGUI
 
-## Run with Flask development server
-The development server of Flask can be used while experimenting, but is not meant for normal use.
+## Setting up
+Install the dependencies:
+- python 3.6 or later
+- numpy
+- matplotlib
+- aiohttp
+- pycamilladsp from https://github.com/HEnquist/pycamilladsp
 
-Dependencies: pycamilladsp, flask, numpy, matplotlib
+Clone this repo, and edit `config/camillagui.yml` if needed.
+```yaml
+---
+camilla_host: "0.0.0.0"
+camilla_port: 1234
+port: 5000
+```
+The default has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000.
 
-These instructions assume that CamillaDSP is running with websocket enabled on port 1234.
+Next copy the frontend from here: https://github.com/HEnquist/camillagui/actions
 
-Start camillaflask with:
+Click on the last successfull build, then click "build" under "Artifacts" to download a compiled version of the frontend.
+
+Uncompress the contents of build.zip into the "build" folder. 
+
+## Running
+Start the server with:
 ```sh
-python camillaflask.py 1234
+python main.py
 ```
 
-The gui is now available at http://127.0.0.1:5000/gui/index.html
+The gui should now be available at http://localhost:5000/gui/index.html
 
-
-## Run with Gunicorn
-Gunicorn is a proper server meant for normal use.
-
-Dependencies: python3-gunicorn (in addition to the ones listed above)
-
-Launch the server with:
-```sh
-gunicorn --bind 0.0.0.0:5000 'camillaflask:create_app(port=1234)'
-```
-
-The gui is now available at http://127.0.0.1:5000/gui/index.html
 
