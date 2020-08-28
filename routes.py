@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template
 from flask import Flask, request, send_file, current_app, send_from_directory
-from camilladsp import plot_pipeline
-from camilladsp import plot_filter
+from camilladsp import plot_pipeline, plot_filter, CamillaError
 import yaml
 
 view = Blueprint("view", __name__)
@@ -17,7 +16,14 @@ def get_param(name):
     print(name)
     cdsp = current_app.config['CAMILLA']
     if name == "state":
-        result = cdsp.get_state()
+        try:
+            result = cdsp.get_state()
+        except IOError:
+            try:
+                cdsp.connect()
+                result = cdsp.get_state()
+            except IOError:
+                result = "offline"
     elif name == "signalrange":
         result = cdsp.get_signal_range()
     elif name == "signalrangedb":
@@ -94,6 +100,16 @@ def yml_to_json():
     cdsp = current_app.config['CAMILLA']
     config = cdsp.read_config(config_ymlstr)
     return config
+
+@view.route('/api/validateconfig', methods=['GET', 'POST'])
+def validate_config():
+    config = request.get_json(silent=True)
+    cdsp = current_app.config['CAMILLA']
+    try:
+        _val_config = cdsp.validate_config(config)
+    except CamillaError as e:
+        return str(e)
+    return "OK"
 
 @view.route('/api/version', methods=['GET', 'POST'])
 def get_version():
