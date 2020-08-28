@@ -1,7 +1,51 @@
 import React from 'react';
 import './index.css';
+import isEqual from 'lodash/isEqual';
+import cloneDeep from 'lodash/cloneDeep';
 import { FLASKURL } from './index.tsx'
 import camillalogo from './camilladsp.svg';
+
+export class ErrorBox extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {config: this.props.config, prevconfig: null, message: "(not updated)"};
+    this.get_config_errors = this.get_config_errors.bind(this);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.state.prevconfig, prevProps.config)) {
+      console.log("found a difference!!!!!!!!!!!!!!!!!", this.state.prevconfig, prevProps.config )
+      this.setState({prevconfig: cloneDeep(this.props.config) });
+      this.get_config_errors();
+    }
+  }
+
+  async get_config_errors() {
+    var config_errors = "";
+    try {
+      const config_errors_req = await fetch(FLASKURL + "/api/validateconfig", {
+        method: 'POST', // *GET, POST, PUT, DELETE, etc.
+        mode: 'cors', // no-cors, *cors, same-origin
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+        body: JSON.stringify(this.state.config) // body data type must match "Content-Type" header
+      });
+      config_errors = String(await config_errors_req.text());
+    }
+    catch(err) {}
+    console.log("Errors", config_errors)
+    this.setState({message: config_errors});
+  }
+
+  render() {
+    return (
+      <div className="textbox">{this.state.message}</div>
+    );
+  }
+}
+
 
 export class SidePanel extends React.Component {
   constructor(props) {
@@ -13,6 +57,7 @@ export class SidePanel extends React.Component {
     this.saveConfig = this.saveConfig.bind(this);
     this.loadFile = this.loadFile.bind(this);
     this.loadYaml = this.loadYaml.bind(this);
+
   }
 
   componentDidMount() {
@@ -161,6 +206,7 @@ export class SidePanel extends React.Component {
         <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
         <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
         <div className="sidepanelelement"><input data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
+        <ErrorBox config={this.state.config} />
       </section>
     );
   }

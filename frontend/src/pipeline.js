@@ -61,7 +61,7 @@ export class MixerStep extends React.Component {
   }
 
   handleChange(event) {
-    console.log("change name", event)
+    console.log("MixerStep change name", event.value)
     this.setState(prevState => {
       prevState.value = event.value;
       this.props.onChange(prevState.value);
@@ -211,6 +211,9 @@ class PipelineStep extends React.Component {
     this.setState(prevState => {
       var templ = cloneDeep(this.templates[event])
       prevState.config = templ;
+      if (event === "Mixer") {
+        templ["name"] = this.props.mixers[0];
+      }
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
     })
