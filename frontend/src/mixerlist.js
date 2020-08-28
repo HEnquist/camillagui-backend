@@ -275,7 +275,6 @@ export class MixerList extends React.Component {
     console.log("render:", this.state);
     return (
       <div>
-        <div className="desc">Mixers</div>
         <div className="mixers">
           {
             Object.keys(this.state.mixers).map(

@@ -25,7 +25,7 @@ export class ErrorBox extends React.Component {
     try {
       const config_errors_req = await fetch(FLASKURL + "/api/validateconfig", {
         method: 'POST', // *GET, POST, PUT, DELETE, etc.
-        mode: 'cors', // no-cors, *cors, same-origin
+        mode: 'same-origin', // no-cors, *cors, same-origin
         headers: {
           'Content-Type': 'application/json'
         },
@@ -112,7 +112,7 @@ export class SidePanel extends React.Component {
   async applyConfig() {
     const conf_req = await fetch(FLASKURL + "/api/setconfig", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
+      mode: 'same-origin', // no-cors, *cors, same-origin
       headers: {
         'Content-Type': 'application/json'
       },
@@ -127,7 +127,7 @@ export class SidePanel extends React.Component {
   async saveConfig() {
     const conf_req = await fetch(FLASKURL + "/api/configtoyml", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
+      mode: 'same-origin', // no-cors, *cors, same-origin
       headers: {
         'Content-Type': 'application/json'
       },
@@ -161,8 +161,8 @@ export class SidePanel extends React.Component {
 
   async loadYaml(data) {
     const conf_req = await fetch(FLASKURL + "/api/ymltojson", {
-      method: 'POST',
-      mode: 'cors',
+      method: "POST",
+      mode: 'same-origin',
       headers: {
         'Content-Type': 'text/html'
       },
@@ -170,16 +170,6 @@ export class SidePanel extends React.Component {
       body: data
     });
     const config = await conf_req.json();
-    //const conf_req = await fetch("http://127.0.0.1:5000/api/ymltojson", {
-    //  method: 'POST', // *GET, POST, PUT, DELETE, etc.
-    //  mode: 'cors', // no-cors, *cors, same-origin
-    //  headers: {
-    //    'Content-Type': 'text/html'
-    //  },
-    //  cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    //  body: data // body data type must match "Content-Type" header
-    //});
-    //const config = await conf_req.json();
     console.log(config)
     this.setState(state => { return {config: config, msg: "OK"}});
     this.props.onChange(config);
@@ -205,7 +195,7 @@ export class SidePanel extends React.Component {
         <div className="sidepanelelement"><button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button></div>
         <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
         <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
-        <div className="sidepanelelement"><input data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
+        <div className="sidepanelelement"><input className="fileinput" data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
         <ErrorBox config={this.state.config} />
       </section>
     );

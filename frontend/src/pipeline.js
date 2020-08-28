@@ -303,7 +303,7 @@ export class Pipeline extends React.Component {
     console.log("PLot!!!", i,)
     fetch(FLASKURL + "/api/evalpipeline", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
+      mode: 'same-origin', // no-cors, *cors, same-origin
       headers: {
         'Content-Type': 'application/json'
       },
@@ -335,7 +335,6 @@ export class Pipeline extends React.Component {
     console.log("render:", this.state);
     return (
       <div>
-        <div className="desc">Pipeline</div>
         <div className="pipeline">
           {
             this.state.config.map(

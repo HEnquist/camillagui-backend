@@ -20,6 +20,14 @@ input{
   padding: 4px;
 } 
 
+.fileinput{
+  box-sizing: border-box;
+  width : 100%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
+
 .inputlabel {
   text-align: right;
   padding-inline-end: 10px;
@@ -271,5 +279,13 @@ select{
   width: 60px;
   height: 34px;
 }
+
+.textbox {   
+  box-sizing: border-box;
+  width : 100%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
 
 

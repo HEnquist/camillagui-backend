@@ -239,7 +239,7 @@ export class FilterList extends React.Component {
     console.log(filter);
     fetch(FLASKURL + "/api/evalfilter", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
+      mode: 'same-origin', // no-cors, *cors, same-origin
       headers: {
         'Content-Type': 'application/json'
       },
@@ -271,7 +271,6 @@ export class FilterList extends React.Component {
     console.log("render:", this.state);
     return (
       <div>
-        <div className="desc">Filters</div>
         <div className="filters">
           {
             Object.keys(this.state.filters).map(
