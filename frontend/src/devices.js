@@ -84,6 +84,7 @@ export class Capture extends React.Component {
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
     "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file", extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
+    "Stdin": { type: "Stdin", channels: 2, format: "S32LE" },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
@@ -105,10 +106,10 @@ export class Capture extends React.Component {
       <div>
         <div className="desc">Capture device</div>
         <div className="device">
-        <table><tbody>
-            <EnumSelect desc="type" type="backend" value={this.state.parameters.type} onSelect={this.handleBackend} />
-            </tbody></table>
-          <div>
+          <div className="row">
+            <EnumSelect desc="type" data-tip="Audio backend for capture" type="backend_capture" value={this.state.parameters.type} onSelect={this.handleBackend} />
+          </div>
+          <div className="row">
             {backendparams}
           </div>
         </div>
@@ -139,6 +140,7 @@ export class Playback extends React.Component {
   templates = {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
     "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file" },
+    "Stdout": { type: "Stdout", channels: 2, format: "S32LE" },
     "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
@@ -160,10 +162,10 @@ export class Playback extends React.Component {
       <div>
         <div className="desc">Playback device</div>
         <div className="device">
-          <table><tbody>
-            <EnumSelect key="backend" desc="type" type="backend" value={this.state.parameters.type} onSelect={this.handleBackend} />
-          </tbody></table>
-          <div>
+          <div className="row">
+            <EnumSelect key="backend" data-tip="Audio backend for playback" desc="type" type="backend_playback" value={this.state.parameters.type} onSelect={this.handleBackend} />
+          </div>
+          <div className="row">
             {backendparams}
           </div>
         </div>

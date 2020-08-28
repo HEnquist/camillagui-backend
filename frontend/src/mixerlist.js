@@ -58,7 +58,7 @@ class MixerMapping extends React.Component {
         return (
           <div key={idx.toString()+JSON.stringify(source)} className="mixersource">
             <MixerSource key={idx} idx={idx} config={source} onChange={this.handleSourceChange} />
-            <div><button id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
+            <div><button className="deletebutton" data-tip="Delete this source" id={idx} onClick={()=>this.deleteSource(idx)}>✖</button></div>
           </div>
         )
       }
@@ -68,7 +68,7 @@ class MixerMapping extends React.Component {
         <ParameterInput parameters={this.state.config} onChange={this.handleDestChange} />
         <div>Sources</div>
         {fields}
-        <div><button onClick={this.addSource}>+</button></div>
+        <div><button className="addbutton" data-tip="Add a source to this mapping" onClick={this.addSource}>+</button></div>
       </div>
 
     );
@@ -93,7 +93,7 @@ class MixerSource extends React.Component {
 
   render() {
     return (
-      <div>
+      <div className="row">
         <ParameterInput parameters={this.state.config} onChange={this.handleChange} />
       </div>
     );
@@ -165,19 +165,19 @@ class Mixer extends React.Component {
         return (
           <div key={idx}>
             <MixerMapping key={idx.toString()+JSON.stringify(mapping)} idx={idx} config={mapping} onChange={this.handleMappingChange} />
-            <div><button id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
+            <div><button className="deletebutton" data-tip="Delete this mapping" id={idx} onClick={()=>this.deleteMapping(idx)}>✖</button></div>
           </div>
         )
       }
     )
     return (
-      <div className="mixer">
+      <div className="mixerparams">
         <div>Channels</div>
         <ParameterInput parameters={this.state.config.channels} onChange={this.handleChannels} />
         <div>Mapping</div>
         <div className="mappings">
         {fields}
-        <div><button onClick={this.addMapping}>+</button></div>
+        <div><button className="addbutton" data-tip="Add a mapping" onClick={this.addMapping}>+</button></div>
         </div>
       </div>
     );
@@ -275,28 +275,27 @@ export class MixerList extends React.Component {
     console.log("render:", this.state);
     return (
       <div>
-        <div className="desc">Mixers</div>
         <div className="mixers">
           {
             Object.keys(this.state.mixers).map(
               (mix, i) => {
                 return (
                   <div key={mix} className="mixer">
-                    <table><tbody>
-                      <InputField key={mix} id={mix} desc="Name" type="text" value={mix} onChange={this.updateName} />
-                    </tbody></table>
+                    <div className="row">
+                      <InputField key={mix} id={mix} desc="Name" type="text" data-tip="Mixer name, must be unique" value={mix} onChange={this.updateName} />
+                    </div>
                     <div>
                       <Mixer config={this.state.mixers[mix]} name={mix} onChange={this.handleMixerUpdate} />
                     </div>
                     <div>
-                      <button onClick={this.removeMixer} id={mix}>✖</button>
+                      <button className="deletebutton" data-tip="Delete this mixer" onClick={this.removeMixer} id={mix}>✖</button>
                     </div>
                   </div>
                 )
               }
             )
           }
-          <button onClick={this.addMixer}>+</button>
+          <button className="addbutton" data-tip="Add a new mixer" onClick={this.addMixer}>+</button>
         </div>
       </div>
     );

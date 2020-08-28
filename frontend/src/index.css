@@ -12,20 +12,54 @@ code {
     monospace;
 }
 
+input{
+  box-sizing: border-box;
+  width : 150%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
+
+.fileinput{
+  box-sizing: border-box;
+  width : 100%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
+
+.inputlabel {
+  text-align: right;
+  padding-inline-end: 10px;
+}
+
+select{
+  box-sizing: border-box;
+  width : 100%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
+
 .filter {
-  background: rgb(200, 200, 200);
-  border: 2px solid #999;
+  background: rgb(220, 220, 220);
+  border: 3px inset #999;
   float: left;
   text-align: left;
   padding: 5px;
+  width: 400px;
+  border-radius: 5px;
 }
 
 .filterparams {
   background: rgb(255, 255, 255);
-  border: 2px solid #999;
+  border: 2px inset #999;
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 5px;
 }
 
 .mixers {
@@ -33,15 +67,16 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
+  flex-wrap: wrap;
 }
 
 .filters {
-  background: rgb(200, 200, 200);
   border: 4px solidwhite;
   float: left;
   text-align: left;
   padding: 5px;
   display: flex;
+  flex-wrap: wrap;
 
 }
 
@@ -50,6 +85,8 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mixersource {
@@ -57,7 +94,9 @@ code {
   border: 2px solid #999;
   float: left;
   text-align: left;
-  padding: 5px
+  padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mixermapping {
@@ -67,61 +106,93 @@ code {
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .device {
   background: #fff;
-  border: 2px solid #999;
+  border: 2px inset #999;
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 5px;
 }
 
 .devices {
-  background: rgb(200, 200, 200);
+  background: rgb(220, 220, 220);
   border: 4px solidwhite;
   float: left;
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 450px;
+}
+
+.namelist {
+  background: rgb(220, 220, 220);
+  border: 4px solidwhite;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  width: 450px;
 }
 
 .pipeline {
-  background: rgb(200, 200, 200);
+  background: rgb(220, 220, 220);
   border: 4px solidwhite;
   float: left;
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
+  width: 500px;
 }
 
 .mixer {
-  background: rgb(200, 200, 200);
-  border: 2px solid #999;
+  background: rgb(220, 220, 220);
+  border: 3px inset #999;
   float: left;
   text-align: left;
   padding: 5px;
+  border-radius: 5px;
+}
+
+.mixerparams {
+  background: rgb(220, 220, 220);
+  border: 2px inset #999;
+  float: left;
+  text-align: left;
+  padding: 5px;
+  border-radius: 5px;
 }
 
 .pipelinestep {
-  background: rgb(200, 200, 200);
-  border: 2px solid #999;
+  background: rgb(220, 220, 220);
   float: left;
   text-align: left;
   padding: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+  border: 2px inset #999;
+  border-radius: 5px;
 }
 
 .listitem {
-  background: rgb(200, 200, 200);
+  background: rgb(220, 220, 220);
   border: 4px solidwhite;
   float: left;
   text-align: left;
   padding: 5px;
   display: flex;
-  flex-direction: column
+  flex-direction: column;
 }
 
 .configapp {
@@ -140,6 +211,7 @@ code {
   padding: 10px;
   display: flex;
   flex-direction: column;
+  width: 250px;
 }
 
 .sidepanelelement {
@@ -159,5 +231,61 @@ code {
   display: flex;
   flex-direction: column;
 }
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.column {
+  float: left;
+}
+
+.left {
+  width: 40%;
+}
+  
+.right {
+  width: 60%;
+  float: left;
+  display: flex;
+}
+
+.deletebutton {
+  font-size: large;
+  color: #fff;
+  background-color: rgb(255, 0, 0);
+  border: 1px outset rgb(255, 0, 0);
+  border-radius: 5px;
+  width: 34px;
+  height: 34px;
+}
+
+.addbutton {
+  font-size: larger;
+  font-weight: 900;
+  color: #fff;
+  background-color:rgb(0, 255, 0);
+  border: 1px outset rgb(0, 255, 0);
+  border-radius: 5px;
+  width: 34px;
+  height: 34px;
+}
+
+.plotbutton {
+  border: 1px outset rgb(184, 184, 184);
+  border-radius: 5px;
+  width: 60px;
+  height: 34px;
+}
+
+.textbox {   
+  box-sizing: border-box;
+  width : 100%; 
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  padding: 4px;
+} 
 
 

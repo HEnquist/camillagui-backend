@@ -7,10 +7,11 @@ import { MixerList } from './mixerlist.js';
 import { Pipeline } from './pipeline.js';
 import { SidePanel } from './sidepanel.js';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import ReactTooltip from 'react-tooltip';
 import 'react-tabs/style/react-tabs.css';
 
-export const FLASKURL = "http://127.0.0.1:5000";
-//export const FLASKURL = "";
+//export const FLASKURL = "http://127.0.0.1:5000";
+export const FLASKURL = "";
 
 
 class CamillaConfig extends React.Component<any, any> {
@@ -22,8 +23,10 @@ class CamillaConfig extends React.Component<any, any> {
     this.handlePipeline = this.handlePipeline.bind(this);
     this.handleConfig = this.handleConfig.bind(this);
     this.getFullConfig = this.getFullConfig.bind(this);
+    this.switchTab = this.switchTab.bind(this);
     //this.state = {value: this.props.value};
     this.state = {
+      activetab: 0,
       config: {
         devices: this.getDevicesTemplate(),
         filters: this.getFiltersTemplate(),
@@ -82,7 +85,9 @@ class CamillaConfig extends React.Component<any, any> {
       chunksize: 1024,
       target_level: 1024,
       adjust_period: 3,
+      queuelimit: 100,
       enable_resampling: true,
+      enable_rate_adjust: false,
       resampler_type: "FastAsync",
       capture_samplerate: 44100,
       capture: { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
@@ -135,14 +140,26 @@ class CamillaConfig extends React.Component<any, any> {
     }
   }
 
+  componentDidUpdate(prevProps: any) {
+    ReactTooltip.rebuild();
+    console.log("=============rebuild tooltips")
+  }
+
+  switchTab(index: number, lastIndex: number, event: Event) {
+    this.setState((prevState: any) => {
+      return { activetab: index };
+    })
+  }
+
   render() {
     return (
       <div className="configapp">
+        <ReactTooltip multiline={true} />
         <div>
           <SidePanel config={this.state.config} onChange={this.handleConfig} />
         </div>
         <div>
-      <Tabs className="configtabs">
+      <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab} >
         <TabList >
           <Tab>Devices</Tab>
           <Tab>Filters</Tab>
