@@ -86,7 +86,7 @@ export class SidePanel extends React.Component {
     var capturerate = "";
     var rateadjust =  "";
     try {
-      const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedB");
+      const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedb");
       const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate");
       const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust");
       signalrange = parseFloat(await sigrange_req.text());
