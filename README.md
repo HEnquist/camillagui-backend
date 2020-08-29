@@ -1,4 +1,10 @@
-# backend server for CamillaGUI
+# Backend server for CamillaGUI
+
+This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
+
+The complete GUI is made up of two parts:
+- a frontend based on React: https://reactjs.org/ 
+- a backend based on AIOHTTP: https://docs.aiohttp.org/en/stable/
 
 ## Setting up
 Install the dependencies:
@@ -8,20 +14,19 @@ Install the dependencies:
 - aiohttp
 - pycamilladsp from https://github.com/HEnquist/pycamilladsp
 
-Clone this repo, and edit `config/camillagui.yml` if needed.
+Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
+Download the zip-file ("camillagui.zip") for the latest release. This includes both the backend and the frontend.
+
+Unzip the file, and edit `config/camillagui.yml` if needed.
+
 ```yaml
 ---
 camilla_host: "0.0.0.0"
 camilla_port: 1234
 port: 5000
 ```
-The default has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000.
+The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
-Next copy the frontend from here: https://github.com/HEnquist/camillagui/actions
-
-Click on the last successfull build, then click "build" under "Artifacts" to download a compiled version of the frontend.
-
-Uncompress the contents of build.zip into the "build" folder. 
 
 ## Running
 Start the server with:
@@ -29,6 +34,8 @@ Start the server with:
 python main.py
 ```
 
-The gui should now be available at http://localhost:5000/gui/index.html
+The gui should now be available at: http://localhost:5000/gui/index.html
+
+If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
 
 
