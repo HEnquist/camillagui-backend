@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        name: HEnquist/camillagui
+        repository: HEnquist/camillagui
         ref: master
     - name: Build and publish
       uses: actions/setup-node@v1
