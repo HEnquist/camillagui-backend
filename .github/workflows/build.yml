@@ -1,0 +1,37 @@
+name: npm build
+
+on: [push]
+
+jobs:
+  build_fe:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        name: HEnquist/camillagui
+        ref: master
+    - name: Build and publish
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+    - run: npm install
+    - run: npm run build
+    - name: Upload build
+      uses: actions/upload-artifact@v2
+      with:
+        name: build
+        path: build
+
+  build_be:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download frontend
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+    - name: Upload all
+      uses: actions/upload-artifact@v2
+      with:
+        name: camillagui-backend
+        path: .
