@@ -34,4 +34,5 @@ jobs:
       with:
         name: camillagui-backend
         path: |
+          .
           !.git*
