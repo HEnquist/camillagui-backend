@@ -1,9 +1,10 @@
 from aiohttp import web
-from camilladsp import plot_pipeline, plot_filter, CamillaError
+from camilladsp import CamillaError
+from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
 import yaml
 
-async def gui(request):
-    return web.Response(text='Hello Aiohttp!')
+async def get_gui_index(request):
+    raise web.HTTPFound('/gui/index.html')
 
 async def get_param(request):
     # Get a parameter value
@@ -61,6 +62,13 @@ async def eval_filter(request):
     content = await request.json()
     print("content", content)
     image=plot_filter(content["config"], name=content["name"], samplerate=content["samplerate"], npoints=1000, toimage=True)
+    return web.Response(body=image, content_type='image/svg+xml')
+
+async def eval_filterstep(request):
+    # Plot a filter
+    content = await request.json()
+    print("content", content)
+    image=plot_filterstep(content["config"], content["index"], name="Filterstep {}".format(content["index"]), npoints=1000, toimage=True)
     return web.Response(body=image, content_type='image/svg+xml')
 
 async def eval_pipeline(request):
