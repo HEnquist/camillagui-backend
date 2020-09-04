@@ -145,7 +145,6 @@ select{
 }
 
 .pipeline {
-  background: rgb(220, 220, 220);
   border: 4px solidwhite;
   float: left;
   text-align: left;
@@ -181,7 +180,7 @@ select{
   width: 100%;
   box-sizing: border-box;
   flex-direction: column;
-  border: 2px inset #999;
+  border: 3px inset #999;
   border-radius: 5px;
 }
 
