@@ -105,8 +105,14 @@ export class SidePanel extends React.Component {
     const conf_req = await fetch(FLASKURL + "/api/getconfig");
     const config = await conf_req.json();
     console.log(config)
-    this.setState(state => { return {config: config, msg: "OK"}});
-    this.props.onChange(config);
+    if (config) {
+      this.setState(state => { return {config: config, msg: "OK"}});
+      this.props.onChange(config);
+    }
+    else {
+      console.log("Got an empty config!")
+      this.setState(state => { return {msg: "No config received"}});
+    }
   }
 
   async applyConfig() {
@@ -191,11 +197,12 @@ export class SidePanel extends React.Component {
         <div className="sidepanelelement">
           Rate adjust: {this.state.rateadjust}
         </div>
-        <div className="sidepanelelement">{this.state.msg}</div>
+        <div className="sidepanelelement">Message: {this.state.msg}</div>
         <div className="sidepanelelement"><button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button></div>
         <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
         <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
         <div className="sidepanelelement"><input className="fileinput" data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
+        <div className="sidepanelelement">Config status</div>
         <ErrorBox config={this.state.config} />
       </section>
     );
