@@ -85,7 +85,7 @@ export class FilterStep extends React.Component {
   }
 
   plotFilterStep = (event) => {
-    var i = event.target.id;
+    //var i = event.target.id;
     const fullconf = this.props.getConfig();
     const plotconf = { index: this.props.idx, config: fullconf };
     fetch(FLASKURL + "/api/evalfilterstep", {
