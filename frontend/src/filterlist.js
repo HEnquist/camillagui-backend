@@ -58,13 +58,13 @@ class FilterParams extends React.Component {
       Default: { a: [1.0, 0.0], b: [1.0, 0.0] }
     },
     Dither: {
-      Simple: { bits: 16 },
-      Uniform: { bits: 16, amplitude: 1.0 },
-      Lipshitz441: { bits: 16 },
-      Fweighted441: { bits: 16 },
-      Shibata441: { bits: 16 },
-      Shibata48: { bits: 16 },
-      None: { bits: 16 },
+      Simple: { type: "Simple", bits: 16 },
+      Uniform: { type: "Uniform",  bits: 16, amplitude: 1.0 },
+      Lipshitz441: { type: "Lipshitz441", bits: 16 },
+      Fweighted441: { type: "Fweighted441", bits: 16 },
+      Shibata441: { type: "Shibata441", bits: 16 },
+      Shibata48: { type: "Shibata48", bits: 16 },
+      None: { type: "None", bits: 16 },
     }
   }
 
