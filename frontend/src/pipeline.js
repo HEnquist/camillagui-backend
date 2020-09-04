@@ -81,7 +81,41 @@ export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: this.props.config };
+    this.state = { config: this.props.config, popup: false, image: null };
+  }
+
+  plotFilterStep = (event) => {
+    var i = event.target.id;
+    const fullconf = this.props.getConfig();
+    const plotconf = { index: this.props.idx, config: fullconf };
+    fetch(FLASKURL + "/api/evalfilterstep", {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      mode: 'same-origin', // no-cors, *cors, same-origin
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      body: JSON.stringify(plotconf), // body data type must match "Content-Type" header
+    })
+      .then(
+        (result) => {
+          result.blob().then(data => {
+            this.setState(state => {
+              return { popup: true, image: data }
+            });
+          })
+          console.log("OK", result);
+        },
+        (error) => {
+          console.log("Failed", error);
+        }
+      )
+  }
+
+  handleClose = () => {
+    this.setState(state => {
+      return { popup: false };
+    })
   }
 
   handleChange = (event) => {
@@ -107,6 +141,8 @@ export class FilterStep extends React.Component {
         <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
         <div>Names</div>
         <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
+        <button className="plotbutton" data-tip="Plot response of this step" onClick={this.plotFilterStep} id="plot" >Plot</button>
+        <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
       </div >
     );
   }
@@ -230,7 +266,7 @@ class PipelineStep extends React.Component {
     else {
       fields =
         <div className="row">
-          <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} />
+          <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} getConfig={this.props.getConfig} />
         </div>;
     }
     return (
@@ -342,7 +378,7 @@ export class Pipeline extends React.Component {
                 return (
                   <div key={i.toString() + JSON.stringify(step)} className="pipelinestep">
                     <div>
-                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} />
+                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} getConfig={this.props.getConfig} />
                     </div>
                     <div>
                       <button className="deletebutton" data-tip="Delete this step" onClick={this.removeStep} id={i}>✖</button>
