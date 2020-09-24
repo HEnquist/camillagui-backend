@@ -1,5 +1,4 @@
 from aiohttp import web
-import aiohttp_cors
 from camilladsp import CamillaConnection
 
 from settings import config
@@ -12,17 +11,18 @@ setup_routes(app)
 setup_static_routes(app)
 
 
-# Configure default CORS settings.
-cors = aiohttp_cors.setup(app, defaults={
-    "*": aiohttp_cors.ResourceOptions(
-            allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-        )
-})
-# Configure CORS on all routes.
-for route in list(app.router.routes()):
-    cors.add(route)
+## Add CORS to allow all, for testing only!
+#import aiohttp_cors
+#cors = aiohttp_cors.setup(app, defaults={
+#    "*": aiohttp_cors.ResourceOptions(
+#            allow_credentials=True,
+#            expose_headers="*",
+#            allow_headers="*",
+#        )
+#})
+## Configure CORS on all routes.
+#for route in list(app.router.routes()):
+#    cors.add(route)
 
 camillaconnection = CamillaConnection(config["camilla_host"], config["camilla_port"])
 #camillaconnection.connect()

@@ -59,8 +59,12 @@ Unzip the file, and edit `config/camillagui.yml` if needed.
 camilla_host: "0.0.0.0"
 camilla_port: 1234
 port: 5000
+config_dir: "~/camilladsp/configs"
+coeff_dir: "~/camilladsp/coeffs"
 ```
 The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
+
+The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui. 
 
 
 ## Running
