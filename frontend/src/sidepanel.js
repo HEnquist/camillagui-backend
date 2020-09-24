@@ -62,7 +62,7 @@ export class SidePanel extends React.Component {
   }
 
   componentDidMount() {
-    var intervalId = setInterval(this.timer, 10000);
+    var intervalId = setInterval(this.timer, 1000);
     // store intervalId in the state so it can be accessed later:
     this.setState({ intervalId: intervalId });
   }
