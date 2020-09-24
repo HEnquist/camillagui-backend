@@ -2,3 +2,5 @@
 camilla_host: "0.0.0.0"
 camilla_port: 1234
 port: 5000
+config_dir: "~/camilladsp/configs"
+coeff_dir: "~/camilladsp/coeffs"
