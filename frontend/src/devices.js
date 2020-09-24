@@ -85,7 +85,7 @@ export class Capture extends React.Component {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
     "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file", extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
     "Stdin": { type: "Stdin", channels: 2, format: "S32LE" },
-    "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
+    "Pulse": { type: "Pulse", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
   }
@@ -141,7 +141,7 @@ export class Playback extends React.Component {
     "Alsa": { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
     "File": { type: "File", channels: 2, format: "S32LE", filename: "/path/to/file" },
     "Stdout": { type: "Stdout", channels: 2, format: "S32LE" },
-    "PulseAudio": { type: "PulseAudio", channels: 2, format: "S32LE", device: "something" },
+    "Pulse": { type: "Pulse", channels: 2, format: "S32LE", device: "something" },
     "Wasapi": { type: "Wasapi", channels: 2, format: "FLOAT32LE", device: "blablawin" },
     "CoreAudio": { type: "CoreAudio", channels: 2, format: "FLOAT32LE", device: "blablamac" }
   }

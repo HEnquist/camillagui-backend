@@ -46,8 +46,8 @@ export class EnumSelect extends React.Component {
     "resampler": ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"],
     "delayunit": ["ms", "samples"],
     "Conv": ["File", "Values"],
-    "backend_capture": ["Alsa", "PulseAudio", "Wasapi", "CoreAudio", "File", "Stdin"],
-    "backend_playback": ["Alsa", "PulseAudio", "Wasapi", "CoreAudio", "File", "Stdout"],
+    "backend_capture": ["Alsa", "Pulse", "Wasapi", "CoreAudio", "File", "Stdin"],
+    "backend_playback": ["Alsa", "Pulse", "Wasapi", "CoreAudio", "File", "Stdout"],
     "Dither": ["Simple", "Uniform", "Lipshitz441", "Fweighted441", "Shibata441", "Shibata48", "None"],
     "pipelineitem": ["Mixer", "Filter"]
   }

@@ -50,18 +50,19 @@ export class ErrorBox extends React.Component {
 export class SidePanel extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { config: this.props.config, msg: "", signalrange: 0.0, state: "IDLE", rateadjust: 0.0, capturerate: 0 };
+    this.state = { config: this.props.config, msg: "", signalrange: 0.0, state: "IDLE", rateadjust: 0.0, capturerate: 0, bufferlevel: 0, nbrclipped: 0 };
     this.timer = this.timer.bind(this);
     this.fetchConfig = this.fetchConfig.bind(this);
     this.applyConfig = this.applyConfig.bind(this);
     this.saveConfig = this.saveConfig.bind(this);
     this.loadFile = this.loadFile.bind(this);
     this.loadYaml = this.loadYaml.bind(this);
-
+    this.uploadConfig = this.uploadConfig.bind(this);
+    this.uploadCoeff = this.uploadCoeff.bind(this);
   }
 
   componentDidMount() {
-    var intervalId = setInterval(this.timer, 1000);
+    var intervalId = setInterval(this.timer, 10000);
     // store intervalId in the state so it can be accessed later:
     this.setState({ intervalId: intervalId });
   }
@@ -85,19 +86,25 @@ export class SidePanel extends React.Component {
     var signalrange = "";
     var capturerate = "";
     var rateadjust =  "";
+    var bufferlevel = "";
+    var nbrclipped = "";
     try {
       const sigrange_req = await fetch(FLASKURL + "/api/getparam/signalrangedb");
       const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate");
       const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust");
+      const bufferlevel_req = await fetch(FLASKURL + "/api/getparam/bufferlevel");
+      const nbrclipped_req = await fetch(FLASKURL + "/api/getparam/clippedsamples");
       signalrange = parseFloat(await sigrange_req.text());
       capturerate = parseInt(await capturerate_req.text());
       rateadjust = parseFloat(await rateadjust_req.text());
+      bufferlevel = parseInt(await bufferlevel_req.text());
+      nbrclipped = parseInt(await nbrclipped_req.text());
     }
     catch(err) {
       console.log("camilladsp offline")
     }
     console.log(processingstate,  signalrange, capturerate, rateadjust)
-    this.setState(state => { return {state: processingstate, signalrange: signalrange, capturerate: capturerate, rateadjust: rateadjust}});
+    this.setState(state => { return {state: processingstate, signalrange: signalrange, capturerate: capturerate, rateadjust: rateadjust, bufferlevel: bufferlevel, nbrclipped: nbrclipped}});
 
   }
 
@@ -154,6 +161,40 @@ export class SidePanel extends React.Component {
     a.click();
   }
 
+  async uploadConfig(event) {
+    var file = event.target.files[0];
+    var filename = file.name
+    const formData = new FormData();
+    formData.append(
+      'contents',
+      file,
+      file.name
+    );
+    const conf_req = await fetch(FLASKURL + "/api/uploadconfig", {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      //mode: 'same-origin', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      body: formData, // body data type must match "Content-Type" header
+    });
+  }
+
+  async uploadCoeff(event) {
+    var file = event.target.files[0];
+    var filename = file.name
+    const formData = new FormData();
+    formData.append(
+      'contents',
+      file,
+      file.name
+    );
+    const conf_req = await fetch(FLASKURL + "/api/uploadcoeff", {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      //mode: 'same-origin', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      body: formData, // body data type must match "Content-Type" header
+    });
+  }
+
   loadFile(event) {
     var file = event.target.files[0];
     var reader = new FileReader();
@@ -197,11 +238,19 @@ export class SidePanel extends React.Component {
         <div className="sidepanelelement">
           Rate adjust: {this.state.rateadjust}
         </div>
+        <div className="sidepanelelement">
+          Clipped samples: {this.state.nbrclipped}
+        </div>
+        <div className="sidepanelelement">
+          Buffer level: {this.state.bufferlevel}
+        </div>
         <div className="sidepanelelement">Message: {this.state.msg}</div>
         <div className="sidepanelelement"><button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button></div>
         <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
         <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
         <div className="sidepanelelement"><input className="fileinput" data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
+        <div className="sidepanelelement"><input className="fileinput" data-tip="Upload a config file" type="file" onChange={this.uploadConfig}></input></div>
+        <div className="sidepanelelement"><input className="fileinput" data-tip="Upload a coefficient file" type="file" onChange={this.uploadCoeff}></input></div>
         <div className="sidepanelelement">Config status</div>
         <ErrorBox config={this.state.config} />
       </section>
