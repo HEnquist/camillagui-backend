@@ -163,14 +163,13 @@ export class SidePanel extends React.Component {
 
   async uploadConfig(event) {
     var file = event.target.files[0];
-    var filename = file.name
     const formData = new FormData();
     formData.append(
       'contents',
       file,
       file.name
     );
-    const conf_req = await fetch(FLASKURL + "/api/uploadconfig", {
+    await fetch(FLASKURL + "/api/uploadconfig", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       //mode: 'same-origin', // no-cors, *cors, same-origin
       cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -180,14 +179,13 @@ export class SidePanel extends React.Component {
 
   async uploadCoeff(event) {
     var file = event.target.files[0];
-    var filename = file.name
     const formData = new FormData();
     formData.append(
       'contents',
       file,
       file.name
     );
-    const conf_req = await fetch(FLASKURL + "/api/uploadcoeff", {
+    await fetch(FLASKURL + "/api/uploadcoeff", {
       method: 'POST', // *GET, POST, PUT, DELETE, etc.
       //mode: 'same-origin', // no-cors, *cors, same-origin
       cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
@@ -248,9 +246,19 @@ export class SidePanel extends React.Component {
         <div className="sidepanelelement"><button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button></div>
         <div className="sidepanelelement"><button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button></div>
         <div className="sidepanelelement"><button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button></div>
-        <div className="sidepanelelement"><input className="fileinput" data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input></div>
-        <div className="sidepanelelement"><input className="fileinput" data-tip="Upload a config file" type="file" onChange={this.uploadConfig}></input></div>
-        <div className="sidepanelelement"><input className="fileinput" data-tip="Upload a coefficient file" type="file" onChange={this.uploadCoeff}></input></div>
+
+        <div className="sidepanelelement">
+          Load config from a local file
+          <input className="fileinput" data-tip="Load config from a local file" type="file" onChange={this.loadFile}></input>
+        </div>
+        <div className="sidepanelelement">
+          Upload a config file
+          <input className="fileinput" data-tip="Upload a config file" type="file" onChange={this.uploadConfig}></input>
+        </div>
+        <div className="sidepanelelement">
+          Upload a coefficient file
+          <input className="fileinput" data-tip="Upload a coefficient file" type="file" onChange={this.uploadCoeff}></input>
+        </div>
         <div className="sidepanelelement">Config status</div>
         <ErrorBox config={this.state.config} />
       </section>

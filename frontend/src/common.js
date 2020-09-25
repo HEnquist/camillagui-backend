@@ -281,8 +281,60 @@ export class ParameterInput extends React.Component {
   }
 }
 
+export class ListSelectPopup extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { open: props.open, items: props.items };
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+    this.pickItem = this.pickItem.bind(this);
+  }
+  openModal() {
+    this.setState({ open: true });
+  }
 
-export class ControlledPopup extends React.Component {
+  closeModal() {
+    this.setState({ open: false });
+    this.props.onClose(this.props.id);
+  }
+
+  pickItem(event) {
+    this.props.onSelect(event.target.id);
+    this.setState({ open: false });
+    this.props.onClose(this.props.id);
+  }
+
+  render() {
+    return (
+      <div>
+        <Popup
+          open={this.state.open}
+          closeOnDocumentClick
+          onClose={this.closeModal}
+        >
+          <div className="modal">
+            <span className="close" onClick={this.closeModal}>
+              ✖
+            </span>
+            <div>
+              {Object.keys(this.state.items).map(
+                (item, i) => {
+                  return (
+                    <span id={item} className="popuplistitem" key={item} onClick={this.pickItem}>
+                      {item}
+                    </span>
+                  )
+                }
+              )}
+            </div>
+          </div>
+        </Popup>
+      </div>
+    );
+  }
+}
+
+export class ImagePopup extends React.Component {
   constructor(props) {
     super(props);
     this.state = { open: props.open, image: props.image };

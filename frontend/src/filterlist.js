@@ -1,14 +1,17 @@
 import React from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 import './index.css';
-import { ParameterInput, InputField, EnumSelect, ControlledPopup } from './common.js';
+import { ParameterInput, InputField, EnumSelect, ImagePopup, ListSelectPopup } from './common.js';
 import { FLASKURL } from './index.tsx'
 
 class FilterParams extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: this.props.parameters };
+    this.handleCloseList = this.handleCloseList.bind(this);
+    this.handlePickFile = this.handlePickFile.bind(this);
+    this.pickCoeff = this.pickCoeff.bind(this);
+    this.state = { parameters: this.props.parameters, listpopup: false, listitems: {} };
     console.log(this.state);
   }
 
@@ -77,6 +80,38 @@ class FilterParams extends React.Component {
     })
   }
 
+  handleCloseList() {
+    this.setState(state => {
+      return { listpopup: false };
+    })
+  }
+
+  handlePickFile(value) {
+    console.log(value)
+  }
+
+  pickCoeff(event) {
+    console.log("Open coeff list")
+    fetch(FLASKURL + "/api/storedcoeffs", {
+      method: 'GET', // *GET, POST, PUT, DELETE, etc.
+      mode: 'same-origin', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    })
+      .then(
+        (result) => {
+          result.json().then(data => {
+            this.setState(state => {
+              return { listitems: data, listpopup: true }
+            });
+          })
+          console.log("OK", result);
+        },
+        (error) => {
+          console.log("Failed", error);
+        }
+      )
+  }
+
   render() {
     console.log("--FilterParams, type:", this.props.type)
     var filterselect;
@@ -89,6 +124,8 @@ class FilterParams extends React.Component {
         <div>
           {filterselect}
         </div>
+        <button data-tip="Pick coefficent file" onClick={this.pickCoeff} >...</button>
+        <ListSelectPopup key={this.state.listpopup} open={this.state.listpopup} items={this.state.listitems} onClose={this.handleCloseList} onSelect={this.handlePickFile}/>
       </div>
     );
   }
@@ -102,7 +139,7 @@ class Filter extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { type: this.props.type, parameters: this.props.parameters };
+    this.state = { type: this.props.type, parameters: this.props.parameters};
     //this.state = {value: "biquad"};
   }
 
@@ -141,6 +178,8 @@ class Filter extends React.Component {
     })
   }
 
+
+
   render() {
     console.log("--Filter, state:", this.state)
     return (
@@ -162,7 +201,7 @@ export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { filters: props.config, nbr: 2, popup: false, image: null }
+    this.state = { filters: props.config, nbr: 2, popup: false, image: null}
   }
 
   handleFilterUpdate = (filtValue) => {
@@ -267,6 +306,8 @@ export class FilterList extends React.Component {
     })
   }
 
+
+
   render() {
     console.log("render:", this.state);
     return (
@@ -291,7 +332,7 @@ export class FilterList extends React.Component {
             )
           }
           <button className="addbutton" data-tip="Add a new filter" onClick={this.addFilter}>+</button>
-          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
+          <ImagePopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>
     );

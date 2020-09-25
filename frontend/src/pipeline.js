@@ -1,7 +1,7 @@
 import React from 'react';
 import './index.css';
 //import { ParameterInput, InputField } from './common.js';
-import { ParameterInput, EnumSelect, ControlledPopup } from './common.js';
+import { ParameterInput, EnumSelect, ImagePopup } from './common.js';
 import cloneDeep from 'lodash/cloneDeep';
 import { FLASKURL } from './index.tsx'
 
@@ -142,7 +142,7 @@ export class FilterStep extends React.Component {
         <div>Names</div>
         <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
         <button className="plotbutton" data-tip="Plot response of this step" onClick={this.plotFilterStep} id="plot" >Plot</button>
-        <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
+        <ImagePopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
       </div >
     );
   }
@@ -390,7 +390,7 @@ export class Pipeline extends React.Component {
           }
           <button className="addbutton" data-tip="Add a pipeline step" onClick={this.addStep}>+</button>
           <button className="plotbutton" data-tip="Plot the pipeline" onClick={this.plotPipeline} id="plot" >Plot</button>
-          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
+          <ImagePopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
         </div>
       </div>
     );

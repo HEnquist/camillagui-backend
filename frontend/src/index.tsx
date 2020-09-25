@@ -159,7 +159,7 @@ class CamillaConfig extends React.Component<any, any> {
           <SidePanel config={this.state.config} onChange={this.handleConfig} />
         </div>
         <div>
-      <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab} >
+      <Tabs className="configtabs" key={JSON.stringify(this.state.config)} selectedIndex={this.state.activetab} onSelect={this.switchTab} >
         <TabList >
           <Tab>Devices</Tab>
           <Tab>Filters</Tab>
