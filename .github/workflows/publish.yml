@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         repository: HEnquist/camillagui
-        ref: master
+        ref: develop
     - name: Build and publish
       uses: actions/setup-node@v1
       with:
