@@ -88,6 +88,12 @@ class FilterParams extends React.Component {
 
   handlePickFile(value) {
     console.log(value)
+    this.setState(state => {
+      if (state.parameters.type === "File") {
+        state.parameters.filename = state.listitems[value];
+      }
+      return { parameters: state.parameters };
+    })
   }
 
   pickCoeff(event) {

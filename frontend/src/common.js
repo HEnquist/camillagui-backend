@@ -320,9 +320,9 @@ export class ListSelectPopup extends React.Component {
               {Object.keys(this.state.items).map(
                 (item, i) => {
                   return (
-                    <span id={item} className="popuplistitem" key={item} onClick={this.pickItem}>
+                    <div id={item} className="popuplistitem" key={item} onClick={this.pickItem}>
                       {item}
-                    </span>
+                    </div>
                   )
                 }
               )}
