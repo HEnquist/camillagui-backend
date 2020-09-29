@@ -177,7 +177,7 @@ async def store_config(request):
 
 async def get_stored_configs(request):
     config_dir = request.app["config_dir"]
-    files = [os.path.abspath(f) for f in os.listdir(config_dir) if os.path.isfile(os.path.join(config_dir, f))]
+    files = [os.path.abspath(os.path.join(config_dir, f)) for f in os.listdir(config_dir) if os.path.isfile(os.path.join(config_dir, f))]
     files_dict = {}
     for f in files:
         fname = os.path.basename(f)
@@ -186,7 +186,8 @@ async def get_stored_configs(request):
 
 async def get_stored_coeffs(request):
     coeff_dir = request.app["coeff_dir"]
-    files = [os.path.abspath(f) for f in os.listdir(coeff_dir) if os.path.isfile(os.path.join(coeff_dir, f))]
+    files = [os.path.abspath(os.path.join(coeff_dir, f)) for f in os.listdir(coeff_dir) if os.path.isfile(os.path.join(coeff_dir, f))]
+    print(files)
     files_dict = {}
     for f in files:
         fname = os.path.basename(f)
