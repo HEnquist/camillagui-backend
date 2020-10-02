@@ -1,8 +1,15 @@
 from aiohttp import web
 from camilladsp import CamillaError
-from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
+try:
+    from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
+    PLOTTING = True
+except ImportError:
+    print("No plotting!")
+    PLOTTING = False
 import yaml
 import os
+
+SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
 
 
 async def get_gui_index(request):
@@ -67,37 +74,46 @@ async def set_param(request):
 
 async def eval_filter(request):
     # Plot a filter
-    content = await request.json()
-    print("content", content)
-    image = plot_filter(
-        content["config"],
-        name=content["name"],
-        samplerate=content["samplerate"],
-        npoints=1000,
-        toimage=True,
-    )
+    if PLOTTING:
+        content = await request.json()
+        print("content", content)
+        image = plot_filter(
+            content["config"],
+            name=content["name"],
+            samplerate=content["samplerate"],
+            npoints=1000,
+            toimage=True,
+        )
+    else:
+        image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
 
 async def eval_filterstep(request):
     # Plot a filter
-    content = await request.json()
-    print("content", content)
-    image = plot_filterstep(
-        content["config"],
-        content["index"],
-        name="Filterstep {}".format(content["index"]),
-        npoints=1000,
-        toimage=True,
-    )
+    if PLOTTING:
+        content = await request.json()
+        print("content", content)
+        image = plot_filterstep(
+            content["config"],
+            content["index"],
+            name="Filterstep {}".format(content["index"]),
+            npoints=1000,
+            toimage=True,
+        )
+    else:
+        image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
 
 async def eval_pipeline(request):
     # Plot a pipeline
-    content = await request.json()
-    print("content", content)
-    image = plot_pipeline(content, toimage=True)
+    if PLOTTING:
+        content = await request.json()
+        print("content", content)
+        image = plot_pipeline(content, toimage=True)
+    else:
+        image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
 
