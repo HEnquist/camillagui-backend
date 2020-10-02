@@ -4,6 +4,7 @@ import isEqual from 'lodash/isEqual';
 import cloneDeep from 'lodash/cloneDeep';
 import { FLASKURL } from './index.tsx'
 import camillalogo from './camilladsp.svg';
+import { VuMeter } from './vumeter.js';
 
 export class ErrorBox extends React.Component {
   constructor(props) {
@@ -50,7 +51,7 @@ export class ErrorBox extends React.Component {
 export class SidePanel extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { config: this.props.config, msg: "", signalrange: 0.0, state: "IDLE", rateadjust: 0.0, capturerate: 0, bufferlevel: 0, nbrclipped: 0 };
+    this.state = { config: this.props.config, msg: "", signalrange: 0.0, state: "IDLE", rateadjust: 0.0, capturerate: 0, bufferlevel: 0, nbrclipped: -1, clipped: false };
     this.timer = this.timer.bind(this);
     this.fetchConfig = this.fetchConfig.bind(this);
     this.applyConfig = this.applyConfig.bind(this);
@@ -104,7 +105,20 @@ export class SidePanel extends React.Component {
       console.log("camilladsp offline")
     }
     console.log(processingstate,  signalrange, capturerate, rateadjust)
-    this.setState(state => { return {state: processingstate, signalrange: signalrange, capturerate: capturerate, rateadjust: rateadjust, bufferlevel: bufferlevel, nbrclipped: nbrclipped}});
+    this.setState(state => {
+      var clipped = false; 
+      if ((state.nbrclipped >= 0) && (nbrclipped>state.nbrclipped)) {
+        clipped = true
+      } 
+      return {
+        state: processingstate, 
+        signalrange: signalrange, 
+        capturerate: capturerate, 
+        rateadjust: rateadjust, 
+        bufferlevel: bufferlevel, 
+        nbrclipped: nbrclipped,
+        clipped: clipped,
+      }});
 
   }
 
@@ -224,6 +238,7 @@ export class SidePanel extends React.Component {
     return (
       <section className="sidepanel">
         <div className="sidepanelelement"><img src={camillalogo} alt="graph" width="100%" height="100%" /></div>
+        <div className="sidepanelelement"><VuMeter level={this.state.signalrange} clipped={this.state.clipped} /></div>
         <div className="sidepanelelement">
           State: {this.state.state} 
         </div>
