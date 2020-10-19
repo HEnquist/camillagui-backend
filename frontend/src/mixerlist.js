@@ -2,6 +2,7 @@ import React from "react";
 import "./index.css";
 import { ParameterInput, InputField } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
 
 // ---------------  MixerMapping ---------------------------------------------
 class MixerMapping extends React.Component {
@@ -13,6 +14,12 @@ class MixerMapping extends React.Component {
   }
 
   template = { channel: 0, gain: 0, inverted: false };
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
 
   handleDestChange = (value) => {
     console.log("MixerMapping::handleDestChange", value);
@@ -54,7 +61,7 @@ class MixerMapping extends React.Component {
     var fields = this.state.config.sources.map((source, idx) => {
       return (
         <div
-          key={idx.toString() + JSON.stringify(source)}
+          key={idx}
           className="mixersource"
         >
           <MixerSource
@@ -134,6 +141,12 @@ class Mixer extends React.Component {
     this.handleChange = this.handleChange.bind(this);
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
+
   handleChange(event) {
     console.log("Mixer::handleChange:", event.target.value);
     this.props.onChange({ name: this.props.name, value: event.target.value });
@@ -186,7 +199,7 @@ class Mixer extends React.Component {
       return (
         <div key={idx}>
           <MixerMapping
-            key={idx.toString() + JSON.stringify(mapping)}
+            key={idx}
             idx={idx}
             config={mapping}
             onChange={this.handleMappingChange}
@@ -247,6 +260,12 @@ export class MixerList extends React.Component {
       },
     ],
   };
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ mixers: this.props.config });
+    }
+  }
 
   handleMixerUpdate = (mixValue) => {
     console.log("MixerList got:", mixValue);

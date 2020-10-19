@@ -1,5 +1,6 @@
 import React from "react";
 import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
 import "./index.css";
 import {
   ParameterInput,
@@ -23,6 +24,16 @@ class FilterParams extends React.Component {
       listitems: {},
     };
     console.log(this.state);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.parameters, prevProps.parameters)) {
+      console.log(
+        this.state.prevconfig,
+        prevProps.config
+      );
+      this.setState({ parameters: this.props.parameters });
+    }
   }
 
   handleChange(parameters) {
@@ -260,7 +271,6 @@ class Filter extends React.Component {
         </div>
         <div className="row">
           <FilterParams
-            key={JSON.stringify(this.state)}
             type={this.state.type}
             parameters={this.state.parameters}
             onChange={this.handleModifyFilter}
@@ -276,6 +286,12 @@ export class FilterList extends React.Component {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
     this.state = { filters: props.config, nbr: 2, popup: false, image: null };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ filters: this.props.config });
+    }
   }
 
   handleFilterUpdate = (filtValue) => {
@@ -369,7 +385,7 @@ export class FilterList extends React.Component {
       body: JSON.stringify({
         name: i,
         config: this.state.filters[i],
-        samplerate: 44100,
+        samplerate: 44100, //TODO!!! FIX THIS!!!
       }), // body data type must match "Content-Type" header
     }).then(
       (result) => {

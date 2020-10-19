@@ -2,6 +2,7 @@ import React from "react";
 import "./index.css";
 import { ParameterInput, EnumSelect } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
 
 export class Devices extends React.Component {
   constructor(props) {
@@ -10,6 +11,12 @@ export class Devices extends React.Component {
     this.handlePlayback = this.handlePlayback.bind(this);
     this.handleCapture = this.handleCapture.bind(this);
     this.state = { config: this.props.config };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
   }
 
   handleChangeParams(params) {

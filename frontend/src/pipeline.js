@@ -3,6 +3,7 @@ import "./index.css";
 //import { ParameterInput, InputField } from './common.js';
 import { ParameterInput, EnumSelect, ImagePopup } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
 import { FLASKURL } from "./index.tsx";
 
 export class NameSelect extends React.Component {
@@ -73,6 +74,12 @@ export class MixerStep extends React.Component {
     this.state = { name: this.props.name };
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
+
   handleChange(event) {
     console.log("MixerStep change name", event.value);
     this.setState((prevState) => {
@@ -126,6 +133,12 @@ export class FilterStep extends React.Component {
       }
     );
   };
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
 
   handleClose = () => {
     this.setState((state) => {
@@ -271,6 +284,12 @@ class PipelineStep extends React.Component {
     },
   };
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
+  
   handleMixerChange = (mixer) => {
     console.log("handleMixerChange", mixer);
     this.setState((prevState) => {
@@ -309,7 +328,7 @@ class PipelineStep extends React.Component {
       fields = (
         <div className="row">
           <MixerStep
-            key={this.props.idx.toString() + JSON.stringify(this.state.config)}
+            key={this.props.idx}
             idx={this.props.idx}
             name={this.state.config.name}
             allnames={this.props.mixers}
@@ -321,7 +340,7 @@ class PipelineStep extends React.Component {
       fields = (
         <div className="row">
           <FilterStep
-            key={this.props.idx.toString() + JSON.stringify(this.state.config)}
+            key={this.props.idx}
             idx={this.props.idx}
             config={this.state.config}
             allnames={this.props.filters}
@@ -443,7 +462,7 @@ export class Pipeline extends React.Component {
           {this.state.config.map((step, i) => {
             return (
               <div
-                key={i.toString() + JSON.stringify(step)}
+                key={i}
                 className="pipelinestep"
               >
                 <div>

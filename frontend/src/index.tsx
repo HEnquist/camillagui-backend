@@ -158,7 +158,6 @@ class CamillaConfig extends React.Component<any, any> {
         <div>
           <Tabs
             className="configtabs"
-            key={JSON.stringify(this.state.config)}
             selectedIndex={this.state.activetab}
             onSelect={this.switchTab}
           >
