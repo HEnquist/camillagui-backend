@@ -176,6 +176,7 @@ class CamillaConfig extends React.Component<any, any> {
             <TabPanel>
               <FilterList
                 config={this.state.config.filters}
+                samplerate={this.state.config.devices.samplerate}
                 onChange={this.handleFilters}
               />
             </TabPanel>

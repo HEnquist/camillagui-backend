@@ -285,12 +285,15 @@ export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { filters: props.config, nbr: 2, popup: false, image: null };
+    this.state = { filters: props.config, samplerate: props.samplerate, nbr: 2, popup: false, image: null };
   }
 
   componentDidUpdate(prevProps) {
     if (!isEqual(this.props.config, prevProps.config)) {
       this.setState({ filters: this.props.config });
+    }
+    if (!isEqual(this.props.samplerate, prevProps.samplerate)) {
+      this.setState({ samplerate: this.props.samplerate });
     }
   }
 
@@ -377,7 +380,7 @@ export class FilterList extends React.Component {
     console.log(filter);
     fetch(FLASKURL + "/api/evalfilter", {
       method: "POST", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
+      //mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
         "Content-Type": "application/json",
       },
@@ -385,7 +388,7 @@ export class FilterList extends React.Component {
       body: JSON.stringify({
         name: i,
         config: this.state.filters[i],
-        samplerate: 44100, //TODO!!! FIX THIS!!!
+        samplerate: this.state.samplerate,
       }), // body data type must match "Content-Type" header
     }).then(
       (result) => {
