@@ -84,6 +84,12 @@ export class Capture extends React.Component {
     console.log(this.state);
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.parameters, prevProps.parameters)) {
+      this.setState({ parameters: this.props.parameters });
+    }
+  }
+
   handleChange(parameters) {
     this.setState((prevState) => {
       const state = Object.assign(prevState, parameters);
@@ -165,6 +171,12 @@ export class Playback extends React.Component {
     this.state = { parameters: props.parameters };
     //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.parameters, prevProps.parameters)) {
+      this.setState({ parameters: this.props.parameters });
+    }
   }
 
   handleChange(parameters) {

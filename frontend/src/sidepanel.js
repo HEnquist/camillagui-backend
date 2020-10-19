@@ -248,7 +248,7 @@ export class SidePanel extends React.Component {
   async loadYaml(data) {
     const conf_req = await fetch(FLASKURL + "/api/ymltojson", {
       method: "POST",
-      mode: "same-origin",
+      //mode: "same-origin",
       headers: {
         "Content-Type": "text/html",
       },

@@ -13,6 +13,12 @@ export class NameSelect extends React.Component {
     this.state = { value: this.props.value };
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.value, prevProps.value)) {
+      this.setState({ value: this.props.value });
+    }
+  }
+
   handleChange(event) {
     this.setState({ value: event.target.value });
     this.props.onChange({ idx: this.props.idx, value: event.target.value });
@@ -204,6 +210,12 @@ class NameList extends React.Component {
     //this.handleChange = this.handleChange.bind(this);
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.names, prevProps.names)) {
+      this.setState({ names: this.props.names });
+    }
+  }
+
   addName = () => {
     //event.preventDefault();
     this.setState((state) => {
@@ -289,7 +301,7 @@ class PipelineStep extends React.Component {
       this.setState({ config: this.props.config });
     }
   }
-  
+
   handleMixerChange = (mixer) => {
     console.log("handleMixerChange", mixer);
     this.setState((prevState) => {
@@ -381,6 +393,12 @@ export class Pipeline extends React.Component {
     channel: 0,
     names: [],
   };
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
 
   handleStepUpdate = (mixValue) => {
     console.log("MixerList got:", mixValue);

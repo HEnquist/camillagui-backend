@@ -1,12 +1,19 @@
 import React from "react";
 import "./index.css";
 import Popup from "reactjs-popup";
+import isEqual from "lodash/isEqual";
 
 export class BoolSelect extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
     this.state = { value: this.props.value };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.value, prevProps.value)) {
+      this.setState({ value: this.props.value });
+    }
   }
 
   handleChange(event) {
@@ -42,6 +49,12 @@ export class EnumSelect extends React.Component {
     super(props);
     this.handleChange = this.handleChange.bind(this);
     this.state = { value: this.props.value };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.value, prevProps.value)) {
+      this.setState({ value: this.props.value });
+    }
   }
 
   enums = {
@@ -168,6 +181,12 @@ export class InputField extends React.Component {
     this.newValue = null;
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.value, prevProps.value)) {
+      this.setState({ value: this.props.value });
+    }
+  }
+
   debounceChange() {
     clearTimeout(this.delayTimer);
     this.delayTimer = setTimeout(() => {
@@ -237,6 +256,12 @@ export class ParameterInput extends React.Component {
   constructor(props) {
     super(props);
     this.state = this.props.parameters;
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.parameters, prevProps.parameters)) {
+      this.setState(this.props.parameters);
+    }
   }
 
   handleChange = (event) => {
@@ -521,6 +546,7 @@ export class ListSelectPopup extends React.Component {
     this.closeModal = this.closeModal.bind(this);
     this.pickItem = this.pickItem.bind(this);
   }
+  
   openModal() {
     this.setState({ open: true });
   }
