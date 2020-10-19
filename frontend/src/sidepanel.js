@@ -10,36 +10,38 @@ export class ErrorBox extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      config: this.props.config,
-      prevconfig: null,
+      config: cloneDeep(this.props.config),
       message: "(not updated)",
     };
     this.get_config_errors = this.get_config_errors.bind(this);
   }
 
   componentDidUpdate(prevProps) {
-    if (!isEqual(this.state.prevconfig, prevProps.config)) {
+    if (!isEqual(this.props.config, this.state.config)) {
       console.log(
-        "found a difference!!!!!!!!!!!!!!!!!",
-        this.state.prevconfig,
-        prevProps.config
+        "----------found a difference!!!!!!!!!!!!!!!!!"
       );
-      this.setState({ prevconfig: cloneDeep(this.props.config) });
-      this.get_config_errors();
+      this.setState({ config: cloneDeep(this.props.config) });
+      this.get_config_errors(this.props.config);
+    }
+    else {
+      console.log(
+        "==========found NO!!! difference!!!!!!!!!!!!!!!!!", this.props.config, prevProps.config
+      );
     }
   }
 
-  async get_config_errors() {
+  async get_config_errors(config) {
     var config_errors = "";
     try {
       const config_errors_req = await fetch(FLASKURL + "/api/validateconfig", {
         method: "POST", // *GET, POST, PUT, DELETE, etc.
-        mode: "same-origin", // no-cors, *cors, same-origin
+        //mode: "same-origin", // no-cors, *cors, same-origin
         headers: {
           "Content-Type": "application/json",
         },
         cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-        body: JSON.stringify(this.state.config), // body data type must match "Content-Type" header
+        body: JSON.stringify(config), // body data type must match "Content-Type" header
       });
       config_errors = String(await config_errors_req.text());
     } catch (err) {}
@@ -77,6 +79,12 @@ export class SidePanel extends React.Component {
     this.loadYaml = this.loadYaml.bind(this);
     this.uploadConfig = this.uploadConfig.bind(this);
     this.uploadCoeff = this.uploadCoeff.bind(this);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
   }
 
   async componentDidMount() {
