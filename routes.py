@@ -10,6 +10,8 @@ from views import (
     yml_to_json,
     validate_config,
     get_version,
+    get_library_version,
+    get_backend_version,
     get_gui_index,
     get_stored_coeffs,
     get_stored_configs,
@@ -33,6 +35,8 @@ def setup_routes(app):
     app.router.add_post("/api/ymltojson", yml_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
     app.router.add_get("/api/version", get_version)
+    app.router.add_get("/api/libraryversion", get_library_version)
+    app.router.add_get("/api/backendversion", get_backend_version)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
     app.router.add_post("/api/uploadconfig", store_config)

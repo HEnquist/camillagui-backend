@@ -8,6 +8,7 @@ except ImportError:
     PLOTTING = False
 import yaml
 import os
+from version import VERSION
 
 SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
 
@@ -164,6 +165,15 @@ async def get_version(request):
     version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
     return web.json_response(version)
 
+async def get_library_version(request):
+    cdsp = request.app["CAMILLA"]
+    vers_tup = cdsp.get_library_version()
+    version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
+    return web.json_response(version)
+
+async def get_backend_version(request):
+    version = {"major": VERSION[0], "minor": VERSION[1], "patch": VERSION[2]}
+    return web.json_response(version)
 
 async def store_coeff(request):
     data = await request.post()
