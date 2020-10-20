@@ -10,12 +10,12 @@ export class Devices extends React.Component {
     this.handleChangeParams = this.handleChangeParams.bind(this);
     this.handlePlayback = this.handlePlayback.bind(this);
     this.handleCapture = this.handleCapture.bind(this);
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -79,21 +79,19 @@ export class Capture extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: props.parameters };
-    //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
+    this.state = { parameters: cloneDeep(props.parameters) };
     console.log(this.state);
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.parameters, prevProps.parameters)) {
-      this.setState({ parameters: this.props.parameters });
+  componentDidUpdate() {
+    if (!isEqual(this.props.parameters, this.state.parameters)) {
+      this.setState({ parameters: cloneDeep(this.props.parameters) });
     }
   }
 
   handleChange(parameters) {
     this.setState((prevState) => {
       const state = Object.assign(prevState, parameters);
-      //state.parameters = parameters;
       console.log("capture new", state, "got", parameters);
       this.props.onChange(parameters);
       return state;
@@ -168,14 +166,14 @@ export class Playback extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { parameters: props.parameters };
+    this.state = { parameters: cloneDeep(props.parameters) };
     //this.state = { parameters: { type: "Alsa", ...cloneDeep(this.templates["Alsa"]) } };
     console.log(this.state);
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.parameters, prevProps.parameters)) {
-      this.setState({ parameters: this.props.parameters });
+  componentDidUpdate() {
+    if (!isEqual(this.props.parameters, this.state.parameters)) {
+      this.setState({ parameters: cloneDeep(this.props.parameters) });
     }
   }
 
@@ -251,7 +249,3 @@ export class Playback extends React.Component {
   }
 }
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-//serviceWorker.unregister();

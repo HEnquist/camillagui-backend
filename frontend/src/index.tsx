@@ -10,8 +10,8 @@ import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import "react-tabs/style/react-tabs.css";
 
-//export const FLASKURL = "http://127.0.0.1:5000";
-export const FLASKURL = "";
+export const FLASKURL = "http://127.0.0.1:5000";
+//export const FLASKURL = "";
 
 class CamillaConfig extends React.Component<any, any> {
   constructor(props: any) {

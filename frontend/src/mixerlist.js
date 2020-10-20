@@ -9,15 +9,15 @@ class MixerMapping extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
     //this.handleDestChange = this.handleDestChange.bind(this);
   }
 
   template = { channel: 0, gain: 0, inverted: false };
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -110,8 +110,14 @@ class MixerSource extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
     this.handleChange = this.handleChange.bind(this);
+  }
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
+    }
   }
 
   handleChange(event) {
@@ -137,13 +143,13 @@ class Mixer extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
     this.handleChange = this.handleChange.bind(this);
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -246,9 +252,7 @@ class Mixer extends React.Component {
 export class MixerList extends React.Component {
   constructor(props) {
     super(props);
-    //this.handleChange = this.handleChange.bind(this);
-    this.state = { mixers: props.config };
-    //this.state = {filters: {}, nbr: 0};
+    this.state = { mixers: cloneDeep(props.config) };
   }
 
   template = {
@@ -261,9 +265,9 @@ export class MixerList extends React.Component {
     ],
   };
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ mixers: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.mixers)) {
+      this.setState({ mixers: cloneDeep(this.props.config) });
     }
   }
 

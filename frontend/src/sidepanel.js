@@ -18,16 +18,8 @@ export class ErrorBox extends React.Component {
 
   componentDidUpdate(prevProps) {
     if (!isEqual(this.props.config, this.state.config)) {
-      console.log(
-        "----------found a difference!!!!!!!!!!!!!!!!!"
-      );
       this.setState({ config: cloneDeep(this.props.config) });
       this.get_config_errors(this.props.config);
-    }
-    else {
-      console.log(
-        "==========found NO!!! difference!!!!!!!!!!!!!!!!!", this.props.config, prevProps.config
-      );
     }
   }
 
@@ -58,7 +50,7 @@ export class SidePanel extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      config: this.props.config,
+      config: cloneDeep(this.props.config),
       msg: "",
       signalrange: 0.0,
       state: "IDLE",
@@ -83,7 +75,7 @@ export class SidePanel extends React.Component {
 
   componentDidUpdate(prevProps) {
     if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 

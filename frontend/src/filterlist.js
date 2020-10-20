@@ -19,7 +19,7 @@ class FilterParams extends React.Component {
     this.handlePickFile = this.handlePickFile.bind(this);
     this.pickCoeff = this.pickCoeff.bind(this);
     this.state = {
-      parameters: this.props.parameters,
+      parameters: cloneDeep(this.props.parameters),
       listpopup: false,
       listitems: {},
     };
@@ -27,12 +27,8 @@ class FilterParams extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.parameters, prevProps.parameters)) {
-      console.log(
-        this.state.prevconfig,
-        prevProps.config
-      );
-      this.setState({ parameters: this.props.parameters });
+    if (!isEqual(this.props.parameters, this.state.parameters)) {
+      this.setState({ parameters: cloneDeep(this.props.parameters) });
     }
   }
 
@@ -203,7 +199,7 @@ class Filter extends React.Component {
   constructor(props) {
     super(props);
     this.handleChange = this.handleChange.bind(this);
-    this.state = { type: this.props.type, parameters: this.props.parameters };
+    this.state = { type: this.props.type, parameters: cloneDeep(this.props.parameters) };
     //this.state = {value: "biquad"};
   }
 
@@ -222,6 +218,13 @@ class Filter extends React.Component {
     DiffEq: { a: [1.0, 0.0], b: [1.0, 0.0] },
     Dither: { type: "Simple", bits: 16 },
   };
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.parameters, this.state.parameters)) {
+      this.setState({ parameters: cloneDeep(this.props.parameters) });
+    }
+  }
+
   handleChange(event) {
     this.setState({ value: event.target.value });
   }
@@ -288,11 +291,11 @@ export class FilterList extends React.Component {
     this.state = { filters: props.config, samplerate: props.samplerate, nbr: 2, popup: false, image: null };
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ filters: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.filters)) {
+      this.setState({ filters: cloneDeep(this.props.config) });
     }
-    if (!isEqual(this.props.samplerate, prevProps.samplerate)) {
+    if (!isEqual(this.props.samplerate, this.state.samplerate)) {
       this.setState({ samplerate: this.props.samplerate });
     }
   }

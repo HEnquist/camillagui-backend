@@ -110,7 +110,7 @@ export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: this.props.config, popup: false, image: null };
+    this.state = { config: cloneDeep(this.props.config), popup: false, image: null };
   }
 
   plotFilterStep = (event) => {
@@ -140,9 +140,9 @@ export class FilterStep extends React.Component {
     );
   };
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -206,13 +206,13 @@ class NameList extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { names: this.props.names };
+    this.state = { names: cloneDeep(this.props.names) };
     //this.handleChange = this.handleChange.bind(this);
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.names, prevProps.names)) {
-      this.setState({ names: this.props.names });
+  componentDidUpdate() {
+    if (!isEqual(this.props.names, this.state.names)) {
+      this.setState({ names: cloneDeep(this.props.names) });
     }
   }
 
@@ -280,7 +280,7 @@ class PipelineStep extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
     this.handleSelect = this.handleSelect.bind(this);
   }
 
@@ -296,9 +296,9 @@ class PipelineStep extends React.Component {
     },
   };
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -384,7 +384,7 @@ export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: props.config, popup: false, image: null };
+    this.state = { config: cloneDeep(props.config), popup: false, image: null };
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -394,9 +394,9 @@ export class Pipeline extends React.Component {
     names: [],
   };
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
-      this.setState({ config: this.props.config });
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
@@ -533,7 +533,3 @@ export class Pipeline extends React.Component {
   }
 }
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-//serviceWorker.unregister();

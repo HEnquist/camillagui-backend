@@ -2,6 +2,7 @@ import React from "react";
 import "./index.css";
 import Popup from "reactjs-popup";
 import isEqual from "lodash/isEqual";
+import cloneDeep from "lodash/cloneDeep";
 
 export class BoolSelect extends React.Component {
   constructor(props) {
@@ -255,12 +256,12 @@ export class InputField extends React.Component {
 export class ParameterInput extends React.Component {
   constructor(props) {
     super(props);
-    this.state = this.props.parameters;
+    this.state = {parameters: cloneDeep(this.props.parameters)};
   }
 
   componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.parameters, prevProps.parameters)) {
-      this.setState(this.props.parameters);
+    if (!isEqual(this.props.parameters, this.state.parameters)) {
+      this.setState({parameters: cloneDeep(this.props.parameters)});
     }
   }
 
@@ -271,11 +272,11 @@ export class ParameterInput extends React.Component {
     console.log("change", id);
     this.setState((state) => {
       console.log("state before", state);
-      var parameters = Object.assign({}, state);
+      var parameters = Object.assign({}, state.parameters);
       parameters[id] = event.value;
       console.log("state after", parameters);
       this.props.onChange(parameters);
-      return parameters;
+      return {parameters: parameters};
     });
   };
 
