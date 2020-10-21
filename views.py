@@ -6,6 +6,7 @@ try:
 except ImportError:
     print("No plotting!")
     PLOTTING = False
+from camilladsp_plot import eval_filter, eval_filterstep
 import yaml
 import os
 from version import VERSION
@@ -73,7 +74,7 @@ async def set_param(request):
     return web.Response(text="OK")
 
 
-async def eval_filter(request):
+async def eval_filter_svg(request):
     # Plot a filter
     if PLOTTING:
         content = await request.json()
@@ -89,8 +90,20 @@ async def eval_filter(request):
         image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
+async def eval_filter_values(request):
+    # Plot a filter
+    content = await request.json()
+    print("content", content)
+    data = eval_filter(
+        content["config"],
+        name=content["name"],
+        samplerate=content["samplerate"],
+        npoints=300,
+    )
+    return web.json_response(data)
 
-async def eval_filterstep(request):
+
+async def eval_filterstep_svg(request):
     # Plot a filter
     if PLOTTING:
         content = await request.json()
@@ -99,15 +112,27 @@ async def eval_filterstep(request):
             content["config"],
             content["index"],
             name="Filterstep {}".format(content["index"]),
-            npoints=1000,
+            npoints=300,
             toimage=True,
         )
     else:
         image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
+async def eval_filterstep_values(request):
+    # Plot a filter
+    content = await request.json()
+    print("content", content)
+    data = eval_filterstep(
+        content["config"],
+        content["index"],
+        name="Filterstep {}".format(content["index"]),
+        npoints=1000,
+    )
+    return web.json_response(data)
 
-async def eval_pipeline(request):
+
+async def eval_pipeline_svg(request):
     # Plot a pipeline
     if PLOTTING:
         content = await request.json()
