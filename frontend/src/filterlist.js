@@ -6,7 +6,7 @@ import {
   ParameterInput,
   InputField,
   EnumSelect,
-  ImagePopup,
+  ChartPopup,
   ListSelectPopup,
 } from "./common.js";
 import { FLASKURL } from "./index.tsx";
@@ -288,7 +288,7 @@ export class FilterList extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { filters: props.config, samplerate: props.samplerate, nbr: 2, popup: false, image: null };
+    this.state = { filters: props.config, samplerate: props.samplerate, nbr: 2, popup: false, data: {name:""} };
   }
 
   componentDidUpdate() {
@@ -395,9 +395,9 @@ export class FilterList extends React.Component {
       }), // body data type must match "Content-Type" header
     }).then(
       (result) => {
-        result.blob().then((data) => {
+        result.json().then((data) => {
           this.setState((state) => {
-            return { popup: true, image: data };
+            return { popup: true, data: data };
           });
         });
         console.log("OK", result);
@@ -469,10 +469,10 @@ export class FilterList extends React.Component {
           >
             +
           </button>
-          <ImagePopup
+          <ChartPopup
             key={this.state.popup}
             open={this.state.popup}
-            image={this.state.image}
+            data={this.state.data}
             onClose={this.handleClose}
           />
         </div>
