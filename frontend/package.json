@@ -12,6 +12,7 @@
     "@types/react-tabs": "^2.3.2",
     "awesome-typescript-loader": "^5.2.1",
     "chart.js": "^2.9.4",
+    "d3": "^6.2.0",
     "lodash.isequal": "^4.5.0",
     "rc-progress": "^3.1.0",
     "react": "^16.13.1",
