@@ -19,39 +19,57 @@ class BarChart extends React.Component {
 
   appendBlock(labels, boxes, label, x, y) {
     var rect = {
-      x: x - 5,
-      y: y - 3.5,
-      width: 10,
-      height: 7,
-      fill: "none",
+      x: x - 0.5,
+      y: y - 0.35,
+      width: 1.0,
+      height: 0.7,
+      fill: "white",
       stroke: "black",
       "stroke-width": 1,
     };
-    var text = { x: x-4, y: y+1, text: label };
+    var text = { x: x, y: y+0.1, text: label, fill: "black", size: 0.3, angle: 0 };
     labels.push(text);
     boxes.push(rect);
+    return {output: {x: x+0.5, y: y}, input: {x: x-0.5, y: y}};
   }
 
   appendFrame(labels, boxes, label, x, y, height) {
     var rect = {
-      x: x - 5,
-      y: y - 3.5,
-      width: 15,
+      x: x - 0.75,
+      y: -height/2 + y,
+      width: 1.5,
       height: height,
-      fill: "none",
-      stroke: "red",
+      fill: "lightgray",
+      stroke: "lightgray",
       "stroke-width": 1,
     };
-    var text = { x: x-4, y: -height/2 + y, text: label };
+    var text = { x: x, y: -height/2 - 0.2 + y, text: label, fill: "blue", size: 0.4, angle: 0 };
     labels.push(text);
     boxes.push(rect);
   }
 
+  appendLink(links, labels, source, dest, label) {
+    var newlink = {source: [source.x, source.y], target: [dest.x, dest.y]}
+    if (label) {
+      var angle = 1.5*180/3.14 * (dest.y-source.y)/(dest.x-source.x);
+      var text;
+      if (dest.y<=source.y) {
+        text = { x: 2*source.x/3 + dest.x/3, y: 2*source.y/3 + dest.y/3, text: label, fill: "black", size: 0.2, angle: angle};
+      }
+      else {
+        text = { x: source.x/3 + 2*dest.x/3, y: source.y/3 + 2*dest.y/3, text: label, fill: "black", size: 0.2, angle: angle};
+      }
+      labels.push(text);
+    }
+    links.push(newlink);
+  }
+
   makeShapes(conf) {
-    const spacing_h = 20;
-    const spacing_v = 10;
+    const spacing_h = 3;
+    const spacing_v = 1;
     var labels = [];
     var boxes = [];
+    var links = [];
     if (!conf.hasOwnProperty("devices")) {
       console.log("-----boxes empty");
       return [labels, boxes];
@@ -59,17 +77,6 @@ class BarChart extends React.Component {
     var stages = [];
     var channels = [];
     var active_channels = conf["devices"]["capture"]["channels"];
-    for (var n = 0; n < active_channels; n++) {
-      const label = "ch " + n;
-      this.appendBlock(
-        labels,
-        boxes,
-        label,
-        0,
-        spacing_v * (-active_channels/2 + 0.5 + n)
-      );
-      //channels.append([b])
-    }
     var capturename;
     if (conf["devices"]["capture"].hasOwnProperty("device")) {
       capturename = conf["devices"]["capture"]["device"];
@@ -77,144 +84,153 @@ class BarChart extends React.Component {
       capturename = conf["devices"]["capture"]["filename"];
     }
     this.appendFrame(labels, boxes, capturename, 0, 0, spacing_v*active_channels)
-    //draw_box(ax, 0, active_channels, label=capturename)
-    //stages.append(channels)
+    for (var n = 0; n < active_channels; n++) {
+      const label = "ch " + n;
+      const io_points = this.appendBlock(
+        labels,
+        boxes,
+        label,
+        0,
+        spacing_v * (-active_channels/2 + 0.5 + n)
+      );
+      channels.push([io_points])
+    }
+    stages.push(channels);
 
-    //# loop through pipeline
+
+    // loop through pipeline
     //
-    //total_length = 0
-    //stage_start = 0
-    //if 'pipeline' in conf:
-    //    for step in conf['pipeline']:
-    //        if step['type'] == 'Mixer':
-    //            total_length += 1
-    //            name = step['name']
-    //            mixconf = conf['mixers'][name]
-    //            active_channels = int(mixconf['channels']['out'])
-    //            channels = [[]]*active_channels
-    //            for n in range(active_channels):
-    //                label = "ch {}".format(n)
-    //                b = Block(label)
-    //                b.place(total_length*2, -active_channels/2 + 0.5 + n)
-    //                b.draw(ax)
-    //                channels[n] = [b]
-    //            for mapping in mixconf['mapping']:
-    //                dest_ch = int(mapping['dest'])
-    //                for src in mapping['sources']:
-    //                    src_ch = int(src['channel'])
-    //                    label = "{} dB".format(src['gain'])
-    //                    if src['inverted'] == 'False':
-    //                        label = label + '\ninv.'
-    //                    src_p = stages[-1][src_ch][-1].output_point()
-    //                    dest_p = channels[dest_ch][0].input_point()
-    //                    draw_arrow(ax, src_p, dest_p, label=label)
-    //            draw_box(ax, total_length, active_channels, label=name)
-    //            stages.append(channels)
-    //            stage_start = total_length
-    //        elif step['type'] == 'Filter':
-    //            ch_nbr = step['channel']
-    //            for name in step['names']:
-    //                b = Block(name)
-    //                ch_step = stage_start + len(stages[-1][ch_nbr])
-    //                total_length = max((total_length, ch_step))
-    //                b.place(ch_step*2, -active_channels/2 + 0.5 + ch_nbr)
-    //                b.draw(ax)
-    //                src_p = stages[-1][ch_nbr][-1].output_point()
-    //                dest_p = b.input_point()
-    //                draw_arrow(ax, src_p, dest_p)
-    //                stages[-1][ch_nbr].append(b)
-    //
-    //
-    //total_length += 1
-    //channels = []
-    //for n in range(active_channels):
-    //    label = "ch {}".format(n)
-    //    b = Block(label)
-    //    b.place(2*total_length, -active_channels/2 + 0.5 + n)
-    //    b.draw(ax)
-    //    src_p = stages[-1][n][-1].output_point()
-    //    dest_p = b.input_point()
-    //    draw_arrow(ax, src_p, dest_p)
-    //    channels.append([b])
-    //if 'device' in conf['devices']['playback']:
-    //    playname = conf['devices']['playback']['device']
-    //else:
-    //    playname = conf['devices']['playback']['filename']
-    //draw_box(ax, total_length, active_channels, label=playname)
-    //stages.append(channels)
-    //
-    //nbr_chan = [len(s) for s in stages]
-    //ylim = math.ceil(max(nbr_chan)/2.0) + 0.5
-    //ax.set(xlim=(-1, 2*total_length+1), ylim=(-ylim, ylim))
-    //plt.axis('off')
+    var total_length = 0;
+    var stage_start = 0;
+    if (conf.hasOwnProperty("pipeline")) {
+      for (n = 0; n < conf.pipeline.length; n++) {
+        var step = conf.pipeline[n];
+        if (step.type === 'Mixer') {
+          total_length += 1;
+          var mixername = step['name'];
+          var mixconf = conf['mixers'][mixername];
+          active_channels = parseInt(mixconf['channels']['out']);
+          var mixerchannels = [];
+          this.appendFrame(labels, boxes, mixername, spacing_h*total_length, 0, spacing_v*active_channels)
+          for (var m = 0; m < active_channels; m++) {
+            mixerchannels.push([])
+            var label = "ch "+m;
+            var io_points = this.appendBlock(labels,
+              boxes,
+              label,
+              total_length*spacing_h,
+              spacing_v * (-active_channels/2 + 0.5 + m))
+            mixerchannels[m].push(io_points);
+          }
+          for (m = 0; m < mixconf.mapping.length; m++) {
+            console.log("m", m)
+            var mapping = mixconf.mapping[m];
+            var dest_ch = parseInt(mapping.dest);
+            console.log("destination", dest_ch)
+            for (var p = 0; p < mapping.sources.length; p++) {
+              console.log("p", p)
+              var src = mapping.sources[p];
+              var src_ch = parseInt(src.channel);
+              label = src.gain + " dB";
+              if (src.inverted) {
+                label = label + " inv.";
+              }
+              var srclen = stages[stages.length-1][src_ch].length;
+              var src_p = stages[stages.length-1][src_ch][srclen-1].output
+              var dest_p = mixerchannels[dest_ch][0].input
+              this.appendLink(links, labels, src_p, dest_p, label);
+            }
+          }
+          stages.push(mixerchannels);
+          stage_start = total_length;              
+        }
+        else if (step.type === 'Filter') {
+          var ch_nbr = parseInt(step.channel);
+          for (m = 0; m < step.names.length; m++) {
+            var name = step.names[m];
+            console.log("stages", stages[stages.length-1][ch_nbr])
+            var ch_step = stage_start + stages[stages.length-1][ch_nbr].length;
+            total_length = Math.max(total_length, ch_step);
+            io_points = this.appendBlock(labels,
+              boxes,
+              name,
+              ch_step*spacing_h,
+              spacing_v * (-active_channels/2 + 0.5 + ch_nbr));
+            //var src_list = stages[stages.length-1][ch_nbr];
+            //var src_p = src_list[src_list.length-1].output;
+            //var dest_p = io_points.output;
+            //stages[stages.length-1][ch_nbr].push(io_points);
+            //this.appendLink(links, src_p, dest_p);
+          }
+        }
+      }
+    }
+    var playbackchannels = [];
+    total_length = total_length +1;
+    var playbackname;
+    if (conf["devices"]["playback"].hasOwnProperty("device")) {
+      playbackname = conf["devices"]["playback"]["device"];
+    } else {
+      playbackname = conf["devices"]["playback"]["filename"];
+    }
+    this.appendFrame(labels, boxes, playbackname, spacing_h*total_length, 0, spacing_v*active_channels)
+    for (n = 0; n < active_channels; n++) {
+      const label = "ch " + n;
+      const io_points = this.appendBlock(
+        labels,
+        boxes,
+        label,
+        spacing_h*total_length,
+        spacing_v * (-active_channels/2 + 0.5 + n)
+      );
+      playbackchannels.push([io_points])
+      srclen = stages[stages.length-1][n].length;
+      src_p = stages[stages.length-1][n][srclen-1].output
+      dest_p = io_points.input
+      this.appendLink(links, labels, src_p, dest_p, null);
+    }
+    stages.push(playbackchannels);
+
     console.log("-----boxes", boxes);
-    return [labels, boxes];
+    return [labels, boxes, links];
   }
 
   createPipelinePlot() {
     var labels;
     var boxes;
-    [labels, boxes] = this.makeShapes(this.props.config);
+    var links;
+    [labels, boxes, links] = this.makeShapes(this.props.config);
+    console.log(labels)
+    console.log(boxes)
+    console.log(links)
     const node = this.node;
-    //const dataMax = d3.max(this.props.data)
     const yScale = d3.scaleLinear()
-        .domain([-50, 50])
+        .domain([-5, 5])
         .range([0, this.props.size[1]])
     const xScale = d3.scaleLinear()
-        .domain([-10, 90])
+        .domain([-1, 9])
         .range([0, this.props.size[0]])
-    //d3.select(node)
-    // .selectAll('rect')
-    // .data(this.props.data)
-    // .enter()
-    // .append('rect')
-    //
-    //d3.select(node)
-    // .selectAll('rect')
-    // .data(this.props.data)
-    // .exit()
-    // .remove()
-    //
-    //d3.select(node)
-    // .selectAll('rect')
-    // .data(this.props.data)
-    // .style('fill', '#fe9922')
-    // .attr('x', (d,i) => i * 25)
-    // .attr('y', d => this.props.size[1] - yScale(d))
-    // .attr('height', d => yScale(d))
-    // .attr('width', 25)
 
-    var linkGen = d3.linkHorizontal();
-    var singleLinkData = { source: [30, 25], target: [130, 155] };
-    var multiLinkData = [
-      { source: [50, 50], target: [175, 25] },
-      { source: [50, 50], target: [175, 50] },
-      { source: [50, 50], target: [175, 75] },
-    ];
+    var linkGen = d3.linkHorizontal().source(d => [xScale(d.source[0]), yScale(d.source[1])]).target(d => [xScale(d.target[0]), yScale(d.target[1])]);
 
-    //var boxes = [{x: 10, y: 10, width: 20, height: 30, fill: "red", stroke: "blue", "stroke-width": 4},
-    //  {x: 130, y: 140, width: 20, height: 30, fill: "blue", stroke: "red", "stroke-width": 4},
-    //]
-    const markerBoxWidth = 20;
-    const markerBoxHeight = 20;
-    const refX = markerBoxWidth / 2;
+    const markerBoxWidth = 7;
+    const markerBoxHeight = 7;
+    const refX = markerBoxWidth;
     const refY = markerBoxHeight / 2;
-    const markerWidth = markerBoxWidth / 2;
-    const markerHeight = markerBoxHeight / 2;
     const arrowPoints = [
       [0, 0],
-      [0, 20],
-      [20, 10],
+      [0, markerBoxHeight],
+      [markerBoxWidth, markerBoxHeight/2],
     ];
     d3.select(node)
       .append("defs")
       .append("marker")
       .attr("id", "arrow")
-      .attr("viewBox", [0, 0, xScale(markerBoxWidth)-xScale(0), yScale(markerBoxHeight)-yScale(0)])
-      .attr("refX", xScale(refX))
-      .attr("refY", yScale(refY))
-      .attr("markerWidth", xScale(markerBoxWidth)-xScale(0))
-      .attr("markerHeight", yScale(markerBoxHeight)-yScale(0))
+      .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
+      .attr("refX", refX)
+      .attr("refY", refY)
+      .attr("markerWidth", markerBoxWidth)
+      .attr("markerHeight", markerBoxHeight)
       .attr("orient", "auto-start-reverse")
       .append("path")
       .attr("d", d3.line()(arrowPoints))
@@ -227,13 +243,15 @@ class BarChart extends React.Component {
       .enter()
       .append("rect");
 
-    var rectAttributes = rects
+    rects
       .attr("x", function (d) {
         return xScale(d.x);
       })
       .attr("y", function (d) {
         return yScale(d.y);
       })
+      .attr("rx", xScale(0.1)-xScale(0))
+      .attr("ry", yScale(0.1)-yScale(0))
       .attr("width", function (d) {
         return xScale(d.width)-xScale(0);
       })
@@ -250,9 +268,6 @@ class BarChart extends React.Component {
         return d["stroke-width"];
       });
 
-    //var labels = [{x: 100, y:100, text: "hello"},
-    //  {x: 100, y:120, text: "bye"}]
-
     var text = d3
       .select(node)
       .selectAll("text")
@@ -261,23 +276,25 @@ class BarChart extends React.Component {
       .append("text");
 
     //Add SVG Text Element Attributes
-    var textLabels = text
-      .attr("x", function (d) {
-        return xScale(d.x);
-      })
-      .attr("y", function (d) {
-        return yScale(d.y);
-      })
+    text
       .text(function (d) {
         return d.text;
       })
-      .attr("font-family", "sans-serif")
-      .attr("font-size", "20px")
-      .attr("fill", "red");
+      .attr("font-size", function (d) {
+        return (yScale(d.size)-yScale(0))+"px";
+      })
+      .attr("fill", function (d) {
+        return d.fill;
+      })
+      .style("text-anchor", "middle")
+      .attr("transform", function(d) {
+        return "translate(" + xScale(d.x) +  "," + yScale(d.y)+ "), rotate("+d.angle+")";
+      })
+      .attr("font-family", "sans-serif");
 
     d3.select(node)
       .selectAll(null)
-      .data(multiLinkData)
+      .data(links)
       .join("path")
       .attr("d", linkGen)
       .attr("marker-end", "url(#arrow)")

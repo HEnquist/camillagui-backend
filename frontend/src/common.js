@@ -676,7 +676,7 @@ export class ChartPopup extends React.Component {
     };
 
     if (this.state.data.hasOwnProperty("magnitude")) {
-      var points = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"])
+      var gainpoints = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"])
       data.datasets.push(
         {
           label: 'Gain',
@@ -684,7 +684,7 @@ export class ChartPopup extends React.Component {
           borderColor: 'rgba(0,0,220,1)',
           pointRadius: 0,
           showLine: true,
-          data: points,
+          data: gainpoints,
           yAxisID: "gain",
           xAxisID: "freq",
         }
@@ -692,7 +692,7 @@ export class ChartPopup extends React.Component {
     }
 
     if (this.state.data.hasOwnProperty("phase")) {
-      var points = this.make_pointlist(this.state.data["f"], this.state.data["phase"])
+      var phasepoints = this.make_pointlist(this.state.data["f"], this.state.data["phase"])
       data.datasets.push(
         {
           label: 'Phase',
@@ -700,7 +700,7 @@ export class ChartPopup extends React.Component {
           borderColor: 'rgba(0,220,0,1)',
           pointRadius: 0,
           showLine: true,
-          data: points,
+          data: phasepoints,
           yAxisID: "phase",
           xAxisID: "freq",
         }
@@ -708,7 +708,7 @@ export class ChartPopup extends React.Component {
     }
 
     if (this.state.data.hasOwnProperty("impulse")) {
-      var points = this.make_pointlist(this.state.data["time"], this.state.data["impulse"])
+      var impulsepoints = this.make_pointlist(this.state.data["time"], this.state.data["impulse"])
       data.datasets.push(
         {
           label: 'Impulse',
@@ -716,7 +716,7 @@ export class ChartPopup extends React.Component {
           borderColor: 'rgba(220,0,0,1)',
           pointRadius: 0,
           showLine: true,
-          data: points,
+          data: impulsepoints,
           yAxisID: "ampl",
           xAxisID: "time",
         }
