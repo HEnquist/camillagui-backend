@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import React from "react";
 import "./index.css";
 
-class BarChart extends React.Component {
+class PipelinePlot extends React.Component {
   constructor(props) {
     super(props);
     this.createBarChart = this.createPipelinePlot.bind(this);
@@ -67,6 +67,7 @@ class BarChart extends React.Component {
   makeShapes(conf) {
     const spacing_h = 3;
     const spacing_v = 1;
+    var max_v = 0;
     var labels = [];
     var boxes = [];
     var links = [];
@@ -96,6 +97,7 @@ class BarChart extends React.Component {
       channels.push([io_points])
     }
     stages.push(channels);
+    max_v = active_channels/2 + 1;
 
 
     // loop through pipeline
@@ -142,7 +144,8 @@ class BarChart extends React.Component {
             }
           }
           stages.push(mixerchannels);
-          stage_start = total_length;              
+          stage_start = total_length;
+          max_v = Math.max(max_v, active_channels/2 + 1);
         }
         else if (step.type === 'Filter') {
           var ch_nbr = parseInt(step.channel);
@@ -156,17 +159,18 @@ class BarChart extends React.Component {
               name,
               ch_step*spacing_h,
               spacing_v * (-active_channels/2 + 0.5 + ch_nbr));
-            //var src_list = stages[stages.length-1][ch_nbr];
-            //var src_p = src_list[src_list.length-1].output;
-            //var dest_p = io_points.output;
-            //stages[stages.length-1][ch_nbr].push(io_points);
-            //this.appendLink(links, src_p, dest_p);
+            var src_list = stages[stages.length-1][ch_nbr];
+            var src_p = src_list[src_list.length-1].output;
+            var dest_p = io_points.input;
+            stages[stages.length-1][ch_nbr].push(io_points);
+            this.appendLink(links, labels, src_p, dest_p, null);
           }
         }
       }
     }
     var playbackchannels = [];
     total_length = total_length +1;
+    var max_h = (total_length+1)*spacing_h;
     var playbackname;
     if (conf["devices"]["playback"].hasOwnProperty("device")) {
       playbackname = conf["devices"]["playback"]["device"];
@@ -192,23 +196,33 @@ class BarChart extends React.Component {
     stages.push(playbackchannels);
 
     console.log("-----boxes", boxes);
-    return [labels, boxes, links];
+    return [labels, boxes, links, max_h, max_v];
   }
 
   createPipelinePlot() {
     var labels;
     var boxes;
     var links;
-    [labels, boxes, links] = this.makeShapes(this.props.config);
+    var max_h;
+    var max_v;
+    [labels, boxes, links, max_h, max_v] = this.makeShapes(this.props.config);
+    if (max_h > 4*max_v) {
+      max_v = max_h/4;
+    }
+    else {
+      max_h = 4*max_v;
+    }
+
+
     console.log(labels)
     console.log(boxes)
     console.log(links)
     const node = this.node;
     const yScale = d3.scaleLinear()
-        .domain([-5, 5])
+        .domain([-max_v, max_v])
         .range([0, this.props.size[1]])
     const xScale = d3.scaleLinear()
-        .domain([-1, 9])
+        .domain([-1, max_h])
         .range([0, this.props.size[0]])
 
     var linkGen = d3.linkHorizontal().source(d => [xScale(d.source[0]), yScale(d.source[1])]).target(d => [xScale(d.target[0]), yScale(d.target[1])]);
@@ -304,7 +318,7 @@ class BarChart extends React.Component {
 
   render() {
     return (
-      <svg ref={(node) => (this.node = node)} width={500} height={500}></svg>
+      <svg ref={(node) => (this.node = node)} width={1000} height={500}></svg>
     );
   }
 }
@@ -341,7 +355,7 @@ export class PipelinePopup extends React.Component {
               ✖
             </span>
             <div>
-              <BarChart size={[500, 500]} config={this.state.config} />
+              <PipelinePlot size={[1000, 500]} config={this.state.config} />
             </div>
           </div>
         </Popup>
