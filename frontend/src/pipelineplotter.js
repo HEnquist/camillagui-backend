@@ -160,8 +160,8 @@ class PipelinePlot extends React.Component {
               ch_step*spacing_h,
               spacing_v * (-active_channels/2 + 0.5 + ch_nbr));
             var src_list = stages[stages.length-1][ch_nbr];
-            var src_p = src_list[src_list.length-1].output;
-            var dest_p = io_points.input;
+            src_p = src_list[src_list.length-1].output;
+            dest_p = io_points.input;
             stages[stages.length-1][ch_nbr].push(io_points);
             this.appendLink(links, labels, src_p, dest_p, null);
           }
