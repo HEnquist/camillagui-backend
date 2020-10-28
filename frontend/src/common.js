@@ -176,7 +176,7 @@ export class InputField extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { value: this.props.value };
+    this.state = { value: this.props.value, valid: true };
     this.handleChange = this.handleChange.bind(this);
     this.debounceChange = this.debounceChange.bind(this);
     this.delayTimer = null;
@@ -198,41 +198,67 @@ export class InputField extends React.Component {
 
   handleChange(event) {
     console.log("event value:", event.target.value);
-    var value;
+    var parsedvalue;
     if (this.props.type === "float") {
-      value = parseFloat(event.target.value);
+      parsedvalue = parseFloat(event.target.value);
+      if (isNaN(parsedvalue)) {
+        parsedvalue = null;
+      }
     } else if (this.props.type === "int") {
-      value = parseInt(event.target.value);
+      parsedvalue = parseInt(event.target.value);
+      if (isNaN(parsedvalue)) {
+        parsedvalue = null;
+      }
     } else if (this.props.type === "floatlist") {
-      value = [];
+      parsedvalue = [];
       var values = event.target.value.split(",");
       console.log("---split", values);
+      var tempvalue;
       for (var i = 0; i < values.length; i++) {
-        value.push(parseFloat(values[i]));
+        tempvalue = parseFloat(values[i]);
+        if (isNaN(tempvalue)) {
+          parsedvalue = null;
+          break;
+        }
+        else {
+          parsedvalue.push(tempvalue);
+        }
       }
-      console.log("string to array", value);
+      console.log("string to array", parsedvalue);
     } else {
-      value = event.target.value;
+      parsedvalue = event.target.value;
     }
-    this.newValue = value;
-    this.debounceChange();
+    console.log("parsed value:", parsedvalue);
+    var valid = false;
+    if (parsedvalue != null) {
+      valid = true;
+      this.newValue = parsedvalue;
+      this.debounceChange();
+    }
     //this.props.onChange({ id: this.props.id, value: value });
-    this.setState({ value: value });
+    this.setState({ value: event.target.value, valid: valid});
   }
 
   render() {
-    var type;
-    var value;
-    if (["int", "float"].includes(this.props.type)) {
-      type = "number";
-      value = this.state.value;
-    } else if (this.props.type === "floatlist") {
-      type = "text";
-      value = this.state.value.join(", ");
-      console.log("array to string", value);
-    } else {
-      type = this.props.type;
-      value = this.state.value;
+    var type = "text";
+    var value = this.state.value;
+    //if (["int", "float"].includes(this.props.type)) {
+    //  //type = "number";
+    //  value = this.state.value;
+    //} else if (this.props.type === "floatlist") {
+    //  //type = "text";
+    //  value = this.state.value.join(", ");
+    //  console.log("array to string", value);
+    //} else {
+    //  //type = this.props.type;
+    //  value = this.state.value;
+    //}
+    var bg_color;
+    if (this.state.valid)  {
+      bg_color = "#FFFFFF"
+    }
+    else {
+      bg_color =  "#FFAAAA"
     }
     return (
       <div className="row">
@@ -247,6 +273,7 @@ export class InputField extends React.Component {
             value={value}
             onChange={this.handleChange}
             data-tip={this.props["data-tip"]}
+            style={{backgroundColor: bg_color}}
           />
         </div>
       </div>

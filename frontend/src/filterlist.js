@@ -131,9 +131,12 @@ class FilterParams extends React.Component {
     console.log(value);
     this.setState((state) => {
       if (state.parameters.type === "File") {
-        state.parameters.filename = state.listitems[value];
+        var parameters = cloneDeep(state.parameters);
+        console.log("new filename", state.listitems[value])
+        parameters.filename = state.listitems[value];
       }
-      return { parameters: state.parameters };
+      this.props.onChange(parameters);
+      return { parameters: parameters };
     });
   }
 
@@ -141,7 +144,7 @@ class FilterParams extends React.Component {
     console.log("Open coeff list");
     fetch(FLASKURL + "/api/storedcoeffs", {
       method: "GET", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
+      //mode: "same-origin", // no-cors, *cors, same-origin
       cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     }).then(
       (result) => {
@@ -168,6 +171,23 @@ class FilterParams extends React.Component {
         onChange={this.handleChange}
       />
     );
+    var filterbutton;
+    if ((this.props.type === "Conv") && (this.props.parameters.type === "File")) {
+      filterbutton = (
+        <div>
+        <button data-tip="Pick coefficent file" onClick={this.pickCoeff}>
+          ...
+        </button>
+        <ListSelectPopup
+          key={this.state.listpopup}
+          open={this.state.listpopup}
+          items={this.state.listitems}
+          onClose={this.handleCloseList}
+          onSelect={this.handlePickFile}
+        />
+        </div>
+      );
+    }
     return (
       <div>
         <div className="row">
@@ -180,16 +200,7 @@ class FilterParams extends React.Component {
           />
         </div>
         <div>{filterselect}</div>
-        <button data-tip="Pick coefficent file" onClick={this.pickCoeff}>
-          ...
-        </button>
-        <ListSelectPopup
-          key={this.state.listpopup}
-          open={this.state.listpopup}
-          items={this.state.listitems}
-          onClose={this.handleCloseList}
-          onSelect={this.handlePickFile}
-        />
+        {filterbutton}
       </div>
     );
   }
