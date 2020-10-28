@@ -1,6 +1,7 @@
 import React from "react";
 import "./index.css";
 //import { ParameterInput, InputField } from './common.js';
+import { PipelinePopup } from './pipelineplotter.js';
 import { ParameterInput, EnumSelect, ImagePopup } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
@@ -443,9 +444,9 @@ export class Pipeline extends React.Component {
   plotPipeline = (event) => {
     var i = event.target.id;
     console.log("PLot!!!", i);
-    fetch(FLASKURL + "/api/evalpipeline", {
+    fetch(FLASKURL + "/api/evalpipelinesvg", {
       method: "POST", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
+      //mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
         "Content-Type": "application/json",
       },
@@ -521,10 +522,10 @@ export class Pipeline extends React.Component {
           >
             Plot
           </button>
-          <ImagePopup
+          <PipelinePopup
             key={this.state.popup}
             open={this.state.popup}
-            image={this.state.image}
+            config={this.props.getConfig()}
             onClose={this.handleClose}
           />
         </div>
@@ -532,4 +533,7 @@ export class Pipeline extends React.Component {
     );
   }
 }
+
+
+
 

@@ -3,6 +3,7 @@ import "./index.css";
 import Popup from "reactjs-popup";
 import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
+import {Scatter} from 'react-chartjs-2';
 
 export class BoolSelect extends React.Component {
   constructor(props) {
@@ -637,3 +638,154 @@ export class ImagePopup extends React.Component {
     );
   }
 }
+
+export class ChartPopup extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { open: props.open, data: props.data };
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+  }
+  openModal() {
+    this.setState({ open: true });
+  }
+
+  closeModal() {
+    this.setState({ open: false });
+    this.props.onClose(this.props.id);
+  }
+
+  make_pointlist(xvect, yvect) {
+    var points = xvect.map((x, idx) => {
+      return (
+        {x: x, y: yvect[idx]}
+      );
+    });
+    return points
+  }
+
+  render() {
+    var name = "";
+    console.log(this.state)
+    if (this.state.data.hasOwnProperty("name")) {
+      name = this.state.data["name"];
+    }
+    var data = {
+      labels: [name],
+      datasets: []
+    };
+
+    if (this.state.data.hasOwnProperty("magnitude")) {
+      var gainpoints = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"])
+      data.datasets.push(
+        {
+          label: 'Gain',
+          fill: false,
+          borderColor: 'rgba(0,0,220,1)',
+          pointRadius: 0,
+          showLine: true,
+          data: gainpoints,
+          yAxisID: "gain",
+          xAxisID: "freq",
+        }
+      )
+    }
+
+    if (this.state.data.hasOwnProperty("phase")) {
+      var phasepoints = this.make_pointlist(this.state.data["f"], this.state.data["phase"])
+      data.datasets.push(
+        {
+          label: 'Phase',
+          fill: false,
+          borderColor: 'rgba(0,220,0,1)',
+          pointRadius: 0,
+          showLine: true,
+          data: phasepoints,
+          yAxisID: "phase",
+          xAxisID: "freq",
+        }
+      )
+    }
+
+    if (this.state.data.hasOwnProperty("impulse")) {
+      var impulsepoints = this.make_pointlist(this.state.data["time"], this.state.data["impulse"])
+      data.datasets.push(
+        {
+          label: 'Impulse',
+          fill: false,
+          borderColor: 'rgba(220,0,0,1)',
+          pointRadius: 0,
+          showLine: true,
+          data: impulsepoints,
+          yAxisID: "ampl",
+          xAxisID: "time",
+        }
+      )
+    }
+
+    const options = {
+      scales: {
+        xAxes: [
+          {
+            id: "freq",
+            type: 'logarithmic',
+            position: 'bottom'
+          },
+          {
+            id: "time",
+            type: 'linear',
+            position: 'top'
+          }
+        ],
+        yAxes: [
+          {
+            id: "gain",
+            type: 'linear',
+            position: 'left',
+            ticks: {
+              fontColor: 'rgba(0,0,220,1)'
+            }
+          },
+          {
+            id: "phase",
+            type: 'linear',
+            position: 'right',
+            ticks: {
+              fontColor: 'rgba(0,220,0,1)',
+              suggestedMin: -180,
+              suggestedMax: 180
+            }
+          },
+          {
+            id: "ampl",
+            type: 'linear',
+            position: 'right',
+            ticks: {
+              fontColor: 'rgba(220,0,0,1)'
+            }
+          }
+        ]
+      }
+    }
+
+    return (
+      <div>
+        <Popup
+          open={this.state.open}
+          closeOnDocumentClick
+          onClose={this.closeModal}
+        >
+          <div className="modal">
+            <span className="close" onClick={this.closeModal}>
+              ✖
+            </span>
+            <div>
+              <Scatter data={data} options={options} />
+            </div>
+          </div>
+        </Popup>
+      </div>
+    );
+  }
+}
+
