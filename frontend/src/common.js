@@ -701,9 +701,16 @@ export class ChartPopup extends React.Component {
       labels: [name],
       datasets: []
     };
+    var x_time = false;
+    var x_freq = false;
+    var y_phase = false;
+    var y_gain = false;
+    var y_ampl = false;
 
     if (this.state.data.hasOwnProperty("magnitude")) {
       var gainpoints = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"])
+      x_freq = true;
+      y_gain = true;
       data.datasets.push(
         {
           label: 'Gain',
@@ -720,6 +727,8 @@ export class ChartPopup extends React.Component {
 
     if (this.state.data.hasOwnProperty("phase")) {
       var phasepoints = this.make_pointlist(this.state.data["f"], this.state.data["phase"])
+      x_freq = true;
+      y_phase = true;
       data.datasets.push(
         {
           label: 'Phase',
@@ -736,6 +745,8 @@ export class ChartPopup extends React.Component {
 
     if (this.state.data.hasOwnProperty("impulse")) {
       var impulsepoints = this.make_pointlist(this.state.data["time"], this.state.data["impulse"])
+      x_time = true;
+      y_ampl = true;
       data.datasets.push(
         {
           label: 'Impulse',
@@ -750,49 +761,68 @@ export class ChartPopup extends React.Component {
       )
     }
 
-    const options = {
+    var options = {
       scales: {
-        xAxes: [
-          {
-            id: "freq",
-            type: 'logarithmic',
-            position: 'bottom'
-          },
-          {
-            id: "time",
-            type: 'linear',
-            position: 'top'
-          }
-        ],
-        yAxes: [
-          {
-            id: "gain",
-            type: 'linear',
-            position: 'left',
-            ticks: {
-              fontColor: 'rgba(0,0,220,1)'
-            }
-          },
-          {
-            id: "phase",
-            type: 'linear',
-            position: 'right',
-            ticks: {
-              fontColor: 'rgba(0,220,0,1)',
-              suggestedMin: -180,
-              suggestedMax: 180
-            }
-          },
-          {
-            id: "ampl",
-            type: 'linear',
-            position: 'right',
-            ticks: {
-              fontColor: 'rgba(220,0,0,1)'
-            }
-          }
-        ]
+        xAxes: [],
+        yAxes: []
       }
+    }
+
+    if (x_freq) {
+      options.scales.xAxes.push(
+        {
+          id: "freq",
+          type: 'logarithmic',
+          position: 'bottom'
+        }
+      );
+    }
+    if (x_time) {
+      options.scales.xAxes.push(
+        {
+          id: "time",
+          type: 'linear',
+          position: 'top'
+        }
+      );
+    }
+    if (y_gain) {
+      options.scales.yAxes.push(
+        {
+          id: "gain",
+          type: 'linear',
+          position: 'left',
+          ticks: {
+            fontColor: 'rgba(0,0,220,1)'
+          }
+        },
+      );
+    }
+    if (y_phase) {
+      options.scales.yAxes.push(
+        {
+          id: "phase",
+          type: 'linear',
+          position: 'right',
+          ticks: {
+            fontColor: 'rgba(0,220,0,1)',
+            suggestedMin: -180,
+            suggestedMax: 180
+          }
+        },
+      );
+    }
+    if (y_ampl) {
+      options.scales.xAxes.push(
+        {
+          id: "ampl",
+          type: 'linear',
+          position: 'right',
+          ticks: {
+            fontColor: 'rgba(220,0,0,1)'
+          }
+        }
+      );
     }
 
     return (
