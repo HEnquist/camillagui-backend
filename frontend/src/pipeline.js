@@ -1,10 +1,11 @@
-import React from 'react';
-import './index.css';
+import React from "react";
+import "./index.css";
 //import { ParameterInput, InputField } from './common.js';
-import { ParameterInput, EnumSelect, ControlledPopup } from './common.js';
-import cloneDeep from 'lodash/cloneDeep';
-import { FLASKURL } from './index.tsx'
-
+import { PipelinePopup } from './pipelineplotter.js';
+import { ParameterInput, EnumSelect, ImagePopup } from "./common.js";
+import cloneDeep from "lodash/cloneDeep";
+import isEqual from "lodash/isEqual";
+import { FLASKURL } from "./index.tsx";
 
 export class NameSelect extends React.Component {
   constructor(props) {
@@ -13,37 +14,57 @@ export class NameSelect extends React.Component {
     this.state = { value: this.props.value };
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.value, prevProps.value)) {
+      this.setState({ value: this.props.value });
+    }
+  }
+
   handleChange(event) {
     this.setState({ value: event.target.value });
     this.props.onChange({ idx: this.props.idx, value: event.target.value });
   }
 
   deleteName = () => {
-    this.props.onDelete(this.props.idx)
-  }
+    this.props.onDelete(this.props.idx);
+  };
 
   render() {
     var vals = this.props.allnames;
     if (!vals) {
       return "";
     }
-    var options = vals.map(
-      (val) => {
-        return (
-          <option key={val} value={val}>{val}</option>
-        )
-      }
-    )
+    var options = vals.map((val) => {
+      return (
+        <option key={val} value={val}>
+          {val}
+        </option>
+      );
+    });
     var button;
     if (this.props.show_button) {
-      button = <div className="column right">
-        <button className="deletebutton" data-tip="Remove this item from the list" onClick={this.deleteName}>✖</button>
-      </div>;
+      button = (
+        <div className="column right">
+          <button
+            className="deletebutton"
+            data-tip="Remove this item from the list"
+            onClick={this.deleteName}
+          >
+            ✖
+          </button>
+        </div>
+      );
     }
     return (
       <div className="row">
         <div className="column left">
-          <select name={this.props.desc} id={this.props.desc} value={this.state.value} data-tip="Name of the item" onChange={this.handleChange}>
+          <select
+            name={this.props.desc}
+            id={this.props.desc}
+            value={this.state.value}
+            data-tip="Name of the item"
+            onChange={this.handleChange}
+          >
             {options}
           </select>
         </div>
@@ -60,28 +81,37 @@ export class MixerStep extends React.Component {
     this.state = { name: this.props.name };
   }
 
+  componentDidUpdate(prevProps) {
+    if (!isEqual(this.props.config, prevProps.config)) {
+      this.setState({ config: this.props.config });
+    }
+  }
+
   handleChange(event) {
-    console.log("MixerStep change name", event.value)
-    this.setState(prevState => {
+    console.log("MixerStep change name", event.value);
+    this.setState((prevState) => {
       prevState.value = event.value;
       this.props.onChange(prevState.value);
       return prevState;
-    })
+    });
   }
 
   render() {
     return (
-      <NameSelect value={this.state.name} allnames={this.props.allnames} onChange={this.handleChange} />
+      <NameSelect
+        value={this.state.name}
+        allnames={this.props.allnames}
+        onChange={this.handleChange}
+      />
     );
   }
 }
-
 
 export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: this.props.config, popup: false, image: null };
+    this.state = { config: cloneDeep(this.props.config), popup: false, image: null };
   }
 
   plotFilterStep = (event) => {
@@ -89,114 +119,158 @@ export class FilterStep extends React.Component {
     const fullconf = this.props.getConfig();
     const plotconf = { index: this.props.idx, config: fullconf };
     fetch(FLASKURL + "/api/evalfilterstep", {
-      method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'same-origin', // no-cors, *cors, same-origin
+      method: "POST", // *GET, POST, PUT, DELETE, etc.
+      mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
-      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
       body: JSON.stringify(plotconf), // body data type must match "Content-Type" header
-    })
-      .then(
-        (result) => {
-          result.blob().then(data => {
-            this.setState(state => {
-              return { popup: true, image: data }
-            });
-          })
-          console.log("OK", result);
-        },
-        (error) => {
-          console.log("Failed", error);
-        }
-      )
+    }).then(
+      (result) => {
+        result.blob().then((data) => {
+          this.setState((state) => {
+            return { popup: true, image: data };
+          });
+        });
+        console.log("OK", result);
+      },
+      (error) => {
+        console.log("Failed", error);
+      }
+    );
+  };
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
+    }
   }
 
   handleClose = () => {
-    this.setState(state => {
+    this.setState((state) => {
       return { popup: false };
-    })
-  }
+    });
+  };
 
   handleChange = (event) => {
-    console.log("new names", event)
-    this.setState(state => {
+    console.log("new names", event);
+    this.setState((state) => {
       state.config.names = event;
       this.props.onChange({ idx: this.props.idx, value: state.config });
       return state;
     });
-  }
+  };
 
   handleParChange = (event) => {
-    this.setState(state => {
+    this.setState((state) => {
       state.config.channel = event.channel;
       this.props.onChange({ idx: this.props.idx, value: state.config });
       return state;
     });
-  }
+  };
 
   render() {
     return (
       <div className="pipelinestep">
-        <ParameterInput parameters={this.state.config} onChange={this.handleParChange} />
+        <ParameterInput
+          parameters={this.state.config}
+          onChange={this.handleParChange}
+        />
         <div>Names</div>
-        <NameList names={this.state.config.names} allnames={this.props.allnames} onChange={this.handleChange} />
-        <button className="plotbutton" data-tip="Plot response of this step" onClick={this.plotFilterStep} id="plot" >Plot</button>
-        <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
-      </div >
+        <NameList
+          names={this.state.config.names}
+          allnames={this.props.allnames}
+          onChange={this.handleChange}
+        />
+        <button
+          className="plotbutton"
+          data-tip="Plot response of this step"
+          onClick={this.plotFilterStep}
+          id="plot"
+        >
+          Plot
+        </button>
+        <ImagePopup
+          key={this.state.popup}
+          open={this.state.popup}
+          image={this.state.image}
+          onClose={this.handleClose}
+        />
+      </div>
     );
   }
 }
-
 
 // ---------------  NameList ---------------------------------------------
 class NameList extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { names: this.props.names };
+    this.state = { names: cloneDeep(this.props.names) };
     //this.handleChange = this.handleChange.bind(this);
+  }
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.names, this.state.names)) {
+      this.setState({ names: cloneDeep(this.props.names) });
+    }
   }
 
   addName = () => {
     //event.preventDefault();
-    this.setState(state => {
-      state.names.push(cloneDeep(this.props.allnames[0]))
+    this.setState((state) => {
+      state.names.push(cloneDeep(this.props.allnames[0]));
       this.props.onChange(state.names);
       return state;
     });
-  }
+  };
 
   deleteName = (idx) => {
-    console.log("Delete a name", idx)
-    this.setState(prevState => {
+    console.log("Delete a name", idx);
+    this.setState((prevState) => {
       prevState.names.splice(idx, 1);
       this.props.onChange(prevState.names);
       return prevState;
-    })
-  }
+    });
+  };
 
   handleChange = (event) => {
-    console.log("change name", event)
-    this.setState(prevState => {
+    console.log("change name", event);
+    this.setState((prevState) => {
       prevState.names[event.idx] = event.value;
       this.props.onChange(prevState.names);
       return prevState;
-    })
-  }
+    });
+  };
 
   render() {
-    var names = this.state.names.map(
-      (name, idx) => {
-        return (
-          <NameSelect key={name + "_" + idx.toString()} idx={idx} name={name} value={name} allnames={this.props.allnames} onChange={this.handleChange} onDelete={this.deleteName} show_button={true} />
-        )
-      }
-    )
+    var names = this.state.names.map((name, idx) => {
+      return (
+        <NameSelect
+          key={name + "_" + idx.toString()}
+          idx={idx}
+          name={name}
+          value={name}
+          allnames={this.props.allnames}
+          onChange={this.handleChange}
+          onDelete={this.deleteName}
+          show_button={true}
+        />
+      );
+    });
     return (
       <div className="namelist">
         {names}
-        <div><button className="addbutton" data-tip="Add a filter to the list" onClick={this.addName}>+</button></div>
+        <div>
+          <button
+            className="addbutton"
+            data-tip="Add a filter to the list"
+            onClick={this.addName}
+          >
+            +
+          </button>
+        </div>
       </div>
     );
   }
@@ -207,72 +281,98 @@ class PipelineStep extends React.Component {
   constructor(props) {
     super(props);
     //console.log(this.props)
-    this.state = { config: this.props.config };
+    this.state = { config: cloneDeep(this.props.config) };
     this.handleSelect = this.handleSelect.bind(this);
   }
 
   templates = {
-    "Mixer": {
+    Mixer: {
       type: "Mixer",
       name: "",
     },
-    "Filter": {
+    Filter: {
       type: "Filter",
       channel: 0,
       names: [],
+    },
+  };
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
     }
   }
 
   handleMixerChange = (mixer) => {
-    console.log("handleMixerChange", mixer)
-    this.setState(prevState => {
+    console.log("handleMixerChange", mixer);
+    this.setState((prevState) => {
       prevState.config.name = mixer;
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
-    })
-  }
+    });
+  };
 
   handleFilterChange = (filter) => {
-    console.log("handleFilterChange", filter)
-    this.setState(prevState => {
+    console.log("handleFilterChange", filter);
+    this.setState((prevState) => {
       prevState.config = filter.value;
       //this.props.onChange(filter);
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
-    })
-  }
+    });
+  };
 
   handleSelect(event) {
-    console.log("change step type", event)
-    this.setState(prevState => {
-      var templ = cloneDeep(this.templates[event])
+    console.log("change step type", event);
+    this.setState((prevState) => {
+      var templ = cloneDeep(this.templates[event]);
       prevState.config = templ;
       if (event === "Mixer") {
         templ["name"] = this.props.mixers[0];
       }
       this.props.onChange({ idx: this.props.idx, value: prevState.config });
       return prevState;
-    })
+    });
   }
 
   render() {
     var fields;
     if (this.state.config.type === "Mixer") {
-      fields =
+      fields = (
         <div className="row">
-          <MixerStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} name={this.state.config.name} allnames={this.props.mixers} onChange={this.handleMixerChange} />
-        </div>;
-    }
-    else {
-      fields =
+          <MixerStep
+            key={this.props.idx}
+            idx={this.props.idx}
+            name={this.state.config.name}
+            allnames={this.props.mixers}
+            onChange={this.handleMixerChange}
+          />
+        </div>
+      );
+    } else {
+      fields = (
         <div className="row">
-          <FilterStep key={this.props.idx.toString() + JSON.stringify(this.state.config)} idx={this.props.idx} config={this.state.config} allnames={this.props.filters} onChange={this.handleFilterChange} getConfig={this.props.getConfig} />
-        </div>;
+          <FilterStep
+            key={this.props.idx}
+            idx={this.props.idx}
+            config={this.state.config}
+            allnames={this.props.filters}
+            onChange={this.handleFilterChange}
+            getConfig={this.props.getConfig}
+          />
+        </div>
+      );
     }
     return (
       <div>
         <div className="row">
-          <EnumSelect desc="type" data-tip="Step type, Mixer or Filter" type="pipelineitem" value={this.state.config.type} onSelect={this.handleSelect} />
+          <EnumSelect
+            desc="type"
+            data-tip="Step type, Mixer or Filter"
+            type="pipelineitem"
+            value={this.state.config.type}
+            onSelect={this.handleSelect}
+          />
         </div>
         {fields}
       </div>
@@ -280,13 +380,12 @@ class PipelineStep extends React.Component {
   }
 }
 
-
 // ---------------  Pipeline ---------------------------------------------
 export class Pipeline extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: props.config, popup: false, image: null };
+    this.state = { config: cloneDeep(props.config), popup: false, image: null };
     //this.state = {filters: {}, nbr: 0};
   }
 
@@ -294,40 +393,48 @@ export class Pipeline extends React.Component {
     type: "Filter",
     channel: 0,
     names: [],
+  };
+
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
+      this.setState({ config: cloneDeep(this.props.config) });
+    }
   }
 
   handleStepUpdate = (mixValue) => {
-    console.log("MixerList got:", mixValue)
-    this.setState(prevState => {
+    console.log("MixerList got:", mixValue);
+    this.setState((prevState) => {
       prevState.config[mixValue.idx] = mixValue.value;
       this.props.onChange(prevState.config);
       return prevState;
-    })
-  }
+    });
+  };
 
   updateName = (event) => {
     console.log("new name:", event);
-    this.setState(prevState => {
+    this.setState((prevState) => {
       var mixers = prevState.mixers;
-      delete Object.assign(mixers, { [event.value]: mixers[event.id] })[event.id];
+      delete Object.assign(mixers, { [event.value]: mixers[event.id] })[
+        event.id
+      ];
       this.props.onChange(prevState.config);
       return prevState;
-    })
-  }
+    });
+  };
 
   addStep = () => {
     //event.preventDefault();
-    this.setState(state => {
-      state.config.push(cloneDeep(this.template))
+    this.setState((state) => {
+      state.config.push(cloneDeep(this.template));
       this.props.onChange(state.config);
       return state;
     });
-  }
+  };
 
   removeStep = (event) => {
     var i = event.target.id;
     console.log("delete", i);
-    this.setState(state => {
+    this.setState((state) => {
       state.config.splice(i, 1);
       this.props.onChange(state.config);
       return state;
@@ -336,61 +443,91 @@ export class Pipeline extends React.Component {
 
   plotPipeline = (event) => {
     var i = event.target.id;
-    console.log("PLot!!!", i,)
-    fetch(FLASKURL + "/api/evalpipeline", {
-      method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'same-origin', // no-cors, *cors, same-origin
+    console.log("PLot!!!", i);
+    fetch(FLASKURL + "/api/evalpipelinesvg", {
+      method: "POST", // *GET, POST, PUT, DELETE, etc.
+      //mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
-      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-      body: JSON.stringify(this.props.getConfig()) // body data type must match "Content-Type" header
-    })
-      .then(
-        (result) => {
-          result.blob().then(data => {
-            this.setState(state => {
-              return { popup: true, image: data }
-            });
-          })
-          console.log("OK", result);
-        },
-        (error) => {
-          console.log("Failed", error);
-        }
-      )
-  }
+      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+      body: JSON.stringify(this.props.getConfig()), // body data type must match "Content-Type" header
+    }).then(
+      (result) => {
+        result.blob().then((data) => {
+          this.setState((state) => {
+            return { popup: true, image: data };
+          });
+        });
+        console.log("OK", result);
+      },
+      (error) => {
+        console.log("Failed", error);
+      }
+    );
+  };
 
   handleClose = () => {
-    this.setState(state => {
+    this.setState((state) => {
       return { popup: false };
-    })
-  }
+    });
+  };
 
   render() {
     console.log("render:", this.state);
     return (
       <div>
         <div className="pipeline">
-          {
-            this.state.config.map(
-              (step, i) => {
-                return (
-                  <div key={i.toString() + JSON.stringify(step)} className="pipelinestep">
-                    <div>
-                      <PipelineStep config={step} idx={i} mixers={this.props.mixers} filters={this.props.filters} onChange={this.handleStepUpdate} getConfig={this.props.getConfig} />
-                    </div>
-                    <div>
-                      <button className="deletebutton" data-tip="Delete this step" onClick={this.removeStep} id={i}>✖</button>
-                    </div>
-                  </div>
-                )
-              }
-            )
-          }
-          <button className="addbutton" data-tip="Add a pipeline step" onClick={this.addStep}>+</button>
-          <button className="plotbutton" data-tip="Plot the pipeline" onClick={this.plotPipeline} id="plot" >Plot</button>
-          <ControlledPopup key={this.state.popup} open={this.state.popup} image={this.state.image} onClose={this.handleClose} />
+          {this.state.config.map((step, i) => {
+            return (
+              <div
+                key={i}
+                className="pipelinestep"
+              >
+                <div>
+                  <PipelineStep
+                    config={step}
+                    idx={i}
+                    mixers={this.props.mixers}
+                    filters={this.props.filters}
+                    onChange={this.handleStepUpdate}
+                    getConfig={this.props.getConfig}
+                  />
+                </div>
+                <div>
+                  <button
+                    className="deletebutton"
+                    data-tip="Delete this step"
+                    onClick={this.removeStep}
+                    id={i}
+                  >
+                    ✖
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          <button
+            className="addbutton"
+            data-tip="Add a pipeline step"
+            onClick={this.addStep}
+          >
+            +
+          </button>
+          <button
+            className="plotbutton"
+            data-tip="Plot the pipeline"
+            onClick={this.plotPipeline}
+            id="plot"
+          >
+            Plot
+          </button>
+          <PipelinePopup
+            key={this.state.popup}
+            open={this.state.popup}
+            config={this.props.getConfig()}
+            onClose={this.handleClose}
+          />
         </div>
       </div>
     );
@@ -400,7 +537,3 @@ export class Pipeline extends React.Component {
 
 
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-//serviceWorker.unregister();
