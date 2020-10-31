@@ -682,10 +682,10 @@ export class ChartPopup extends React.Component {
     this.props.onClose(this.props.id);
   }
 
-  make_pointlist(xvect, yvect) {
+  make_pointlist(xvect, yvect, scaling_x, scaling_y) {
     var points = xvect.map((x, idx) => {
       return (
-        {x: x, y: yvect[idx]}
+        {x: scaling_x*x, y: scaling_y*yvect[idx]}
       );
     });
     return points
@@ -708,7 +708,7 @@ export class ChartPopup extends React.Component {
     var y_ampl = false;
 
     if (this.state.data.hasOwnProperty("magnitude")) {
-      var gainpoints = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"])
+      var gainpoints = this.make_pointlist(this.state.data["f"], this.state.data["magnitude"], 1.0, 1.0)
       x_freq = true;
       y_gain = true;
       data.datasets.push(
@@ -726,7 +726,7 @@ export class ChartPopup extends React.Component {
     }
 
     if (this.state.data.hasOwnProperty("phase")) {
-      var phasepoints = this.make_pointlist(this.state.data["f"], this.state.data["phase"])
+      var phasepoints = this.make_pointlist(this.state.data["f"], this.state.data["phase"], 1.0, 1.0)
       x_freq = true;
       y_phase = true;
       data.datasets.push(
@@ -744,7 +744,7 @@ export class ChartPopup extends React.Component {
     }
 
     if (this.state.data.hasOwnProperty("impulse")) {
-      var impulsepoints = this.make_pointlist(this.state.data["time"], this.state.data["impulse"])
+      var impulsepoints = this.make_pointlist(this.state.data["time"], this.state.data["impulse"], 1000.0, 1.0)
       x_time = true;
       y_ampl = true;
       data.datasets.push(
@@ -773,7 +773,11 @@ export class ChartPopup extends React.Component {
         {
           id: "freq",
           type: 'logarithmic',
-          position: 'bottom'
+          position: 'bottom',
+          scaleLabel: {
+            display: true,
+            labelString: 'Frequency, Hz'
+          }
         }
       );
     }
@@ -782,7 +786,11 @@ export class ChartPopup extends React.Component {
         {
           id: "time",
           type: 'linear',
-          position: 'top'
+          position: 'top',
+          scaleLabel: {
+            display: true,
+            labelString: 'Time, ms'
+          }
         }
       );
     }
@@ -793,6 +801,11 @@ export class ChartPopup extends React.Component {
           type: 'linear',
           position: 'left',
           ticks: {
+            fontColor: 'rgba(0,0,220,1)'
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Gain, dB',
             fontColor: 'rgba(0,0,220,1)'
           }
         },
@@ -808,17 +821,27 @@ export class ChartPopup extends React.Component {
             fontColor: 'rgba(0,220,0,1)',
             suggestedMin: -180,
             suggestedMax: 180
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Phase, deg',
+            fontColor: 'rgba(0,220,0,1)'
           }
         },
       );
     }
     if (y_ampl) {
-      options.scales.xAxes.push(
+      options.scales.yAxes.push(
         {
           id: "ampl",
           type: 'linear',
           position: 'right',
           ticks: {
+            fontColor: 'rgba(220,0,0,1)'
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Amplitude',
             fontColor: 'rgba(220,0,0,1)'
           }
         }
