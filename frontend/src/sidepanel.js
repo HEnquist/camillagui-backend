@@ -73,8 +73,8 @@ export class SidePanel extends React.Component {
     this.uploadCoeff = this.uploadCoeff.bind(this);
   }
 
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.config, prevProps.config)) {
+  componentDidUpdate() {
+    if (!isEqual(this.props.config, this.state.config)) {
       this.setState({ config: cloneDeep(this.props.config) });
     }
   }
