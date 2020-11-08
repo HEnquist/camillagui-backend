@@ -23,7 +23,6 @@ class CamillaConfig extends React.Component<any, any> {
     this.handleConfig = this.handleConfig.bind(this);
     this.getFullConfig = this.getFullConfig.bind(this);
     this.switchTab = this.switchTab.bind(this);
-    //this.state = {value: this.props.value};
     this.state = {
       activetab: 0,
       config: {

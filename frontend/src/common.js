@@ -1,6 +1,7 @@
 import React from "react";
 import "./index.css";
 import Popup from "reactjs-popup";
+import 'reactjs-popup/dist/index.css';
 import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
 import {Scatter} from 'react-chartjs-2';
