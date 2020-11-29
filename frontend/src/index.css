@@ -77,7 +77,6 @@ select{
   padding: 5px;
   display: flex;
   flex-wrap: wrap;
-
 }
 
 .mappings {
@@ -286,5 +285,12 @@ select{
   border: 1px inset #9090B0;
   padding: 4px;
 } 
+
+.slidecontainer {
+  box-sizing: border-box;
+  width: 100%;
+  float: left;
+  display: flex;
+}
 
 
