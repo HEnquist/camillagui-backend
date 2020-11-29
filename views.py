@@ -32,6 +32,8 @@ async def get_param(request):
                 result = cdsp.get_state()
             except IOError:
                 result = "offline"
+    elif name == "volume":
+        result = cdsp.get_volume()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
     elif name == "signalrangedb":
@@ -57,6 +59,24 @@ async def get_param(request):
     print(result)
     return web.Response(text=str(result))
 
+async def get_list_param(request):
+    # Get a parameter value as a list
+    name = request.match_info["name"]
+    print(name)
+    cdsp = request.app["CAMILLA"]
+    if name == "capturesignalrms":
+        result = cdsp.get_capture_signal_rms()
+    elif name == "capturesignalpeak":
+        result = cdsp.get_capture_signal_peak()
+    elif name == "playbacksignalrms":
+        result = cdsp.get_playback_signal_rms()
+    elif name == "playbacksignalpeak":
+        result = cdsp.get_playback_signal_peak()
+    else:
+        result = "[]"
+    print(result)
+    return web.json_response(result)
+
 
 async def set_param(request):
     # Set a parameter
@@ -65,7 +85,9 @@ async def set_param(request):
     # value = request.get_data().decode()
     print(name, value)
     cdsp = request.app["CAMILLA"]
-    if name == "updateinterval":
+    if name == "volume":
+        cdsp.set_volume(value)
+    elif name == "updateinterval":
         cdsp.set_update_interval(value)
     elif name == "configname":
         cdsp.set_config_name(value)
