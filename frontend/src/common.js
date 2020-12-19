@@ -129,6 +129,8 @@ export class EnumSelect extends React.Component {
       "Fweighted441",
       "Shibata441",
       "Shibata48",
+      "ShibataLow441",
+      "ShibataLow48",
       "None",
     ],
     pipelineitem: ["Mixer", "Filter"],
