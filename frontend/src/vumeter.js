@@ -2,6 +2,21 @@ import React from "react";
 import "./index.css";
 import { Line } from "rc-progress";
 
+export class VuMeterGroup extends React.Component {
+  render() {
+    var meters = this.props.level.map((value, idx) => {
+      return (
+        <VuMeter level={value} clipped={this.props.clipped} />
+      );
+    });
+    return (
+      <div>
+        {meters}
+      </div>
+    )
+  }
+}
+
 export class VuMeter extends React.Component {
   render() {
     var level = this.props.level;

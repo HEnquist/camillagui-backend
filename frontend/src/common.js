@@ -67,6 +67,7 @@ export class EnumSelect extends React.Component {
       "Conv",
       "Delay",
       "Gain",
+      "Volume",
       "Dither",
       "DiffEq",
     ],
@@ -128,6 +129,8 @@ export class EnumSelect extends React.Component {
       "Fweighted441",
       "Shibata441",
       "Shibata48",
+      "ShibataLow441",
+      "ShibataLow48",
       "None",
     ],
     pipelineitem: ["Mixer", "Filter"],
@@ -442,6 +445,11 @@ export class ParameterInput extends React.Component {
       type: "int",
       desc: "queuelimit",
       tooltip: "Length limit for internal queues",
+    },
+    ramp_time: {
+      type: "float",
+      desc: "ramp_time",
+      tooltip: "Volume change ramp time in ms",
     },
     read_bytes: {
       type: "int",

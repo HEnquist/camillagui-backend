@@ -4,7 +4,8 @@ import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
 import { FLASKURL } from "./index.tsx";
 import camillalogo from "./camilladsp.svg";
-import { VuMeter } from "./vumeter.js";
+import { VuMeterGroup } from "./vumeter.js";
+import { VolumeSlider } from "./volumeslider.js";
 
 export class ErrorBox extends React.Component {
   constructor(props) {
@@ -52,7 +53,8 @@ export class SidePanel extends React.Component {
     this.state = {
       config: cloneDeep(this.props.config),
       msg: "",
-      signalrange: 0.0,
+      capture_rms: [],
+      playback_rms: [],
       state: "IDLE",
       rateadjust: 0.0,
       capturerate: 0,
@@ -71,6 +73,7 @@ export class SidePanel extends React.Component {
     this.loadYaml = this.loadYaml.bind(this);
     this.uploadConfig = this.uploadConfig.bind(this);
     this.uploadCoeff = this.uploadCoeff.bind(this);
+    this.setVolume = this.setVolume.bind(this);
   }
 
   componentDidUpdate() {
@@ -80,7 +83,7 @@ export class SidePanel extends React.Component {
   }
 
   async componentDidMount() {
-    var intervalId = setInterval(this.timer, 1000);
+    var intervalId = setInterval(this.timer, 500);
     // store intervalId in the state so it can be accessed later:
     this.setState({ intervalId: intervalId });
     try {
@@ -108,15 +111,23 @@ export class SidePanel extends React.Component {
   async timer() {
     const state_req = await fetch(FLASKURL + "/api/getparam/state");
     const processingstate = await state_req.text();
-    var signalrange = "";
+    //var signalrange = "";
+    var capture_rms = [];
+    var playback_rms = [];
     var capturerate = "";
     var rateadjust = "";
     var bufferlevel = "";
     var nbrclipped = "";
     try {
-      const sigrange_req = await fetch(
-        FLASKURL + "/api/getparam/signalrangedb"
+      const capt_rms_req = await fetch(
+        FLASKURL + "/api/getlistparam/capturesignalrms"
       );
+      const pb_rms_req = await fetch(
+        FLASKURL + "/api/getlistparam/playbacksignalrms"
+      );
+      //const sigrange_req = await fetch(
+      //  FLASKURL + "/api/getparam/signalrangedb"
+      //);
       const capturerate_req = await fetch(
         FLASKURL + "/api/getparam/capturerate"
       );
@@ -127,7 +138,9 @@ export class SidePanel extends React.Component {
       const nbrclipped_req = await fetch(
         FLASKURL + "/api/getparam/clippedsamples"
       );
-      signalrange = parseFloat(await sigrange_req.text());
+      //signalrange = parseFloat(await sigrange_req.text());
+      capture_rms = await capt_rms_req.json();
+      playback_rms = await pb_rms_req.json();
       capturerate = parseInt(await capturerate_req.text());
       rateadjust = parseFloat(await rateadjust_req.text());
       bufferlevel = parseInt(await bufferlevel_req.text());
@@ -135,7 +148,7 @@ export class SidePanel extends React.Component {
     } catch (err) {
       console.log("camilladsp offline");
     }
-    console.log(processingstate, signalrange, capturerate, rateadjust);
+    console.log(processingstate, capturerate, rateadjust);
     this.setState((state) => {
       var clipped = false;
       if (state.nbrclipped >= 0 && nbrclipped > state.nbrclipped) {
@@ -143,7 +156,8 @@ export class SidePanel extends React.Component {
       }
       return {
         state: processingstate,
-        signalrange: signalrange,
+        capture_rms: capture_rms,
+        playback_rms: playback_rms,
         capturerate: capturerate,
         rateadjust: rateadjust,
         bufferlevel: bufferlevel,
@@ -170,10 +184,27 @@ export class SidePanel extends React.Component {
     }
   }
 
+  async setVolume(value) {
+    const vol_req = await fetch(FLASKURL + "/api/setparam/volume", {
+      method: "POST", // *GET, POST, PUT, DELETE, etc.
+      //mode: "same-origin", // no-cors, *cors, same-origin
+      headers: {
+        "Content-Type": "text/plain; charset=us-ascii",
+      },
+      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+      body: value, // body data type must match "Content-Type" header
+    });
+    const reply = await vol_req.text();
+    console.log(reply);
+    this.setState((state) => {
+      return { volume: value, msg: reply };
+    });
+  }
+
   async applyConfig() {
     const conf_req = await fetch(FLASKURL + "/api/setconfig", {
       method: "POST", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
+      //mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
         "Content-Type": "application/json",
       },
@@ -190,7 +221,7 @@ export class SidePanel extends React.Component {
   async saveConfig() {
     const conf_req = await fetch(FLASKURL + "/api/configtoyml", {
       method: "POST", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
+      //mode: "same-origin", // no-cors, *cors, same-origin
       headers: {
         "Content-Type": "application/json",
       },
@@ -270,15 +301,21 @@ export class SidePanel extends React.Component {
           <img src={camillalogo} alt="graph" width="100%" height="100%" />
         </div>
         <div className="sidepanelelement">
-          <VuMeter
-            level={this.state.signalrange}
+          <VuMeterGroup
+            level={this.state.capture_rms}
             clipped={this.state.clipped}
           />
         </div>
-        <div className="sidepanelelement">State: {this.state.state}</div>
         <div className="sidepanelelement">
-          Signal range: {this.state.signalrange}
+          <VuMeterGroup
+            level={this.state.playback_rms}
+            clipped={this.state.clipped}
+          />
         </div>
+        <div className="sidepanelelement">
+          <VolumeSlider value="0" onChange={this.setVolume} /> 
+        </div>
+        <div className="sidepanelelement">State: {this.state.state}</div>
         <div className="sidepanelelement">
           Capture samplerate: {this.state.capturerate}
         </div>
