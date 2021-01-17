@@ -101,6 +101,7 @@ export class SidePanel extends React.Component {
     } catch (err) {
       console.log("camilladsp offline");
     }
+    this.loadCurrentConfig();
   }
 
   componentWillUnmount() {
@@ -265,6 +266,15 @@ export class SidePanel extends React.Component {
     });
   }
 
+  loadCurrentConfig() {
+    this.loadYaml(FLASKURL + "/api/getcurrentconfigfile", {
+          method: "GET",
+          headers: {"Content-Type": "text/html"},
+          cache: "no-cache",
+        }
+    );
+  }
+
   loadFile(event) {
     var file = event.target.files[0];
     var reader = new FileReader();
@@ -272,20 +282,18 @@ export class SidePanel extends React.Component {
     reader.onload = (readerEvent) => {
       var content = readerEvent.target.result;
       console.log(content);
-      this.loadYaml(content);
+      this.loadYaml(FLASKURL + "/api/ymltojson", {
+            method: "POST",
+            headers: { "Content-Type": "text/html" },
+            cache: "no-cache",
+            body: content,
+          }
+      );
     };
   }
 
-  async loadYaml(data) {
-    const conf_req = await fetch(FLASKURL + "/api/ymltojson", {
-      method: "POST",
-      //mode: "same-origin",
-      headers: {
-        "Content-Type": "text/html",
-      },
-      cache: "no-cache",
-      body: data,
-    });
+  async loadYaml(url, requestParams) {
+    const conf_req = await fetch(url, requestParams);
     const config = await conf_req.json();
     console.log(config);
     this.setState((state) => {
