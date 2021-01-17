@@ -109,7 +109,14 @@ export class Capture extends React.Component {
       skip_bytes: 0,
       read_bytes: 0,
     },
-    Stdin: { type: "Stdin", channels: 2, format: "S32LE" },
+    Stdin: {
+      type: "Stdin",
+      channels: 2,
+      format: "S32LE",
+      extra_samples: 0,
+      skip_bytes: 0,
+      read_bytes: 0,
+    },
     Pulse: { type: "Pulse", channels: 2, format: "S32LE", device: "something" },
     Wasapi: {
       type: "Wasapi",
