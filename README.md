@@ -69,10 +69,13 @@ camilla_port: 1234
 port: 5000
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
+current_config: "~/camilladsp/configs/current_config.yaml"
 ```
 The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
-The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui. 
+The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
+
+`current_config` is the CamillaDSP config file that is loaded into the web interface when it is opened. The current settings from the web interface are also saved to this file automatically, when they are applied to CamillaDSP. Leave this setting blank, if you always want to start with the default config and not save to a default file.  
 
 
 ## Running

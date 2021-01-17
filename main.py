@@ -7,6 +7,7 @@ import sys
 app = web.Application()
 app["config_dir"] = config["config_dir"]
 app["coeff_dir"] = config["coeff_dir"]
+app["current_config"] = config["current_config"]
 setup_routes(app)
 setup_static_routes(app)
 

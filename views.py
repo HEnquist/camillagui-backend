@@ -173,11 +173,26 @@ async def get_config(request):
 
 
 async def set_config(request):
+    current_config_file = request.app["current_config"]
     # Apply a new config to CamillaDSP
-    content = await request.json()
+    json_config = await request.json()
     cdsp = request.app["CAMILLA"]
-    cdsp.set_config(content)
+    cdsp.set_config(json_config)
+    # If current_config is set, save new config to current_config
+    if current_config_file:
+        yaml_config = yaml.dump(json_config).encode('utf-8')
+        with open(current_config_file, "wb") as f:
+            f.write(yaml_config)
     return web.Response(text="OK")
+
+
+async def get_current_config_file(request):
+    current_config_file = request.app["current_config"]
+    with open(current_config_file, 'r') as file:
+        cdsp = request.app["CAMILLA"]
+        yaml_config = file.read()
+        json_config = cdsp.read_config(yaml_config)
+        return web.json_response(json_config)
 
 
 async def config_to_yml(request):

@@ -4,3 +4,4 @@ camilla_port: 1234
 port: 5000
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
+current_config: "~/camilladsp/configs/current_config.yaml"
