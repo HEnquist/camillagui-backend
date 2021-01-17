@@ -39,6 +39,10 @@ class CamillaConfig extends React.Component<any, any> {
         target_level: 1024,
         queuelimit: 100,
 
+        //Silence
+        silence_threshold: 0,
+        silence_timeout: 0,
+
         //Rate adjust
         enable_rate_adjust: false,
         adjust_period: 3,
