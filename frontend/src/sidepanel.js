@@ -267,7 +267,7 @@ export class SidePanel extends React.Component {
   }
 
   loadCurrentConfig() {
-    this.loadYaml(FLASKURL + "/api/getcurrentconfigfile", {
+    this.loadYaml(FLASKURL + "/api/getworkingconfigfile", {
           method: "GET",
           headers: {"Content-Type": "text/html"},
           cache: "no-cache",
