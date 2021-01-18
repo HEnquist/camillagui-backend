@@ -9,7 +9,7 @@ from views import (
     eval_pipeline_svg,
     get_config,
     set_config,
-    get_current_config_file,
+    get_working_config_file,
     config_to_yml,
     yml_to_json,
     validate_config,
@@ -38,7 +38,7 @@ def setup_routes(app):
     app.router.add_post("/api/evalpipelinesvg", eval_pipeline_svg)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
-    app.router.add_get("/api/getcurrentconfigfile", get_current_config_file)
+    app.router.add_get("/api/getworkingconfigfile", get_working_config_file)
     app.router.add_post("/api/configtoyml", config_to_yml)
     app.router.add_post("/api/ymltojson", yml_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
