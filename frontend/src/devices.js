@@ -49,27 +49,44 @@ export class Devices extends React.Component {
     });
   }
 
+  group(title, propertyNames) {
+    var properties = propertyNames.map((property) => {
+      return (
+          <ParameterInput
+              parameters={{[property]: this.state.config[property]}}
+              onChange={this.handleChangeParams}
+          />
+      );
+    });
+    return (
+        <>
+          <div className="desc">{title}</div>
+          <div className="group">
+            {properties}
+          </div>
+        </>
+    );
+  }
+
   render() {
     return (
       <div className="devices">
-        <div>
           <ParameterInput
-            parameters={this.state.config}
+            parameters={{samplerate: this.state.config.samplerate}}
             onChange={this.handleChangeParams}
           />
-        </div>
-        <div>
-          <Playback
-            parameters={this.state.config.playback}
-            onChange={this.handlePlayback}
-          />
-        </div>
-        <div>
+          {this.group('Buffers', ['chunksize', 'target_level', 'queuelimit'])}
+          {this.group('Silence', ['silence_threshold', 'silence_timeout'])}
+          {this.group('Rate adjust', ['enable_rate_adjust', 'adjust_period'])}
+          {this.group('Resampling', ['enable_resampling', 'resampler_type', 'capture_samplerate'])}
           <Capture
             parameters={this.state.config.capture}
             onChange={this.handleCapture}
           />
-        </div>
+          <Playback
+            parameters={this.state.config.playback}
+            onChange={this.handlePlayback}
+          />
       </div>
     );
   }
@@ -152,7 +169,7 @@ export class Capture extends React.Component {
     return (
       <div>
         <div className="desc">Capture device</div>
-        <div className="device">
+        <div className="group">
           <div className="row">
             <EnumSelect
               desc="type"
@@ -238,7 +255,7 @@ export class Playback extends React.Component {
     return (
       <div>
         <div className="desc">Playback device</div>
-        <div className="device">
+        <div className="group">
           <div className="row">
             <EnumSelect
               key="backend"

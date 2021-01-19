@@ -25,12 +25,39 @@ class CamillaConfig extends React.Component<any, any> {
     this.switchTab = this.switchTab.bind(this);
     this.state = {
       activetab: 0,
-      config: {
-        devices: this.getDevicesTemplate(),
-        filters: this.getFiltersTemplate(),
-        mixers: this.getMixersTemplate(),
-        pipeline: this.getPipelineTemplate(),
+      config: this.createDefaultConfig(),
+    };
+  }
+
+  private createDefaultConfig() {
+    return {
+      devices: {
+        samplerate: 48000,
+
+        //Buffers
+        chunksize: 1024,
+        target_level: 1024,
+        queuelimit: 100,
+
+        //Silence
+        silence_threshold: 0,
+        silence_timeout: 0,
+
+        //Rate adjust
+        enable_rate_adjust: false,
+        adjust_period: 3,
+
+        //Resampler
+        enable_resampling: true,
+        resampler_type: "FastAsync",
+        capture_samplerate: 44100,
+
+        capture: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
+        playback: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
       },
+      filters: {},
+      mixers: {},
+      pipeline: [],
     };
   }
 
@@ -75,43 +102,6 @@ class CamillaConfig extends React.Component<any, any> {
     this.setState((prevState: any) => {
       return { config: config };
     });
-  }
-
-  getDevicesTemplate() {
-    return {
-      samplerate: 48000,
-      chunksize: 1024,
-      target_level: 1024,
-      adjust_period: 3,
-      queuelimit: 100,
-      enable_resampling: true,
-      enable_rate_adjust: false,
-      resampler_type: "FastAsync",
-      capture_samplerate: 44100,
-      capture: { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-      playback: { type: "Alsa", channels: 2, format: "S32LE", device: "hw:0" },
-    };
-  }
-
-  getFiltersTemplate() {
-    return {
-      test1: {
-        type: "Biquad",
-        parameters: {
-          type: "Lowpass",
-          q: 0.7,
-          freq: 500,
-        },
-      },
-    };
-  }
-
-  getMixersTemplate() {
-    return {};
-  }
-
-  getPipelineTemplate() {
-    return [];
   }
 
   getFilterNames() {
