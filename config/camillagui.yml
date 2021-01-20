@@ -2,7 +2,7 @@
 camilla_host: "0.0.0.0"
 camilla_port: 1234
 port: 5000
-config_dir: "~/camilladsp/configs"
-coeff_dir: "~/camilladsp/coeffs"
-working_config: "~/camilladsp/working_config.yaml"
+config_dir: "configs"
+coeff_dir: "coeffs"
+working_config: "configs/working_config.yaml"
 save_working_config: true
