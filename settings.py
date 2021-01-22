@@ -10,6 +10,11 @@ def get_config(path):
         config = yaml.safe_load(f)
     config["config_dir"] = os.path.abspath(os.path.expanduser(config["config_dir"]))
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
+    working_config = config["working_config"]
+    if working_config:
+        config["working_config"] = os.path.abspath(os.path.expanduser(working_config))
+    else:
+        config["working_config"] = None
     print(config)
     return config
 
