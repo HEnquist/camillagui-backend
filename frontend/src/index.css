@@ -291,6 +291,7 @@ select{
   width: 100%;
   float: left;
   display: flex;
+  align-items:center;
 }
 
 
