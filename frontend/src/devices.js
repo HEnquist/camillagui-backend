@@ -40,15 +40,12 @@ export class Devices extends React.Component {
   }
 
   handleCapture(params) {
-    this.setState((oldState) => {
+    this.setState((state) => {
       console.log("devices got:", params);
-      const newState = cloneDeep(oldState);
-      newState.config.capture = params;
-      if (hasFileCaptureDevice(oldState.config) !== hasFileCaptureDevice(newState.config))
-        newState.config.queuelimit = hasFileCaptureDevice(newState.config) ? 1 : 100;
-      console.log("devices new:", newState);
-      this.props.onChange(newState.config);
-      return newState;
+      state.config.capture = params;
+      console.log("devices new:", state);
+      this.props.onChange(state.config);
+      return state;
     });
   }
 
