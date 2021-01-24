@@ -40,12 +40,15 @@ export class Devices extends React.Component {
   }
 
   handleCapture(params) {
-    this.setState((state) => {
+    this.setState((oldState) => {
       console.log("devices got:", params);
-      state.config.capture = params;
-      console.log("devices new:", state);
-      this.props.onChange(state.config);
-      return state;
+      const newState = cloneDeep(oldState);
+      newState.config.capture = params;
+      if (hasFileCaptureDevice(oldState.config) !== hasFileCaptureDevice(newState.config))
+        newState.config.queuelimit = hasFileCaptureDevice(newState.config) ? 1 : 100;
+      console.log("devices new:", newState);
+      this.props.onChange(newState.config);
+      return newState;
     });
   }
 
@@ -69,15 +72,21 @@ export class Devices extends React.Component {
   }
 
   render() {
+    const isFileCaptureDevice = hasFileCaptureDevice(this.state.config);
+    const rateAdjustOptions = isFileCaptureDevice ? '' :
+        this.group('Rate adjust', ['enable_rate_adjust', 'adjust_period']);
+    const bufferOptions = isFileCaptureDevice ?
+        this.group('Buffers', ['chunksize', 'queuelimit']) :
+        this.group('Buffers', ['chunksize', 'target_level', 'queuelimit']);
     return (
       <div className="devices">
           <ParameterInput
             parameters={{samplerate: this.state.config.samplerate}}
             onChange={this.handleChangeParams}
           />
-          {this.group('Buffers', ['chunksize', 'target_level', 'queuelimit'])}
+          {bufferOptions}
           {this.group('Silence', ['silence_threshold', 'silence_timeout'])}
-          {this.group('Rate adjust', ['enable_rate_adjust', 'adjust_period'])}
+          {rateAdjustOptions}
           {this.group('Resampling', ['enable_resampling', 'resampler_type', 'capture_samplerate'])}
           <Capture
             parameters={this.state.config.capture}
@@ -90,6 +99,10 @@ export class Devices extends React.Component {
       </div>
     );
   }
+}
+
+function hasFileCaptureDevice(config) {
+  return ["File", "Stdin"].includes(config.capture.type);
 }
 
 export class Capture extends React.Component {
