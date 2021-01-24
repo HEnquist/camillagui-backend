@@ -37,7 +37,7 @@ class CamillaConfig extends React.Component<any, any> {
         //Buffers
         chunksize: 1024,
         target_level: 1024,
-        queuelimit: 100,
+        queuelimit: 4,
 
         //Silence
         silence_threshold: 0,
