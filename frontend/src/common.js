@@ -463,7 +463,7 @@ export class ParameterInput extends React.Component {
     },
     resampler_type: {
       type: "enum",
-      desc: "resampler type",
+      desc: "resampler_type",
       subtype: "resampler",
       tooltip: "Resampler type",
     },
