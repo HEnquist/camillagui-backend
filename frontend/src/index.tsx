@@ -28,7 +28,7 @@ class CamillaConfig extends React.Component<any, any> {
       guiConfig: {},
       config: this.createDefaultConfig()
     };
-    window.fetch(FLASKURL + "/api/gui-config.json")
+    window.fetch(FLASKURL + "/api/guiconfig")
         .then(data => data.json())
         .then(json => { this.setState({guiConfig: json}); });
   }
