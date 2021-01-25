@@ -1,5 +1,6 @@
 from aiohttp import web
 from camilladsp import CamillaConnection
+from offline import start_backup_cdsp
 from settings import config
 from routes import setup_routes, setup_static_routes
 import sys
@@ -30,6 +31,6 @@ if len(sys.argv) > 1 and sys.argv[1] == "debug":
 camillaconnection = CamillaConnection(config["camilla_host"], config["camilla_port"])
 #camillaconnection.connect()
 app['CAMILLA'] = camillaconnection
-backupCamillaconnection = CamillaConnection("127.0.0.1", config["backup_camilla_port"])
-app["BACKUP-CAMILLA"] = backupCamillaconnection
+app["BACKUP-CAMILLA"] = CamillaConnection("127.0.0.1", config["backup_camilla_port"])
+start_backup_cdsp(config)
 web.run_app(app, port=config["port"])

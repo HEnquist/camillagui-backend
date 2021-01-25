@@ -1,5 +1,6 @@
 from aiohttp import web
 from camilladsp import CamillaError
+from offline import cdsp_or_backup_cdsp, backup_cdsp
 from settings import gui_config_path
 
 try:
@@ -195,28 +196,6 @@ async def set_config(request):
         with open(working_config_file, "wb") as f:
             f.write(yaml_config)
     return web.Response(text="OK")
-
-
-def backup_cdsp(request):
-    backup = request.app["BACKUP-CAMILLA"]
-    if not backup.is_connected():
-        try:
-            backup.connect()
-        except ConnectionRefusedError as e:
-            print(e)
-    if backup.is_connected():
-        return backup
-    else:
-        return None
-
-
-def cdsp_or_backup_cdsp(request):
-    cdsp = request.app["CAMILLA"]
-    if not cdsp.is_connected():
-        backup = backup_cdsp(request)
-        if backup:
-            return backup
-    return cdsp
 
 
 async def get_working_config_file(request):

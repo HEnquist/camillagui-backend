@@ -1,7 +1,6 @@
 import pathlib
 import yaml
 import os
-import subprocess
 
 
 BASEPATH = pathlib.Path(__file__).parent.absolute()
@@ -27,12 +26,4 @@ def absolute_path_or_none_if_empty(path):
         return None
 
 
-def start_backup_cdsp(config):
-    backup_cdsp_path = config["backup_camilla_path"]
-    backup_cdsp_port = config["backup_camilla_port"]
-    if backup_cdsp_path and backup_cdsp_port:
-        subprocess.Popen([backup_cdsp_path, "-p", str(backup_cdsp_port), "-w"])
-
-
 config = get_config(config_path)
-start_backup_cdsp(config)
