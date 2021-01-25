@@ -1,5 +1,6 @@
 from aiohttp import web
 from camilladsp import CamillaConnection
+from offline import start_backup_cdsp
 from settings import config
 from routes import setup_routes, setup_static_routes
 import sys
@@ -12,7 +13,7 @@ app["save_working_config"] = config["save_working_config"]
 setup_routes(app)
 setup_static_routes(app)
 
-if len(sys.argv)>1 and sys.argv[1] == "debug":
+if len(sys.argv) > 1 and sys.argv[1] == "debug":
     # Add CORS to allow all, for testing only!
     import aiohttp_cors
     cors = aiohttp_cors.setup(app, defaults={
@@ -30,4 +31,6 @@ if len(sys.argv)>1 and sys.argv[1] == "debug":
 camillaconnection = CamillaConnection(config["camilla_host"], config["camilla_port"])
 #camillaconnection.connect()
 app['CAMILLA'] = camillaconnection
+app["BACKUP-CAMILLA"] = CamillaConnection("127.0.0.1", config["backup_camilla_port"])
+start_backup_cdsp(config)
 web.run_app(app, port=config["port"])

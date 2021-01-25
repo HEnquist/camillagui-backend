@@ -1,5 +1,6 @@
 from aiohttp import web
 from camilladsp import CamillaError
+from offline import cdsp_or_backup_cdsp, backup_cdsp
 from settings import gui_config_path
 
 try:
@@ -181,7 +182,12 @@ async def set_config(request):
     # Apply a new config to CamillaDSP
     json_config = await request.json()
     cdsp = request.app["CAMILLA"]
-    cdsp.set_config(json_config)
+    if cdsp.is_connected():
+        cdsp.set_config(json_config)
+    else:
+        backup = backup_cdsp(request)
+        if backup:
+            backup.validate_config(json_config)
     # If working_config is set, save new config to working_config
     working_config_file = request.app["working_config"]
     save_working_config = request.app["save_working_config"]
@@ -195,7 +201,7 @@ async def set_config(request):
 async def get_working_config_file(request):
     working_config_file = request.app["working_config"]
     with open(working_config_file, 'r') as file:
-        cdsp = request.app["CAMILLA"]
+        cdsp = cdsp_or_backup_cdsp(request)
         yaml_config = file.read()
         json_config = cdsp.read_config(yaml_config)
         return web.json_response(json_config)
@@ -211,7 +217,7 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    cdsp = request.app["CAMILLA"]
+    cdsp = cdsp_or_backup_cdsp(request)
     config = cdsp.read_config(config_ymlstr)
     return web.json_response(config)
 
@@ -219,7 +225,7 @@ async def yml_to_json(request):
 async def validate_config(request):
     # Validate a config, returned completed config
     config = await request.json()
-    cdsp = request.app["CAMILLA"]
+    cdsp = cdsp_or_backup_cdsp(request)
     try:
         _val_config = cdsp.validate_config(config)
     except CamillaError as e:

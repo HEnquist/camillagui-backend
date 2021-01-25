@@ -73,6 +73,8 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 working_config: "~/camilladsp/working_config.yaml"
 save_working_config: true
+backup_camilla_path: ""
+backup_camilla_port: 1235
 ```
 The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
@@ -80,6 +82,10 @@ The settings for config_dir and coeff_dir point to two folders where the backend
 
 `working_config` is the CamillaDSP config file that is loaded into the web interface when it is opened. Leave this setting blank, if you always want to start with the default config. If `save_working_config` is true, the current settings from the web interface are also saved to this file automatically, when they are applied to CamillaDSP. If `working_config` does not exist, it is created on the first save.  
 Note: the `working_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts. To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `working_config`. 
+
+If the CamillaDSP instance at `camilla_host`:`camilla_port` is not always available, a backup instance can be configured.
+This allows several gui features to work, even if the primary CamillaDSP is not running.
+It is started together with the backend and used when appropriate. 
 
 #### Hiding GUI Options
 
