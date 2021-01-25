@@ -4,6 +4,7 @@ import os
 
 BASEPATH = pathlib.Path(__file__).parent.absolute()
 config_path = BASEPATH/ 'config' / 'camillagui.yml'
+gui_config_path = BASEPATH/ 'config' / 'gui-config.yml'
 
 def get_config(path):
     with open(path) as f:

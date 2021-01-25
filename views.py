@@ -1,5 +1,7 @@
 from aiohttp import web
 from camilladsp import CamillaError
+from settings import gui_config_path
+
 try:
     from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
     PLOTTING = True
@@ -59,6 +61,7 @@ async def get_param(request):
     print(result)
     return web.Response(text=str(result))
 
+
 async def get_list_param(request):
     # Get a parameter value as a list
     name = request.match_info["name"]
@@ -112,6 +115,7 @@ async def eval_filter_svg(request):
         image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
 
+
 async def eval_filter_values(request):
     # Plot a filter
     content = await request.json()
@@ -140,6 +144,7 @@ async def eval_filterstep_svg(request):
     else:
         image = SVG_PLACEHOLDER
     return web.Response(body=image, content_type="image/svg+xml")
+
 
 async def eval_filterstep_values(request):
     # Plot a filter
@@ -228,15 +233,18 @@ async def get_version(request):
     version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
     return web.json_response(version)
 
+
 async def get_library_version(request):
     cdsp = request.app["CAMILLA"]
     vers_tup = cdsp.get_library_version()
     version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
     return web.json_response(version)
 
+
 async def get_backend_version(request):
     version = {"major": VERSION[0], "minor": VERSION[1], "patch": VERSION[2]}
     return web.json_response(version)
+
 
 async def store_coeff(request):
     data = await request.post()
@@ -251,6 +259,7 @@ async def store_coeff(request):
         text="Saved coeff file {} of {} bytes".format(filename, len(content))
     )
 
+
 async def store_config(request):
     data = await request.post()
     config = data["contents"]
@@ -264,6 +273,7 @@ async def store_config(request):
         text="Saved config file {} of {} bytes".format(filename, len(content))
     )
 
+
 async def get_stored_configs(request):
     config_dir = request.app["config_dir"]
     files = [os.path.abspath(os.path.join(config_dir, f)) for f in os.listdir(config_dir) if os.path.isfile(os.path.join(config_dir, f))]
@@ -272,6 +282,7 @@ async def get_stored_configs(request):
         fname = os.path.basename(f)
         files_dict[fname] = f 
     return web.json_response(files_dict)
+
 
 async def get_stored_coeffs(request):
     coeff_dir = request.app["coeff_dir"]
@@ -283,3 +294,8 @@ async def get_stored_coeffs(request):
         files_dict[fname] = f 
     return web.json_response(files_dict)
 
+
+async def get_gui_config(request):
+    with open(gui_config_path) as yaml_config:
+        json_config = yaml.safe_load(yaml_config)
+    return web.json_response(json_config)

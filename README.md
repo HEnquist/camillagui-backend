@@ -62,6 +62,8 @@ Download the zip-file ("camillagui.zip") for the latest release. This includes b
 
 Unzip the file, and edit `config/camillagui.yml` if needed.
 
+#### Configuration
+
 ```yaml
 ---
 camilla_host: "0.0.0.0"
@@ -78,6 +80,18 @@ The settings for config_dir and coeff_dir point to two folders where the backend
 
 `working_config` is the CamillaDSP config file that is loaded into the web interface when it is opened. Leave this setting blank, if you always want to start with the default config. If `save_working_config` is true, the current settings from the web interface are also saved to this file automatically, when they are applied to CamillaDSP. If `working_config` does not exist, it is created on the first save.  
 Note: the `working_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts. To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `working_config`. 
+
+#### Hiding GUI Options
+
+If you want to integrate CamillaGUI with other software and hide some options from your users,
+this is possible through `config/gui-config.yml`.
+Setting any of the options to `true` hides the corresponding option or section. 
+```yaml
+hide_capture_samplerate: false
+hide_silence: false
+hide_capture_device: false
+hide_playback_device: false
+```
 
 ## Running
 Start the server with:
