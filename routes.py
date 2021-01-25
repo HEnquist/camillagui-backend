@@ -20,7 +20,8 @@ from views import (
     get_stored_coeffs,
     get_stored_configs,
     store_config,
-    store_coeff
+    store_coeff,
+    get_gui_config
 )
 import pathlib
 
@@ -49,6 +50,7 @@ def setup_routes(app):
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
     app.router.add_post("/api/uploadconfig", store_config)
     app.router.add_post("/api/uploadcoeff", store_coeff)
+    app.router.add_get("/api/gui-config.json", get_gui_config)
 
     app.router.add_get("/", get_gui_index)
 
