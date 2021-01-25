@@ -50,7 +50,7 @@ def setup_routes(app):
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
     app.router.add_post("/api/uploadconfig", store_config)
     app.router.add_post("/api/uploadcoeff", store_coeff)
-    app.router.add_get("/api/gui-config.json", get_gui_config)
+    app.router.add_get("/api/guiconfig", get_gui_config)
 
     app.router.add_get("/", get_gui_index)
 
