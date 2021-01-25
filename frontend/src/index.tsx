@@ -25,8 +25,12 @@ class CamillaConfig extends React.Component<any, any> {
     this.switchTab = this.switchTab.bind(this);
     this.state = {
       activetab: 0,
-      config: this.createDefaultConfig(),
+      guiConfig: {},
+      config: this.createDefaultConfig()
     };
+    window.fetch(FLASKURL + "/api/guiconfig")
+        .then(data => data.json())
+        .then(json => { this.setState({guiConfig: json}); });
   }
 
   private createDefaultConfig() {
@@ -159,6 +163,7 @@ class CamillaConfig extends React.Component<any, any> {
             <TabPanel>
               <Devices
                 config={this.state.config.devices}
+                guiConfig={this.state.guiConfig}
                 onChange={this.handleDevices}
               />
             </TabPanel>

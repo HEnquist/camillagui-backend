@@ -1,6 +1,6 @@
 import React from "react";
 import "./index.css";
-import { ParameterInput, EnumSelect } from "./common.js";
+import {EnumSelect, ParameterInput} from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
 
@@ -49,48 +49,42 @@ export class Devices extends React.Component {
     });
   }
 
-  group(title, propertyNames) {
-    var properties = propertyNames.map((property) => {
-      return (
-          <ParameterInput
-              parameters={{[property]: this.state.config[property]}}
-              onChange={this.handleChangeParams}
-          />
-      );
-    });
-    return (
-        <>
-          <div className="desc">{title}</div>
-          <div className="group">
-            {properties}
-          </div>
-        </>
-    );
-  }
-
   render() {
-    const isFileCaptureDevice = hasFileCaptureDevice(this.state.config);
-    const rateAdjustOptions = isFileCaptureDevice ? '' :
-        this.group('Rate adjust', ['enable_rate_adjust', 'adjust_period']);
-    const bufferOptions = isFileCaptureDevice ?
-        this.group('Buffers', ['chunksize', 'queuelimit']) :
-        this.group('Buffers', ['chunksize', 'target_level', 'queuelimit']);
+    const guiConfig = this.props.guiConfig;
+    const config = this.state.config;
     return (
       <div className="devices">
-          <ParameterInput
-            parameters={{samplerate: this.state.config.samplerate}}
-            onChange={this.handleChangeParams}
+          <Samplerate
+              hide_capture_samplerate={guiConfig.hide_capture_samplerate}
+              config={config}
+              onChange={this.handleChangeParams}
           />
-          {bufferOptions}
-          {this.group('Silence', ['silence_threshold', 'silence_timeout'])}
-          {rateAdjustOptions}
-          {this.group('Resampling', ['enable_resampling', 'resampler_type', 'capture_samplerate'])}
+          <BufferOptions
+              config={config}
+              onChange={this.handleChangeParams}
+          />
+          <SilenceOptions
+              hide_silence={guiConfig.hide_silence}
+              config={config}
+              onChange={this.handleChangeParams}
+          />
+          <RateAdjustOptions
+              config={config}
+              onChange={this.handleChangeParams}
+          />
+          <ResamplingOptions
+              hide_capture_samplerate={guiConfig.hide_capture_samplerate}
+              config={config}
+              onChange={this.handleChangeParams}
+          />
           <Capture
-            parameters={this.state.config.capture}
+            parameters={config.capture}
+            hide_capture_device={guiConfig.hide_capture_device}
             onChange={this.handleCapture}
           />
           <Playback
-            parameters={this.state.config.playback}
+            parameters={config.playback}
+            hide_playback_device={guiConfig.hide_playback_device}
             onChange={this.handlePlayback}
           />
       </div>
@@ -98,8 +92,79 @@ export class Devices extends React.Component {
   }
 }
 
+function Samplerate(props) {
+  if (props.hide_capture_samplerate && !props.config.enable_resampling)
+    return null;
+  else
+    return <ParameterInput
+        parameters={{samplerate: props.config.samplerate}}
+        onChange={props.onChange}
+    />;
+}
+
+function RateAdjustOptions(props) {
+  if (hasFileCaptureDevice(props.config))
+    return null;
+  return <Group
+      title="Rate adjust"
+      propertyNames={['enable_rate_adjust', 'adjust_period']}
+      config={props.config}
+      onChange={props.onChange}
+  />;
+}
+
 function hasFileCaptureDevice(config) {
   return ["File", "Stdin"].includes(config.capture.type);
+}
+
+function Group(props) {
+  const properties = props.propertyNames.map((property) => {
+    return <ParameterInput
+        parameters={{[property]: props.config[property]}}
+        onChange={props.onChange}
+    />;
+  });
+  return <>
+    <div className="desc">{props.title}</div>
+    <div className="group">
+      {properties}
+    </div>
+  </>;
+}
+
+function BufferOptions(props) {
+  const propertyNames = hasFileCaptureDevice(props.config) ?
+      ['chunksize', 'queuelimit'] :
+      ['chunksize', 'target_level', 'queuelimit'];
+  return <Group
+      title="Buffers"
+      propertyNames={propertyNames}
+      config={props.config}
+      onChange={props.onChange}
+  />
+}
+
+function SilenceOptions(props) {
+  if (props.hide_silence)
+    return null;
+  return <Group
+      title="Silence"
+      propertyNames={['silence_threshold', 'silence_timeout']}
+      config={props.config}
+      onChange={props.onChange}
+  />
+}
+
+function ResamplingOptions(props) {
+  const propertyNames = props.hide_capture_samplerate ?
+      ['enable_resampling', 'resampler_type'] :
+      ['enable_resampling', 'resampler_type', 'capture_samplerate'];
+  return <Group
+      title="Resampling"
+      propertyNames={propertyNames}
+      config={props.config}
+      onChange={props.onChange}
+  />
 }
 
 export class Capture extends React.Component {
@@ -170,6 +235,8 @@ export class Capture extends React.Component {
   };
 
   render() {
+    if (this.props.hide_capture_device)
+      return null;
     var backendparams = (
       <ParameterInput
         parameters={this.state.parameters}
@@ -256,6 +323,8 @@ export class Playback extends React.Component {
   };
 
   render() {
+    if (this.props.hide_playback_device)
+      return null;
     var backendparams = (
       <ParameterInput
         parameters={this.state.parameters}
