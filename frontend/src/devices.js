@@ -103,12 +103,12 @@ function Samplerate(props) {
 }
 
 function RateAdjustOptions(props) {
-  let isFileStdinOrPulseCaptureDevice = ["File", "Stdin", "Pulse"].includes(props.config.capture.type);
-  if (isFileStdinOrPulseCaptureDevice)
+  let playbackDeviceIsOneOf = (types) => types.includes(props.config.playback.type);
+  if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"]))
     return null;
   return <Group
       title="Rate adjust"
-      propertyNames={['enable_rate_adjust', 'adjust_period']}
+      propertyNames={['enable_rate_adjust', 'adjust_period', 'target_level']}
       config={props.config}
       onChange={props.onChange}
   />;
@@ -130,13 +130,9 @@ function Group(props) {
 }
 
 function BufferOptions(props) {
-  let isFileOrStdinCaptureDevice = ["File", "Stdin"].includes(props.config.capture.type);
-  const propertyNames = isFileOrStdinCaptureDevice ?
-      ['chunksize', 'queuelimit'] :
-      ['chunksize', 'target_level', 'queuelimit'];
   return <Group
       title="Buffers"
-      propertyNames={propertyNames}
+      propertyNames={['chunksize', 'queuelimit']}
       config={props.config}
       onChange={props.onChange}
   />
