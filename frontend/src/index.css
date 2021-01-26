@@ -212,15 +212,6 @@ select{
   width: 250px;
 }
 
-.sidepanelelement {
-  background: white;
-  float: left;
-  text-align: left;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-}
-
 .configtabs {
   background: white;
   float: left;
@@ -278,13 +269,14 @@ select{
   height: 34px;
 }
 
-.textbox {   
+.box {
+  margin-top: 10px;
   box-sizing: border-box;
-  width : 100%; 
+  width: 100%;
   border-radius: 5px;
   border: 1px inset #9090B0;
-  padding: 4px;
-} 
+  padding: 3px 8px 8px;
+}
 
 .slidecontainer {
   box-sizing: border-box;
@@ -294,4 +286,29 @@ select{
   align-items:center;
 }
 
+.space-between-children > *:not(:last-child) {
+  display: block;
+  margin-bottom: 5px;
+}
 
+.two-column-grid {
+  display: grid;
+  grid-column-gap: 5px;
+  grid-row-gap: 2px;
+  grid-template-columns: fit-content(100%) fit-content(100%);
+}
+
+.two-column-grid .alignRight {
+  justify-self: right;
+}
+
+.split-20-80 {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20% 80%;
+  grid-gap: 5px;
+}
+
+.split-20-80 > * {
+  align-self: center;
+}

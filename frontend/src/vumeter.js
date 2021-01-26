@@ -1,20 +1,17 @@
 import React from "react";
 import "./index.css";
-import { Line } from "rc-progress";
+import {Line} from "rc-progress";
 
-export class VuMeterGroup extends React.Component {
-  render() {
-    var meters = this.props.level.map((value, idx) => {
-      return (
-        <VuMeter level={value} clipped={this.props.clipped} />
-      );
-    });
-    return (
-      <div>
-        {meters}
+export function VuMeterGroup(props) {
+  const meters = props.level.map((value, idx) =>
+      <VuMeter key={idx} level={value} clipped={props.clipped}/>
+  );
+  return (
+      <div className="split-20-80">
+        <div>{props.title}</div>
+        <div>{meters}</div>
       </div>
-    )
-  }
+  )
 }
 
 export class VuMeter extends React.Component {

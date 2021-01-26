@@ -118,8 +118,9 @@ function hasFileCaptureDevice(config) {
 }
 
 function Group(props) {
-  const properties = props.propertyNames.map((property) => {
+  const properties = props.propertyNames.map((property, idx) => {
     return <ParameterInput
+        key={idx}
         parameters={{[property]: props.config[property]}}
         onChange={props.onChange}
     />;

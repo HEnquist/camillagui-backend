@@ -22,19 +22,18 @@ export class VolumeSlider extends React.Component {
 
   render() {
     return (
-      <div className="slidecontainer">
-        <span style={{width: '20%'}}>{this.state.value}dB</span>
-        <input
-          style={{width: '80%'}}
-          type="range"
-          min="-99"
-          max="0"
-          value={this.state.value}
-          className="slider"
-          id="volume"
-          onChange={this.handleChange}
-        />
-      </div>
+        <div className="split-20-80">
+          <div>{this.state.value}dB</div>
+          <input
+              style={{width: '100%', margin: 0, padding: 0}}
+              type="range"
+              min="-99"
+              max="0"
+              value={this.state.value}
+              id="volume"
+              onChange={this.handleChange}
+          />
+        </div>
     );
   }
 }

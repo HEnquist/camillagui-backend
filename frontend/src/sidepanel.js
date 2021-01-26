@@ -6,6 +6,7 @@ import { FLASKURL } from "./index.tsx";
 import camillalogo from "./camilladsp.svg";
 import { VuMeterGroup } from "./vumeter.js";
 import { VolumeSlider } from "./volumeslider.js";
+import {Box} from "./common";
 
 export class ErrorBox extends React.Component {
   constructor(props) {
@@ -43,7 +44,7 @@ export class ErrorBox extends React.Component {
   }
 
   render() {
-    return <div className="textbox">{this.state.message}</div>;
+    return <Box title="Config status">{this.state.message}</Box>;
   }
 }
 
@@ -305,108 +306,70 @@ export class SidePanel extends React.Component {
   render() {
     return (
       <section className="sidepanel">
-        <div className="sidepanelelement">
-          <img src={camillalogo} alt="graph" width="100%" height="100%" />
-        </div>
-        <div className="sidepanelelement">
-          <VuMeterGroup
-            level={this.state.capture_rms}
-            clipped={this.state.clipped}
-          />
-        </div>
-        <div className="sidepanelelement">
-          <VuMeterGroup
-            level={this.state.playback_rms}
-            clipped={this.state.clipped}
-          />
-        </div>
-        <div className="sidepanelelement">
-          <VolumeSlider value="0" onChange={this.setVolume} /> 
-        </div>
-        <div className="sidepanelelement">State: {this.state.state}</div>
-        <div className="sidepanelelement">
-          Capture samplerate: {this.state.capturerate}
-        </div>
-        <div className="sidepanelelement">
-          Rate adjust: {this.state.rateadjust}
-        </div>
-        <div className="sidepanelelement">
-          Clipped samples: {this.state.nbrclipped}
-        </div>
-        <div className="sidepanelelement">
-          Buffer level: {this.state.bufferlevel}
-        </div>
-        <div className="sidepanelelement">Message: {this.state.msg}</div>
-        <div className="sidepanelelement">
-          <button
-            data-tip="Get active config from CamillaDSP"
-            onClick={this.fetchConfig}
-          >
-            Get
-          </button>
-        </div>
-        <div className="sidepanelelement">
-          <button
-            data-tip="Upload config to CamillaDSP"
-            onClick={this.applyConfig}
-          >
-            Apply
-          </button>
-        </div>
-        <div className="sidepanelelement">
-          <button
-            data-tip="Save config to a local file"
-            onClick={this.saveConfig}
-          >
-            Save to file
-          </button>
-        </div>
-
-        <div className="sidepanelelement">
-          Load config from a local file
-          <input
-            className="fileinput"
-            data-tip="Load config from a local file"
-            type="file"
-            onChange={this.loadFile}
-          ></input>
-        </div>
-        <div className="sidepanelelement">
-          Upload a config file
-          <input
-            className="fileinput"
-            data-tip="Upload a config file"
-            type="file"
-            onChange={this.uploadConfig}
-          ></input>
-        </div>
-        <div className="sidepanelelement">
-          Upload a coefficient file
-          <input
-            className="fileinput"
-            data-tip="Upload a coefficient file"
-            type="file"
-            onChange={this.uploadCoeff}
-          ></input>
-        </div>
-        <div className="sidepanelelement">Config status</div>
+        <img src={camillalogo} alt="graph" width="100%" height="100%" />
+        <Box title="Volume">
+            <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped} />
+            <VolumeSlider value="0" onChange={this.setVolume} />
+            <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped} />
+        </Box>
+        <Box title="CamillaDSP">
+          <div className="two-column-grid">
+            <div className="alignRight">State:</div><div>{this.state.state}</div>
+            <div className="alignRight">Capture samplerate:</div><div>{this.state.capturerate}</div>
+            <div className="alignRight">Rate adjust:</div><div>{this.state.rateadjust}</div>
+            <div className="alignRight">Clipped samples:</div><div>{this.state.nbrclipped}</div>
+            <div className="alignRight">Buffer level:</div><div>{this.state.bufferlevel}</div>
+            <div className="alignRight">Message:</div><div>{this.state.msg}</div>
+          </div>
+        </Box>
+        <Box title="Config">
+          <div className="space-between-children">
+            <button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button>
+            <button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button>
+            <button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button>
+            <div>
+              Load config from a local file
+              <input
+                className="fileinput"
+                data-tip="Load config from a local file"
+                type="file"
+                onChange={this.loadFile}
+              />
+            </div>
+            <div>
+              Upload a config file
+              <input
+                className="fileinput"
+                data-tip="Upload a config file"
+                type="file"
+                onChange={this.uploadConfig}
+              />
+            </div>
+            <div>
+              Upload a coefficient file
+              <input
+              className="fileinput"
+              data-tip="Upload a coefficient file"
+              type="file"
+              onChange={this.uploadCoeff}
+              />
+            </div>
+          </div>
+        </Box>
         <ErrorBox config={this.state.config} />
-        <div className="sidepanelelement">
-          <div>Versions</div>
-          <div>
-            CamillaDSP: {this.state.dsp_ver.major}.{this.state.dsp_ver.minor}.
-            {this.state.dsp_ver.patch}
+        <Box title="Versions">
+          <div className="two-column-grid">
+              <div className="alignRight">CamillaDSP:</div><div>{version(this.state.dsp_ver)}</div>
+              <div className="alignRight">pyCamillaDSP:</div><div>{version(this.state.pylib_ver)}</div>
+              <div className="alignRight">Backend:</div><div>{version(this.state.backend_ver)}</div>
           </div>
-          <div>
-            pyCamillaDSP: {this.state.pylib_ver.major}.
-            {this.state.pylib_ver.minor}.{this.state.pylib_ver.patch}
-          </div>
-          <div>
-            Backend: {this.state.backend_ver.major}.
-            {this.state.backend_ver.minor}.{this.state.backend_ver.patch}
-          </div>
-        </div>
+        </Box>
       </section>
     );
   }
+}
+
+function version(major_minor_patch) {
+  const {major, minor, patch} = major_minor_patch
+  return `${major}.${minor}.${patch}`
 }
