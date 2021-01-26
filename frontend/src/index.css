@@ -295,7 +295,7 @@ select{
   display: grid;
   grid-column-gap: 5px;
   grid-row-gap: 2px;
-  grid-template-columns: fit-content(100%) fit-content(100%);
+  grid-template-columns: max-content fit-content(100%);
 }
 
 .two-column-grid .alignRight {

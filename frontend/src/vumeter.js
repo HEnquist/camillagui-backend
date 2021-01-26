@@ -3,6 +3,8 @@ import "./index.css";
 import {Line} from "rc-progress";
 
 export function VuMeterGroup(props) {
+  if (props.level.length === 0)
+    return null;
   const meters = props.level.map((value, idx) =>
       <VuMeter key={idx} level={value} clipped={props.clipped}/>
   );

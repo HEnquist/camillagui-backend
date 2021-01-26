@@ -2,10 +2,10 @@ import React from "react";
 import "./index.css";
 import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
-import { FLASKURL } from "./index.tsx";
+import {FLASKURL} from "./index.tsx";
 import camillalogo from "./camilladsp.svg";
-import { VuMeterGroup } from "./vumeter.js";
-import { VolumeSlider } from "./volumeslider.js";
+import {VuMeterGroup} from "./vumeter.js";
+import {VolumeSlider} from "./volumeslider.js";
 import {Box} from "./common";
 
 export class ErrorBox extends React.Component {
@@ -56,15 +56,15 @@ export class SidePanel extends React.Component {
       msg: "",
       capture_rms: [],
       playback_rms: [],
-      state: "IDLE",
-      rateadjust: 0.0,
-      capturerate: 0,
-      bufferlevel: 0,
-      nbrclipped: -1,
+      state: "backend offline",
+      rateadjust: '',
+      capturerate: '',
+      bufferlevel: '',
+      nbrclipped: '',
       clipped: false,
-      dsp_ver: { major: 0, minor: 0, patch: 0 },
-      pylib_ver: { major: 0, minor: 0, patch: 0 },
-      backend_ver: { major: 0, minor: 0, patch: 0 },
+      dsp_ver: null,
+      pylib_ver: null,
+      backend_ver: null,
     };
     this.timer = this.timer.bind(this);
     this.fetchConfig = this.fetchConfig.bind(this);
@@ -152,10 +152,6 @@ export class SidePanel extends React.Component {
     }
     console.log(processingstate, capturerate, rateadjust);
     this.setState((state) => {
-      var clipped = false;
-      if (state.nbrclipped >= 0 && nbrclipped > state.nbrclipped) {
-        clipped = true;
-      }
       return {
         state: processingstate,
         capture_rms: capture_rms,
@@ -164,7 +160,7 @@ export class SidePanel extends React.Component {
         rateadjust: rateadjust,
         bufferlevel: bufferlevel,
         nbrclipped: nbrclipped,
-        clipped: clipped,
+        clipped: state.nbrclipped >= 0 && nbrclipped > state.nbrclipped,
       };
     });
   }
@@ -370,6 +366,8 @@ export class SidePanel extends React.Component {
 }
 
 function version(major_minor_patch) {
+  if (!major_minor_patch)
+    return ''
   const {major, minor, patch} = major_minor_patch
   return `${major}.${minor}.${patch}`
 }
