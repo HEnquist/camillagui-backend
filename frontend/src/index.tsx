@@ -40,7 +40,6 @@ class CamillaConfig extends React.Component<any, any> {
 
         //Buffers
         chunksize: 1024,
-        target_level: 1024,
         queuelimit: 4,
 
         //Silence
@@ -50,6 +49,7 @@ class CamillaConfig extends React.Component<any, any> {
         //Rate adjust
         enable_rate_adjust: false,
         adjust_period: 3,
+        target_level: 1024,
 
         //Resampler
         enable_resampling: true,
