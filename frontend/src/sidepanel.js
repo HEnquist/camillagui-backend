@@ -338,21 +338,19 @@ export class SidePanel extends React.Component {
           </div>
           <ConfigCheckMessage config={this.state.config} />
         </Box>
-        <Box title="Versions">
-          <div className="two-column-grid">
-              <div className="alignRight">CamillaDSP:</div><div>{version(this.state.dsp_ver)}</div>
-              <div className="alignRight">pyCamillaDSP:</div><div>{version(this.state.pylib_ver)}</div>
-              <div className="alignRight">Backend:</div><div>{version(this.state.backend_ver)}</div>
-          </div>
-        </Box>
+        <div className="versions">
+          <div style={{justifySelf: 'start'}}>{this.version('CamillaDSP', this.state.dsp_ver)}</div>
+          <div style={{justifySelf: 'center'}}>{this.version('pyCamillaDSP', this.state.pylib_ver)}</div>
+          <div style={{justifySelf: 'end'}}>{this.version('Backend', this.state.backend_ver)}</div>
+        </div>
       </section>
     );
   }
-}
 
-function version(major_minor_patch) {
-  if (!major_minor_patch)
-    return ''
-  const {major, minor, patch} = major_minor_patch
-  return `${major}.${minor}.${patch}`
+  version(label, major_minor_patch) {
+    if (!major_minor_patch)
+      return ''
+    const {major, minor, patch} = major_minor_patch
+    return `${label} ${major}.${minor}.${patch}`
+  }
 }

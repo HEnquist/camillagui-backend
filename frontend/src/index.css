@@ -270,6 +270,7 @@ select{
 }
 
 .box {
+  margin-inline: 0 0;
   margin-top: 10px;
   box-sizing: border-box;
   width: 100%;
@@ -334,4 +335,13 @@ select{
 
 .config-status {
   margin: 10px 4px 2px;
+}
+
+.versions {
+  justify-self: center;
+  margin: 15px auto;
+  width: 90%;
+  font-size: xx-small;
+  display: grid;
+  grid-template-columns: auto auto auto;
 }
