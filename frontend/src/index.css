@@ -295,7 +295,7 @@ select{
   display: grid;
   grid-column-gap: 5px;
   grid-row-gap: 2px;
-  grid-template-columns: max-content fit-content(100%);
+  grid-template-columns: max-content auto;
 }
 
 .two-column-grid .alignRight {
@@ -311,4 +311,23 @@ select{
 
 .split-20-80 > * {
   align-self: center;
+}
+
+.upload-label {
+  background-color: #f3f3f3;
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  font-size: smaller;
+  display: block;
+  margin: 5px 3px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.upload-label:hover {
+  background-color: #ddd;
+}
+
+.upload-label:active {
+  background-color: #aaa;
 }

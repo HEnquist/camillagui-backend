@@ -72,8 +72,6 @@ export class SidePanel extends React.Component {
     this.saveConfig = this.saveConfig.bind(this);
     this.loadFile = this.loadFile.bind(this);
     this.loadYaml = this.loadYaml.bind(this);
-    this.uploadConfig = this.uploadConfig.bind(this);
-    this.uploadCoeff = this.uploadCoeff.bind(this);
     this.setVolume = this.setVolume.bind(this);
   }
 
@@ -239,30 +237,6 @@ export class SidePanel extends React.Component {
     a.click();
   }
 
-  async uploadConfig(event) {
-    var file = event.target.files[0];
-    const formData = new FormData();
-    formData.append("contents", file, file.name);
-    await fetch(FLASKURL + "/api/uploadconfig", {
-      method: "POST", // *GET, POST, PUT, DELETE, etc.
-      //mode: 'same-origin', // no-cors, *cors, same-origin
-      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-      body: formData, // body data type must match "Content-Type" header
-    });
-  }
-
-  async uploadCoeff(event) {
-    var file = event.target.files[0];
-    const formData = new FormData();
-    formData.append("contents", file, file.name);
-    await fetch(FLASKURL + "/api/uploadcoeff", {
-      method: "POST", // *GET, POST, PUT, DELETE, etc.
-      //mode: 'same-origin', // no-cors, *cors, same-origin
-      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-      body: formData, // body data type must match "Content-Type" header
-    });
-  }
-
   loadCurrentConfig() {
     this.loadYaml(FLASKURL + "/api/getworkingconfigfile", {
           method: "GET",
@@ -319,36 +293,36 @@ export class SidePanel extends React.Component {
           </div>
         </Box>
         <Box title="Config">
-          <div className="space-between-children">
-            <button data-tip="Get active config from CamillaDSP" onClick={this.fetchConfig}>Get</button>
-            <button data-tip="Upload config to CamillaDSP" onClick={this.applyConfig}>Apply</button>
-            <button data-tip="Save config to a local file" onClick={this.saveConfig}>Save to file</button>
-            <div>
-              Load config from a local file
-              <input
-                className="fileinput"
-                data-tip="Load config from a local file"
-                type="file"
-                onChange={this.loadFile}
-              />
+          <div className="two-column-grid">
+            <div
+              data-tip="Get active config from CamillaDSP"
+              className="upload-label"
+              onClick={this.fetchConfig}>
+              Load from CDSP
             </div>
             <div>
-              Upload a config file
-              <input
-                className="fileinput"
-                data-tip="Upload a config file"
-                type="file"
-                onChange={this.uploadConfig}
-              />
+              <label
+                className="upload-label"
+                data-tip="Load config from a local file">
+                <input
+                  style={{display: 'none'}}
+                  type="file"
+                  onChange={this.loadFile}
+                />
+                Load from file
+              </label>
             </div>
-            <div>
-              Upload a coefficient file
-              <input
-              className="fileinput"
-              data-tip="Upload a coefficient file"
-              type="file"
-              onChange={this.uploadCoeff}
-              />
+            <div
+              data-tip="Upload config to CamillaDSP"
+              className="upload-label"
+              onClick={this.applyConfig}>
+              Apply to CDSP
+            </div>
+            <div
+              data-tip="Save config to a local file"
+              className="upload-label"
+              onClick={this.saveConfig}>
+              Save to file
             </div>
           </div>
         </Box>

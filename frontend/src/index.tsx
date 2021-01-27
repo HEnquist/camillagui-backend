@@ -9,6 +9,7 @@ import { SidePanel } from "./sidepanel.js";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import "react-tabs/style/react-tabs.css";
+import {Files} from "./files";
 
 //export const FLASKURL = "http://127.0.0.1:5000";
 export const FLASKURL = "";
@@ -159,6 +160,7 @@ class CamillaConfig extends React.Component<any, any> {
               <Tab>Filters</Tab>
               <Tab>Mixers</Tab>
               <Tab>Pipeline</Tab>
+              <Tab>Files</Tab>
             </TabList>
             <TabPanel>
               <Devices
@@ -188,6 +190,9 @@ class CamillaConfig extends React.Component<any, any> {
                 onChange={this.handlePipeline}
                 getConfig={this.getFullConfig}
               />
+            </TabPanel>
+            <TabPanel>
+              <Files/>
             </TabPanel>
           </Tabs>
         </div>
