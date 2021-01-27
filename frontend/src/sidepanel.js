@@ -8,12 +8,15 @@ import {VuMeterGroup} from "./vumeter.js";
 import {VolumeSlider} from "./volumeslider.js";
 import {Box} from "./common";
 
-export class ErrorBox extends React.Component {
+class ConfigCheckMessage extends React.Component {
+
+  default_message = "NOT CHECKED"
+
   constructor(props) {
     super(props);
     this.state = {
       config: cloneDeep(this.props.config),
-      message: "(not updated)",
+      message: this.default_message,
     };
     this.get_config_errors = this.get_config_errors.bind(this);
   }
@@ -44,7 +47,15 @@ export class ErrorBox extends React.Component {
   }
 
   render() {
-    return <Box title="Config status">{this.state.message}</Box>;
+    const message = this.state.message
+    let color
+    if (message === this.default_message)
+      color = '#bbb'
+    else if (message === "OK")
+      color = 'green'
+    else
+      color = 'red'
+    return <div className="config-status" style={{color}}>{message}</div>
   }
 }
 
@@ -325,8 +336,8 @@ export class SidePanel extends React.Component {
               Save to file
             </div>
           </div>
+          <ConfigCheckMessage config={this.state.config} />
         </Box>
-        <ErrorBox config={this.state.config} />
         <Box title="Versions">
           <div className="two-column-grid">
               <div className="alignRight">CamillaDSP:</div><div>{version(this.state.dsp_ver)}</div>

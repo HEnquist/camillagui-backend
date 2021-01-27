@@ -331,3 +331,7 @@ select{
 .upload-label:active {
   background-color: #aaa;
 }
+
+.config-status {
+  margin: 10px 4px 2px;
+}
