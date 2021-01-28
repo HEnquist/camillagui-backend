@@ -139,6 +139,8 @@ export class EnumSelect extends React.Component {
   handleChange(event) {
     this.setState({ value: event.target.value });
     if (this.props.desc === "format")
+      // capture/playback/convolution format parameter cannot be changed without this hack
+      //TODO: fix this in a nicer way
       this.props.onSelect({
         id: this.props.desc,
         value: event.target.value
