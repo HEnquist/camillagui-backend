@@ -138,7 +138,13 @@ export class EnumSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    this.props.onSelect(event.target.value);
+    if (this.props.desc === "format")
+      this.props.onSelect({
+        id: this.props.desc,
+        value: event.target.value
+      });
+    else
+      this.props.onSelect(event.target.value);
   }
 
   render() {
