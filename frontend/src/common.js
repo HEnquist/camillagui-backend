@@ -6,6 +6,15 @@ import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
 import {Scatter} from 'react-chartjs-2';
 
+export function Box(props) {
+  return (
+      <fieldset className="box">
+        <legend>{props.title}</legend>
+        {props.children}
+      </fieldset>
+  );
+}
+
 export class BoolSelect extends React.Component {
   constructor(props) {
     super(props);

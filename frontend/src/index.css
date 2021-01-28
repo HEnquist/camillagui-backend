@@ -212,15 +212,6 @@ select{
   width: 250px;
 }
 
-.sidepanelelement {
-  background: white;
-  float: left;
-  text-align: left;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-}
-
 .configtabs {
   background: white;
   float: left;
@@ -278,13 +269,15 @@ select{
   height: 34px;
 }
 
-.textbox {   
+.box {
+  margin-inline: 0 0;
+  margin-top: 10px;
   box-sizing: border-box;
-  width : 100%; 
+  width: 100%;
   border-radius: 5px;
   border: 1px inset #9090B0;
-  padding: 4px;
-} 
+  padding: 3px 8px 8px;
+}
 
 .slidecontainer {
   box-sizing: border-box;
@@ -294,4 +287,61 @@ select{
   align-items:center;
 }
 
+.space-between-children > *:not(:last-child) {
+  display: block;
+  margin-bottom: 5px;
+}
 
+.two-column-grid {
+  display: grid;
+  grid-column-gap: 5px;
+  grid-row-gap: 2px;
+  grid-template-columns: max-content auto;
+}
+
+.two-column-grid .alignRight {
+  justify-self: right;
+}
+
+.split-20-80 {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20% 80%;
+  grid-gap: 5px;
+}
+
+.split-20-80 > * {
+  align-self: center;
+}
+
+.upload-label {
+  background-color: #f3f3f3;
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  font-size: smaller;
+  display: block;
+  margin: 5px 3px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.upload-label:hover {
+  background-color: #ddd;
+}
+
+.upload-label:active {
+  background-color: #aaa;
+}
+
+.config-status {
+  margin: 10px 4px 2px;
+}
+
+.versions {
+  justify-self: center;
+  margin: 15px auto;
+  width: 90%;
+  font-size: xx-small;
+  display: grid;
+  grid-template-columns: auto auto auto;
+}
