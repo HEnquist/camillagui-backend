@@ -234,9 +234,12 @@ async def validate_config(request):
 
 
 async def get_version(request):
-    cdsp = request.app["CAMILLA"]
+    cdsp = cdsp_or_backup_cdsp(request)
     vers_tup = cdsp.get_version()
-    version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
+    if vers_tup is None:
+        version = {"major": "x", "minor": "x", "patch": "x"}
+    else:
+        version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
     return web.json_response(version)
 
 
