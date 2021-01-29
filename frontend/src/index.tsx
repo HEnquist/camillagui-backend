@@ -29,9 +29,9 @@ class CamillaConfig extends React.Component<any, any> {
       guiConfig: {},
       config: this.createDefaultConfig()
     };
-    window.fetch(FLASKURL + "/api/guiconfig")
+    fetch(FLASKURL + "/api/guiconfig")
         .then(data => data.json())
-        .then(json => { this.setState({guiConfig: json}); });
+        .then(json => this.setState({guiConfig: json}));
   }
 
   private createDefaultConfig() {
@@ -192,7 +192,7 @@ class CamillaConfig extends React.Component<any, any> {
               />
             </TabPanel>
             <TabPanel>
-              <Files/>
+              <Files config={this.state.config} setConfig={this.handleConfig}/>
             </TabPanel>
           </Tabs>
         </div>

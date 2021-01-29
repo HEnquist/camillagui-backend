@@ -6,15 +6,6 @@ import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
 import {Scatter} from 'react-chartjs-2';
 
-export function Box(props) {
-  return (
-      <fieldset className="box">
-        <legend>{props.title}</legend>
-        {props.children}
-      </fieldset>
-  );
-}
-
 export class BoolSelect extends React.Component {
   constructor(props) {
     super(props);
@@ -41,16 +32,15 @@ export class BoolSelect extends React.Component {
             {this.props.desc}
           </div>
         </div>
-        <div className="column right">
+        <label className="column right checkbox-area" style={{padding: '2px 0'}}>
           <input
             type="checkbox"
             name={this.props.id}
             id={this.props.id}
             checked={this.state.value}
             onChange={this.handleChange}
-            data-tip={this.props["data-tip"]}
-          ></input>
-        </div>
+            data-tip={this.props["data-tip"]}/>
+        </label>
       </div>
     );
   }
