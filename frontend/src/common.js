@@ -446,7 +446,7 @@ export class ParameterInput extends React.Component {
     high_boost: {
       type: "float",
       desc: "high_boost",
-      tooltip: "Volume boost for high frequencies when volume is at reference_level",
+      tooltip: "Volume boost for high frequencies when volume is at reference_level - 20dB",
     },
     in: { type: "int", desc: "in", tooltip: "Number of channels in" },
     inverted: { type: "bool", desc: "inverted", tooltip: "Invert signal" },
@@ -458,7 +458,7 @@ export class ParameterInput extends React.Component {
     low_boost: {
       type: "float",
       desc: "low_boost",
-      tooltip: "Volume boost for low frequencies when volume is at reference_level",
+      tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     out: { type: "int", desc: "out", tooltip: "Number of channels in" },
@@ -492,8 +492,9 @@ export class ParameterInput extends React.Component {
     reference_level: {
       type: "float",
       desc: "reference_level",
-      tooltip: "Volume level at which full low_boost/high_boost is applied." +
-        "<br>Boost is scaled down linearly to 0dB at reference_level + 20dB and above.",
+      tooltip: "Volume level at which low_boost/high_boost is starting to be applied.<br>" +
+        "Boost is scaled up linearly to reach the full value at reference_level - 20dB.<br>" +
+        "Above reference_level only gain is applied.",
     },
     resampler_type: {
       type: "enum",
