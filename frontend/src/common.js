@@ -77,6 +77,7 @@ export class EnumSelect extends React.Component {
       "Delay",
       "Gain",
       "Volume",
+      "Loudness",
       "Dither",
       "DiffEq",
     ],
@@ -442,12 +443,22 @@ export class ParameterInput extends React.Component {
       tooltip: "Target frequency",
     },
     gain: { type: "float", desc: "gain", tooltip: "Gain in dB" },
+    high_boost: {
+      type: "float",
+      desc: "high_boost",
+      tooltip: "Volume boost for high frequencies when volume is at reference_level",
+    },
     in: { type: "int", desc: "in", tooltip: "Number of channels in" },
     inverted: { type: "bool", desc: "inverted", tooltip: "Invert signal" },
     length: {
       type: "int",
       desc: "length",
       tooltip: "Number of coefficients to generate",
+    },
+    low_boost: {
+      type: "float",
+      desc: "low_boost",
+      tooltip: "Volume boost for low frequencies when volume is at reference_level",
     },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     out: { type: "int", desc: "out", tooltip: "Number of channels in" },
@@ -477,6 +488,12 @@ export class ParameterInput extends React.Component {
       type: "int",
       desc: "read_bytes_lines",
       tooltip: "Read up to this number of bytes or lines",
+    },
+    reference_level: {
+      type: "float",
+      desc: "reference_level",
+      tooltip: "Volume level at which full low_boost/high_boost is applied." +
+        "<br>Boost is scaled down linearly to 0dB at reference_level + 20dB and above.",
     },
     resampler_type: {
       type: "enum",
