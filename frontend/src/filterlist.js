@@ -99,7 +99,10 @@ class FilterParams extends React.Component {
       Default: { gain: 0.0, inverted: false },
     },
     Volume: {
-      Default: { ramp_time: 0.0 },
+      Default: { ramp_time: 200 },
+    },
+    Loudness: {
+      Default: { reference_level: 0.0, high_boost: 10, low_boost: 10, ramp_time: 200 },
     },
     DiffEq: {
       Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
@@ -229,7 +232,8 @@ class Filter extends React.Component {
     },
     Delay: { delay: 0.0, unit: "ms" },
     Gain: { gain: 0.0, inverted: false },
-    Volume: { ramp_time: 200.0 },
+    Volume: { ramp_time: 200 },
+    Loudness: { reference_level: 0.0, high_boost: 10, low_boost: 10, ramp_time: 200 },
     DiffEq: { a: [1.0, 0.0], b: [1.0, 0.0] },
     Dither: { type: "Simple", bits: 16 },
   };
