@@ -19,9 +19,15 @@ from views import (
     get_gui_index,
     get_stored_coeffs,
     get_stored_configs,
-    store_config,
-    store_coeff,
-    get_gui_config
+    store_configs,
+    store_coeffs,
+    delete_coeffs,
+    delete_configs,
+    download_coeffs_zip,
+    download_configs_zip,
+    get_gui_config,
+    get_config_file,
+    save_config_file
 )
 import pathlib
 
@@ -48,9 +54,15 @@ def setup_routes(app):
     app.router.add_get("/api/backendversion", get_backend_version)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
-    app.router.add_post("/api/uploadconfig", store_config)
-    app.router.add_post("/api/uploadcoeff", store_coeff)
+    app.router.add_post("/api/uploadconfigs", store_configs)
+    app.router.add_post("/api/uploadcoeffs", store_coeffs)
+    app.router.add_post("/api/deleteconfigs", delete_configs)
+    app.router.add_post("/api/deletecoeffs", delete_coeffs)
+    app.router.add_post("/api/downloadconfigszip", download_configs_zip)
+    app.router.add_post("/api/downloadcoeffszip", download_coeffs_zip)
     app.router.add_get("/api/guiconfig", get_gui_config)
+    app.router.add_get("/api/getconfigfile", get_config_file)
+    app.router.add_post("/api/saveconfigfile", save_config_file)
 
     app.router.add_get("/", get_gui_index)
 

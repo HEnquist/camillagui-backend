@@ -1,6 +1,11 @@
 from aiohttp import web
 from camilladsp import CamillaError
-from offline import cdsp_or_backup_cdsp, backup_cdsp
+
+from filemanagement import (
+    path_of_configfile, store_files, list_of_files_in_directory,
+    delete_files, zip_response, zip_of_files, get_yaml_as_json
+)
+from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp, save_to_working_config
 from settings import gui_config_path
 
 try:
@@ -11,7 +16,6 @@ except ImportError:
     PLOTTING = False
 from camilladsp_plot import eval_filter, eval_filterstep
 import yaml
-import os
 from version import VERSION
 
 SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
@@ -181,30 +185,31 @@ async def get_config(request):
 async def set_config(request):
     # Apply a new config to CamillaDSP
     json_config = await request.json()
-    cdsp = request.app["CAMILLA"]
-    if cdsp.is_connected():
-        cdsp.set_config(json_config)
-    else:
-        backup = backup_cdsp(request)
-        if backup:
-            backup.validate_config(json_config)
-    # If working_config is set, save new config to working_config
-    working_config_file = request.app["working_config"]
-    save_working_config = request.app["save_working_config"]
-    if working_config_file and save_working_config:
-        yaml_config = yaml.dump(json_config).encode('utf-8')
-        with open(working_config_file, "wb") as f:
-            f.write(yaml_config)
+    set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
+    save_to_working_config(json_config, request)
     return web.Response(text="OK")
 
 
 async def get_working_config_file(request):
     working_config_file = request.app["working_config"]
-    with open(working_config_file, 'r') as file:
-        cdsp = cdsp_or_backup_cdsp(request)
-        yaml_config = file.read()
-        json_config = cdsp.read_config(yaml_config)
-        return web.json_response(json_config)
+    return get_yaml_as_json(request, working_config_file)
+
+
+async def get_config_file(request):
+    config_name = request.query["name"]
+    config_file = path_of_configfile(request, config_name)
+    return get_yaml_as_json(request, config_file)
+
+
+async def save_config_file(request):
+    json = await request.json()
+    config_name = json["filename"]
+    json_config = json["config"]
+    config_file = path_of_configfile(request, config_name)
+    yaml_config = yaml.dump(json_config).encode('utf-8')
+    with open(config_file, "wb") as f:
+        f.write(yaml_config)
+    return web.Response(text="OK")
 
 
 async def config_to_yml(request):
@@ -255,53 +260,54 @@ async def get_backend_version(request):
     return web.json_response(version)
 
 
-async def store_coeff(request):
-    data = await request.post()
-    coeff = data["contents"]
-    filename = coeff.filename
-    coeff_file = coeff.file
-    content = coeff_file.read()
-    coeff_dir = request.app["coeff_dir"]
-    with open(os.path.join(coeff_dir, filename), "wb") as f:
-        f.write(content)
-    return web.Response(
-        text="Saved coeff file {} of {} bytes".format(filename, len(content))
-    )
+async def store_coeffs(request):
+    folder = request.app["coeff_dir"]
+    return await store_files(folder, request)
 
 
-async def store_config(request):
-    data = await request.post()
-    config = data["contents"]
-    filename = config.filename
-    config_file = config.file
-    content = config_file.read()
-    config_dir = request.app["config_dir"]
-    with open(os.path.join(config_dir, filename), "wb") as f:
-        f.write(content)
-    return web.Response(
-        text="Saved config file {} of {} bytes".format(filename, len(content))
-    )
-
-
-async def get_stored_configs(request):
-    config_dir = request.app["config_dir"]
-    files = [os.path.abspath(os.path.join(config_dir, f)) for f in os.listdir(config_dir) if os.path.isfile(os.path.join(config_dir, f))]
-    files_dict = {}
-    for f in files:
-        fname = os.path.basename(f)
-        files_dict[fname] = f 
-    return web.json_response(files_dict)
+async def store_configs(request):
+    folder = request.app["config_dir"]
+    return await store_files(folder, request)
 
 
 async def get_stored_coeffs(request):
     coeff_dir = request.app["coeff_dir"]
-    files = [os.path.abspath(os.path.join(coeff_dir, f)) for f in os.listdir(coeff_dir) if os.path.isfile(os.path.join(coeff_dir, f))]
-    print(files)
-    files_dict = {}
-    for f in files:
-        fname = os.path.basename(f)
-        files_dict[fname] = f 
-    return web.json_response(files_dict)
+    coeffs = list_of_files_in_directory(coeff_dir)
+    return web.json_response(coeffs)
+
+
+async def get_stored_configs(request):
+    config_dir = request.app["config_dir"]
+    configs = list_of_files_in_directory(config_dir)
+    return web.json_response(configs)
+
+
+async def delete_coeffs(request):
+    coeff_dir = request.app["coeff_dir"]
+    files = await request.json()
+    delete_files(coeff_dir, files)
+    return web.Response(text="ok")
+
+
+async def delete_configs(request):
+    config_dir = request.app["config_dir"]
+    files = await request.json()
+    delete_files(config_dir, files)
+    return web.Response(text="ok")
+
+
+async def download_coeffs_zip(request):
+    coeff_dir = request.app["coeff_dir"]
+    files = await request.json()
+    zip_file = zip_of_files(coeff_dir, files)
+    return await zip_response(request, zip_file, "coeffs.zip")
+
+
+async def download_configs_zip(request):
+    config_dir = request.app["config_dir"]
+    files = await request.json()
+    zip_file = zip_of_files(config_dir, files)
+    return await zip_response(request, zip_file, "configs.zip")
 
 
 async def get_gui_config(request):
