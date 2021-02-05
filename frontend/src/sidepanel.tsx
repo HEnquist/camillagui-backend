@@ -3,7 +3,7 @@ import "./index.css";
 import isEqual from "lodash/isEqual";
 import {FLASKURL} from "./index";
 import camillalogo from "./camilladsp.svg";
-import {VuMeterGroup} from "./vumeter.js";
+import {VuMeterGroup} from "./vumeter";
 import {VolumeSlider} from "./volumeslider";
 import {Box} from "./common-tsx";
 import {Config} from "./config";
