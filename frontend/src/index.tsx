@@ -1,114 +1,83 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import "./index.css";
-import { FilterList } from "./filterlist.js";
-import { Devices } from "./devices.js";
-import { MixerList } from "./mixerlist.js";
-import { Pipeline } from "./pipeline.js";
-import { SidePanel } from "./sidepanel.js";
-import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
+import {FilterList} from "./filterlist.js";
+import {DevicesTab} from "./devicestab.js";
+import {MixerList} from "./mixerlist.js";
+import {Pipeline} from "./pipeline.js";
+import {SidePanel} from "./sidepanel.js";
+import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import "react-tabs/style/react-tabs.css";
 import {Files} from "./files";
+import {Config, defaultConfig, Devices, Filters, Mixers} from "./config";
+import {defaultGuiConfig, GuiConfig} from "./guiconfig";
 
-//export const FLASKURL = "http://127.0.0.1:5000";
-export const FLASKURL = "";
+//export const FLASKURL = "http://127.0.0.1:5000"
+export const FLASKURL = ""
 
-class CamillaConfig extends React.Component<any, any> {
-  constructor(props: any) {
-    super(props);
-    this.handleDevices = this.handleDevices.bind(this);
-    this.handleFilters = this.handleFilters.bind(this);
-    this.handleMixers = this.handleMixers.bind(this);
-    this.handlePipeline = this.handlePipeline.bind(this);
-    this.handleConfig = this.handleConfig.bind(this);
+interface CamillaGuiState {
+  activetab: number,
+  guiConfig: GuiConfig,
+  config: Config
+}
+
+class CamillaConfig extends React.Component<unknown, CamillaGuiState> {
+  constructor(props: unknown) {
+    super(props)
+    this.handleDevices = this.handleDevices.bind(this)
+    this.handleFilters = this.handleFilters.bind(this)
+    this.handleMixers = this.handleMixers.bind(this)
+    this.handlePipeline = this.handlePipeline.bind(this)
+    this.handleConfig = this.handleConfig.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
-    this.getFullConfig = this.getFullConfig.bind(this);
-    this.switchTab = this.switchTab.bind(this);
+    this.getFullConfig = this.getFullConfig.bind(this)
+    this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
       activeConfigFile: null,
-      guiConfig: {},
-      config: this.createDefaultConfig()
-    };
+      guiConfig: defaultGuiConfig(),
+      config: defaultConfig()
+    }
     fetch(FLASKURL + "/api/guiconfig")
         .then(data => data.json())
-        .then(json => this.setState({guiConfig: json}));
+        .then(json => this.setState({guiConfig: json}))
   }
 
-  private createDefaultConfig() {
-    return {
-      devices: {
-        samplerate: 48000,
-
-        //Buffers
-        chunksize: 1024,
-        queuelimit: 4,
-
-        //Silence
-        silence_threshold: 0,
-        silence_timeout: 0,
-
-        //Rate adjust
-        enable_rate_adjust: false,
-        adjust_period: 3,
-        target_level: 1024,
-
-        //Resampler
-        enable_resampling: true,
-        resampler_type: "FastAsync",
-        capture_samplerate: 44100,
-
-        capture: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
-        playback: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
-      },
-      filters: {},
-      mixers: {},
-      pipeline: [],
-    };
+  private handleDevices(devices: Devices) {
+    this.setState((prevState: CamillaGuiState) => {
+      const state = Object.assign({}, prevState)
+      state.config.devices = devices
+      return { config: state.config }
+    })
   }
 
-  handleDevices(devices: any) {
+  private handleFilters(filters: Filters) {
+    this.setState((prevState: CamillaGuiState) => {
+      const state = Object.assign({}, prevState)
+      state.config.filters = filters
+      return { config: state.config }
+    })
+  }
+
+  private handleMixers(mixers: Mixers) {
     this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      //const devs = devices
-      state.config.devices = devices;
-      console.log("config", state);
-      return { config: state.config };
-    });
+      const state = Object.assign({}, prevState)
+      state.config.mixers = mixers
+      return { config: state.config }
+    })
   }
 
-  handleFilters(filters: any) {
+  private handlePipeline(pipeline: Pipeline) {
     this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.filters = filters;
-      console.log("config", state);
-      return { config: state.config };
-    });
+      const state = Object.assign({}, prevState)
+      state.config.pipeline = pipeline
+      return { config: state.config }
+    })
   }
 
-  handleMixers(mixers: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.mixers = mixers;
-      console.log("config", state);
-      return { config: state.config };
-    });
-  }
-
-  handlePipeline(pipeline: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.pipeline = pipeline;
-      console.log("config", state);
-      return { config: state.config };
-    });
-  }
-
-  handleConfig(config: any) {
-    this.setState((prevState: any) => {
-      return { config: config };
-    });
+  private handleConfig(config: Config) {
+    this.setState({config: config})
   }
 
   setActiveConfig(filename: string, config: any) {
@@ -118,37 +87,25 @@ class CamillaConfig extends React.Component<any, any> {
     });
   }
 
-  getFilterNames() {
-    if (this.state.config.filters) {
-      var filternames = Object.keys(this.state.config.filters);
-      return filternames;
-    } else {
-      return [];
-    }
+  private getFilterNames(): string[] {
+    return this.state.config.filters ? Object.keys(this.state.config.filters) : []
   }
 
-  getFullConfig(): any {
-    return this.state.config;
+  private getFullConfig(): Config {
+    return this.state.config
   }
 
-  getMixerNames(): any {
-    if (this.state.config.mixers) {
-      var mixernames = Object.keys(this.state.config.mixers);
-      return mixernames;
-    } else {
-      return [];
-    }
+  private getMixerNames(): string[] {
+    return this.state.config.mixers ? Object.keys(this.state.config.mixers) : []
   }
 
-  componentDidUpdate(prevProps: any) {
-    ReactTooltip.rebuild();
-    console.log("=============rebuild tooltips");
+  componentDidUpdate(prevProps: unknown) {
+    ReactTooltip.rebuild()
+    console.log("=============rebuild tooltips")
   }
 
-  switchTab(index: number, lastIndex: number, event: Event) {
-    this.setState((prevState: any) => {
-      return { activetab: index };
-    });
+  private switchTab(index: number) {
+    this.setState({activetab: index})
   }
 
   render() {
@@ -177,7 +134,7 @@ class CamillaConfig extends React.Component<any, any> {
               <Tab>Files</Tab>
             </TabList>
             <TabPanel>
-              <Devices
+              <DevicesTab
                 config={this.state.config.devices}
                 guiConfig={this.state.guiConfig}
                 onChange={this.handleDevices}
@@ -215,12 +172,11 @@ class CamillaConfig extends React.Component<any, any> {
           </Tabs>
         </div>
       </div>
-    );
+    )
   }
 }
 
 ReactDOM.render(
-  //<BiquadFQ desc="2nd order lowpass"/>,
   <CamillaConfig />,
   document.getElementById("root")
-);
+)

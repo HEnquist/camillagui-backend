@@ -154,7 +154,7 @@ class FileTable extends Component<
         return
       }
       const jsonConfig = await response.json()
-      this.props.setActiveConfig!(name, jsonConfig as JSON);
+      this.props.setActiveConfig!(name, jsonConfig as Config);
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
     } catch(e) {
       this.showErrorMessage(name, 'load', e);

@@ -4,7 +4,7 @@ import {EnumSelect, ParameterInput} from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
 
-export class Devices extends React.Component {
+export class DevicesTab extends React.Component {
   constructor(props) {
     super(props);
     this.handleChangeParams = this.handleChangeParams.bind(this);
