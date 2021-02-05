@@ -1,7 +1,7 @@
 import React, {ChangeEvent, CSSProperties} from "react";
 import Icon from "@mdi/react";
 
-type JsxChild = string | JSX.Element | JSX.IntrinsicElements | false | null
+type JsxChild = string | JSX.Element | JSX.IntrinsicElements | false | null | undefined
 export type JsxChildren = JsxChild | Array<JsxChild>
 
 export function download(filename: string, blob: any) {

@@ -183,7 +183,7 @@ class FileTable extends Component<
         body: JSON.stringify({filename: name, config: config}),
       });
       if (response.ok) {
-        setActiveConfig!(name, config)
+        setActiveConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
       } else {
         const message = await response.text();

@@ -5,7 +5,7 @@ import {FilterList} from "./filterlist.js";
 import {DevicesTab} from "./devicestab.js";
 import {MixerList} from "./mixerlist.js";
 import {Pipeline} from "./pipeline.js";
-import {SidePanel} from "./sidepanel.js";
+import {SidePanel} from "./sidepanel";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import "react-tabs/style/react-tabs.css";
@@ -18,6 +18,7 @@ export const FLASKURL = ""
 
 interface CamillaGuiState {
   activetab: number,
+  activeConfigFile?: string,
   guiConfig: GuiConfig,
   config: Config
 }
@@ -35,7 +36,6 @@ class CamillaConfig extends React.Component<unknown, CamillaGuiState> {
     this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
-      activeConfigFile: null,
       guiConfig: defaultGuiConfig(),
       config: defaultConfig()
     }
@@ -80,7 +80,7 @@ class CamillaConfig extends React.Component<unknown, CamillaGuiState> {
     this.setState({config: config})
   }
 
-  setActiveConfig(filename: string, config: any) {
+  setActiveConfig(filename: string, config: Config) {
     this.setState({
       activeConfigFile: filename,
       config: config
