@@ -33,8 +33,8 @@ export function CheckBox(props: {
     style?: CSSProperties
 }) {
     const {tooltip, checked, onChange, style} = props
-    return <label title={tooltip} className='checkbox-area' style={style}>
-        <input type="checkbox" title={tooltip} checked={checked} onChange={onChange}/>
+    return <label data-tip={tooltip} className='checkbox-area' style={style}>
+        <input type="checkbox" data-tip={tooltip} checked={checked} onChange={onChange}/>
     </label>
 }
 
@@ -66,6 +66,6 @@ export function MdiButton(props: {
     if (className !== undefined)
         buttonClass = `${buttonClass} ${className}`
     return <div onClick={clickhandler}>
-        <Icon path={icon} title={tooltip} className={buttonClass} size={1}/>
+        <Icon path={icon} data-tip={tooltip} className={buttonClass} size={1}/>
     </div>
 }

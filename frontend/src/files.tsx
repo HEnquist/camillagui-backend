@@ -4,6 +4,7 @@ import {FLASKURL} from "./index"
 import {Box, CheckBox, download, MdiButton, UploadButton} from "./common-tsx"
 import {mdiAlertCircle, mdiCheck, mdiContentSave, mdiDelete, mdiDownload, mdiRefresh, mdiUpload} from '@mdi/js'
 import {Config} from "./config";
+import ReactTooltip from "react-tooltip";
 
 export function Files(props: {
   activeConfigFile?: string,
@@ -76,6 +77,10 @@ class FileTable extends Component<
       fileStatus: null,
       stopTimer: () => {}
     }
+  }
+
+  componentDidUpdate() {
+    ReactTooltip.rebuild();
   }
 
   componentDidMount() {
@@ -271,6 +276,7 @@ class FileTable extends Component<
             <div>
               <input type='text'
                      value={newFileName}
+                     data-tip="Enter a name for the new config file"
                      style={{width: 'auto', margin: '5px 3px', padding: '3px 6px'}}
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
               <FileStatusMessage filename={newFileName} fileStatus={fileStatus}/>
@@ -382,7 +388,7 @@ function FileDownloadButton(props: { type: string, filename: string, highlight: 
   const classNames = highlight ? 'button highlighted' : 'button'
   return <a className={classNames}
             style={{width: 'max-content', textDecoration: 'none', color: 'black'}}
-            title={'Download '+filename}
+            data-tip={'Download '+filename}
             href={`${FLASKURL}/${type}/${filename}`}>
     {filename}
   </a>
