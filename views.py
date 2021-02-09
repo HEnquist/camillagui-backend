@@ -1,11 +1,13 @@
+from os.path import isfile
+
 from aiohttp import web
 from camilladsp import CamillaError
 
 from filemanagement import (
-    path_of_configfile, store_files, list_of_files_in_directory,
-    delete_files, zip_response, zip_of_files, get_yaml_as_json
+    path_of_configfile, store_files, list_of_files_in_directory, delete_files,
+    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_to_active_config
 )
-from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp, save_to_working_config
+from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from settings import gui_config_path
 
 try:
@@ -185,20 +187,44 @@ async def get_config(request):
 async def set_config(request):
     # Apply a new config to CamillaDSP
     json_config = await request.json()
-    set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
-    save_to_working_config(json_config, request)
+    try:
+        set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    save_to_active_config(json_config, request)
     return web.Response(text="OK")
 
 
-async def get_working_config_file(request):
-    working_config_file = request.app["working_config"]
-    return get_yaml_as_json(request, working_config_file)
+async def get_active_config_file(request):
+    active_config = request.app["active_config"]
+    default_config = request.app["default_config"]
+    if isfile(active_config):
+        config = active_config
+    elif isfile(default_config):
+        config = default_config
+    else:
+        return web.Response(status=404, text="No active or default config")
+    try:
+        json_config = get_yaml_as_json(request, config)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    active_config_name = get_active_config(request.app["active_config"])
+    if active_config_name:
+        json = {"configFileName": active_config_name, "config": json_config}
+    else:
+        json = {"config": json_config}
+    return web.json_response(json)
 
 
 async def get_config_file(request):
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
-    return get_yaml_as_json(request, config_file)
+    try:
+        json_config = get_yaml_as_json(request, config_file)
+        set_as_active_config(request.app["active_config"], config_file)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    return web.json_response(json_config)
 
 
 async def save_config_file(request):
@@ -209,6 +235,7 @@ async def save_config_file(request):
     yaml_config = yaml.dump(json_config).encode('utf-8')
     with open(config_file, "wb") as f:
         f.write(yaml_config)
+    set_as_active_config(request.app["active_config"], config_file)
     return web.Response(text="OK")
 
 
