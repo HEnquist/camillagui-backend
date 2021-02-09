@@ -5,9 +5,17 @@ import {Box, CheckBox, download, MdiButton, UploadButton} from "./common-tsx"
 import {mdiAlertCircle, mdiCheck, mdiContentSave, mdiDelete, mdiDownload, mdiRefresh, mdiUpload} from '@mdi/js'
 import {Config} from "./config";
 
-export function Files(props: { config: Config, setConfig: (config: Config) => void}) {
+export function Files(props: {
+  activeConfigFile?: string,
+  config: Config,
+  setActiveConfig: (filename: string, config: Config) => void
+}) {
   return <>
-    <FileTable title='Configs' type="config" config={props.config} setConfig={props.setConfig}/>
+    <FileTable title='Configs'
+               type="config"
+               activeConfigFile={props.activeConfigFile}
+               config={props.config}
+               setActiveConfig={props.setActiveConfig}/>
     <FileTable title='Filters' type="coeff"/>
   </>
 }
@@ -15,8 +23,9 @@ export function Files(props: { config: Config, setConfig: (config: Config) => vo
 interface FileTableProps {
   title: string,
   type: "config" | "coeff",
+  activeConfigFile?: string,
   config?: Config
-  setConfig?: (config: Config) => void
+  setActiveConfig?: (filename: string, config: Config) => void
 }
 
 type FileAction = 'load' | 'save' | 'upload'
@@ -140,7 +149,7 @@ class FileTable extends Component<
         return
       }
       const jsonConfig = await response.json()
-      this.props.setConfig!(jsonConfig as JSON);
+      this.props.setActiveConfig!(name, jsonConfig as JSON);
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
     } catch(e) {
       this.showErrorMessage(name, 'load', e);
@@ -161,13 +170,15 @@ class FileTable extends Component<
   }
 
   private async saveConfig(name: string) {
+    const { config, setActiveConfig } = this.props
     try {
-      const response = await fetch(`${FLASKURL}/api/saveconfigfile?name=${encodeURIComponent(name)}`, {
+      const response = await fetch(`${FLASKURL}/api/saveconfigfile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", },
-        body: JSON.stringify({filename: name, config: this.props.config}),
+        body: JSON.stringify({filename: name, config: config}),
       });
       if (response.ok) {
+        setActiveConfig!(name, config)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
       } else {
         const message = await response.text();
@@ -222,24 +233,29 @@ class FileTable extends Component<
           </div>
 
           { // File rows
-            files.map(filename => <>
+            files.flatMap(filename => [
                   <FileCheckBox
+                      key={filename+'(1)'}
                       filename={filename}
                       checked={selectedFiles.has(filename)}
-                      onChange={() => this.toggleFileSelection(filename)}/>
-                  {this.canLoadAndSave && <SaveButton
+                      onChange={() => this.toggleFileSelection(filename)}/>,
+                  !this.canLoadAndSave ? null : <SaveButton
+                      key={filename+'(2)'}
                       filename={filename}
                       fileStatus={fileStatus}
-                      saveConfig={this.overwriteConfig}/>}
-                  {this.canLoadAndSave && <LoadButton
+                      saveConfig={this.overwriteConfig}/>,
+                  !this.canLoadAndSave ? null : <LoadButton
+                      key={filename+'(3)'}
                       filename={filename}
                       fileStatus={fileStatus}
-                      loadConfig={this.loadConfig}/>}
-                  <div style={this.canLoadAndSave ? {} : {gridColumn: '2 / span 3'}}>
-                    <FileDownloadButton type={this.type} filename={filename}/>
+                      loadConfig={this.loadConfig}/>,
+                  <div key={filename+'(4)'} style={this.canLoadAndSave ? {} : {gridColumn: '2 / span 3'}}>
+                    <FileDownloadButton type={this.type}
+                                        filename={filename}
+                                        highlight={this.props.activeConfigFile === filename}/>
                     <FileStatusMessage filename={filename} fileStatus={fileStatus}/>
                   </div>
-                </>
+                ]
             )
           }
 
@@ -361,9 +377,10 @@ function LoadButton(
       onClick={() => loadConfig(filename)}/>
 }
 
-function FileDownloadButton(props: { type: string, filename: string }) {
-  const { type, filename } = props
-  return <a className="button"
+function FileDownloadButton(props: { type: string, filename: string, highlight: boolean }) {
+  const { type, filename, highlight } = props
+  const classNames = highlight ? 'button highlighted' : 'button'
+  return <a className={classNames}
             style={{width: 'max-content', textDecoration: 'none', color: 'black'}}
             title={'Download '+filename}
             href={`${FLASKURL}/${type}/${filename}`}>

@@ -22,10 +22,12 @@ class CamillaConfig extends React.Component<any, any> {
     this.handleMixers = this.handleMixers.bind(this);
     this.handlePipeline = this.handlePipeline.bind(this);
     this.handleConfig = this.handleConfig.bind(this);
+    this.setActiveConfig = this.setActiveConfig.bind(this)
     this.getFullConfig = this.getFullConfig.bind(this);
     this.switchTab = this.switchTab.bind(this);
     this.state = {
       activetab: 0,
+      activeConfigFile: null,
       guiConfig: {},
       config: this.createDefaultConfig()
     };
@@ -109,6 +111,13 @@ class CamillaConfig extends React.Component<any, any> {
     });
   }
 
+  setActiveConfig(filename: string, config: any) {
+    this.setState({
+      activeConfigFile: filename,
+      config: config
+    });
+  }
+
   getFilterNames() {
     if (this.state.config.filters) {
       var filternames = Object.keys(this.state.config.filters);
@@ -147,7 +156,12 @@ class CamillaConfig extends React.Component<any, any> {
       <div className="configapp">
         <ReactTooltip multiline={true} />
         <div>
-          <SidePanel config={this.state.config} onChange={this.handleConfig} />
+          <SidePanel
+              activeConfigFile={this.state.activeConfigFile}
+              config={this.state.config}
+              setConfig={this.handleConfig}
+              setActiveConfig={this.setActiveConfig}
+          />
         </div>
         <div>
           <Tabs
@@ -192,7 +206,11 @@ class CamillaConfig extends React.Component<any, any> {
               />
             </TabPanel>
             <TabPanel>
-              <Files config={this.state.config} setConfig={this.handleConfig}/>
+              <Files
+                  activeConfigFile={this.state.activeConfigFile}
+                  config={this.state.config}
+                  setActiveConfig={this.setActiveConfig}
+              />
             </TabPanel>
           </Tabs>
         </div>

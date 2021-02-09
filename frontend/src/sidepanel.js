@@ -6,7 +6,7 @@ import {FLASKURL} from "./index.tsx";
 import camillalogo from "./camilladsp.svg";
 import {VuMeterGroup} from "./vumeter.js";
 import {VolumeSlider} from "./volumeslider.js";
-import {download, Box, UploadButton} from "./common-tsx";
+import {Box} from "./common-tsx";
 
 class ConfigCheckMessage extends React.Component {
 
@@ -80,9 +80,6 @@ export class SidePanel extends React.Component {
     this.timer = this.timer.bind(this);
     this.fetchConfig = this.fetchConfig.bind(this);
     this.applyConfig = this.applyConfig.bind(this);
-    this.saveConfig = this.saveConfig.bind(this);
-    this.loadFile = this.loadFile.bind(this);
-    this.loadConfig = this.loadConfig.bind(this);
     this.setVolume = this.setVolume.bind(this);
   }
 
@@ -182,7 +179,7 @@ export class SidePanel extends React.Component {
       this.setState((state) => {
         return { config: config, msg: "OK" };
       });
-      this.props.onChange(config);
+      this.props.setConfig(config);
     } else {
       console.log("Got an empty config!");
       this.setState((state) => {
@@ -218,56 +215,19 @@ export class SidePanel extends React.Component {
     this.setState(() => ({msg: reply}));
   }
 
-  async saveConfig() {
-    const conf_req = await fetch(FLASKURL + "/api/configtoyml", {
-      method: "POST", // *GET, POST, PUT, DELETE, etc.
-      //mode: "same-origin", // no-cors, *cors, same-origin
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-      body: JSON.stringify(this.state.config), // body data type must match "Content-Type" header
+  async loadCurrentConfig() {
+    const conf_req = await fetch(FLASKURL + "/api/getactiveconfigfile", {
+      method: "GET",
+      headers: {"Content-Type": "text/html"},
+      cache: "no-cache",
     });
-    const reply = await conf_req.text();
-    let bl = new Blob([reply], {type: "text/html"});
-    download("config.yml", bl);
-  }
-
-  loadCurrentConfig() {
-    this.loadConfig(FLASKURL + "/api/getworkingconfigfile", {
-          method: "GET",
-          headers: {"Content-Type": "text/html"},
-          cache: "no-cache",
-        }
-    );
-  }
-
-  loadFile(event) {
-    var file = event.target.files[0];
-    var reader = new FileReader();
-    reader.readAsText(file, "UTF-8");
-    reader.onload = (readerEvent) => {
-      var content = readerEvent.target.result;
-      console.log(content);
-      this.loadConfig(FLASKURL + "/api/ymltojson", {
-            method: "POST",
-            headers: { "Content-Type": "text/html" },
-            cache: "no-cache",
-            body: content,
-          }
-      );
-    };
-  }
-
-  async loadConfig(url, requestParams) {
-    const conf_req = await fetch(url, requestParams);
-    const config = await conf_req.json();
-    console.log(config);
-    this.setState((state) => ({config: config, msg: "OK"}));
-    this.props.onChange(config);
+    const json = await conf_req.json();
+    this.setState({config: json.config, msg: "OK"});
+    this.props.setActiveConfig(json.configFileName, json.config);
   }
 
   render() {
+    const activeConfigFile = this.props.activeConfigFile;
     return (
       <section className="sidepanel">
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
@@ -287,6 +247,11 @@ export class SidePanel extends React.Component {
           </div>
         </Box>
         <Box title="Config">
+          {activeConfigFile &&
+          <div style={{width: '230px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
+            {activeConfigFile}
+          </div>
+          }
           <div className="two-column-grid">
             <div
               data-tip="Get active config from CamillaDSP"
@@ -294,24 +259,14 @@ export class SidePanel extends React.Component {
               onClick={this.fetchConfig}>
               Load from CDSP
             </div>
-            <div>
-              <UploadButton
-                content="Load from file"
-                tooltip="Load config from a local file"
-                onChange={this.loadFile}
-              />
-            </div>
             <div
-              data-tip="Upload config to CamillaDSP"
+              data-tip={activeConfigFile ?
+                `Upload config to CamillaDSP and save to ${activeConfigFile}`
+                : `Upload config to CamillaDSP`
+              }
               className="button"
               onClick={this.applyConfig}>
               Apply to CDSP
-            </div>
-            <div
-              data-tip="Save config to a local file"
-              className="button"
-              onClick={this.saveConfig}>
-              Save to file
             </div>
           </div>
           <ConfigCheckMessage config={this.state.config} />

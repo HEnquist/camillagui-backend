@@ -341,6 +341,10 @@ select {
   background-color: #aaa;
 }
 
+.highlighted {
+  background-color: #cfc;
+}
+
 .disabled-button {
   background-color: #aaa;
   border-radius: 5px;
