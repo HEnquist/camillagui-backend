@@ -289,7 +289,7 @@ class FileTable extends Component<
   }
 }
 
-function FileCheckBox(props: {checked: boolean, filename: string, onChange: () => void}) {
+function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
   const {checked, filename, onChange} = props
   let tooltip = (checked ? "Unselect " : "Select ") + filename;
   return <CheckBox tooltip={tooltip} checked={checked} onChange={onChange}/>
