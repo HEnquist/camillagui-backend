@@ -180,6 +180,8 @@ function CaptureOptions(props: {
         value={capture.channels}
         desc="channels"
         data-tip="Number of channels"
+        withControls={true}
+        min={1}
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
     <EnumInput
         value={capture.format}
@@ -259,6 +261,8 @@ function PlaybackOptions(props: {
         value={playback.channels}
         desc="channels"
         data-tip="Number of channels"
+        withControls={true}
+        min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
     <EnumInput
         value={playback.format}

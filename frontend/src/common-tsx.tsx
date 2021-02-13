@@ -80,12 +80,16 @@ export function IntInput(props:{
     desc: string
     'data-tip': string
     onChange: (value: number) => void
+    withControls?: boolean
+    min?: number
 }) {
     return <ParsedInput
         value={props.value}
         desc={props.desc}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
+        withControls={props.withControls}
+        min={props.min}
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -120,6 +124,8 @@ type ParsedInputProps<TYPE> = {
     onChange: (value: TYPE) => void
     asString: (value: TYPE) => string
     parseValue: (rawValue: string) => TYPE | undefined
+    withControls?: boolean
+    min?: number
 }
 
 class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
@@ -149,7 +155,8 @@ class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawVal
             {this.props.desc}
             <input
                 className="setting-input"
-                type="text"
+                type={this.props.withControls ? "number" : "text"}
+                min={this.props.min}
                 value={this.state.rawValue}
                 data-tip={this.props["data-tip"]}
                 style={{backgroundColor: valid ? "#FFFFFF" : "#FFAAAA"}}
