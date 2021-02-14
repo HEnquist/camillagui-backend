@@ -1,226 +1,183 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import "./index.css";
-import { FilterList } from "./filterlist.js";
-import { Devices } from "./devices.js";
-import { MixerList } from "./mixerlist.js";
-import { Pipeline } from "./pipeline.js";
-import { SidePanel } from "./sidepanel.js";
-import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
+import {FilterList} from "./filterlist.js";
+import {DevicesTab} from "./devicestab";
+import {MixerList} from "./mixerlist.js";
+import {Pipeline} from "./pipeline.js";
+import {SidePanel} from "./sidepanel";
+import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import "react-tabs/style/react-tabs.css";
 import {Files} from "./files";
+import {Config, defaultConfig, filterNamesOf, Filters, mixerNamesOf, Mixers} from "./config";
+import {defaultGuiConfig, GuiConfig} from "./guiconfig";
+import {Update} from "./common-tsx";
+import cloneDeep from "lodash/cloneDeep";
 
-//export const FLASKURL = "http://127.0.0.1:5000";
-export const FLASKURL = "";
+//export const FLASKURL = "http://127.0.0.1:5000"
+export const FLASKURL = ""
 
-class CamillaConfig extends React.Component<any, any> {
-  constructor(props: any) {
-    super(props);
-    this.handleDevices = this.handleDevices.bind(this);
-    this.handleFilters = this.handleFilters.bind(this);
-    this.handleMixers = this.handleMixers.bind(this);
-    this.handlePipeline = this.handlePipeline.bind(this);
-    this.handleConfig = this.handleConfig.bind(this);
+class CamillaConfig extends React.Component<
+  unknown,
+  {
+    activetab: number,
+    activeConfigFile?: string,
+    guiConfig: GuiConfig,
+    config: Config
+  }
+> {
+  constructor(props: unknown) {
+    super(props)
+    this.handleFilters = this.handleFilters.bind(this)
+    this.handleMixers = this.handleMixers.bind(this)
+    this.handlePipeline = this.handlePipeline.bind(this)
+    this.handleConfig = this.handleConfig.bind(this)
+    this.updateConfig = this.updateConfig.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
-    this.getFullConfig = this.getFullConfig.bind(this);
-    this.switchTab = this.switchTab.bind(this);
+    this.getFullConfig = this.getFullConfig.bind(this)
+    this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
-      activeConfigFile: null,
-      guiConfig: {},
-      config: this.createDefaultConfig()
-    };
+      guiConfig: defaultGuiConfig(),
+      config: defaultConfig()
+    }
     fetch(FLASKURL + "/api/guiconfig")
         .then(data => data.json())
-        .then(json => this.setState({guiConfig: json}));
+        .then(json => this.setState({guiConfig: json}))
   }
 
-  private createDefaultConfig() {
-    return {
-      devices: {
-        samplerate: 48000,
-
-        //Buffers
-        chunksize: 1024,
-        queuelimit: 4,
-
-        //Silence
-        silence_threshold: 0,
-        silence_timeout: 0,
-
-        //Rate adjust
-        enable_rate_adjust: false,
-        adjust_period: 3,
-        target_level: 1024,
-
-        //Resampler
-        enable_resampling: true,
-        resampler_type: "FastAsync",
-        capture_samplerate: 44100,
-
-        capture: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
-        playback: {type: "Alsa", channels: 2, format: "S32LE", device: "hw:0"},
-      },
-      filters: {},
-      mixers: {},
-      pipeline: [],
-    };
+  private handleFilters(filters: Filters) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState)
+      state.config.filters = filters
+      return { config: state.config }
+    })
   }
 
-  handleDevices(devices: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      //const devs = devices
-      state.config.devices = devices;
-      console.log("config", state);
-      return { config: state.config };
-    });
+  private handleMixers(mixers: Mixers) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState)
+      state.config.mixers = mixers
+      return { config: state.config }
+    })
   }
 
-  handleFilters(filters: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.filters = filters;
-      console.log("config", state);
-      return { config: state.config };
-    });
+  private handlePipeline(pipeline: Pipeline) {
+    this.setState(prevState => {
+      const state = Object.assign({}, prevState)
+      state.config.pipeline = pipeline
+      return { config: state.config }
+    })
   }
 
-  handleMixers(mixers: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.mixers = mixers;
-      console.log("config", state);
-      return { config: state.config };
-    });
+  private handleConfig(config: Config) {
+    this.setState({config: config})
   }
 
-  handlePipeline(pipeline: any) {
-    this.setState((prevState: any) => {
-      const state = Object.assign({}, prevState);
-      state.config.pipeline = pipeline;
-      console.log("config", state);
-      return { config: state.config };
-    });
+  private updateConfig(update: Update<Config>) {
+    this.setState(prevState => {
+      const newConfig = cloneDeep(prevState.config)
+      update(newConfig)
+      return { config: newConfig }
+    })
   }
 
-  handleConfig(config: any) {
-    this.setState((prevState: any) => {
-      return { config: config };
-    });
-  }
-
-  setActiveConfig(filename: string, config: any) {
+  setActiveConfig(filename: string, config: Config) {
     this.setState({
       activeConfigFile: filename,
       config: config
     });
   }
 
-  getFilterNames() {
-    if (this.state.config.filters) {
-      var filternames = Object.keys(this.state.config.filters);
-      return filternames;
-    } else {
-      return [];
-    }
+  private getFilterNames(): string[] {
+    return filterNamesOf(this.state.config) //TODO call this directly from child components
   }
 
-  getFullConfig(): any {
-    return this.state.config;
+  private getFullConfig(): Config {
+    return this.state.config //TODO remove and pass config as props
   }
 
-  getMixerNames(): any {
-    if (this.state.config.mixers) {
-      var mixernames = Object.keys(this.state.config.mixers);
-      return mixernames;
-    } else {
-      return [];
-    }
+  private getMixerNames(): string[] {
+    return mixerNamesOf(this.state.config) //TODO call this directly from child components
   }
 
-  componentDidUpdate(prevProps: any) {
-    ReactTooltip.rebuild();
-    console.log("=============rebuild tooltips");
+  componentDidUpdate(prevProps: unknown) {
+    ReactTooltip.rebuild()
+    console.log("=============rebuild tooltips")
   }
 
-  switchTab(index: number, lastIndex: number, event: Event) {
-    this.setState((prevState: any) => {
-      return { activetab: index };
-    });
+  private switchTab(index: number) {
+    this.setState({activetab: index})
   }
 
   render() {
-    return (
-      <div className="configapp">
-        <ReactTooltip multiline={true} />
-        <div>
-          <SidePanel
+    return <div className="configapp">
+      <ReactTooltip multiline={true} />
+      <div>
+        <SidePanel
               activeConfigFile={this.state.activeConfigFile}
               config={this.state.config}
               setConfig={this.handleConfig}
               setActiveConfig={this.setActiveConfig}
           />
-        </div>
-        <div>
-          <Tabs
-            className="configtabs"
-            selectedIndex={this.state.activetab}
-            onSelect={this.switchTab}
-          >
-            <TabList>
-              <Tab>Devices</Tab>
-              <Tab>Filters</Tab>
-              <Tab>Mixers</Tab>
-              <Tab>Pipeline</Tab>
-              <Tab>Files</Tab>
-            </TabList>
-            <TabPanel>
-              <Devices
-                config={this.state.config.devices}
-                guiConfig={this.state.guiConfig}
-                onChange={this.handleDevices}
-              />
-            </TabPanel>
-            <TabPanel>
-              <FilterList
-                config={this.state.config.filters}
-                samplerate={this.state.config.devices.samplerate}
-                onChange={this.handleFilters}
-              />
-            </TabPanel>
-            <TabPanel>
-              <MixerList
-                config={this.state.config.mixers}
-                onChange={this.handleMixers}
-              />
-            </TabPanel>
-            <TabPanel>
-              <Pipeline
-                config={this.state.config.pipeline}
-                filters={this.getFilterNames()}
-                mixers={this.getMixerNames()}
-                onChange={this.handlePipeline}
-                getConfig={this.getFullConfig}
-              />
-            </TabPanel>
-            <TabPanel>
-              <Files
+      </div>
+      <div>
+        <Tabs
+          className="configtabs"
+          selectedIndex={this.state.activetab}
+          onSelect={this.switchTab}
+        >
+          <TabList>
+            <Tab>Devices</Tab>
+            <Tab>Filters</Tab>
+            <Tab>Mixers</Tab>
+            <Tab>Pipeline</Tab>
+            <Tab>Files</Tab>
+          </TabList>
+          <TabPanel>
+            <DevicesTab
+              devices={this.state.config.devices}
+              guiConfig={this.state.guiConfig}
+              updateConfig={this.updateConfig}
+            />
+          </TabPanel>
+          <TabPanel>
+            <FilterList
+              config={this.state.config.filters}
+              samplerate={this.state.config.devices.samplerate}
+              onChange={this.handleFilters}
+            />
+          </TabPanel>
+          <TabPanel>
+            <MixerList
+              config={this.state.config.mixers}
+              onChange={this.handleMixers}
+            />
+          </TabPanel>
+          <TabPanel>
+            <Pipeline
+              config={this.state.config.pipeline}
+              filters={this.getFilterNames()}
+              mixers={this.getMixerNames()}
+              onChange={this.handlePipeline}
+              getConfig={this.getFullConfig}
+            />
+          </TabPanel>
+          <TabPanel>
+            <Files
                   activeConfigFile={this.state.activeConfigFile}
                   config={this.state.config}
                   setActiveConfig={this.setActiveConfig}
               />
-            </TabPanel>
-          </Tabs>
-        </div>
+          </TabPanel>
+        </Tabs>
       </div>
-    );
+    </div>
   }
 }
 
 ReactDOM.render(
-  //<BiquadFQ desc="2nd order lowpass"/>,
   <CamillaConfig />,
   document.getElementById("root")
-);
+)

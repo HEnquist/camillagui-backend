@@ -12,9 +12,8 @@ code {
     monospace;
 }
 
-input:not([type='checkbox']) {
+input:not([type='checkbox']), select {
   box-sizing: border-box;
-  width : 150%; /* TODO why is size 150% necessary here? */
   border-radius: 5px;
   border: 1px inset #9090B0;
   padding: 4px;
@@ -42,14 +41,6 @@ input[type='checkbox'] {
   text-align: right;
   padding-inline-end: 10px;
 }
-
-select {
-  box-sizing: border-box;
-  width : 100%; 
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  padding: 4px;
-} 
 
 .filter {
   background: rgb(220, 220, 220);
@@ -81,7 +72,7 @@ select {
 }
 
 .filters {
-  border: 4px solidwhite;
+  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -132,8 +123,7 @@ select {
 }
 
 .devices {
-  background: rgb(220, 220, 220);
-  border: 4px solidwhite;
+  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -144,7 +134,7 @@ select {
 
 .namelist {
   background: rgb(220, 220, 220);
-  border: 4px solidwhite;
+  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -154,7 +144,7 @@ select {
 }
 
 .pipeline {
-  border: 4px solidwhite;
+  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -195,7 +185,7 @@ select {
 
 .listitem {
   background: rgb(220, 220, 220);
-  border: 4px solidwhite;
+  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -249,6 +239,19 @@ select {
   width: 60%;
 }
 
+.setting {
+  width: 100%;
+  text-align: right;
+}
+
+.setting-input {
+  width: 55%;
+}
+
+.setting-label {
+  margin-right: 5px;
+}
+
 .deletebutton {
   font-size: large;
   color: #fff;
@@ -285,6 +288,8 @@ select {
   border-radius: 5px;
   border: 1px inset #9090B0;
   padding: 3px 8px 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .slidecontainer {
@@ -293,11 +298,6 @@ select {
   float: left;
   display: flex;
   align-items:center;
-}
-
-.space-between-children > *:not(:last-child) {
-  display: block;
-  margin-bottom: 5px;
 }
 
 .two-column-grid {
@@ -360,12 +360,11 @@ select {
 }
 
 .versions {
-  justify-self: center;
-  margin: 15px auto;
-  width: 90%;
+  margin: 15px 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
   font-size: xx-small;
-  display: grid;
-  grid-template-columns: auto auto auto;
 }
 
 .success {

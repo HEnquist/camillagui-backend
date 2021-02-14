@@ -154,7 +154,7 @@ class FileTable extends Component<
         return
       }
       const jsonConfig = await response.json()
-      this.props.setActiveConfig!(name, jsonConfig as JSON);
+      this.props.setActiveConfig!(name, jsonConfig as Config);
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
     } catch(e) {
       this.showErrorMessage(name, 'load', e);
@@ -183,7 +183,7 @@ class FileTable extends Component<
         body: JSON.stringify({filename: name, config: config}),
       });
       if (response.ok) {
-        setActiveConfig!(name, config)
+        setActiveConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
       } else {
         const message = await response.text();
@@ -289,7 +289,7 @@ class FileTable extends Component<
   }
 }
 
-function FileCheckBox(props: {checked: boolean, filename: string, onChange: () => void}) {
+function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
   const {checked, filename, onChange} = props
   let tooltip = (checked ? "Unselect " : "Select ") + filename;
   return <CheckBox tooltip={tooltip} checked={checked} onChange={onChange}/>

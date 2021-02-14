@@ -102,26 +102,8 @@ export class EnumSelect extends React.Component {
       "FLOAT64LE",
       "TEXT",
     ],
-    sampleformat: [
-      "S16LE",
-      "S24LE",
-      "S24LE3",
-      "S32LE",
-      "FLOAT32LE",
-      "FLOAT64LE",
-    ],
-    resampler: ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"],
     delayunit: ["ms", "samples"],
     Conv: ["File", "Values"],
-    backend_capture: ["Alsa", "Pulse", "Wasapi", "CoreAudio", "File", "Stdin"],
-    backend_playback: [
-      "Alsa",
-      "Pulse",
-      "Wasapi",
-      "CoreAudio",
-      "File",
-      "Stdout",
-    ],
     Dither: [
       "Simple",
       "Uniform",
@@ -168,17 +150,16 @@ export class EnumSelect extends React.Component {
             {this.props.desc}
           </div>
         </div>
-        <div className="column right">
-          <select
-            name={this.props.desc}
-            id={this.props.desc}
-            value={this.state.value}
-            onChange={this.handleChange}
-            data-tip={this.props["data-tip"]}
-          >
-            {fields}
-          </select>
-        </div>
+        <select
+          className="column right"
+          name={this.props.desc}
+          id={this.props.desc}
+          value={this.state.value}
+          onChange={this.handleChange}
+          data-tip={this.props["data-tip"]}
+        >
+          {fields}
+        </select>
       </div>
     );
   }
@@ -279,15 +260,14 @@ export class InputField extends React.Component {
             {this.props.desc}
           </div>
         </div>
-        <div className="column left">
           <input
+            className="column right"
             type={type}
             value={value}
             onChange={this.handleChange}
             data-tip={this.props["data-tip"]}
             style={{backgroundColor: bg_color}}
           />
-        </div>
       </div>
     );
   }
@@ -362,11 +342,6 @@ export class ParameterInput extends React.Component {
       desc: "b2",
       tooltip: "Value for Biquad b2 coefficient",
     },
-    adjust_period: {
-      type: "int",
-      desc: "adjust_period",
-      tooltip: "Delay in seconds between rate adjustments",
-    },
     amplitude: {
       type: "float",
       desc: "amplitude",
@@ -378,37 +353,9 @@ export class ParameterInput extends React.Component {
       tooltip: "Comma-separated list of coefficients for b",
     },
     bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
-    capture_samplerate: {
-      type: "int",
-      desc: "capture_samplerate",
-      tooltip:
-        "Sample rate for capture device.<br>If different than 'samplerate' then resampling must be enabled",
-    },
     channel: { type: "int", desc: "channel", tooltip: "Channel number" },
-    channels: { type: "int", desc: "channels", tooltip: "Number of channels" },
-    chunksize: {
-      type: "int",
-      desc: "chunksize",
-      tooltip: "Chunksize for the processing",
-    },
     delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
     dest: { type: "int", desc: "dest", tooltip: "Destination channel" },
-    device: { type: "text", desc: "device", tooltip: "Name of device" },
-    enable_rate_adjust: {
-      type: "bool",
-      desc: "enable_rate_adjust",
-      tooltip: "Enable rate adjust",
-    },
-    enable_resampling: {
-      type: "bool",
-      desc: "enable_resampling",
-      tooltip: "Enable rasampling",
-    },
-    extra_samples: {
-      type: "int",
-      desc: "extra_samples",
-      tooltip: "Number of extra samples to insert after end of file",
-    },
     file: { type: "text", desc: "file", tooltip: "Filename including path" },
     filename: {
       type: "text",
@@ -459,20 +406,10 @@ export class ParameterInput extends React.Component {
       tooltip: "Q-value of actual system",
     },
     q_target: { type: "float", desc: "Q target", tooltip: "Target Q-value" },
-    queuelimit: {
-      type: "int",
-      desc: "queuelimit",
-      tooltip: "Length limit for internal queues",
-    },
     ramp_time: {
       type: "float",
       desc: "ramp_time",
       tooltip: "Volume change ramp time in ms",
-    },
-    read_bytes: {
-      type: "int",
-      desc: "read_bytes",
-      tooltip: "Read up to this number of bytes",
     },
     read_bytes_lines: {
       type: "int",
@@ -486,32 +423,6 @@ export class ParameterInput extends React.Component {
         "Boost is scaled up linearly to reach the full value at reference_level - 20dB.<br>" +
         "Above reference_level only gain is applied.",
     },
-    resampler_type: {
-      type: "enum",
-      desc: "resampler_type",
-      subtype: "resampler",
-      tooltip: "Resampler type",
-    },
-    samplerate: {
-      type: "int",
-      desc: "samplerate",
-      tooltip: "Sample rate for processing and output",
-    },
-    silence_threshold: {
-      type: "float",
-      desc: "silence_threshold",
-      tooltip: "Threshold for silence in dB",
-    },
-    silence_timeout: {
-      type: "float",
-      desc: "silence_timeout",
-      tooltip: "Pause processing after this many seconds of silence",
-    },
-    skip_bytes: {
-      type: "int",
-      desc: "skip_bytes",
-      tooltip: "Number of bytes to skip at beginning of file",
-    },
     skip_bytes_lines: {
       type: "int",
       desc: "skip_bytes_lines",
@@ -521,11 +432,6 @@ export class ParameterInput extends React.Component {
       type: "float",
       desc: "slope",
       tooltip: "Filter slope in dB per octave",
-    },
-    target_level: {
-      type: "int",
-      desc: "target_level",
-      tooltip: "Target output buffer fill level for rate adjust",
     },
     unit: {
       type: "enum",

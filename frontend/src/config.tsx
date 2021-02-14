@@ -1,1 +1,0 @@
-export type Config = any
