@@ -12,13 +12,23 @@ code {
     monospace;
 }
 
-input{
+input:not([type='checkbox']) {
   box-sizing: border-box;
-  width : 150%; 
+  width : 150%; /* TODO why is size 150% necessary here? */
   border-radius: 5px;
   border: 1px inset #9090B0;
   padding: 4px;
-} 
+}
+
+input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.checkbox-area {
+  cursor: pointer;
+  display: inline-block;
+  padding: 5px;
+}
 
 .fileinput{
   box-sizing: border-box;
@@ -33,7 +43,7 @@ input{
   padding-inline-end: 10px;
 }
 
-select{
+select {
   box-sizing: border-box;
   width : 100%; 
   border-radius: 5px;
@@ -237,8 +247,6 @@ select{
   
 .right {
   width: 60%;
-  float: left;
-  display: flex;
 }
 
 .deletebutton {
@@ -314,7 +322,7 @@ select{
   align-self: center;
 }
 
-.upload-label {
+.button {
   background-color: #f3f3f3;
   border-radius: 5px;
   border: 1px inset #9090B0;
@@ -325,12 +333,26 @@ select{
   cursor: pointer;
 }
 
-.upload-label:hover {
+.button:hover {
   background-color: #ddd;
 }
 
-.upload-label:active {
+.button:active {
   background-color: #aaa;
+}
+
+.highlighted {
+  background-color: #cfc;
+}
+
+.disabled-button {
+  background-color: #aaa;
+  border-radius: 5px;
+  border: 1px inset #9090B0;
+  font-size: smaller;
+  display: block;
+  margin: 5px 3px;
+  padding: 3px 6px;
 }
 
 .config-status {
@@ -344,4 +366,16 @@ select{
   font-size: xx-small;
   display: grid;
   grid-template-columns: auto auto auto;
+}
+
+.success {
+  color: green;
+}
+
+.error {
+  color: red;
+}
+
+.neutral {
+  color: #bbb;
 }

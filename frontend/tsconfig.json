@@ -3,9 +3,11 @@
     "outDir": "./dist/",
     "sourceMap": true,
     "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
     "module": "esnext",
     "jsx": "react",
-    "target": "es5",
+    "target": "es2015",
     "allowJs": true,
     "lib": [
       "dom",

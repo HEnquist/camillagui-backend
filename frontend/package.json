@@ -4,6 +4,8 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
+    "@mdi/js": "^5.9.55",
+    "@mdi/react": "^1.4.0",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
@@ -13,6 +15,7 @@
     "awesome-typescript-loader": "^5.2.1",
     "chart.js": "^2.9.4",
     "d3": "^6.2.0",
+    "immutable": "^4.0.0-rc.12",
     "lodash.isequal": "^4.5.0",
     "rc-progress": "^3.1.1",
     "react": "^16.14.0",
