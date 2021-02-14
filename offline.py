@@ -28,3 +28,13 @@ def cdsp_or_backup_cdsp(request):
         if backup:
             return backup
     return cdsp
+
+
+def set_cdsp_config_or_validate_with_backup_cdsp(json_config, request):
+    cdsp = request.app["CAMILLA"]
+    if cdsp.is_connected():
+        cdsp.set_config(json_config)
+    else:
+        backup = backup_cdsp(request)
+        if backup:
+            backup.validate_config(json_config)

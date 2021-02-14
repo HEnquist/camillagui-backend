@@ -9,7 +9,7 @@ from views import (
     eval_pipeline_svg,
     get_config,
     set_config,
-    get_working_config_file,
+    get_active_config_file,
     config_to_yml,
     yml_to_json,
     validate_config,
@@ -19,9 +19,15 @@ from views import (
     get_gui_index,
     get_stored_coeffs,
     get_stored_configs,
-    store_config,
-    store_coeff,
-    get_gui_config
+    store_configs,
+    store_coeffs,
+    delete_coeffs,
+    delete_configs,
+    download_coeffs_zip,
+    download_configs_zip,
+    get_gui_config,
+    get_config_file,
+    save_config_file
 )
 import pathlib
 
@@ -39,7 +45,7 @@ def setup_routes(app):
     app.router.add_post("/api/evalpipelinesvg", eval_pipeline_svg)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
-    app.router.add_get("/api/getworkingconfigfile", get_working_config_file)
+    app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
     app.router.add_post("/api/configtoyml", config_to_yml)
     app.router.add_post("/api/ymltojson", yml_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
@@ -48,9 +54,15 @@ def setup_routes(app):
     app.router.add_get("/api/backendversion", get_backend_version)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
-    app.router.add_post("/api/uploadconfig", store_config)
-    app.router.add_post("/api/uploadcoeff", store_coeff)
+    app.router.add_post("/api/uploadconfigs", store_configs)
+    app.router.add_post("/api/uploadcoeffs", store_coeffs)
+    app.router.add_post("/api/deleteconfigs", delete_configs)
+    app.router.add_post("/api/deletecoeffs", delete_coeffs)
+    app.router.add_post("/api/downloadconfigszip", download_configs_zip)
+    app.router.add_post("/api/downloadcoeffszip", download_coeffs_zip)
     app.router.add_get("/api/guiconfig", get_gui_config)
+    app.router.add_get("/api/getconfigfile", get_config_file)
+    app.router.add_post("/api/saveconfigfile", save_config_file)
 
     app.router.add_get("/", get_gui_index)
 

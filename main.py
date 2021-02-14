@@ -8,8 +8,8 @@ import sys
 app = web.Application()
 app["config_dir"] = config["config_dir"]
 app["coeff_dir"] = config["coeff_dir"]
-app["working_config"] = config["working_config"]
-app["save_working_config"] = config["save_working_config"]
+app["default_config"] = config["default_config"]
+app["active_config"] = config["active_config"]
 setup_routes(app)
 setup_static_routes(app)
 
