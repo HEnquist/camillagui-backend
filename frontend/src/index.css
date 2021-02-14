@@ -12,7 +12,7 @@ code {
     monospace;
 }
 
-input:not([type='checkbox']) {
+input:not([type='checkbox']), select {
   box-sizing: border-box;
   border-radius: 5px;
   border: 1px inset #9090B0;
@@ -41,14 +41,6 @@ input[type='checkbox'] {
   text-align: right;
   padding-inline-end: 10px;
 }
-
-select {
-  box-sizing: border-box;
-  width : 100%; 
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  padding: 4px;
-} 
 
 .filter {
   background: rgb(220, 220, 220);
@@ -253,8 +245,11 @@ select {
 }
 
 .setting-input {
-  margin-left: 5px;
   width: 55%;
+}
+
+.setting-label {
+  margin-right: 5px;
 }
 
 .deletebutton {
@@ -303,11 +298,6 @@ select {
   float: left;
   display: flex;
   align-items:center;
-}
-
-.space-between-children > *:not(:last-child) {
-  display: block;
-  margin-bottom: 5px;
 }
 
 .two-column-grid {

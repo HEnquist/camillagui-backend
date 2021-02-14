@@ -75,7 +75,18 @@ export function MdiButton(props: {
     </div>
 }
 
-export function IntInput(props:{
+export function OptionLine(props: {
+    desc: string
+    'data-tip': string
+    children: ReactNode
+}) {
+    return <label className="setting" data-tip={props['data-tip']}>
+        <span className="setting-label">{props.desc}</span>
+        {props.children}
+    </label>
+}
+
+export function IntOption(props:{
     value: number
     desc: string
     'data-tip': string
@@ -83,13 +94,23 @@ export function IntInput(props:{
     withControls?: boolean
     min?: number
 }) {
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <IntInput {...props} className="setting-input" />
+    </OptionLine>
+}
+
+export function IntInput(props: {
+    value: number
+    desc: string
+    'data-tip': string
+    onChange: (value: number) => void
+    withControls?: boolean
+    min?: number
+    className?: string
+    style?: CSSProperties
+}) {
     return <ParsedInput
-        value={props.value}
-        desc={props.desc}
-        data-tip={props["data-tip"]}
-        onChange={props.onChange}
-        withControls={props.withControls}
-        min={props.min}
+        {...props}
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -98,26 +119,31 @@ export function IntInput(props:{
     />
 }
 
-export function FloatInput(props:{
+export function FloatOption(props:{
     value: number
     desc: string
     'data-tip': string
     onChange: (value: number) => void
 }) {
-    return <ParsedInput
-        value={props.value}
-        desc={props.desc}
-        data-tip={props["data-tip"]}
-        onChange={props.onChange}
-        asString={(float: number) => float.toString()}
-        parseValue={(rawValue: string) => {
-            const parsedvalue = parseFloat(rawValue)
-            return isNaN(parsedvalue) ? undefined : parsedvalue
-        }}
-    />
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <ParsedInput
+            className="setting-input"
+            value={props.value}
+            desc={props.desc}
+            data-tip={props["data-tip"]}
+            onChange={props.onChange}
+            asString={(float: number) => float.toString()}
+            parseValue={(rawValue: string) => {
+                const parsedvalue = parseFloat(rawValue)
+                return isNaN(parsedvalue) ? undefined : parsedvalue
+            }}
+        />
+    </OptionLine>
 }
 
 type ParsedInputProps<TYPE> = {
+    style?: CSSProperties
+    className?: string
     value: TYPE
     desc: string
     'data-tip': string
@@ -149,31 +175,29 @@ class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawVal
     }
 
     render() {
-        const parsedValue = this.props.parseValue(this.state.rawValue)
+        let props = this.props;
+        const parsedValue = props.parseValue(this.state.rawValue)
         let valid = parsedValue !== undefined
-        return <label className="setting" data-tip={this.props['data-tip']}>
-            {this.props.desc}
-            <input
-                className="setting-input"
-                type={this.props.withControls ? "number" : "text"}
-                min={this.props.min}
-                value={this.state.rawValue}
-                data-tip={this.props["data-tip"]}
-                style={{backgroundColor: valid ? "#FFFFFF" : "#FFAAAA"}}
-                onChange={(e) => this.updateValue(e.target.value)}/>
-        </label>
+        return <input
+            id={props.desc}
+            type={props.withControls ? "number" : "text"}
+            min={props.min}
+            value={this.state.rawValue}
+            data-tip={props["data-tip"]}
+            className={props.className}
+            style={{backgroundColor: valid ? "#FFFFFF" : "#FFAAAA", ...props.style}}
+            onChange={(e) => this.updateValue(e.target.value)}/>
     }
 
 }
 
-export function BoolInput(props: {
+export function BoolOption(props: {
     value: boolean,
     desc: string,
     'data-tip': string
     onChange: (value: boolean) => void
 }) {
-    return <label className="setting" style={{margin: '4px 0 4px 0'}}>
-        {props.desc}
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
         <div className="setting-input"
              data-tip={props["data-tip"]}
              style={{textAlign: 'left', cursor: 'pointer', display: 'inline-block'}}>
@@ -184,7 +208,19 @@ export function BoolInput(props: {
                 data-tip={props["data-tip"]}
                 onChange={(e) => props.onChange(e.target.checked)}/>
         </div>
-    </label>
+    </OptionLine>
+}
+
+export function EnumOption<OPTION extends string>(props: {
+    value: OPTION,
+    options: OPTION[],
+    desc: string,
+    'data-tip': string,
+    onChange: (value: OPTION) => void
+}) {
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <EnumInput {...props} className="setting-input"/>
+    </OptionLine>
 }
 
 export function EnumInput<OPTION extends string>(props: {
@@ -192,34 +228,33 @@ export function EnumInput<OPTION extends string>(props: {
     options: OPTION[],
     desc: string,
     'data-tip': string,
+    style?: CSSProperties,
+    className?: string
     onChange: (value: OPTION) => void
 }) {
-    return <label className="setting" data-tip={props["data-tip"]}>
-        {props.desc}
-        <select className="setting-input"
-                name={props.desc}
-                value={props.value}
-                data-tip={props["data-tip"]}
-                onChange={e => props.onChange(e.target.value as OPTION)}>
-            {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
-    </label>
+    return <select
+        name={props.desc}
+        value={props.value}
+        data-tip={props["data-tip"]}
+        onChange={e => props.onChange(e.target.value as OPTION)}
+        style={props.style}
+        className={props.className}>
+        {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
+    </select>
 }
 
-export function TextInput(props: {
+export function TextOption(props: {
     value: string,
     desc: string,
     'data-tip': string
     onChange: (value: string) => void
 }) {
-    return <label className="setting" data-tip={props['data-tip']}>
-        {props.desc}
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
         <input
             className="setting-input"
             type="text"
             value={props.value}
             data-tip={props["data-tip"]}
-            onChange={(e) => props.onChange(e.target.value)}
-        />
-    </label>
+            onChange={(e) => props.onChange(e.target.value)}/>
+    </OptionLine>
 }

@@ -57,17 +57,16 @@ export class NameSelect extends React.Component {
     }
     return (
       <div className="row">
-        <div className="column left">
-          <select
-            name={this.props.desc}
-            id={this.props.desc}
-            value={this.state.value}
-            data-tip="Name of the item"
-            onChange={this.handleChange}
-          >
-            {options}
-          </select>
-        </div>
+        <select
+          className="column left"
+          name={this.props.desc}
+          id={this.props.desc}
+          value={this.state.value}
+          data-tip="Name of the item"
+          onChange={this.handleChange}
+        >
+          {options}
+        </select>
         {button}
       </div>
     );

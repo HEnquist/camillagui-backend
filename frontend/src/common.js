@@ -150,17 +150,16 @@ export class EnumSelect extends React.Component {
             {this.props.desc}
           </div>
         </div>
-        <div className="column right">
-          <select
-            name={this.props.desc}
-            id={this.props.desc}
-            value={this.state.value}
-            onChange={this.handleChange}
-            data-tip={this.props["data-tip"]}
-          >
-            {fields}
-          </select>
-        </div>
+        <select
+          className="column right"
+          name={this.props.desc}
+          id={this.props.desc}
+          value={this.state.value}
+          onChange={this.handleChange}
+          data-tip={this.props["data-tip"]}
+        >
+          {fields}
+        </select>
       </div>
     );
   }
