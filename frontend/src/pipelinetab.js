@@ -1,12 +1,11 @@
 import React from "react";
 import "./index.css";
-//import { ParameterInput, InputField } from './common.js';
-import { PipelinePopup } from './pipelineplotter.js';
-import { ParameterInput, EnumSelect, ImagePopup } from "./common.js";
+import {PipelinePopup} from './pipelineplotter.js';
+import {EnumSelect, ParameterInput} from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
-import { FLASKURL } from "./index.tsx";
-import {AddButton, DeleteButton, PlotButton} from "./common-tsx";
+import {FLASKURL} from "./index.tsx";
+import {AddButton, ChartPopup, DeleteButton, PlotButton} from "./common-tsx";
 
 export class NameSelect extends React.Component {
   constructor(props) {
@@ -105,7 +104,7 @@ export class FilterStep extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
-    this.state = { config: cloneDeep(this.props.config), popup: false, image: null };
+    this.state = { config: cloneDeep(this.props.config), popup: false, data: {} };
   }
 
   plotFilterStep = (event) => {
@@ -113,19 +112,14 @@ export class FilterStep extends React.Component {
     const fullconf = this.props.getConfig();
     const plotconf = { index: this.props.idx, config: fullconf };
     fetch(FLASKURL + "/api/evalfilterstep", {
-      method: "POST", // *GET, POST, PUT, DELETE, etc.
-      mode: "same-origin", // no-cors, *cors, same-origin
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
-      body: JSON.stringify(plotconf), // body data type must match "Content-Type" header
+      method: "POST",
+      headers: { "Content-Type": "application/json", },
+      cache: "no-cache",
+      body: JSON.stringify(plotconf),
     }).then(
       (result) => {
-        result.blob().then((data) => {
-          this.setState((state) => {
-            return { popup: true, image: data };
-          });
+        result.json().then((data) => {
+          this.setState({ popup: true, data: data });
         });
         console.log("OK", result);
       },
@@ -178,10 +172,10 @@ export class FilterStep extends React.Component {
           onChange={this.handleChange}
         />
         <PlotButton tooltip="Plot response of this step" onClick={this.plotFilterStep}/>
-        <ImagePopup
+        <ChartPopup
           key={this.state.popup}
           open={this.state.popup}
-          image={this.state.image}
+          data={this.state.data}
           onClose={this.handleClose}
         />
       </div>
