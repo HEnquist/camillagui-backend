@@ -6,6 +6,7 @@ import { ParameterInput, EnumSelect, ImagePopup } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
 import { FLASKURL } from "./index.tsx";
+import {AddButton, DeleteButton, PlotButton} from "./common-tsx";
 
 export class NameSelect extends React.Component {
   constructor(props) {
@@ -45,13 +46,7 @@ export class NameSelect extends React.Component {
     if (this.props.show_button) {
       button = (
         <div className="column right">
-          <button
-            className="deletebutton"
-            data-tip="Remove this item from the list"
-            onClick={this.deleteName}
-          >
-            ✖
-          </button>
+          <DeleteButton tooltip="Remove this item from the list" onClick={this.deleteName}/>
         </div>
       );
     }
@@ -182,14 +177,7 @@ export class FilterStep extends React.Component {
           allnames={this.props.allnames}
           onChange={this.handleChange}
         />
-        <button
-          className="plotbutton"
-          data-tip="Plot response of this step"
-          onClick={this.plotFilterStep}
-          id="plot"
-        >
-          Plot
-        </button>
+        <PlotButton tooltip="Plot response of this step" onClick={this.plotFilterStep}/>
         <ImagePopup
           key={this.state.popup}
           open={this.state.popup}
@@ -262,13 +250,7 @@ class NameList extends React.Component {
       <div className="namelist">
         {names}
         <div>
-          <button
-            className="addbutton"
-            data-tip="Add a filter to the list"
-            onClick={this.addName}
-          >
-            +
-          </button>
+          <AddButton tooltip="Add a filter to the list" onClick={this.addName}/>
         </div>
       </div>
     );
@@ -380,7 +362,7 @@ class PipelineStep extends React.Component {
 }
 
 // ---------------  Pipeline ---------------------------------------------
-export class Pipeline extends React.Component {
+export class PipelineTab extends React.Component {
   constructor(props) {
     super(props);
     //this.handleChange = this.handleChange.bind(this);
@@ -494,33 +476,15 @@ export class Pipeline extends React.Component {
                   />
                 </div>
                 <div>
-                  <button
-                    className="deletebutton"
-                    data-tip="Delete this step"
-                    onClick={this.removeStep}
-                    id={i}
-                  >
-                    ✖
-                  </button>
+                  <DeleteButton tooltip="Delete this step" onClick={this.removeStep}/>
                 </div>
               </div>
             );
           })}
-          <button
-            className="addbutton"
-            data-tip="Add a pipeline step"
-            onClick={this.addStep}
-          >
-            +
-          </button>
-          <button
-            className="plotbutton"
-            data-tip="Plot the pipeline"
-            onClick={this.plotPipeline}
-            id="plot"
-          >
-            Plot
-          </button>
+          <div>
+            <AddButton tooltip="Add a pipeline step" onClick={this.addStep}/>
+            <PlotButton tooltip="Plot the pipeline" onClick={this.plotPipeline}/>
+          </div>
           <PipelinePopup
             key={this.state.popup}
             open={this.state.popup}

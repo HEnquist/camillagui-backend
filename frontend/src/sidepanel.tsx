@@ -212,7 +212,7 @@ export class SidePanel extends React.Component<
   render() {
     const activeConfigFile = this.props.activeConfigFile;
     return (
-      <section className="sidepanel">
+      <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
         <Box title="Volume">
             <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped} />
@@ -231,7 +231,7 @@ export class SidePanel extends React.Component<
         </Box>
         <Box title="Config">
           {activeConfigFile &&
-          <div style={{width: '230px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
+          <div style={{width: '225px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
             {activeConfigFile}
           </div>
           }

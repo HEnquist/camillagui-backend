@@ -3,6 +3,7 @@ import "./index.css";
 import { ParameterInput, InputField } from "./common.js";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash/isEqual";
+import {AddButton, DeleteButton} from "./common-tsx";
 
 // ---------------  MixerMapping ---------------------------------------------
 class MixerMapping extends React.Component {
@@ -71,14 +72,11 @@ class MixerMapping extends React.Component {
             onChange={this.handleSourceChange}
           />
           <div>
-            <button
-              className="deletebutton"
-              data-tip="Delete this source"
+            <DeleteButton
               id={idx}
+              tooltip="Delete this source"
               onClick={() => this.deleteSource(idx)}
-            >
-              ✖
-            </button>
+            />
           </div>
         </div>
       );
@@ -92,13 +90,7 @@ class MixerMapping extends React.Component {
         <div>Sources</div>
         {fields}
         <div>
-          <button
-            className="addbutton"
-            data-tip="Add a source to this mapping"
-            onClick={this.addSource}
-          >
-            +
-          </button>
+          <AddButton tooltip="Add a source to this mapping" onClick={this.addSource}/>
         </div>
       </div>
     );
@@ -211,14 +203,11 @@ class Mixer extends React.Component {
             onChange={this.handleMappingChange}
           />
           <div>
-            <button
-              className="deletebutton"
-              data-tip="Delete this mapping"
+            <DeleteButton
               id={idx}
+              tooltip="Delete this mapping"
               onClick={() => this.deleteMapping(idx)}
-            >
-              ✖
-            </button>
+            />
           </div>
         </div>
       );
@@ -234,13 +223,7 @@ class Mixer extends React.Component {
         <div className="mappings">
           {fields}
           <div>
-            <button
-              className="addbutton"
-              data-tip="Add a mapping"
-              onClick={this.addMapping}
-            >
-              +
-            </button>
+            <AddButton tooltip="Add a mapping" onClick={this.addMapping}/>
           </div>
         </div>
       </div>
@@ -368,25 +351,18 @@ export class MixerList extends React.Component {
                   />
                 </div>
                 <div>
-                  <button
-                    className="deletebutton"
-                    data-tip="Delete this mixer"
-                    onClick={this.removeMixer}
+                  <DeleteButton
                     id={mix}
-                  >
-                    ✖
-                  </button>
+                    tooltip="Delete this mixer"
+                    onClick={() => this.removeMixer({target: {id: mix}})}
+                  />
                 </div>
               </div>
             );
           })}
-          <button
-            className="addbutton"
-            data-tip="Add a new mixer"
-            onClick={this.addMixer}
-          >
-            +
-          </button>
+          <div>
+            <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
+          </div>
         </div>
       </div>
     );

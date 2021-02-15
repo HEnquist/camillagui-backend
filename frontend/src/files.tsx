@@ -1,7 +1,7 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
 import {FLASKURL} from "./index"
-import {Box, CheckBox, download, MdiButton, UploadButton} from "./common-tsx"
+import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./common-tsx"
 import {mdiAlertCircle, mdiCheck, mdiContentSave, mdiDelete, mdiDownload, mdiRefresh, mdiUpload} from '@mdi/js'
 import {Config} from "./config";
 import ReactTooltip from "react-tooltip";
@@ -11,14 +11,14 @@ export function Files(props: {
   config: Config,
   setActiveConfig: (filename: string, config: Config) => void
 }) {
-  return <>
+  return <div className="tabpanel">
     <FileTable title='Configs'
                type="config"
                activeConfigFile={props.activeConfigFile}
                config={props.config}
                setActiveConfig={props.setActiveConfig}/>
     <FileTable title='Filters' type="coeff"/>
-  </>
+  </div>
 }
 
 interface FileTableProps {
@@ -127,23 +127,17 @@ class FileTable extends Component<
     download(this.type + 's.zip', zipFile);
   }
 
-  private async upload(event: ChangeEvent<HTMLInputElement>) {
-    const formData = new FormData()
-    const files = event.target.files as FileList
-    for (let index = 0; index < files.length; index++) {
-      const file = files[index]
-      formData.append("file"+index, file, file.name)
-    }
-    event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
-    try {
-      await fetch(`${FLASKURL}/api/upload${this.type}s`, {
-        method: "POST",
-        body: formData
-      })
-      this.setState({fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}})
-    } catch (e) {
-      this.setState({fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: false, statusText: e.message}})
-    }
+  private upload(event: ChangeEvent<HTMLInputElement>) {
+    doUpload(
+        this.type,
+        event,
+        () => this.setState({
+          fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
+        }),
+        message => this.setState({
+          fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: false, statusText: message}
+        })
+    )
   }
 
   private async loadConfig(name: string) {
@@ -222,7 +216,8 @@ class FileTable extends Component<
         <div style={{
           display: 'grid',
           alignItems: 'center',
-          gridTemplateColumns: 'min-content min-content min-content min-content'
+          gridTemplateColumns: 'min-content min-content min-content 100%',
+          gap: '5px 5px'
         }}>
 
           {/* Header row */}
@@ -277,7 +272,6 @@ class FileTable extends Component<
               <input type='text'
                      value={newFileName}
                      data-tip="Enter a name for the new config file"
-                     style={{width: 'auto', margin: '5px 3px', padding: '3px 6px'}}
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
               <FileStatusMessage filename={newFileName} fileStatus={fileStatus}/>
             </div>
@@ -321,7 +315,7 @@ function DeleteFilesButton(props: { selectedFiles: Set<string>, delete: () => {}
 
 function UploadFilesButton(props: {
   fileStatus: FileStatus | null,
-  upload: (e: ChangeEvent<HTMLInputElement>) => {}
+  upload: (e: ChangeEvent<HTMLInputElement>) => void
 }) {
   const fileStatus = props.fileStatus
   let uploadIcon: { icon: string, className?: string } =
@@ -331,9 +325,10 @@ function UploadFilesButton(props: {
         {icon: mdiCheck, className: 'success'}
         : {icon: mdiAlertCircle, className: 'error'}
   return <UploadButton
-      content={<MdiButton icon={uploadIcon.icon} tooltip={'Upload files'} className={uploadIcon.className}/>}
-      tooltip={''}
+      icon={uploadIcon.icon}
+      tooltip={'Upload files'}
       onChange={props.upload}
+      className={uploadIcon.className}
       multiple={true}/>
 }
 
