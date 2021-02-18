@@ -1,4 +1,4 @@
-from os.path import isfile
+from os.path import isfile, join
 
 from aiohttp import web
 from camilladsp import CamillaError
@@ -340,4 +340,5 @@ async def download_configs_zip(request):
 async def get_gui_config(request):
     with open(gui_config_path) as yaml_config:
         json_config = yaml.safe_load(yaml_config)
+        json_config["coeff_dir"] = join(request.app["coeff_dir"], '')  # append folder separator at the end
     return web.json_response(json_config)
