@@ -379,6 +379,10 @@ class FilterParams extends React.Component<{
       if (parameter === 'type') // 'type' is already rendered by parent component
         return null
       const info = this.parameterInfos[parameter]
+      if (info === undefined) {
+        console.log(`Rendering for filter parameter '${parameter}' is not implemented`)
+        return null
+      }
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
