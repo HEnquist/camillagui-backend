@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import "./index.css";
 import {FiltersTab} from "./filterstab";
 import {DevicesTab} from "./devicestab";
-import {MixerList} from "./mixerlist.js";
+import {MixersTab} from "./mixerstab";
 import {PipelineTab} from "./pipelinetab.js";
 import {SidePanel} from "./sidepanel";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
@@ -139,9 +139,9 @@ class CamillaConfig extends React.Component<
           />
         </TabPanel>
         <TabPanel>
-          <MixerList
-              config={this.state.config.mixers}
-              onChange={this.handleMixers}
+          <MixersTab
+              mixers={this.state.config.mixers}
+              updateConfig={this.updateConfig}
           />
         </TabPanel>
         <TabPanel>
