@@ -2,7 +2,7 @@ import React from "react";
 import cloneDeep from "lodash/cloneDeep";
 import "./index.css";
 import {FLASKURL} from "./index";
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiUpload} from '@mdi/js';
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
 import {Config, defaultFilter, Filter, Filters, newFilterName, removeFilter, renameFilter} from "./config";
 import {
   AddButton,
@@ -15,6 +15,7 @@ import {
   FloatListOption,
   FloatOption,
   IntOption,
+  ListSelectPopup,
   MdiButton,
   ParsedInput,
   TextOption,
@@ -179,12 +180,14 @@ class FilterView extends React.Component<{
   coeffDir: string
 }, {
   uploadState?: { success: true } | { success: false, message: string }
+  popupOpen: boolean
 } > {
 
   constructor(props: any) {
     super(props);
     this.uploadCoeffs = this.uploadCoeffs.bind(this)
-    this.state = {}
+    this.pickFilterFile = this.pickFilterFile.bind(this)
+    this.state = { popupOpen: false}
   }
 
   private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
@@ -197,6 +200,11 @@ class FilterView extends React.Component<{
         },
         message => this.setState({uploadState: {success: false, message: message}})
     )
+  }
+
+  private pickFilterFile(selectedFilename: string) {
+    const {coeffDir, updateFilter} = this.props
+    updateFilter(coeffFileNameUpdate(coeffDir, selectedFilename))
   }
 
   render() {
@@ -224,12 +232,18 @@ class FilterView extends React.Component<{
         <div style={{display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between'}}>
           <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
           {filter.type === 'Conv' && filter.parameters.type === 'File' &&
-          <UploadButton
-              icon={uploadIcon.icon}
-              className={uploadIcon.className}
-              tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
-              onChange={this.uploadCoeffs}
-              multiple={true}/>
+          <>
+            <UploadButton
+                icon={uploadIcon.icon}
+                className={uploadIcon.className}
+                tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
+                onChange={this.uploadCoeffs}
+                multiple={true}/>
+            <MdiButton
+                icon={mdiFileSearch}
+                tooltip="Pick filter file"
+                onClick={() => this.setState({popupOpen: true})}/>
+          </>
           }
           {['Biquad', 'BiquadCombo', 'Conv', 'DiffEq'].includes(filter.type) &&
             <MdiButton
@@ -244,6 +258,13 @@ class FilterView extends React.Component<{
             availableCoeffFiles={this.props.availableCoeffFiles}
             coeffDir={this.props.coeffDir}/>
       </div>
+      <ListSelectPopup
+          key="filter select popup"
+          open={this.state.popupOpen}
+          items={this.props.availableCoeffFiles}
+          onClose={() => this.setState({popupOpen: false})}
+          onSelect={this.pickFilterFile}
+      />
     </Box>
   }
 }
@@ -393,12 +414,10 @@ class FilterParams extends React.Component<{
       if (parameter === 'filename') {
         const coeffDir = this.props.coeffDir;
         const selectedFile = coeffFileNameFromPath(coeffDir, parameters['filename'])
-        return <EnumOption
+        return <TextOption
             {...commonProps}
             value={selectedFile}
-            valueIsInvalid={!this.props.availableCoeffFiles.includes(selectedFile)}
-            onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}
-            options={this.coeffFileOptions()}/>
+            onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}/>
       }
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
@@ -473,7 +492,11 @@ class FilterParams extends React.Component<{
     filename: {
       type: "text",
       desc: "filename",
-      tooltip: "Filter file name",
+      tooltip:
+          `Filter file name
+           <br/>$samplerate$ will be replaced with the current samplerate
+           <br/>$channels$ will be replaced with the number of channels of the capture device
+          `,
     },
     format: {
       type: "enum",

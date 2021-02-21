@@ -317,7 +317,6 @@ export function EnumOption<OPTION extends string>(props: {
     options: OPTION[]
     desc: string
     'data-tip': string
-    valueIsInvalid?: boolean
     onChange: (value: OPTION) => void
 }) {
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
@@ -330,13 +329,10 @@ export function EnumInput<OPTION extends string>(props: {
     options: OPTION[]
     desc: string
     'data-tip': string
-    valueIsInvalid?: boolean
     style?: CSSProperties
     className?: string
     onChange: (value: OPTION) => void
 }) {
-    let className = props.className
-    if (props.valueIsInvalid) className += ' error'
     return <select
         id={props.desc}
         name={props.desc}
@@ -344,12 +340,9 @@ export function EnumInput<OPTION extends string>(props: {
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
-        className={className}>
-        {props.options.map((option) =>
-            props.valueIsInvalid && option === props.value ?
-                <option key={option} value={option} className={'error'}>{option}</option>
-                : <option key={option} value={option} style={{color: 'initial'}}>{option}</option>
-        )}
+        className={props.className}
+    >
+        {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
 }
 
@@ -562,6 +555,31 @@ export function ChartPopup(props: {
             <div>
                 <Scatter data={data} options={options}/>
             </div>
+        </div>
+    </Popup>
+}
+
+export function ListSelectPopup(props: {
+    open: boolean
+    items: string[]
+    onSelect: (value: string) => void
+    onClose: () => void
+}) {
+    const {open, items, onSelect, onClose} = props
+    const selectItem = (item: string) => { onSelect(item); onClose() }
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}>
+        <span className="close" onClick={onClose}>✖</span>
+        <div style={{display: 'flex', flexDirection: 'column'}}>
+            {items.map(item =>
+                <div
+                    key={item}
+                    className="button"
+                    style={{justifyContent: 'flex-start'}}
+                    onClick={() => selectItem(item)}
+                >
+                    {item}
+                </div>
+            )}
         </div>
     </Popup>
 }

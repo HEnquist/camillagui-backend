@@ -194,7 +194,7 @@ function ResamplingOptions(props: {
     <SamplerateOption
         samplerate={props.devices.capture_samplerate}
         desc="capture_samplerate"
-        data-tip="Sample rate for capture device.<br>If different than 'samplerate' then resampling must be enabled"
+        data-tip="Sample rate for capture device.<br>If different from 'samplerate' then resampling must be enabled"
         onChange={captureSamplerate => props.onChange(devices => devices.capture_samplerate = captureSamplerate)}/>
     }
   </Box>
