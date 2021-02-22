@@ -1,4 +1,12 @@
-import {defaultConfig, defaultFilter, filterNamesOf, newFilterName, removeFilter, renameFilter} from "./config";
+import {
+    defaultConfig,
+    defaultFilter, defaultMapping, defaultMixer,
+    defaultSource,
+    filterNamesOf, mixerNamesOf,
+    newFilterName,
+    removeFilter, removeMixer,
+    renameFilter, renameMixer
+} from "./config";
 
 test('newFilterName ', () => {
     const config = defaultConfig()
@@ -51,4 +59,51 @@ test('renameFilter throws on name collision', () => {
     config.filters['to be renamed'] = defaultFilter()
     config.filters['collision'] = defaultFilter()
     expect(() => renameFilter(config, 'to be renamed', 'collision')).toThrow("Filter 'collision' already exists")
+})
+
+test('defaultMapping counts destination channel up until out channel count', () => {
+    const mapping = defaultMapping(1, [])
+    expect(mapping.dest).toBe(0)
+    expect(() => defaultMapping(1, [mapping]).dest).toThrow('Cannot add more than 1 (out) mappings')
+    expect(defaultMapping(2, [mapping]).dest).toBe(1)
+    expect(() => defaultMapping(2, [mapping, mapping]).dest).toThrow('Cannot add more than 2 (out) mappings')
+})
+
+test('defaultSource counts input channel up until in channel count', () => {
+    const source = defaultSource(1, []);
+    expect(source.channel).toBe(0)
+    expect(defaultSource(1, [source]).channel).toBe(0)
+    expect(defaultSource(2, [source]).channel).toBe(1)
+    expect(defaultSource(2, [source, source]).channel).toBe(0)
+})
+
+test('removeMixer', () => {
+    const config = defaultConfig()
+    config.mixers['to be removed'] = defaultMixer()
+    config.mixers['Mixer1'] = defaultMixer()
+    config.pipeline[0] = {type: 'Mixer', name: 'to be removed'}
+    config.pipeline[1] = {type: 'Mixer', name: 'Mixer1'}
+    removeMixer(config, 'to be removed')
+    expect(mixerNamesOf(config)).toEqual(['Mixer1'])
+    expect(config.pipeline[0].name).toEqual('Mixer1')
+})
+
+test('renameMixer', () => {
+    const config = defaultConfig()
+    config.mixers['to be renamed'] = defaultMixer()
+    config.pipeline[0] = {type: 'Mixer', name: 'Mixer1'}
+    config.pipeline[1] = {type: 'Mixer', name: 'to be renamed'}
+    config.pipeline[2] = {type: 'Mixer', name: 'Mixer2'}
+    renameMixer(config, 'to be renamed', 'renamed')
+    expect(mixerNamesOf(config)).toEqual(['renamed'])
+    expect(config.pipeline[0].name).toEqual('Mixer1')
+    expect(config.pipeline[1].name).toEqual('renamed')
+    expect(config.pipeline[2].name).toEqual('Mixer2')
+})
+
+test('renameMixer throws on name collision', () => {
+    const config = defaultConfig()
+    config.mixers['to be renamed'] = defaultMixer()
+    config.mixers['collision'] = defaultMixer()
+    expect(() => renameMixer(config, 'to be renamed', 'collision')).toThrow("Mixer 'collision' already exists")
 })

@@ -3,7 +3,16 @@ import cloneDeep from "lodash/cloneDeep";
 import "./index.css";
 import {FLASKURL} from "./index";
 import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
-import {Config, defaultFilter, Filter, Filters, newFilterName, removeFilter, renameFilter} from "./config";
+import {
+  Config,
+  defaultFilter,
+  Filter,
+  filterNamesOf,
+  Filters,
+  newFilterName,
+  removeFilter,
+  renameFilter
+} from "./config";
 import {
   AddButton,
   BoolOption,
@@ -16,7 +25,7 @@ import {
   FloatOption,
   IntOption,
   ListSelectPopup,
-  MdiButton,
+  MdiButton, modifiedCopyOf,
   ParsedInput,
   TextOption,
   Update,
@@ -60,17 +69,17 @@ export class FiltersTab extends React.Component<
   }
 
   private filterNames(): List<string> {
-    return List(Object.keys(this.props.filters))
+    return List(filterNamesOf(this.props.filters))
   }
 
   private addFilter() {
     this.props.updateConfig(config => {
       const newFilter = newFilterName(config.filters)
-      this.setState(oldState => {
-        const newState = cloneDeep(oldState)
-        newState.filterKeys[newFilter] = 1 + Math.max(0, ...Object.values(oldState.filterKeys))
-        return newState
-      })
+      this.setState(oldState =>
+          modifiedCopyOf(oldState, newState =>
+              newState.filterKeys[newFilter] = 1 + Math.max(0, ...Object.values(oldState.filterKeys))
+          )
+      )
       config.filters[newFilter] = defaultFilter()
     })
   }
@@ -78,23 +87,19 @@ export class FiltersTab extends React.Component<
   private removeFilter(name: string) {
     this.props.updateConfig(config => {
       removeFilter(config, name)
-      this.setState(oldState => {
-        const newState = cloneDeep(oldState)
-        delete newState.filterKeys[name]
-        return newState
-      })
+      this.setState(oldState =>
+          modifiedCopyOf(oldState, newState => delete newState.filterKeys[name]))
     })
   }
 
   private renameFilter(oldName: string, newName: string) {
     if (this.isFreeFilterName(newName))
       this.props.updateConfig(config => {
-        this.setState(oldState => {
-          const newState = cloneDeep(oldState)
-          newState.filterKeys[newName] = newState.filterKeys[oldName]
-          delete newState.filterKeys[oldName]
-          return newState
-        })
+        this.setState(oldState =>
+            modifiedCopyOf(oldState, newState => {
+              newState.filterKeys[newName] = newState.filterKeys[oldName]
+              delete newState.filterKeys[oldName]
+            }))
         renameFilter(config, oldName, newName);
       })
   }
@@ -210,7 +215,7 @@ class FilterView extends React.Component<{
   render() {
     const {name, filter} = this.props
     const uploadState = this.state.uploadState;
-    const isValidfilterName = (newName: string) =>
+    const isValidFilterName = (newName: string) =>
         name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName));
     let uploadIcon: { icon: string, className?: string, errorMessage?: string } =
         {icon: mdiUpload}
@@ -223,7 +228,7 @@ class FilterView extends React.Component<{
           style={{width: '300px'}}
           value={name}
           asString={x => x}
-          parseValue={newName => isValidfilterName(newName) ? newName : undefined}
+          parseValue={newName => isValidFilterName(newName) ? newName : undefined}
           data-tip="Filter name, must be unique"
           onChange={newName => this.props.rename(newName)}
       />

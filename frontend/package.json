@@ -18,6 +18,7 @@
     "chart.js": "^2.9.4",
     "d3": "^6.2.0",
     "immutable": "^4.0.0-rc.12",
+    "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
     "rc-progress": "^3.1.1",
     "react": "^16.14.0",

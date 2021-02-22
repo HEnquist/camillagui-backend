@@ -7,6 +7,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+hr {
+  margin: 2px 0;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
@@ -43,45 +47,6 @@ input[type='checkbox'] {
   padding-inline-end: 10px;
 }
 
-.mixers {
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.mappings {
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.mixersource {
-  background: #fff;
-  border: 2px solid #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.mixermapping {
-  background: #fff;
-  border: 2px solid #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .tabpanel {
   border: 4px;
   text-align: left;
@@ -115,24 +80,6 @@ input[type='checkbox'] {
   display: flex;
   flex-direction: column;
   width: 500px;
-}
-
-.mixer {
-  background: rgb(220, 220, 220);
-  border: 3px inset #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  border-radius: 5px;
-}
-
-.mixerparams {
-  background: rgb(220, 220, 220);
-  border: 2px inset #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  border-radius: 5px;
 }
 
 .pipelinestep {
@@ -214,6 +161,10 @@ input[type='checkbox'] {
 .setting-input {
   display: table-cell;
   width: 100%;
+}
+
+.small-setting {
+  width: 5em;
 }
 
 .box {

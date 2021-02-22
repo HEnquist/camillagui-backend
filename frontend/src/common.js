@@ -5,46 +5,6 @@ import 'reactjs-popup/dist/index.css';
 import isEqual from "lodash/isEqual";
 import cloneDeep from "lodash/cloneDeep";
 
-export class BoolSelect extends React.Component {
-  constructor(props) {
-    super(props);
-    this.handleChange = this.handleChange.bind(this);
-    this.state = { value: this.props.value };
-  }
-
-  componentDidUpdate(prevProps) {
-    if (!isEqual(this.props.value, prevProps.value)) {
-      this.setState({ value: this.props.value });
-    }
-  }
-
-  handleChange(event) {
-    this.setState({ value: event.target.checked });
-    this.props.onChange({ id: this.props.id, value: event.target.checked });
-  }
-
-  render() {
-    return (
-      <div className="row">
-        <div className="column left">
-          <div className="inputlabel" data-tip={this.props["data-tip"]}>
-            {this.props.desc}
-          </div>
-        </div>
-        <label className="column right checkbox-area" style={{padding: '2px 0'}}>
-          <input
-            type="checkbox"
-            name={this.props.id}
-            id={this.props.id}
-            checked={this.state.value}
-            onChange={this.handleChange}
-            data-tip={this.props["data-tip"]}/>
-        </label>
-      </div>
-    );
-  }
-}
-
 export class EnumSelect extends React.Component {
   constructor(props) {
     super(props);
@@ -64,15 +24,7 @@ export class EnumSelect extends React.Component {
 
   handleChange(event) {
     this.setState({ value: event.target.value });
-    if (this.props.desc === "format")
-      // capture/playback/convolution format parameter cannot be changed without this hack
-      //TODO: fix this in a nicer way
-      this.props.onSelect({
-        id: this.props.desc,
-        value: event.target.value
-      });
-    else
-      this.props.onSelect(event.target.value);
+    this.props.onSelect(event.target.value);
   }
 
   render() {
@@ -204,14 +156,14 @@ export class InputField extends React.Component {
             {this.props.desc}
           </div>
         </div>
-          <input
-            className="column right"
-            type={type}
-            value={value}
-            onChange={this.handleChange}
-            data-tip={this.props["data-tip"]}
-            style={{backgroundColor: bg_color}}
-          />
+        <input
+          className="column right"
+          type={type}
+          value={value}
+          onChange={this.handleChange}
+          data-tip={this.props["data-tip"]}
+          style={{backgroundColor: bg_color}}
+        />
       </div>
     );
   }
@@ -246,52 +198,23 @@ export class ParameterInput extends React.Component {
 
   type_dict = {
     channel: { type: "int", desc: "channel", tooltip: "Channel number" },
-    dest: { type: "int", desc: "dest", tooltip: "Destination channel" },
-    gain: { type: "float", desc: "gain", tooltip: "Gain in dB" },
-    in: { type: "int", desc: "in", tooltip: "Number of channels in" },
-    inverted: { type: "bool", desc: "inverted", tooltip: "Invert signal" },
-    out: { type: "int", desc: "out", tooltip: "Number of channels out" },
   };
 
   get_input(par, value) {
     const pars = this.type_dict[par];
     if (pars) {
       var tooltip = pars["tooltip"];
-      if (pars.type === "bool") {
-        return (
-          <BoolSelect
-            data-tip={tooltip}
-            key={par}
-            desc={pars.desc}
-            id={par}
-            value={value}
-            onChange={this.handleChange}
-          />
-        );
-      } else if (pars.type === "enum") {
-        return (
-          <EnumSelect
-            data-tip={tooltip}
-            key={par}
-            desc={pars.desc}
-            type={pars.subtype}
-            value={value}
-            onSelect={this.handleChange}
-          />
-        );
-      } else {
-        return (
-          <InputField
-            data-tip={tooltip}
-            key={par}
-            desc={pars.desc}
-            id={par}
-            type={pars.type}
-            value={value}
-            onChange={this.handleChange}
-          />
-        );
-      }
+      return (
+        <InputField
+          data-tip={tooltip}
+          key={par}
+          desc={pars.desc}
+          id={par}
+          type={pars.type}
+          value={value}
+          onChange={this.handleChange}
+        />
+      );
     }
   }
 
@@ -305,6 +228,7 @@ export class ParameterInput extends React.Component {
   }
 }
 
+//TODO is this still needed?
 export class ImagePopup extends React.Component {
   constructor(props) {
     super(props);

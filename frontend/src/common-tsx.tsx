@@ -5,9 +5,16 @@ import {Scatter} from "react-chartjs-2"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js";
 import {FLASKURL} from "./index";
 import 'reactjs-popup/dist/index.css';
+import cloneDeep from "lodash/cloneDeep";
 
 export interface Update<T> {
     (value: T): void
+}
+
+export function modifiedCopyOf<T>(object: T, modification: (copy: T) => void): T {
+    const copy = cloneDeep(object)
+    modification(copy)
+    return copy
 }
 
 export function download(filename: string, blob: any) {
@@ -48,12 +55,17 @@ export async function doUpload(
 
 
 export function Box(props: {
-    title: string | ReactNode,
+    title: string | ReactNode
+    style?: CSSProperties
     children: ReactNode
 }) {
     return (
-        <fieldset className="box">
-            <legend>{props.title}</legend>
+        <fieldset className="box" style={props.style}>
+            <legend>
+                <div style={{display: 'flex', flexDirection: 'row'}}>
+                    {props.title}
+                </div>
+            </legend>
             {props.children}
         </fieldset>
     )
@@ -77,11 +89,13 @@ export function CheckBox(props: {
 
 export function AddButton(props: {
     tooltip: string
+    style?: CSSProperties
     onClick: () => void
 }) {
     return <MdiButton
         icon={mdiPlusThick}
         className="success"
+        style={props.style}
         tooltip={props.tooltip}
         onClick={props.onClick}/>
 }
@@ -156,9 +170,11 @@ export function OptionLine(props: {
     desc: string
     'data-tip': string
     children: ReactNode
+    small?: boolean
 }) {
-    return <label className="setting" data-tip={props['data-tip']}>
-        <span className="setting-label">{props.desc}</span>
+    const small = props.small
+    return <label className={"setting" + (small ? " small-setting" : "")} data-tip={props['data-tip']}>
+        <span className={"setting-label" + (small ? " small-setting" : "")}>{props.desc}</span>
         {props.children}
     </label>
 }
@@ -168,11 +184,14 @@ export function IntOption(props:{
     desc: string
     'data-tip': string
     onChange: (value: number) => void
+    small?: boolean
     withControls?: boolean
     min?: number
+    max?: number
 }) {
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <IntInput {...props} className="setting-input" />
+    const small = props.small
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <IntInput {...props} className={"setting-input" + (small ? " small-setting" : "")} />
     </OptionLine>
 }
 
@@ -182,15 +201,22 @@ export function IntInput(props: {
     onChange: (value: number) => void
     withControls?: boolean
     min?: number
+    max?: number
     className?: string
     style?: CSSProperties
 }) {
+    const {min, max} = props
     return <ParsedInput
         {...props}
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
-            return isNaN(parsedvalue) ? undefined : parsedvalue
+            if (isNaN(parsedvalue)
+                || (min !== undefined && parsedvalue < min)
+                || (max !== undefined && parsedvalue > max))
+                return undefined
+            else
+                return parsedvalue
         }}
     />
 }
@@ -254,6 +280,7 @@ type ParsedInputProps<TYPE> = {
     parseValue: (rawValue: string) => TYPE | undefined
     withControls?: boolean
     min?: number
+    max?: number
 }
 
 export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
@@ -283,10 +310,11 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
         return <input
             type={props.withControls ? "number" : "text"}
             min={props.min}
+            max={props.max}
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={{backgroundColor: valid ? "#FFFFFF" : "#FFAAAA", ...props.style}}
+            style={{backgroundColor: valid ? "initial" : "#FFAAAA", ...props.style}}
             onChange={(e) => this.updateValue(e.target.value)}/>
     }
 
@@ -296,10 +324,12 @@ export function BoolOption(props: {
     value: boolean,
     desc: string,
     'data-tip': string
+    small?: boolean
     onChange: (value: boolean) => void
 }) {
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <div className="setting-input"
+    const small = props.small
+    return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <div className={"setting-input" + (small ? " small-setting" : "")}
              data-tip={props["data-tip"]}
              style={{cursor: 'pointer'}}>
             <input

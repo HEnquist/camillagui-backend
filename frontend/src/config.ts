@@ -30,16 +30,26 @@ export function defaultConfig(): Config {
     };
 }
 
-export function filterNamesOf(config: Config): string[] {
-    return config.filters ? Object.keys(config.filters) : []
+export function filterNamesOf(configOrFilters: Config | Filters): string[] {
+    if (isConfig(configOrFilters))
+        return Object.keys(configOrFilters.filters)
+    else // is Filters
+        return Object.keys(configOrFilters)
+}
+
+function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
+    return maybeConfig.devices !== undefined
 }
 
 export function newFilterName(filters: Filters): string {
-    const prefix = 'New Filter '
-    const filterNameIsAlreadyPresent: (i: number) => boolean =
-        i => Object.keys(filters).includes(prefix + i.toString())
+    return newName('New Filter ', filterNamesOf(filters))
+}
+
+function newName(prefix: string, existingNames: string[]): string {
+    const nameIsAlreadyPresent: (i: number) => boolean =
+        i => existingNames.includes(prefix + i.toString())
     for (let i = 1; ; i++)
-        if (!filterNameIsAlreadyPresent(i))
+        if (!nameIsAlreadyPresent(i))
             return prefix + i.toString();
 }
 
@@ -54,9 +64,7 @@ export function removeFilter(config: Config, name: string) {
     delete config.filters[name]
     for (let step of config.pipeline)
         if (step.type === 'Filter')
-            for (let i = 0; i < step.names.length; i++)
-                if (step.names[i] === name)
-                    step.names.splice(i, 1)
+            step.names = step.names.filter(filterName => filterName !== name)
 }
 
 export function renameFilter(config: Config, oldName: string, newName: string) {
@@ -71,8 +79,52 @@ export function renameFilter(config: Config, oldName: string, newName: string) {
                     step.names[i] = newName
 }
 
-export function mixerNamesOf(config: Config): string[] {
-    return config.mixers ? Object.keys(config.mixers) : []
+export function mixerNamesOf(configOrMixers: Config | Mixers): string[] {
+    if (isConfig(configOrMixers))
+        return Object.keys(configOrMixers.mixers)
+    else // is Mixers
+        return Object.keys(configOrMixers)
+}
+
+export function newMixerName(mixers: Mixers): string {
+    return newName('New Mixer ', mixerNamesOf(mixers))
+}
+
+export function removeMixer(config: Config, name: string) {
+    delete config.mixers[name]
+    const pipeline = config.pipeline
+    config.pipeline = pipeline.filter(step => step.type !== 'Mixer' || step.name !== name)
+}
+
+export function renameMixer(config: Config, oldName: string, newName: string) {
+    if (mixerNamesOf(config).includes(newName))
+        throw new Error(`Mixer '${newName}' already exists`)
+    config.mixers[newName] = config.mixers[oldName]
+    delete config.mixers[oldName]
+    for (let step of config.pipeline)
+        if (step.type === 'Mixer' && step.name === oldName)
+            step.name = newName
+}
+
+export function defaultMixer() {
+    return {
+        channels: {in: 2, out: 2},
+        mapping: [defaultMapping(2, [])]
+    }
+}
+
+export function defaultMapping(outChannels: number, mappings: Mapping[]) {
+    if (mappings.length >= outChannels)
+        throw new Error(`Cannot add more than ${outChannels} (out) mappings`)
+    return {
+        dest: mappings.length,
+        sources: [defaultSource(0, [])],
+    };
+}
+
+export function defaultSource(inChannels: number, sources: Source[]): Source {
+    const newChannel = sources.length < inChannels ? sources.length : 0
+    return {channel: newChannel, gain: 0, inverted: false};
 }
 
 export interface Config {
@@ -142,14 +194,18 @@ export interface Mixer {
         in: number
         out: number
     }
-    mapping: Array<{
-        dest: number
-        sources: Array<{
-            channel: number
-            gain: number
-            inverted: boolean
-        }>
-    }>
+    mapping: Mapping[]
+}
+
+export interface Mapping {
+    dest: number
+    sources: Source[]
+}
+
+export interface Source {
+    channel: number
+    gain: number
+    inverted: boolean
 }
 
 export type Pipeline = Array<
