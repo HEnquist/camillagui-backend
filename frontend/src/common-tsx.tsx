@@ -469,7 +469,10 @@ export function ChartPopup(props: {
                 ticks: {
                     min: 0,
                     max: 30000,
-                    maxRotation: 50
+                    maxRotation: 50,
+                    callback(value: number, index: number, values: any) {
+                        return value.toString();
+                    }
                 },
                 afterBuildTicks: function (chartObj: any) {
                     chartObj.ticks = [
