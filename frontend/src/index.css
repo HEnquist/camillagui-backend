@@ -16,7 +16,8 @@ input:not([type='checkbox']), select {
   box-sizing: border-box;
   border-radius: 5px;
   border: 1px inset #9090B0;
-  padding: 4px;
+  height: 28px;
+  padding: 0 4px;
 }
 
 input[type='checkbox'] {
@@ -26,7 +27,7 @@ input[type='checkbox'] {
 .checkbox-area {
   cursor: pointer;
   display: inline-block;
-  padding: 5px;
+  padding: 2px;
 }
 
 .fileinput{
@@ -42,37 +43,7 @@ input[type='checkbox'] {
   padding-inline-end: 10px;
 }
 
-.filter {
-  background: rgb(220, 220, 220);
-  border: 3px inset #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 400px;
-  border-radius: 5px;
-}
-
-.filterparams {
-  background: rgb(255, 255, 255);
-  border: 2px inset #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 100%;
-  box-sizing: border-box;
-  border-radius: 5px;
-}
-
 .mixers {
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.filters {
-  border: 4px;
   float: left;
   text-align: left;
   padding: 5px;
@@ -111,25 +82,18 @@ input[type='checkbox'] {
   box-sizing: border-box;
 }
 
-.group {
-  background: #fff;
-  border: 2px inset #999;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 100%;
-  box-sizing: border-box;
-  border-radius: 5px;
-}
-
-.devices {
+.tabpanel {
   border: 4px;
-  float: left;
   text-align: left;
-  padding: 5px;
+  padding: 10px 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   width: 450px;
+}
+
+.tabpanel > * {
+  margin: 5px 0;
 }
 
 .namelist {
@@ -195,21 +159,14 @@ input[type='checkbox'] {
 
 .configapp {
   background: white;
-  float: left;
-  text-align: left;
   padding: 5px;
   display: flex;
   flex-direction: row;
+  align-items: flex-start;
 }
 
-.sidepanel {
-  background: white;
-  float: left;
-  text-align: left;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  width: 250px;
+.configapp > :last-child {
+  margin-left: 10px;
 }
 
 .configtabs {
@@ -234,60 +191,37 @@ input[type='checkbox'] {
 .left {
   width: 40%;
 }
-  
+
 .right {
   width: 60%;
 }
 
 .setting {
+  box-sizing: border-box;
+  display: table;
   width: 100%;
-  text-align: right;
-}
-
-.setting-input {
-  width: 55%;
+  height: 28px;
+  text-align: left;
 }
 
 .setting-label {
-  margin-right: 5px;
+  display: table-cell;
+  width: 45%;
+  text-align: right;
+  border-right: 5px solid transparent;
 }
 
-.deletebutton {
-  font-size: large;
-  color: #fff;
-  background-color: rgb(255, 0, 0);
-  border: 1px outset rgb(255, 0, 0);
-  border-radius: 5px;
-  width: 34px;
-  height: 34px;
-}
-
-.addbutton {
-  font-size: larger;
-  font-weight: 900;
-  color: #fff;
-  background-color:rgb(0, 255, 0);
-  border: 1px outset rgb(0, 255, 0);
-  border-radius: 5px;
-  width: 34px;
-  height: 34px;
-}
-
-.plotbutton {
-  border: 1px outset rgb(184, 184, 184);
-  border-radius: 5px;
-  width: 60px;
-  height: 34px;
+.setting-input {
+  display: table-cell;
+  width: 100%;
 }
 
 .box {
-  margin-inline: 0 0;
-  margin-top: 10px;
   box-sizing: border-box;
   width: 100%;
   border-radius: 5px;
   border: 1px inset #9090B0;
-  padding: 3px 8px 8px;
+  padding: 5px 12px 12px 12px;
   display: flex;
   flex-direction: column;
 }
@@ -323,14 +257,23 @@ input[type='checkbox'] {
 }
 
 .button {
+  box-sizing: border-box;
   background-color: #f3f3f3;
   border-radius: 5px;
   border: 1px inset #9090B0;
   font-size: smaller;
-  display: block;
-  margin: 5px 3px;
+  display: inline-flex;
+  justify-content: center;
+  align-content: center;
   padding: 3px 6px;
   cursor: pointer;
+}
+
+.smallbutton {
+  border: 1px inset #9090B0;
+  padding: 1px 3px;
+  height: 28px;
+  width: 32px;
 }
 
 .button:hover {
@@ -341,18 +284,19 @@ input[type='checkbox'] {
   background-color: #aaa;
 }
 
-.highlighted {
-  background-color: #cfc;
-}
-
 .disabled-button {
   background-color: #aaa;
   border-radius: 5px;
   border: 1px inset #9090B0;
   font-size: smaller;
-  display: block;
-  margin: 5px 3px;
+  display: inline-flex;
+  justify-content: center;
+  align-content: center;
   padding: 3px 6px;
+}
+
+.highlighted {
+  background-color: #cfc;
 }
 
 .config-status {
@@ -360,6 +304,7 @@ input[type='checkbox'] {
 }
 
 .versions {
+  width: 100%;
   margin: 15px 0;
   display: flex;
   flex-direction: row;
@@ -368,11 +313,11 @@ input[type='checkbox'] {
 }
 
 .success {
-  color: green;
+  color: #0c0;
 }
 
 .error {
-  color: red;
+  color: #f00;
 }
 
 .neutral {

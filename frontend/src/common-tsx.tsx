@@ -1,5 +1,10 @@
 import React, {ChangeEvent, CSSProperties, ReactNode} from "react"
 import Icon from "@mdi/react"
+import Popup from "reactjs-popup"
+import {Scatter} from "react-chartjs-2"
+import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js";
+import {FLASKURL} from "./index";
+import 'reactjs-popup/dist/index.css';
 
 export interface Update<T> {
     (value: T): void
@@ -15,8 +20,35 @@ export function download(filename: string, blob: any) {
     a.click()
 }
 
+export async function doUpload(
+    type: 'config' | 'coeff',
+    event: ChangeEvent<HTMLInputElement>,
+    onSuccess: (filesnames: string[]) => void,
+    onError: (message: string) => void
+) {
+    const formData = new FormData()
+    const files = event.target.files as FileList
+    const uploadedFiles: string[] = []
+    for (let index = 0; index < files.length; index++) {
+        const file = files[index]
+        uploadedFiles.push(file.name)
+        formData.append("file"+index, file, file.name)
+    }
+    event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
+    try {
+        await fetch(`${FLASKURL}/api/upload${type}s`, {
+            method: "POST",
+            body: formData
+        })
+        onSuccess(uploadedFiles)
+    } catch (e) {
+        onError(e.message)
+    }
+}
+
+
 export function Box(props: {
-    title: string,
+    title: string | ReactNode,
     children: ReactNode
 }) {
     return (
@@ -43,35 +75,80 @@ export function CheckBox(props: {
     </label>
 }
 
+export function AddButton(props: {
+    tooltip: string
+    onClick: () => void
+}) {
+    return <MdiButton
+        icon={mdiPlusThick}
+        className="success"
+        tooltip={props.tooltip}
+        onClick={props.onClick}/>
+}
+
+export function DeleteButton(props: {
+    tooltip: string
+    onClick: () => void
+    smallButton?: boolean
+}) {
+    return <MdiButton
+        className="error"
+        smallButton={props.smallButton}
+        icon={mdiDelete}
+        tooltip={props.tooltip}
+        onClick={props.onClick}/>
+}
+
+export function PlotButton(props: {
+    tooltip: string
+    onClick: () => void
+}) {
+    return <MdiButton
+        icon={mdiChartBellCurveCumulative}
+        tooltip={props.tooltip}
+        onClick={props.onClick}/>
+}
+
 export function UploadButton(props: {
-    onChange: (event: ChangeEvent<HTMLInputElement>) => void,
-    tooltip: string,
-    content: string | JSX.Element,
+    icon: string
+    tooltip: string
+    onChange: (event: ChangeEvent<HTMLInputElement>) => void
     multiple?: boolean
+    className?: string
+    style?: CSSProperties
+    smallButton?: boolean
 }): JSX.Element {
-    const className = typeof props.content === 'string' ? 'button' : ''
+    const style = Object.assign({verticalAlign: 'bottom'}, props.style)
     return (
-        <label className={className} data-tip={props.tooltip}>
+        <label data-tip={props.tooltip}>
             <input style={{display: 'none'}} type="file" onChange={props.onChange} multiple={props.multiple}/>
-            {props.content}
+            <MdiButton
+                smallButton={props.smallButton}
+                icon={props.icon}
+                tooltip={props.tooltip}
+                className={props.className}
+                style={style}/>
         </label>
     )
 }
 
 export function MdiButton(props: {
-    icon: string,
-    tooltip: string,
-    className?: string,
-    enabled?: boolean,
+    icon: string
+    tooltip: string
+    className?: string
+    style?: CSSProperties
+    enabled?: boolean
+    smallButton?: boolean
     onClick?: () => void
 }) {
-    const { icon, tooltip, className, enabled, onClick } = props
+    const { icon, tooltip, className, enabled, onClick, smallButton } = props
     const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
     let buttonClass = enabled !== false ? 'button' : 'disabled-button'
-    if (className !== undefined)
-        buttonClass = `${buttonClass} ${className}`
-    return <div onClick={clickhandler}>
-        <Icon path={icon} data-tip={tooltip} className={buttonClass} size={1}/>
+    if (smallButton === true) buttonClass += ' smallbutton'
+    if (className !== undefined) buttonClass += ' ' + className
+    const style = Object.assign({display: 'inline-block'},props.style)
+    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={style}>
+        <Icon path={icon} size={'24px'}/>
     </div>
 }
 
@@ -101,7 +178,6 @@ export function IntOption(props:{
 
 export function IntInput(props: {
     value: number
-    desc: string
     'data-tip': string
     onChange: (value: number) => void
     withControls?: boolean
@@ -129,7 +205,6 @@ export function FloatOption(props:{
         <ParsedInput
             className="setting-input"
             value={props.value}
-            desc={props.desc}
             data-tip={props["data-tip"]}
             onChange={props.onChange}
             asString={(float: number) => float.toString()}
@@ -141,11 +216,38 @@ export function FloatOption(props:{
     </OptionLine>
 }
 
+export function FloatListOption(props: {
+    value: number[]
+    desc: string
+    'data-tip': string
+    onChange: (value: number[]) => void
+}) {
+    return <OptionLine desc={props.desc} data-tip={props['data-tip']}>
+        <ParsedInput
+            className="setting-input"
+            value={props.value}
+            data-tip={props['data-tip']}
+            asString={(value: number[]) => value.join(", ")}
+            parseValue={(rawValue: string) => {
+                const parsedvalue = [];
+                const values = rawValue.split(",");
+                for (let value of values) {
+                    const tempvalue = parseFloat(value);
+                    if (isNaN(tempvalue))
+                        return undefined;
+                    parsedvalue.push(tempvalue);
+                }
+                return parsedvalue
+            }}
+            onChange={props.onChange}
+        />
+    </OptionLine>
+}
+
 type ParsedInputProps<TYPE> = {
     style?: CSSProperties
     className?: string
     value: TYPE
-    desc: string
     'data-tip': string
     onChange: (value: TYPE) => void
     asString: (value: TYPE) => string
@@ -154,7 +256,7 @@ type ParsedInputProps<TYPE> = {
     min?: number
 }
 
-class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
+export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
 
     constructor(props: ParsedInputProps<TYPE>) {
         super(props)
@@ -179,7 +281,6 @@ class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawVal
         const parsedValue = props.parseValue(this.state.rawValue)
         let valid = parsedValue !== undefined
         return <input
-            id={props.desc}
             type={props.withControls ? "number" : "text"}
             min={props.min}
             value={this.state.rawValue}
@@ -200,9 +301,9 @@ export function BoolOption(props: {
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
         <div className="setting-input"
              data-tip={props["data-tip"]}
-             style={{textAlign: 'left', cursor: 'pointer', display: 'inline-block'}}>
+             style={{cursor: 'pointer'}}>
             <input
-                style={{marginLeft: 0}}
+                style={{marginLeft: 0, marginTop: '8px', marginBottom: '8px'}}
                 type="checkbox"
                 checked={props.value}
                 data-tip={props["data-tip"]}
@@ -212,10 +313,10 @@ export function BoolOption(props: {
 }
 
 export function EnumOption<OPTION extends string>(props: {
-    value: OPTION,
-    options: OPTION[],
-    desc: string,
-    'data-tip': string,
+    value: OPTION
+    options: OPTION[]
+    desc: string
+    'data-tip': string
     onChange: (value: OPTION) => void
 }) {
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
@@ -224,21 +325,23 @@ export function EnumOption<OPTION extends string>(props: {
 }
 
 export function EnumInput<OPTION extends string>(props: {
-    value: OPTION,
-    options: OPTION[],
-    desc: string,
-    'data-tip': string,
-    style?: CSSProperties,
+    value: OPTION
+    options: OPTION[]
+    desc: string
+    'data-tip': string
+    style?: CSSProperties
     className?: string
     onChange: (value: OPTION) => void
 }) {
     return <select
+        id={props.desc}
         name={props.desc}
         value={props.value}
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
-        className={props.className}>
+        className={props.className}
+    >
         {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
 }
@@ -250,11 +353,233 @@ export function TextOption(props: {
     onChange: (value: string) => void
 }) {
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <input
+        <TextInput
             className="setting-input"
-            type="text"
             value={props.value}
             data-tip={props["data-tip"]}
-            onChange={(e) => props.onChange(e.target.value)}/>
+            onChange={props.onChange}/>
     </OptionLine>
+}
+
+export function TextInput(props: {
+    value: string,
+    'data-tip': string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string) => void
+}) {
+    return <input
+        type="text"
+        value={props.value}
+        data-tip={props["data-tip"]}
+        className={props.className}
+        style={props.style}
+        onChange={e => props.onChange(e.target.value)}/>
+}
+
+export function ChartPopup(props: {
+    open: boolean,
+    data: any,
+    onClose: () => void
+}){
+    function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
+        return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
+    }
+
+    let stateData = props.data;
+    const name: string = stateData.hasOwnProperty("name") ? stateData["name"] : ""
+    let data: any = {labels: [name], datasets: []}
+    let x_time = false
+    let x_freq = false
+    let y_phase = false
+    let y_gain = false
+    let y_ampl = false
+
+    if (stateData.hasOwnProperty("magnitude")) {
+        const gainpoints = make_pointlist(stateData["f"], stateData["magnitude"], 1.0, 1.0)
+        x_freq = true
+        y_gain = true
+        data.datasets.push(
+            {
+                label: 'Gain',
+                fill: false,
+                borderColor: 'rgba(0,0,220,1)',
+                pointRadius: 0,
+                showLine: true,
+                data: gainpoints,
+                yAxisID: "gain",
+                xAxisID: "freq",
+            }
+        )
+    }
+
+    if (stateData.hasOwnProperty("phase")) {
+        const phasepoints = make_pointlist(stateData["f"], stateData["phase"], 1.0, 1.0)
+        x_freq = true
+        y_phase = true
+        data.datasets.push(
+            {
+                label: 'Phase',
+                fill: false,
+                borderColor: 'rgba(0,220,0,1)',
+                pointRadius: 0,
+                showLine: true,
+                data: phasepoints,
+                yAxisID: "phase",
+                xAxisID: "freq",
+            }
+        )
+    }
+
+    if (stateData.hasOwnProperty("impulse")) {
+        const impulsepoints = make_pointlist(stateData["time"], stateData["impulse"], 1000.0, 1.0)
+        x_time = true
+        y_ampl = true
+        data.datasets.push(
+            {
+                label: 'Impulse',
+                fill: false,
+                borderColor: 'rgba(220,0,0,1)',
+                pointRadius: 0,
+                showLine: true,
+                data: impulsepoints,
+                yAxisID: "ampl",
+                xAxisID: "time",
+            }
+        )
+    }
+
+    const options: { scales: { xAxes: any, yAxes: any } } = {
+        scales: {
+            xAxes: [],
+            yAxes: []
+        }
+    }
+
+    if (x_freq) {
+        options.scales.xAxes.push(
+            {
+                id: "freq",
+                type: 'logarithmic',
+                position: 'bottom',
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Frequency, Hz'
+                },
+                ticks: {
+                    min: 0,
+                    max: 30000,
+                    maxRotation: 50
+                },
+                afterBuildTicks: function (chartObj: any) {
+                    chartObj.ticks = [
+                        10, 20, 30, 40, 50,70,
+                        100, 200, 300, 400, 500, 700,
+                        1000, 2000, 3000, 4000, 5000, 7000,
+                        10000, 20000
+                    ];
+                }
+            }
+        )
+    }
+    if (x_time) {
+        options.scales.xAxes.push(
+            {
+                id: "time",
+                type: 'linear',
+                position: 'top',
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Time, ms'
+                }
+            }
+        )
+    }
+    if (y_gain) {
+        options.scales.yAxes.push(
+            {
+                id: "gain",
+                type: 'linear',
+                position: 'left',
+                ticks: {
+                    fontColor: 'rgba(0,0,220,1)'
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Gain, dB',
+                    fontColor: 'rgba(0,0,220,1)'
+                }
+            },
+        )
+    }
+    if (y_phase) {
+        options.scales.yAxes.push(
+            {
+                id: "phase",
+                type: 'linear',
+                position: 'right',
+                ticks: {
+                    fontColor: 'rgba(0,220,0,1)',
+                    suggestedMin: -180,
+                    suggestedMax: 180
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Phase, deg',
+                    fontColor: 'rgba(0,220,0,1)'
+                }
+            },
+        )
+    }
+    if (y_ampl) {
+        options.scales.yAxes.push(
+            {
+                id: "ampl",
+                type: 'linear',
+                position: 'right',
+                ticks: {
+                    fontColor: 'rgba(220,0,0,1)'
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Amplitude',
+                    fontColor: 'rgba(220,0,0,1)'
+                }
+            }
+        )
+    }
+
+    return <Popup open={props.open} onClose={props.onClose}>
+        <div className="modal">
+            <span className="close" onClick={props.onClose}>✖</span>
+            <div>
+                <Scatter data={data} options={options}/>
+            </div>
+        </div>
+    </Popup>
+}
+
+export function ListSelectPopup(props: {
+    open: boolean
+    items: string[]
+    onSelect: (value: string) => void
+    onClose: () => void
+}) {
+    const {open, items, onSelect, onClose} = props
+    const selectItem = (item: string) => { onSelect(item); onClose() }
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}>
+        <span className="close" onClick={onClose}>✖</span>
+        <div style={{display: 'flex', flexDirection: 'column'}}>
+            {items.map(item =>
+                <div
+                    key={item}
+                    className="button"
+                    style={{justifyContent: 'flex-start'}}
+                    onClick={() => selectItem(item)}
+                >
+                    {item}
+                </div>
+            )}
+        </div>
+    </Popup>
 }

@@ -30,9 +30,45 @@ export function defaultConfig(): Config {
     };
 }
 
-
 export function filterNamesOf(config: Config): string[] {
     return config.filters ? Object.keys(config.filters) : []
+}
+
+export function newFilterName(filters: Filters): string {
+    const prefix = 'New Filter '
+    const filterNameIsAlreadyPresent: (i: number) => boolean =
+        i => Object.keys(filters).includes(prefix + i.toString())
+    for (let i = 1; ; i++)
+        if (!filterNameIsAlreadyPresent(i))
+            return prefix + i.toString();
+}
+
+export function defaultFilter() {
+    return {
+        type: "Biquad",
+        parameters: {type: "Lowpass", q: 0.5, freq: 1000},
+    }
+}
+
+export function removeFilter(config: Config, name: string) {
+    delete config.filters[name]
+    for (let step of config.pipeline)
+        if (step.type === 'Filter')
+            for (let i = 0; i < step.names.length; i++)
+                if (step.names[i] === name)
+                    step.names.splice(i, 1)
+}
+
+export function renameFilter(config: Config, oldName: string, newName: string) {
+    if (filterNamesOf(config).includes(newName))
+        throw new Error(`Filter '${newName}' already exists`)
+    config.filters[newName] = config.filters[oldName]
+    delete config.filters[oldName]
+    for (let step of config.pipeline)
+        if (step.type === 'Filter')
+            for (let i = 0; i < step.names.length; i++)
+                if (step.names[i] === oldName)
+                    step.names[i] = newName
 }
 
 export function mixerNamesOf(config: Config): string[] {
@@ -89,6 +125,34 @@ export type PlaybackDevice =
 export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
 export const Formats: Format[] = ['S16LE', 'S24LE', 'S24LE3', 'S32LE', 'FLOAT32LE', 'FLOAT64LE']
 
-export type Filters = any
-export type Mixers = any
-export type Pipeline = any
+export interface Filters {
+    [name: string] : Filter
+}
+export interface Filter {
+    type: string
+    parameters: { [name: string]: any }
+}
+
+export type Mixers = {
+    [name: string] : Mixer
+}
+
+export interface Mixer {
+    channels: {
+        in: number
+        out: number
+    }
+    mapping: Array<{
+        dest: number
+        sources: Array<{
+            channel: number
+            gain: number
+            inverted: boolean
+        }>
+    }>
+}
+
+export type Pipeline = Array<
+    { type: 'Mixer', name: String }
+    | { type: 'Filter', channel: number, names: string[] }
+>

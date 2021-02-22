@@ -22,7 +22,7 @@ export function DevicesTab(props: {
   const updateDevices = (update: Update<Devices>) => props.updateConfig(config => update(config.devices))
   const guiConfig = props.guiConfig;
   const devices = props.devices;
-  return <div className="devices">
+  return <div className="tabpanel">
     <Samplerate
         hide_capture_samplerate={guiConfig.hide_capture_samplerate}
         devices={devices}
@@ -65,6 +65,7 @@ function Samplerate(props: {
       desc="samplerate"
       data-tip="Sample rate for processing and output"
       onChange={samplerate => props.onChange(devices => { devices.samplerate = samplerate })}
+      extraPadding={true}
   />
 }
 
@@ -73,6 +74,7 @@ function SamplerateOption(props: {
   desc: string
   'data-tip': string
   onChange: (samplerate: number) => void
+  extraPadding?: boolean
 }) {
   const defaultSampleRates = [44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000, 705600, 768000]
   function isNonDefaultSamplerate(samplerate: number): boolean {
@@ -80,14 +82,16 @@ function SamplerateOption(props: {
   }
   const other = 'Other'
   const samplerate = props.samplerate;
-  return <div className="setting" data-tip={props["data-tip"]}>
+  const padding = props.extraPadding ? '0 12px' : '0';
+  return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={isNonDefaultSamplerate(samplerate) ? other : samplerate.toString()}
         options={defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])}
         desc={props.desc}
         data-tip={props["data-tip"]}
-        style={{width: isNonDefaultSamplerate(samplerate) ? '25%' : '55%'}}
+        style={{width: isNonDefaultSamplerate(samplerate) ? '40%' : '100%'}}
+        className="setting-input"
         onChange={value => {
           const parsed = parseInt(value)
           const newSamplerate = isNaN(parsed) ? 0 : parsed
@@ -96,9 +100,9 @@ function SamplerateOption(props: {
     {isNonDefaultSamplerate(samplerate) &&
     <IntInput
         value={samplerate}
-        desc=""
         data-tip={props["data-tip"]}
-        style={{width: '30%', height: '100%'}}
+        className="setting-input"
+        style={{width: '60%'}}
         onChange={samplerate => props.onChange(samplerate)}/>
     }
   </div>
@@ -190,7 +194,7 @@ function ResamplingOptions(props: {
     <SamplerateOption
         samplerate={props.devices.capture_samplerate}
         desc="capture_samplerate"
-        data-tip="Sample rate for capture device.<br>If different than 'samplerate' then resampling must be enabled"
+        data-tip="Sample rate for capture device.<br>If different from 'samplerate' then resampling must be enabled"
         onChange={captureSamplerate => props.onChange(devices => devices.capture_samplerate = captureSamplerate)}/>
     }
   </Box>
