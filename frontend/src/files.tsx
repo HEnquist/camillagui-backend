@@ -115,6 +115,7 @@ class FileTable extends Component<
       body: JSON.stringify(this.state.selectedFiles),
     })
     this.setState({fileStatus: null})
+    this.update()
   }
 
   private async downloadAsZip() {
@@ -131,9 +132,12 @@ class FileTable extends Component<
     doUpload(
         this.type,
         event,
-        () => this.setState({
-          fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
-        }),
+        () => {
+          this.setState({
+            fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
+          })
+          this.update()
+        },
         message => this.setState({
           fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: false, statusText: message}
         })
@@ -179,6 +183,7 @@ class FileTable extends Component<
       if (response.ok) {
         setActiveConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
+        this.update()
       } else {
         const message = await response.text();
         this.showErrorMessage(name, 'save', message)
