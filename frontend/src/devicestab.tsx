@@ -205,7 +205,8 @@ function CaptureOptions(props: {
   capture: CaptureDevice,
   onChange: (update: Update<Devices>) => void
 }) {
-
+  if (props.hide_capture_device)
+    return null
   const defaults: { [type: string]: CaptureDevice } = {
     Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
@@ -215,9 +216,6 @@ function CaptureOptions(props: {
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
   };
-
-  if (props.hide_capture_device)
-    return null;
   const {capture, onChange} = props
   return <Box title="Capture device">
     <EnumOption
@@ -289,7 +287,8 @@ function PlaybackOptions(props: {
   playback: PlaybackDevice
   onChange: (update: Update<Devices>) => void
 }) {
-
+  if (props.hide_playback_device)
+    return null
   const defaults: { [type: string]: PlaybackDevice } = {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
@@ -298,7 +297,6 @@ function PlaybackOptions(props: {
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
   };
-
   const {onChange, playback} = props
   return <Box title="Playback device">
     <EnumOption
