@@ -401,37 +401,27 @@ class PipelinePlot extends React.Component {
 export class PipelinePopup extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { open: props.open, config: props.config };
-    this.openModal = this.openModal.bind(this);
     this.closeModal = this.closeModal.bind(this);
-  }
-  openModal() {
-    this.setState({ open: true });
   }
 
   closeModal() {
-    this.setState({ open: false });
     this.props.onClose(this.props.id);
   }
 
   render() {
     return (
-      <div>
-        <Popup
-          open={this.state.open}
-          closeOnDocumentClick
-          onClose={this.closeModal}
-        >
-          <div className="modal">
-            <span className="close" onClick={this.closeModal}>
-              ✖
-            </span>
-            <div>
-              <PipelinePlot size={[1000, 500]} config={this.state.config} />
-            </div>
+      <Popup
+        open={this.props.open}
+        closeOnDocumentClick
+        onClose={this.closeModal}
+      >
+        <div className="modal">
+          <span className="close" onClick={this.closeModal}>✖</span>
+          <div>
+            <PipelinePlot size={[1000, 500]} config={this.props.config} />
           </div>
-        </Popup>
-      </div>
+        </div>
+      </Popup>
     );
   }
 }

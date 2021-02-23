@@ -1,3 +1,5 @@
+import {sortedAlphabetically} from "./common-tsx";
+
 export function defaultConfig(): Config {
     return {
         devices: {
@@ -31,10 +33,8 @@ export function defaultConfig(): Config {
 }
 
 export function filterNamesOf(configOrFilters: Config | Filters): string[] {
-    if (isConfig(configOrFilters))
-        return Object.keys(configOrFilters.filters)
-    else // is Filters
-        return Object.keys(configOrFilters)
+    const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+    return sortedAlphabetically(Object.keys(filters))
 }
 
 function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
@@ -80,10 +80,8 @@ export function renameFilter(config: Config, oldName: string, newName: string) {
 }
 
 export function mixerNamesOf(configOrMixers: Config | Mixers): string[] {
-    if (isConfig(configOrMixers))
-        return Object.keys(configOrMixers.mixers)
-    else // is Mixers
-        return Object.keys(configOrMixers)
+    const mixers: Mixers = isConfig(configOrMixers) ? configOrMixers.mixers : configOrMixers
+    return sortedAlphabetically(Object.keys(mixers))
 }
 
 export function newMixerName(mixers: Mixers): string {
@@ -124,7 +122,24 @@ export function defaultMapping(outChannels: number, mappings: Mapping[]) {
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {
     const newChannel = sources.length < inChannels ? sources.length : 0
-    return {channel: newChannel, gain: 0, inverted: false};
+    return {channel: newChannel, gain: 0, inverted: false}
+}
+
+export function defaultFilterStep(config: Config): FilterStep {
+    const filterNames = filterNamesOf(config)
+    return {
+        type: 'Filter',
+        channel: 0,
+        names: filterNames.length === 1 ? [filterNames[0]] : ['']
+    }
+}
+
+export function defaultMixerStep(config: Config): MixerStep {
+    const mixerNames = mixerNamesOf(config)
+    return {
+        type: 'Mixer',
+        name: mixerNames.length === 1 ? mixerNames[0] : ''
+    }
 }
 
 export interface Config {
@@ -208,7 +223,7 @@ export interface Source {
     inverted: boolean
 }
 
-export type Pipeline = Array<
-    { type: 'Mixer', name: String }
-    | { type: 'Filter', channel: number, names: string[] }
->
+export type Pipeline = PipelineStep[]
+export type PipelineStep = MixerStep | FilterStep
+export interface MixerStep { type: 'Mixer', name: string }
+export interface FilterStep { type: 'Filter', channel: number, names: string[] }

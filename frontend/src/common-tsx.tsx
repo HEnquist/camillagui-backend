@@ -17,6 +17,20 @@ export function modifiedCopyOf<T>(object: T, modification: (copy: T) => void): T
     return copy
 }
 
+export function sortedAlphabetically(array: string[]): string[] {
+    array.sort((a,b) => a.localeCompare(b))
+    return array
+}
+
+export function moveItemUp<T>(array: T[], index: number) {
+    const removed = array.splice(index, 1);
+    array.splice(index-1, 0, ...removed)
+}
+
+export function moveItemDown<T>(array: T[], index: number) {
+    moveItemUp(array, index+1)
+}
+
 export function download(filename: string, blob: any) {
     let a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
@@ -157,7 +171,7 @@ export function MdiButton(props: {
 }) {
     const { icon, tooltip, className, enabled, onClick, smallButton } = props
     const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
-    let buttonClass = enabled !== false ? 'button' : 'disabled-button'
+    let buttonClass = enabled !== false ? 'button' : 'button disabled-button'
     if (smallButton === true) buttonClass += ' smallbutton'
     if (className !== undefined) buttonClass += ' ' + className
     const style = Object.assign({display: 'inline-block'},props.style)
@@ -314,11 +328,13 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={{backgroundColor: valid ? "initial" : "#FFAAAA", ...props.style}}
+            style={{backgroundColor: valid ? "initial" : ERROR_BACKGROUND, ...props.style}}
             onChange={(e) => this.updateValue(e.target.value)}/>
     }
 
 }
+
+export const ERROR_BACKGROUND = "#FFAAAA"
 
 export function BoolOption(props: {
     value: boolean,
@@ -347,6 +363,8 @@ export function EnumOption<OPTION extends string>(props: {
     options: OPTION[]
     desc: string
     'data-tip': string
+    style?: CSSProperties
+    className?: string
     onChange: (value: OPTION) => void
 }) {
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>

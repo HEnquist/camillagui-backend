@@ -15,7 +15,6 @@ import {
   renameMixer,
   Source
 } from "./config";
-import {List} from "immutable";
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
@@ -36,8 +35,8 @@ export class MixersTab extends React.Component<{
     this.mixerNames().forEach((name, i) => this.state.mixerKeys[name] = i)
   }
 
-  private mixerNames(): List<string> {
-    return List(mixerNamesOf(this.props.mixers))
+  private mixerNames(): string[] {
+    return mixerNamesOf(this.props.mixers)
   }
 
   private addMixer() {
@@ -82,7 +81,6 @@ export class MixersTab extends React.Component<{
     return (
         <div className="tabpanel">
           {this.mixerNames()
-              .sort((a, b) => a.localeCompare(b))
               .map(name =>
                   <MixerView
                       key={this.state.mixerKeys[name]}

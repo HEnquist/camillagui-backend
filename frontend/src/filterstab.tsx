@@ -25,13 +25,14 @@ import {
   FloatOption,
   IntOption,
   ListSelectPopup,
-  MdiButton, modifiedCopyOf,
+  MdiButton,
+  modifiedCopyOf,
   ParsedInput,
   TextOption,
   Update,
   UploadButton
 } from "./common-tsx";
-import {List, OrderedSet} from "immutable";
+import {OrderedSet} from "immutable";
 
 export class FiltersTab extends React.Component<
     {
@@ -68,8 +69,8 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles()
   }
 
-  private filterNames(): List<string> {
-    return List(filterNamesOf(this.props.filters))
+  private filterNames(): string[] {
+    return filterNamesOf(this.props.filters)
   }
 
   private addFilter() {
@@ -145,7 +146,6 @@ export class FiltersTab extends React.Component<
     let filters = this.props.filters;
     return <div className="tabpanel">
       {this.filterNames()
-          .sort((a, b) => a.localeCompare(b))
           .map(name =>
               <FilterView
                   key={this.state.filterKeys[name]}
