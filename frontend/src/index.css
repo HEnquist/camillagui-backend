@@ -34,19 +34,6 @@ input[type='checkbox'] {
   padding: 2px;
 }
 
-.fileinput{
-  box-sizing: border-box;
-  width : 100%; 
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  padding: 4px;
-} 
-
-.inputlabel {
-  text-align: right;
-  padding-inline-end: 10px;
-}
-
 .tabpanel {
   border: 4px;
   text-align: left;
@@ -59,49 +46,6 @@ input[type='checkbox'] {
 
 .tabpanel > * {
   margin: 5px 0;
-}
-
-.namelist {
-  background: rgb(220, 220, 220);
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  width: 450px;
-}
-
-.pipeline {
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  width: 500px;
-}
-
-.pipelinestep {
-  background: rgb(220, 220, 220);
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 100%;
-  box-sizing: border-box;
-  flex-direction: column;
-  border: 3px inset #999;
-  border-radius: 5px;
-}
-
-.listitem {
-  background: rgb(220, 220, 220);
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
 }
 
 .configapp {
@@ -123,24 +67,6 @@ input[type='checkbox'] {
   padding: 10px;
   display: flex;
   flex-direction: column;
-}
-
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-.column {
-  float: left;
-}
-
-.left {
-  width: 40%;
-}
-
-.right {
-  width: 60%;
 }
 
 .setting {
@@ -177,12 +103,22 @@ input[type='checkbox'] {
   flex-direction: column;
 }
 
-.slidecontainer {
-  box-sizing: border-box;
-  width: 100%;
-  float: left;
+.horizontally-spaced-content {
   display: flex;
-  align-items:center;
+  flex-direction: row;
+}
+
+.horizontally-spaced-content > *:not(:last-child) {
+  margin-right: 5px;
+}
+
+.vertically-spaced-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.vertically-spaced-content > *:not(:last-child) {
+  margin-bottom: 5px;
 }
 
 .two-column-grid {
@@ -235,15 +171,9 @@ input[type='checkbox'] {
   background-color: #aaa;
 }
 
-.disabled-button {
+.disabled-button, .disabled-button:hover, .disabled-button:active {
   background-color: #aaa;
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  font-size: smaller;
-  display: inline-flex;
-  justify-content: center;
-  align-content: center;
-  padding: 3px 6px;
+  cursor: initial;
 }
 
 .highlighted {
@@ -273,4 +203,9 @@ input[type='checkbox'] {
 
 .neutral {
   color: #bbb;
+}
+
+.pipeline-channel {
+  width: 100%;
+  text-align: center;
 }
