@@ -216,7 +216,7 @@ export class SidePanel extends React.Component<
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
         <Box title="Volume">
             <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped} />
-            <VolumeSlider volume="0" onChange={this.setVolume} />
+            <VolumeSlider volume={this.state.volume} onChange={this.setVolume} />
             <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped} />
         </Box>
         <Box title="CamillaDSP">
