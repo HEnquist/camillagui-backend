@@ -104,25 +104,26 @@ export function renameMixer(config: Config, oldName: string, newName: string) {
             step.name = newName
 }
 
-export function defaultMixer() {
+export function defaultMixer(): Mixer {
     return {
         channels: {in: 2, out: 2},
         mapping: [defaultMapping(2, [])]
     }
 }
 
-export function defaultMapping(outChannels: number, mappings: Mapping[]) {
+export function defaultMapping(outChannels: number, mappings: Mapping[]): Mapping {
     if (mappings.length >= outChannels)
         throw new Error(`Cannot add more than ${outChannels} (out) mappings`)
     return {
         dest: mappings.length,
         sources: [defaultSource(0, [])],
+        mute: false
     };
 }
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {
     const newChannel = sources.length < inChannels ? sources.length : 0
-    return {channel: newChannel, gain: 0, inverted: false}
+    return {channel: newChannel, gain: 0, inverted: false, mute: false}
 }
 
 export function defaultFilterStep(config: Config): FilterStep {
@@ -215,12 +216,14 @@ export interface Mixer {
 export interface Mapping {
     dest: number
     sources: Source[]
+    mute: boolean
 }
 
 export interface Source {
     channel: number
     gain: number
     inverted: boolean
+    mute: boolean
 }
 
 export type Pipeline = PipelineStep[]

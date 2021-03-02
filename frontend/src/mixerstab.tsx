@@ -79,7 +79,7 @@ export class MixersTab extends React.Component<{
   render() {
     const {mixers, updateConfig} = this.props;
     return (
-        <div className="tabpanel">
+        <div className="tabpanel" style={{width: '550px'}}>
           {this.mixerNames()
               .map(name =>
                   <MixerView
@@ -185,6 +185,12 @@ function MappingView(props: {
           min={0}
           max={channels.out-1}
           onChange={dest => update(mapping => mapping.dest = dest)}/>
+      <BoolOption
+          value={mapping.mute}
+          desc="mute"
+          data-tip="Mute"
+          small={true}
+          onChange={mute => update(mapping => mapping.mute = mute)}/>
       <DeleteButton
           tooltip="Delete this mapping"
           smallButton={true}
@@ -240,6 +246,12 @@ function SourceView(props: {
         data-tip="Invert signal"
         small={true}
         onChange={inverted => update(source => source.inverted = inverted)}/>
+    <BoolOption
+        value={source.mute}
+        desc="mute"
+        data-tip="Mute"
+        small={true}
+        onChange={mute => update(source => source.mute = mute)}/>
     <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
   </div>
 }

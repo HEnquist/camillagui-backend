@@ -333,7 +333,7 @@ class FilterParams extends React.Component<{
       Default: { delay: 0.0, unit: "ms" },
     },
     Gain: {
-      Default: { gain: 0.0, inverted: false },
+      Default: { gain: 0.0, inverted: false, mute: false },
     },
     Volume: {
       Default: { ramp_time: 200 },
@@ -537,6 +537,7 @@ class FilterParams extends React.Component<{
       desc: "low_boost",
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
+    mute: { type: "bool", desc: "mute", tooltip: "Mute" },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     q: { type: "float", desc: "Q", tooltip: "Q-value" },
     q_act: {
