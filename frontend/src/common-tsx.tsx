@@ -3,7 +3,6 @@ import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js";
-import {FLASKURL} from "./index";
 import 'reactjs-popup/dist/index.css';
 import cloneDeep from "lodash/cloneDeep";
 
@@ -61,7 +60,7 @@ export async function doUpload(
     }
     event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     try {
-        await fetch(`${FLASKURL}/api/upload${type}s`, {
+        await fetch(`/api/upload${type}s`, {
             method: "POST",
             body: formData
         })

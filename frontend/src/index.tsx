@@ -18,9 +18,6 @@ import {defaultGuiConfig, GuiConfig} from "./guiconfig";
 import {Update} from "./common-tsx";
 import cloneDeep from "lodash/cloneDeep";
 
-//export const FLASKURL = "http://127.0.0.1:5000"
-export const FLASKURL = ""
-
 class CamillaConfig extends React.Component<
   unknown,
   {
@@ -41,7 +38,7 @@ class CamillaConfig extends React.Component<
       guiConfig: defaultGuiConfig(),
       config: defaultConfig()
     }
-    fetch(FLASKURL + "/api/guiconfig")
+    fetch("/api/guiconfig")
         .then(data => data.json())
         .then(json => this.setState({guiConfig: json}))
   }

@@ -1,7 +1,6 @@
 import React from "react";
 import cloneDeep from "lodash/cloneDeep";
 import "./index.css";
-import {FLASKURL} from "./index";
 import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
 import {
   Config,
@@ -114,7 +113,7 @@ export class FiltersTab extends React.Component<
   }
 
   private plotFilter(name: string) {
-    fetch(FLASKURL + "/api/evalfilter", {
+    fetch("/api/evalfilter", {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({
@@ -134,7 +133,7 @@ export class FiltersTab extends React.Component<
   }
 
   private updateAvailableCoeffFiles() {
-    fetch(FLASKURL + "/api/storedcoeffs")
+    fetch("/api/storedcoeffs")
         .then(
             result => result.json()
                 .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles})),
