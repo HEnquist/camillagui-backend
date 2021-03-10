@@ -5,7 +5,7 @@ This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 This version works with CamillaDSP 0.4.0 and up.
 
 The complete GUI is made up of two parts:
-- a frontend based on React: https://reactjs.org/ 
+- a frontend based on React: https://reactjs.org/
 - a backend based on AIOHTTP: https://docs.aiohttp.org/en/stable/
 
 ## Setting up
@@ -37,7 +37,7 @@ Most linux distributions have Python 3.6 or newer installed by default. Use the 
 Use Anaconda: https://www.anaconda.com/products/individual. Then use Anaconda Navigator to install the dependencies.
 
 #### macOS
-On macOS use either Anaconda or Homebrew. The Anaconda procedure is the same as for Windows. 
+On macOS use either Anaconda or Homebrew. The Anaconda procedure is the same as for Windows.
 
 For Homebrew, install Python with `brew install python`, after which you can install the needed packages with pip, `pip3 install websocket_client` etc.
 
@@ -48,7 +48,7 @@ For basic functionality you need:
 For plotting, you also need:
 - pycamilladsp-plot from https://github.com/HEnquist/pycamilladsp-plot
 
-To install a library first download it, either by `git clone` or by downloading a zip file of the code. Then unpack the files, go to the folder containing the `setup.py` file and run 
+To install a library first download it, either by `git clone` or by downloading a zip file of the code. Then unpack the files, go to the folder containing the `setup.py` file and run
 ```sh
 pip install .
 ```
@@ -89,17 +89,23 @@ The `active_config` will be loaded into the web interface when it is opened.
 If there is no active config, the `default_config` will be used.
 If this does not exist, the internal default config is used.
 Note: the `active_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts.
-To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `active_config`. 
+To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `active_config`.
 
 If the CamillaDSP instance at `camilla_host`:`camilla_port` is not always available, a backup instance can be configured.
 This allows several gui features to work, even if the primary CamillaDSP is not running.
-It is started together with the backend and used when appropriate. 
+It is started together with the backend and used when appropriate.
 
-#### Hiding GUI Options
+#### Integrating with other software
+If you want to integrate CamillaGUI with other software,
+there are some options to customize the UI for your particular needs.
 
-If you want to integrate CamillaGUI with other software and hide some options from your users,
-this is possible through `config/gui-config.yml`.
-Setting any of the options to `true` hides the corresponding option or section. 
+##### Styling the GUI
+The UI can be styled by editing `build/css-variables.css`.
+Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
+
+##### Hiding GUI Options
+Options can hidden from your users by editing `config/gui-config.yml`.
+Setting any of the options to `true` hides the corresponding option or section.
 ```yaml
 hide_capture_samplerate: false
 hide_silence: false
@@ -116,5 +122,3 @@ python main.py
 The gui should now be available at: http://localhost:5000/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
-
-
