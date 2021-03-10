@@ -1,6 +1,10 @@
+/* The CSS files have to be imported in exactly this order.
+   Otherwise the custom react-tabs styles in index.css don't work */
+import "react-tabs/style/react-tabs.css";
+import "./index.css";
+
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import "./index.css";
 import {FiltersTab} from "./filterstab";
 import {DevicesTab} from "./devicestab";
 import {MixersTab} from "./mixerstab";
@@ -8,7 +12,6 @@ import {PipelineTab} from "./pipelinetab";
 import {SidePanel} from "./sidepanel";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
-import "react-tabs/style/react-tabs.css";
 import {Files} from "./files";
 import {Config, defaultConfig} from "./config";
 import {defaultGuiConfig, GuiConfig} from "./guiconfig";

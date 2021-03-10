@@ -31,6 +31,10 @@ export function moveItemDown<T>(array: T[], index: number) {
     moveItemUp(array, index+1)
 }
 
+export function cssStyles(): CSSStyleDeclaration {
+    return getComputedStyle(document.body)
+}
+
 export function download(filename: string, blob: any) {
     let a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
@@ -106,10 +110,10 @@ export function AddButton(props: {
     style?: CSSProperties
     onClick: () => void
 }) {
+    const style = Object.assign({color: 'var(--button-add-icon-color)'}, props.style)
     return <MdiButton
         icon={mdiPlusThick}
-        className="success"
-        style={props.style}
+        style={style}
         tooltip={props.tooltip}
         onClick={props.onClick}/>
 }
@@ -120,7 +124,7 @@ export function DeleteButton(props: {
     smallButton?: boolean
 }) {
     return <MdiButton
-        className="error"
+        style={{color: 'var(--button-remove-icon-color)'}}
         smallButton={props.smallButton}
         icon={mdiDelete}
         tooltip={props.tooltip}
@@ -171,13 +175,20 @@ export function MdiButton(props: {
 }) {
     const { icon, tooltip, className, enabled, onClick, smallButton } = props
     const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
-    let buttonClass = enabled !== false ? 'button' : 'button disabled-button'
+    let buttonClass = 'button button-with-icon'
+    if (enabled === false) buttonClass += ' disabled-button'
     if (smallButton === true) buttonClass += ' smallbutton'
     if (className !== undefined) buttonClass += ' ' + className
-    const style = Object.assign({display: 'inline-block'},props.style)
+    const style = Object.assign({display: 'inline-block'}, props.style)
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={style}>
         <Icon path={icon} size={'24px'}/>
     </div>
+}
+
+export function CloseButton(props: {
+    onClick: () => void
+}) {
+    return <div style={{textAlign: 'right'}} onClick={props.onClick}>✖</div>
 }
 
 export function OptionLine(props: {
@@ -318,9 +329,9 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
 
     render() {
-        let props = this.props;
+        const props = this.props;
         const parsedValue = props.parseValue(this.state.rawValue)
-        let valid = parsedValue !== undefined
+        const valid = parsedValue !== undefined
         return <input
             type={props.withControls ? "number" : "text"}
             min={props.min}
@@ -328,13 +339,13 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={{backgroundColor: valid ? "initial" : ERROR_BACKGROUND, ...props.style}}
-            onChange={(e) => this.updateValue(e.target.value)}/>
+            style={{backgroundColor: valid ? undefined : FIELD_ERROR_BACKGROUND, ...props.style}}
+            onChange={e => this.updateValue(e.target.value)}/>
     }
 
 }
 
-export const ERROR_BACKGROUND = "#FFAAAA"
+export const FIELD_ERROR_BACKGROUND = 'var(--error-field-background-color)'
 
 export function BoolOption(props: {
     value: boolean,
@@ -367,8 +378,9 @@ export function EnumOption<OPTION extends string>(props: {
     className?: string
     onChange: (value: OPTION) => void
 }) {
+    const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <EnumInput {...props} className="setting-input"/>
+        <EnumInput {...props} className={className}/>
     </OptionLine>
 }
 
@@ -443,6 +455,12 @@ export function ChartPopup(props: {
     let y_gain = false
     let y_ampl = false
 
+    const styles = cssStyles();
+    const axesColor = styles.getPropertyValue('--axes-color')
+    const textColor = styles.getPropertyValue('--text-color')
+    const gainColor = styles.getPropertyValue('--gain-color')
+    const phaseColor = styles.getPropertyValue('--phase-color')
+    const impulseColor = styles.getPropertyValue('--impulse-color')
     if (stateData.hasOwnProperty("magnitude")) {
         const gainpoints = make_pointlist(stateData["f"], stateData["magnitude"], 1.0, 1.0)
         x_freq = true
@@ -451,7 +469,7 @@ export function ChartPopup(props: {
             {
                 label: 'Gain',
                 fill: false,
-                borderColor: 'rgba(0,0,220,1)',
+                borderColor: gainColor,
                 pointRadius: 0,
                 showLine: true,
                 data: gainpoints,
@@ -460,7 +478,6 @@ export function ChartPopup(props: {
             }
         )
     }
-
     if (stateData.hasOwnProperty("phase")) {
         const phasepoints = make_pointlist(stateData["f"], stateData["phase"], 1.0, 1.0)
         x_freq = true
@@ -469,7 +486,7 @@ export function ChartPopup(props: {
             {
                 label: 'Phase',
                 fill: false,
-                borderColor: 'rgba(0,220,0,1)',
+                borderColor: phaseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: phasepoints,
@@ -478,7 +495,6 @@ export function ChartPopup(props: {
             }
         )
     }
-
     if (stateData.hasOwnProperty("impulse")) {
         const impulsepoints = make_pointlist(stateData["time"], stateData["impulse"], 1000.0, 1.0)
         x_time = true
@@ -487,7 +503,7 @@ export function ChartPopup(props: {
             {
                 label: 'Impulse',
                 fill: false,
-                borderColor: 'rgba(220,0,0,1)',
+                borderColor: impulseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: impulsepoints,
@@ -497,14 +513,25 @@ export function ChartPopup(props: {
         )
     }
 
-    const options: { scales: { xAxes: any, yAxes: any } } = {
+    const options = {
         scales: {
-            xAxes: [],
-            yAxes: []
-        }
+            xAxes: [] as any[],
+            yAxes: [] as any[]
+        },
+        legend: {
+            labels: {
+                fontColor: textColor,
+            }
+        },
     }
 
     if (x_freq) {
+        const labelsAt = [
+            10, 20, 30, 40, 50,
+            100, 200, 300, 400, 500,
+            1000, 2000, 3000, 4000, 5000,
+            10000, 20000
+        ]
         options.scales.xAxes.push(
             {
                 id: "freq",
@@ -512,21 +539,27 @@ export function ChartPopup(props: {
                 position: 'bottom',
                 scaleLabel: {
                     display: true,
-                    labelString: 'Frequency, Hz'
+                    labelString: 'Frequency, Hz',
+                    fontColor: textColor
+                },
+                gridLines: {
+                    zeroLineColor: axesColor,
+                    color: axesColor
                 },
                 ticks: {
                     min: 0,
                     max: 30000,
                     maxRotation: 50,
+                    fontColor: textColor,
                     callback(value: number, index: number, values: any) {
-                        return value.toString();
+                        return labelsAt.includes(value) ? value.toString() : '';
                     }
                 },
                 afterBuildTicks: function (chartObj: any) {
                     chartObj.ticks = [
-                        10, 20, 30, 40, 50,70,
-                        100, 200, 300, 400, 500, 700,
-                        1000, 2000, 3000, 4000, 5000, 7000,
+                        10, 20, 30, 40, 50, 60, 70, 80, 90,
+                        100, 200, 300, 400, 500, 600, 700, 800, 900,
+                        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
                         10000, 20000
                     ];
                 }
@@ -541,8 +574,13 @@ export function ChartPopup(props: {
                 position: 'top',
                 scaleLabel: {
                     display: true,
-                    labelString: 'Time, ms'
-                }
+                    labelString: 'Time, ms',
+                    fontColor: textColor
+                },
+                ticks: {
+                    fontColor: textColor,
+                },
+                gridLines: {display: false},
             }
         )
     }
@@ -553,13 +591,17 @@ export function ChartPopup(props: {
                 type: 'linear',
                 position: 'left',
                 ticks: {
-                    fontColor: 'rgba(0,0,220,1)'
+                    fontColor: gainColor
                 },
                 scaleLabel: {
                     display: true,
                     labelString: 'Gain, dB',
-                    fontColor: 'rgba(0,0,220,1)'
-                }
+                    fontColor: gainColor
+                },
+                gridLines: {
+                    zeroLineColor: axesColor,
+                    color: axesColor
+                },
             },
         )
     }
@@ -570,15 +612,16 @@ export function ChartPopup(props: {
                 type: 'linear',
                 position: 'right',
                 ticks: {
-                    fontColor: 'rgba(0,220,0,1)',
+                    fontColor: phaseColor,
                     suggestedMin: -180,
                     suggestedMax: 180
                 },
                 scaleLabel: {
                     display: true,
                     labelString: 'Phase, deg',
-                    fontColor: 'rgba(0,220,0,1)'
-                }
+                    fontColor: phaseColor
+                },
+                gridLines: {display: false}
             },
         )
     }
@@ -589,24 +632,21 @@ export function ChartPopup(props: {
                 type: 'linear',
                 position: 'right',
                 ticks: {
-                    fontColor: 'rgba(220,0,0,1)'
+                    fontColor: impulseColor
                 },
                 scaleLabel: {
                     display: true,
                     labelString: 'Amplitude',
-                    fontColor: 'rgba(220,0,0,1)'
-                }
+                    fontColor: impulseColor
+                },
+                gridLines: {display: false}
             }
         )
     }
 
-    return <Popup open={props.open} onClose={props.onClose}>
-        <div className="modal">
-            <span className="close" onClick={props.onClose}>✖</span>
-            <div>
-                <Scatter data={data} options={options}/>
-            </div>
-        </div>
+    return <Popup open={props.open} onClose={props.onClose} contentStyle={{width: '50%'}}>
+        <CloseButton onClick={props.onClose}/>
+        <Scatter data={data} options={options}/>
     </Popup>
 }
 
@@ -618,8 +658,8 @@ export function ListSelectPopup(props: {
 }) {
     const {open, items, onSelect, onClose} = props
     const selectItem = (item: string) => { onSelect(item); onClose() }
-    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}>
-        <span className="close" onClick={onClose}>✖</span>
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'min-content'}}>
+        <CloseButton onClick={onClose}/>
         <div style={{display: 'flex', flexDirection: 'column'}}>
             {items.map(item =>
                 <div

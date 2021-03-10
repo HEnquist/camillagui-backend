@@ -9,7 +9,7 @@ import {
   DeleteButton,
   EnumInput,
   EnumOption,
-  ERROR_BACKGROUND,
+  FIELD_ERROR_BACKGROUND,
   IntInput,
   MdiButton,
   moveItemDown,
@@ -172,7 +172,7 @@ function MixerStepView(props: {
           options={options}
           desc="name"
           data-tip="Mixer name"
-          style={{backgroundColor: mixerStep.name === '' ? ERROR_BACKGROUND : 'initial'}}
+          style={{backgroundColor: mixerStep.name === '' ? FIELD_ERROR_BACKGROUND : undefined}}
           onChange={name => update(step => step.name = name)}/>
       <div className="horizontally-spaced-content">{controls}</div>
     </div>
@@ -214,7 +214,7 @@ function FilterStepView(props: {
                 data-tip="Filter name"
                 style={{
                   width: '100%',
-                  backgroundColor: name === '' ? ERROR_BACKGROUND : 'initial'
+                  backgroundColor: name === '' ? FIELD_ERROR_BACKGROUND : undefined
                 }}
                 onChange={filterName => update(step => step.names[index] = filterName)}/>
             <MdiButton

@@ -42,14 +42,14 @@ class ConfigCheckMessage extends React.Component<
 
   render() {
     const message = this.state.message
-    let statusClass
+    let textColor
     if (message === this.default_message)
-      statusClass = 'neutral'
+      textColor = 'var(--neutral-text-color)'
     else if (message === "OK")
-      statusClass = 'success'
+      textColor = 'var(--success-text-color)'
     else
-      statusClass = 'error'
-    return <div className={"config-status " + statusClass}>{message}</div>
+      textColor = 'var(--error-text-color)'
+    return <div className="config-status" style={{color: textColor}}>{message}</div>
   }
 }
 
