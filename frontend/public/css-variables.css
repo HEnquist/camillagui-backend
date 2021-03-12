@@ -29,11 +29,11 @@
     --button-remove-icon-color: var(--error-text-color);
     --button-text-color: var(--text-color);
     --button-background-color: #333;
-    --button-border: 1px solid #999;
+    --button-border: 2px solid rgb(70, 70, 70);
     --hovered-button-background-color: #444;
-    --hovered-button-border: 1px solid #bbb;
+    --hovered-button-border: 2px solid #bbb;
     --active-button-background-color: #555;
-    --active-button-border: 1px solid #ddd;
+    --active-button-border: 2px solid #ddd;
     --disabled-button-opacity: 0.4;
     --disabled-button-background-color: var(--button-background-color);
     --disabled-button-border: var(--button-border);
@@ -41,11 +41,11 @@
     --highlighted-button-border: 1px solid #4b4;
 
     /* Boxes */
-    --box-border-color: #999;
-    --box-border: 1px solid var(--box-border-color);
+    --box-border-color: rgb(70, 70, 70);
+    --box-border: 2px solid var(--box-border-color);
 
     /* Inputs */
-    --input-border: 1px solid rgba(128, 128, 128, 0.5);
+    --input-border: 2px solid rgba(70, 70, 70, 0.5);
     --focused-input-border: 1px solid var(--success-text-color);
 
     /* Dialogs */
@@ -53,7 +53,12 @@
     --gain-color: #4646f0;
     --phase-color: var(--error-text-color);
     --impulse-color: var(--success-text-color);
+
+    /* Pipeline plot */
     --arrow-color: var(--axes-color);
+    --frame-background-color: #333;
+    --block-background-color: rgb(200, 200, 200);
+    --block-text-color: rgb(16, 10, 90);
 }
 
 /*
@@ -101,5 +106,10 @@
     --gain-color: rgba(0,0,220,1);
     --phase-color: rgba(0,220,0,1);
     --impulse-color: rgba(220,0,0,1);
+
+    /* Pipeline plot */
     --arrow-color: var(--text-color);
+    --frame-background-color: rgb(180, 180, 180);
+    --block-background-color: rgb(233, 233, 233);
+    --block-text-color: rgb(16, 10, 90);
 }

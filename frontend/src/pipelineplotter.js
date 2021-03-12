@@ -13,6 +13,9 @@ class PipelinePlot extends React.Component {
     this.borderColor = styles.getPropertyValue('--box-border-color');
     this.arrowColor = styles.getPropertyValue('--arrow-color');
     this.backgroundColor = styles.getPropertyValue('--background-color');
+    this.frameBgColor = styles.getPropertyValue('--frame-background-color');
+    this.blockBgColor = styles.getPropertyValue('--block-background-color');
+    this.blockTextColor = styles.getPropertyValue('--block-text-color');
     this.createPipelinePlot();
   }
 
@@ -26,7 +29,7 @@ class PipelinePlot extends React.Component {
       y: y - 0.35,
       width: width,
       height: 0.7,
-      fill: this.backgroundColor,
+      fill: this.blockBgColor,
       stroke: this.borderColor,
       "stroke-width": 1,
     };
@@ -34,7 +37,7 @@ class PipelinePlot extends React.Component {
       x: x,
       y: y + 0.1,
       text: label,
-      fill: this.textColor,
+      fill: this.blockTextColor,
       size: 0.3,
       angle: 0,
     };
@@ -52,7 +55,7 @@ class PipelinePlot extends React.Component {
       y: -height / 2 + y,
       width: width,
       height: height,
-      fill: this.backgroundColor,
+      fill: this.frameBgColor,
       stroke: this.borderColor,
       "stroke-width": 1,
     };
