@@ -390,6 +390,8 @@ function FileDownloadButton(props: { type: string, filename: string, highlight: 
   return <a className={classNames}
             style={{width: 'max-content', textDecoration: 'none', color: 'black'}}
             data-tip={'Download '+filename}
+            target="_blank"
+            rel="noopener noreferrer"
             href={`${FLASKURL}/${type}/${filename}`}>
     {filename}
   </a>
