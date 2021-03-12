@@ -526,12 +526,6 @@ export function ChartPopup(props: {
     }
 
     if (x_freq) {
-        const labelsAt = [
-            10, 20, 30, 40, 50,
-            100, 200, 300, 400, 500,
-            1000, 2000, 3000, 4000, 5000,
-            10000, 20000
-        ]
         options.scales.xAxes.push(
             {
                 id: "freq",
@@ -549,10 +543,17 @@ export function ChartPopup(props: {
                 ticks: {
                     min: 0,
                     max: 30000,
-                    maxRotation: 50,
+                    maxRotation: 0,
                     fontColor: textColor,
                     callback(value: number, index: number, values: any) {
-                        return labelsAt.includes(value) ? value.toString() : '';
+                        if (value === 10 || value === 100)
+                            return value.toString()
+                        else if (value === 1000)
+                            return '1k'
+                        else if (value === 10000)
+                            return '10k'
+                        else
+                            return ''
                     }
                 },
                 afterBuildTicks: function (chartObj: any) {
