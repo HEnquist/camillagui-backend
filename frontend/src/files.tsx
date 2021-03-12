@@ -325,10 +325,11 @@ function UploadFilesButton(props: {
   const fileStatus = props.fileStatus
   let uploadIcon: { icon: string, className?: string } =
       {icon: mdiUpload}
-  if (fileStatus !== null && fileStatus.action === 'upload' && fileStatus.filename === EMPTY_FILENAME)
-    uploadIcon = fileStatus.success ?
-        {icon: mdiCheck, className: 'success'}
-        : {icon: mdiAlertCircle, className: 'error'}
+  if (fileStatus !== null
+      && fileStatus.action === 'upload'
+      && fileStatus.filename === EMPTY_FILENAME
+      && !fileStatus.success)
+    uploadIcon = {icon: mdiAlertCircle, className: 'error'}
   return <UploadButton
       icon={uploadIcon.icon}
       tooltip={'Upload files'}
