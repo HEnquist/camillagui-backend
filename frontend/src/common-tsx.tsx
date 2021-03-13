@@ -179,8 +179,7 @@ export function MdiButton(props: {
     if (enabled === false) buttonClass += ' disabled-button'
     if (smallButton === true) buttonClass += ' smallbutton'
     if (className !== undefined) buttonClass += ' ' + className
-    const style = Object.assign({display: 'inline-block'}, props.style)
-    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={style}>
+    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
         <Icon path={icon} size={'24px'}/>
     </div>
 }

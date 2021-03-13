@@ -386,7 +386,7 @@ function LoadButton(
 
 function FileDownloadButton(props: { type: string, filename: string, highlight: boolean }) {
   const { type, filename, highlight } = props
-  const classNames = 'button ' + (highlight ? 'highlighted-button' : '')
+  const classNames = 'button button-with-text ' + (highlight ? 'highlighted-button' : '')
   return <a className={classNames}
             style={{width: 'max-content'}}
             data-tip={'Download '+filename}

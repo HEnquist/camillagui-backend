@@ -46,12 +46,14 @@ input[type='checkbox'] {
 .react-tabs__tab--selected {
   color: var(--text-color);
   background: var(--background-color);
-  border-color: var(--box-border-color);
+  border: var(--box-border);
+  border-bottom: none;
+  bottom: calc(-1 * var(--box-border-width));
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
 .react-tabs__tab-list {
-  border-color: var(--box-border-color);
+  border-bottom: var(--box-border);
 }
 
 .checkbox-area {
@@ -183,17 +185,21 @@ div .popup-content {
   font-size: smaller;
   display: inline-flex;
   justify-content: center;
-  align-content: center;
-  padding: 3px 6px;
+  align-items: center;
   cursor: pointer;
 }
 
+.button-with-text {
+  padding: 3px 6px;
+}
+
 .button-with-icon {
+  width: 36px;
+  height: 36px;
   color: var(--button-icon-color);
 }
 
 .smallbutton {
-  border: var(--button-border);
   padding: 1px 3px;
   height: 28px;
   width: 32px;

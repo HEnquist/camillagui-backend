@@ -38,17 +38,18 @@
     --disabled-button-background-color: var(--button-background-color);
     --disabled-button-border: var(--button-border);
     --highlighted-button-background-color: #242;
-    --highlighted-button-border: 1px solid #4b4;
+    --highlighted-button-border: 2px solid #4b4;
 
     /* Boxes */
+    --box-border-width: 2px;
     --box-border-color: rgb(70, 70, 70);
-    --box-border: 2px solid var(--box-border-color);
+    --box-border: var(--box-border-width) solid var(--box-border-color);
 
     /* Inputs */
     --input-border: 2px solid rgba(70, 70, 70, 0.5);
-    --focused-input-border: 1px solid var(--success-text-color);
+    --focused-input-border: 2px solid var(--success-text-color);
 
-    /* Dialogs */
+    /* Filter plot */
     --axes-color: #555;
     --gain-color: #4646f0;
     --phase-color: var(--error-text-color);
@@ -94,14 +95,15 @@
     --highlighted-button-border: var(--button-border);
 
     /* Boxes */
+    --box-border-width: 1px;
     --box-border-color: #9090B0;
-    --box-border: 1px solid var(--box-border-color);
+    --box-border: var(--box-border-width) solid var(--box-border-color);
 
     /* Inputs */
     --input-border: 1px solid #9090B0;
     --focused-input-border: 2px solid #9292f6;
 
-    /* Dialogs */
+    /* Filter plot */
     --axes-color: #555;
     --gain-color: rgba(0,0,220,1);
     --phase-color: rgba(0,220,0,1);

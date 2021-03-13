@@ -238,7 +238,7 @@ export class SidePanel extends React.Component<
           <div className="two-column-grid">
             <div
               data-tip="Get active config from CamillaDSP"
-              className="button"
+              className="button button-with-text"
               onClick={this.fetchConfig}>
               Load from CDSP
             </div>
@@ -247,7 +247,7 @@ export class SidePanel extends React.Component<
                     `Upload config to CamillaDSP and save to ${activeConfigFile}`
                     : `Upload config to CamillaDSP`
                 }
-                className="button"
+                 className="button button-with-text"
                 onClick={this.applyConfig}>
               Apply to CDSP
             </div>
