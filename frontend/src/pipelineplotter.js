@@ -3,14 +3,19 @@ import 'reactjs-popup/dist/index.css';
 import * as d3 from "d3";
 import React from "react";
 import "./index.css";
+import {CloseButton, cssStyles} from "./common-tsx";
 
 class PipelinePlot extends React.Component {
-  constructor(props) {
-    super(props);
-    this.createBarChart = this.createPipelinePlot.bind(this);
-  }
 
   componentDidMount() {
+    const styles = cssStyles();
+    this.textColor = styles.getPropertyValue('--text-color');
+    this.borderColor = styles.getPropertyValue('--box-border-color');
+    this.arrowColor = styles.getPropertyValue('--arrow-color');
+    this.backgroundColor = styles.getPropertyValue('--background-color');
+    this.frameBgColor = styles.getPropertyValue('--frame-background-color');
+    this.blockBgColor = styles.getPropertyValue('--block-background-color');
+    this.blockTextColor = styles.getPropertyValue('--block-text-color');
     this.createPipelinePlot();
   }
 
@@ -24,15 +29,15 @@ class PipelinePlot extends React.Component {
       y: y - 0.35,
       width: width,
       height: 0.7,
-      fill: "white",
-      stroke: "black",
+      fill: this.blockBgColor,
+      stroke: this.borderColor,
       "stroke-width": 1,
     };
     var text = {
       x: x,
       y: y + 0.1,
       text: label,
-      fill: "black",
+      fill: this.blockTextColor,
       size: 0.3,
       angle: 0,
     };
@@ -50,15 +55,15 @@ class PipelinePlot extends React.Component {
       y: -height / 2 + y,
       width: width,
       height: height,
-      fill: "lightgray",
-      stroke: "lightgray",
+      fill: this.frameBgColor,
+      stroke: this.borderColor,
       "stroke-width": 1,
     };
     var text = {
       x: x,
       y: -height / 2 - 0.2 + y,
       text: label,
-      fill: "darkblue",
+      fill: this.textColor,
       size: 0.3,
       angle: 0,
     };
@@ -77,7 +82,7 @@ class PipelinePlot extends React.Component {
           x: (2 * source.x) / 3 + dest.x / 3,
           y: (2 * source.y) / 3 + dest.y / 3,
           text: label,
-          fill: "black",
+          fill: this.textColor,
           size: 0.2,
           angle: angle,
         };
@@ -86,7 +91,7 @@ class PipelinePlot extends React.Component {
           x: source.x / 3 + (2 * dest.x) / 3,
           y: source.y / 3 + (2 * dest.y) / 3,
           text: label,
-          fill: "black",
+          fill: this.textColor,
           size: 0.2,
           angle: angle,
         };
@@ -312,9 +317,10 @@ class PipelinePlot extends React.Component {
       .attr("markerWidth", markerBoxWidth)
       .attr("markerHeight", markerBoxHeight)
       .attr("orient", "auto-start-reverse")
+      .attr("fill", this.arrowColor)
+      .attr("stroke", this.arrowColor)
       .append("path")
-      .attr("d", d3.line()(arrowPoints))
-      .attr("stroke", "black");
+      .attr("d", d3.line()(arrowPoints));
 
     var rects = d3
       .select(node)
@@ -387,7 +393,7 @@ class PipelinePlot extends React.Component {
       .attr("d", linkGen)
       .attr("marker-end", "url(#arrow)")
       .attr("fill", "none")
-      .attr("stroke", "black");
+      .attr("stroke", this.arrowColor);
   }
 
   render() {
@@ -414,9 +420,10 @@ export class PipelinePopup extends React.Component {
         open={this.props.open}
         closeOnDocumentClick
         onClose={this.closeModal}
+        contentStyle={{width: 'min-content'}}
       >
         <div className="modal">
-          <span className="close" onClick={this.closeModal}>✖</span>
+          <CloseButton onClick={this.closeModal}/>
           <div>
             <PipelinePlot size={[1000, 500]} config={this.props.config} />
           </div>

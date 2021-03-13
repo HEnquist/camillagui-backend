@@ -42,14 +42,14 @@ class ConfigCheckMessage extends React.Component<
 
   render() {
     const message = this.state.message
-    let statusClass
+    let textColor
     if (message === this.default_message)
-      statusClass = 'neutral'
+      textColor = 'var(--neutral-text-color)'
     else if (message === "OK")
-      statusClass = 'success'
+      textColor = 'var(--success-text-color)'
     else
-      statusClass = 'error'
-    return <div className={"config-status " + statusClass}>{message}</div>
+      textColor = 'var(--error-text-color)'
+    return <div className="config-status" style={{color: textColor}}>{message}</div>
   }
 }
 
@@ -238,7 +238,7 @@ export class SidePanel extends React.Component<
           <div className="two-column-grid">
             <div
               data-tip="Get active config from CamillaDSP"
-              className="button"
+              className="button button-with-text"
               onClick={this.fetchConfig}>
               Load from CDSP
             </div>
@@ -247,7 +247,7 @@ export class SidePanel extends React.Component<
                     `Upload config to CamillaDSP and save to ${activeConfigFile}`
                     : `Upload config to CamillaDSP`
                 }
-                className="button"
+                 className="button button-with-text"
                 onClick={this.applyConfig}>
               Apply to CDSP
             </div>

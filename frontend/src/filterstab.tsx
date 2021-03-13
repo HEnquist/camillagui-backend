@@ -221,8 +221,8 @@ class FilterView extends React.Component<{
         {icon: mdiUpload}
     if (uploadState !== undefined)
       uploadIcon = uploadState.success ?
-          {icon: mdiCheck, className: 'success'}
-          : {icon: mdiAlertCircle, className: 'error', errorMessage: uploadState.message}
+          {icon: mdiCheck, className: 'success-text'}
+          : {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
     return <Box title={
       <ParsedInput
           style={{width: '300px'}}
