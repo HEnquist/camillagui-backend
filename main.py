@@ -5,7 +5,7 @@ from settings import config
 from routes import setup_routes, setup_static_routes
 import sys
 
-app = web.Application()
+app = web.Application(client_max_size=1024 ** 3)
 app["config_dir"] = config["config_dir"]
 app["coeff_dir"] = config["coeff_dir"]
 app["default_config"] = config["default_config"]
