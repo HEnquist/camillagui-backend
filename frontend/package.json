@@ -17,6 +17,7 @@
     "awesome-typescript-loader": "^5.2.1",
     "chart.js": "^2.9.4",
     "d3": "^6.2.0",
+    "http-proxy-middleware": "^1.0.6",
     "immutable": "^4.0.0-rc.12",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",

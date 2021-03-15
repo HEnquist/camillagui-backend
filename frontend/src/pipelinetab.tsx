@@ -1,7 +1,6 @@
 import React, {ReactNode} from "react"
 import "./index.css"
 import {PipelinePopup} from './pipelineplotter.js'
-import {FLASKURL} from "./index"
 import {
   AddButton,
   Box,
@@ -69,7 +68,7 @@ export class PipelineTab extends React.Component<{
       })
 
   plotFilterStep = (index: number) => {
-    fetch(FLASKURL + "/api/evalfilterstep", {
+    fetch("/api/evalfilterstep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({index: index, config: this.props.config}),

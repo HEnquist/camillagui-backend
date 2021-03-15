@@ -1,6 +1,5 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {FLASKURL} from "./index"
 import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./common-tsx"
 import {mdiAlertCircle, mdiCheck, mdiContentSave, mdiDelete, mdiDownload, mdiRefresh, mdiUpload} from '@mdi/js'
 import {Config} from "./config";
@@ -94,7 +93,7 @@ class FileTable extends Component<
   }
 
   private update() {
-    fetch(`${FLASKURL}/api/stored${this.type}s`)
+    fetch(`/api/stored${this.type}s`)
       .then(response => response.json())
       .then(json => this.setState((prevState) => {
         let files = json as string[];
@@ -109,7 +108,7 @@ class FileTable extends Component<
     const del = window.confirm("Delete?\n" + this.state.selectedFiles.join('\n'))
     if (!del)
       return
-    await fetch(`${FLASKURL}/api/delete${this.type}s`, {
+    await fetch(`/api/delete${this.type}s`, {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify(this.state.selectedFiles),
@@ -119,7 +118,7 @@ class FileTable extends Component<
   }
 
   private async downloadAsZip() {
-    const response = await fetch(`${FLASKURL}/api/download${this.type}szip`, {
+    const response = await fetch(`/api/download${this.type}szip`, {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify(this.state.selectedFiles),
@@ -146,7 +145,7 @@ class FileTable extends Component<
 
   private async loadConfig(name: string) {
     try {
-      const response = await fetch(`${FLASKURL}/api/getconfigfile?name=${encodeURIComponent(name)}`)
+      const response = await fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
       if (!response.ok) {
         this.showErrorMessage(name, 'load', await response.text())
         return
@@ -175,7 +174,7 @@ class FileTable extends Component<
   private async saveConfig(name: string) {
     const { config, setActiveConfig } = this.props
     try {
-      const response = await fetch(`${FLASKURL}/api/saveconfigfile`, {
+      const response = await fetch(`/api/saveconfigfile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", },
         body: JSON.stringify({filename: name, config: config}),
@@ -390,9 +389,10 @@ function FileDownloadButton(props: { type: string, filename: string, highlight: 
   return <a className={classNames}
             style={{width: 'max-content'}}
             data-tip={'Download '+filename}
+            download={filename}
             target="_blank"
             rel="noopener noreferrer"
-            href={`${FLASKURL}/${type}/${filename}`}>
+            href={`/${type}/${filename}`}>
     {filename}
   </a>
 }
