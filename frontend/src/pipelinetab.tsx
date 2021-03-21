@@ -1,6 +1,6 @@
 import React, {ReactNode} from "react"
 import "./index.css"
-import {PipelinePopup} from './pipelineplotter.js'
+import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
   Box,
