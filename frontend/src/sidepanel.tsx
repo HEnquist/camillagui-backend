@@ -122,6 +122,7 @@ export class SidePanel extends React.Component<
       })
     } catch (err) {}
     this.loadCurrentConfig()
+    this.updateVolume()
   }
 
   componentWillUnmount() {
@@ -175,6 +176,12 @@ export class SidePanel extends React.Component<
     } else {
       this.setState({msg: "No config received"})
     }
+  }
+
+  private async updateVolume() {
+    const vol_req = await fetch("/api/getparam/volume")
+    const volume = await vol_req.text()
+    this.setState({ volume: volume })
   }
 
   private async setVolume(value: string) {
