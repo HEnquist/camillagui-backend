@@ -66,7 +66,6 @@ export class SidePanel extends React.Component<
   {
     clearTimer: () => void,
     msg: string,
-    volume: string,
     capture_rms: number[],
     playback_rms: number[],
     state: string,
@@ -86,7 +85,6 @@ export class SidePanel extends React.Component<
     this.state = {
       clearTimer: () => {},
       msg: '',
-      volume: '',
       capture_rms: [],
       playback_rms: [],
       state: 'backend offline',
@@ -102,7 +100,6 @@ export class SidePanel extends React.Component<
     this.timer = this.timer.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
     this.applyConfig = this.applyConfig.bind(this)
-    this.setVolume = this.setVolume.bind(this)
   }
 
   async componentDidMount() {
@@ -122,7 +119,6 @@ export class SidePanel extends React.Component<
       })
     } catch (err) {}
     this.loadCurrentConfig()
-    this.updateVolume()
   }
 
   componentWillUnmount() {
@@ -178,26 +174,6 @@ export class SidePanel extends React.Component<
     }
   }
 
-  private async updateVolume() {
-    const vol_req = await fetch("/api/getparam/volume")
-    let volume = '0'
-    try {
-      if (vol_req.ok)
-        volume = parseInt(await vol_req.text(), 10).toString()
-    } catch (e) {}
-    this.setState({volume: volume})
-  }
-
-  private async setVolume(value: string) {
-    const vol_req = await fetch("/api/setparam/volume", {
-      method: "POST",
-      headers: {"Content-Type": "text/plain; charset=us-ascii"},
-      body: value,
-    })
-    const reply = await vol_req.text()
-    this.setState({ volume: value, msg: reply })
-  }
-
   private async applyConfig() {
     const conf_req = await fetch("/api/setconfig", {
       method: "POST",
@@ -225,9 +201,9 @@ export class SidePanel extends React.Component<
       <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
         <Box title="Volume">
-            <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped} />
-            <VolumeSlider volume={this.state.volume} onChange={this.setVolume} />
-            <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped} />
+          <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped}/>
+          <VolumeSlider setMessage={message => this.setState({msg: message})}/>
+          <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped}/>
         </Box>
         <Box title="CamillaDSP">
           <div className="two-column-grid">
@@ -265,9 +241,9 @@ export class SidePanel extends React.Component<
           <ConfigCheckMessage config={this.props.config} />
         </Box>
         <div className="versions">
-          <div style={{justifySelf: 'start'}}>{SidePanel.version('CamillaDSP', this.state.dsp_ver)}</div>
-          <div style={{justifySelf: 'center'}}>{SidePanel.version('pyCamillaDSP', this.state.pylib_ver)}</div>
-          <div style={{justifySelf: 'end'}}>{SidePanel.version('Backend', this.state.backend_ver)}</div>
+          <div>{SidePanel.version('CamillaDSP', this.state.dsp_ver)}</div>
+          <div>{SidePanel.version('pyCamillaDSP', this.state.pylib_ver)}</div>
+          <div>{SidePanel.version('Backend', this.state.backend_ver)}</div>
         </div>
       </section>
     )
