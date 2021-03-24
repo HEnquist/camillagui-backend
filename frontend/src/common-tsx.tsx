@@ -79,7 +79,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div style={{display: 'flex', flexDirection: 'row'}}>
+                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
                     {props.title}
                 </div>
             </legend>
