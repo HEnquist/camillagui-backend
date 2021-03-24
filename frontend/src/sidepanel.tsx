@@ -2,8 +2,7 @@ import React from "react";
 import "./index.css";
 import isEqual from "lodash/isEqual";
 import camillalogo from "./camilladsp.svg";
-import {VuMeterGroup} from "./vumeter";
-import {VolumeSlider} from "./volumeslider";
+import {VolumeBox} from "./volumebox";
 import {Box} from "./common-tsx";
 import {Config} from "./config";
 
@@ -200,11 +199,11 @@ export class SidePanel extends React.Component<
     return (
       <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
-        <Box title="Volume">
-          <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped}/>
-          <VolumeSlider setMessage={message => this.setState({msg: message})}/>
-          <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped}/>
-        </Box>
+        <VolumeBox
+            capture_rms={this.state.capture_rms}
+            playback_rms={this.state.playback_rms}
+            clipped={this.state.clipped}
+            setMessage={message => this.setState({msg: message})}/>
         <Box title="CamillaDSP">
           <div className="two-column-grid">
             <div className="alignRight">State:</div><div>{this.state.state}</div>
