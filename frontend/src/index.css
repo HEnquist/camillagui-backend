@@ -1,4 +1,8 @@
+/* For available CSS variables see public/css-variables.css */
+
 body {
+  color: var(--text-color);
+  background-color: var(--background-color);
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -17,34 +21,45 @@ code {
 }
 
 input:not([type='checkbox']), select {
+  color: var(--text-color);
+  background-color: var(--background-color);
   box-sizing: border-box;
-  border-radius: 5px;
-  border: 1px inset #9090B0;
+  border-radius: var(--border-radius);
+  border: var(--input-border);
   height: 28px;
   padding: 0 4px;
+}
+
+input:not([type='checkbox']):focus, select:focus {
+  border: var(--focused-input-border);
+  outline: none;
+}
+
+input[type='range'] {
+  background-color: transparent;
 }
 
 input[type='checkbox'] {
   cursor: pointer;
 }
 
+.react-tabs__tab--selected {
+  color: var(--text-color);
+  background: var(--background-color);
+  border: var(--box-border);
+  border-bottom: none;
+  bottom: calc(-1 * var(--box-border-width));
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.react-tabs__tab-list {
+  border-bottom: var(--box-border);
+}
+
 .checkbox-area {
   cursor: pointer;
   display: inline-block;
   padding: 2px;
-}
-
-.fileinput{
-  box-sizing: border-box;
-  width : 100%; 
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  padding: 4px;
-} 
-
-.inputlabel {
-  text-align: right;
-  padding-inline-end: 10px;
 }
 
 .tabpanel {
@@ -61,51 +76,7 @@ input[type='checkbox'] {
   margin: 5px 0;
 }
 
-.namelist {
-  background: rgb(220, 220, 220);
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  width: 450px;
-}
-
-.pipeline {
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  width: 500px;
-}
-
-.pipelinestep {
-  background: rgb(220, 220, 220);
-  float: left;
-  text-align: left;
-  padding: 5px;
-  width: 100%;
-  box-sizing: border-box;
-  flex-direction: column;
-  border: 3px inset #999;
-  border-radius: 5px;
-}
-
-.listitem {
-  background: rgb(220, 220, 220);
-  border: 4px;
-  float: left;
-  text-align: left;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-}
-
 .configapp {
-  background: white;
   padding: 5px;
   display: flex;
   flex-direction: row;
@@ -117,30 +88,11 @@ input[type='checkbox'] {
 }
 
 .configtabs {
-  background: white;
   float: left;
   text-align: left;
   padding: 10px;
   display: flex;
   flex-direction: column;
-}
-
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-.column {
-  float: left;
-}
-
-.left {
-  width: 40%;
-}
-
-.right {
-  width: 60%;
 }
 
 .setting {
@@ -170,19 +122,35 @@ input[type='checkbox'] {
 .box {
   box-sizing: border-box;
   width: 100%;
-  border-radius: 5px;
-  border: 1px inset #9090B0;
+  border-radius: var(--border-radius);
+  border: var(--box-border);
   padding: 5px 12px 12px 12px;
   display: flex;
   flex-direction: column;
 }
 
-.slidecontainer {
-  box-sizing: border-box;
-  width: 100%;
-  float: left;
+div .popup-content {
+  background-color: var(--background-color);
+  border: var(--box-border);
+  border-radius: var(--border-radius);
+}
+
+.horizontally-spaced-content {
   display: flex;
-  align-items:center;
+  flex-direction: row;
+}
+
+.horizontally-spaced-content > *:not(:last-child) {
+  margin-right: 5px;
+}
+
+.vertically-spaced-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.vertically-spaced-content > *:not(:last-child) {
+  margin-bottom: 5px;
 }
 
 .two-column-grid {
@@ -208,46 +176,54 @@ input[type='checkbox'] {
 }
 
 .button {
+  color: var(--button-text-color);
+  text-decoration: none;
   box-sizing: border-box;
-  background-color: #f3f3f3;
-  border-radius: 5px;
-  border: 1px inset #9090B0;
+  background-color: var(--button-background-color);
+  border-radius: var(--border-radius);
+  border: var(--button-border);
   font-size: smaller;
   display: inline-flex;
   justify-content: center;
-  align-content: center;
-  padding: 3px 6px;
+  align-items: center;
   cursor: pointer;
 }
 
+.button-with-text {
+  padding: 3px 6px;
+}
+
+.button-with-icon {
+  width: 36px;
+  height: 36px;
+  color: var(--button-icon-color);
+}
+
 .smallbutton {
-  border: 1px inset #9090B0;
   padding: 1px 3px;
   height: 28px;
   width: 32px;
 }
 
 .button:hover {
-  background-color: #ddd;
+  background-color: var(--hovered-button-background-color);
+  border: var(--hovered-button-border);
 }
 
 .button:active {
-  background-color: #aaa;
+  background-color: var(--active-button-background-color);
+  border: var(--active-button-border)
 }
 
-.disabled-button {
-  background-color: #aaa;
-  border-radius: 5px;
-  border: 1px inset #9090B0;
-  font-size: smaller;
-  display: inline-flex;
-  justify-content: center;
-  align-content: center;
-  padding: 3px 6px;
+.disabled-button, .disabled-button:hover, .disabled-button:active {
+  background-color: var(--disabled-button-background-color);
+  opacity: var(--disabled-button-opacity);
+  cursor: initial;
 }
 
-.highlighted {
-  background-color: #cfc;
+.highlighted-button {
+  background-color: var(--highlighted-button-background-color);
+  border: var(--highlighted-button-border);
 }
 
 .config-status {
@@ -263,14 +239,15 @@ input[type='checkbox'] {
   font-size: xx-small;
 }
 
-.success {
-  color: #0c0;
+.success-text {
+  color: var(--success-text-color);
 }
 
-.error {
-  color: #f00;
+.error-text {
+  color: var(--error-text-color);
 }
 
-.neutral {
-  color: #bbb;
+.pipeline-channel {
+  width: 100%;
+  text-align: center;
 }

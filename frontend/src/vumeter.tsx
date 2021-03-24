@@ -17,7 +17,7 @@ export function VuMeterGroup(props: { title: string, level: number[], clipped: b
 }
 
 export function VuMeter(props: { level: number, clipped: boolean}) {
-  const color = props.clipped ? "#ff2800" : "#00ff00"
+  const color = props.clipped ? 'var(--error-text-color)' : 'var(--success-text-color)'
   let level = props.level
   if (level < -100) level = -100
   if (level > 0) level = 0

@@ -1,7 +1,6 @@
 import React from "react";
 import "./index.css";
 import isEqual from "lodash/isEqual";
-import {FLASKURL} from "./index";
 import camillalogo from "./camilladsp.svg";
 import {VuMeterGroup} from "./vumeter";
 import {VolumeSlider} from "./volumeslider";
@@ -28,7 +27,7 @@ class ConfigCheckMessage extends React.Component<
 
   private async get_config_errors(config: Config) {
     try {
-      const request = await fetch(FLASKURL + "/api/validateconfig", {
+      const request = await fetch("/api/validateconfig", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(config),
@@ -42,14 +41,14 @@ class ConfigCheckMessage extends React.Component<
 
   render() {
     const message = this.state.message
-    let statusClass
+    let textColor
     if (message === this.default_message)
-      statusClass = 'neutral'
+      textColor = 'var(--neutral-text-color)'
     else if (message === "OK")
-      statusClass = 'success'
+      textColor = 'var(--success-text-color)'
     else
-      statusClass = 'error'
-    return <div className={"config-status " + statusClass}>{message}</div>
+      textColor = 'var(--error-text-color)'
+    return <div className="config-status" style={{color: textColor}}>{message}</div>
   }
 }
 
@@ -67,7 +66,6 @@ export class SidePanel extends React.Component<
   {
     clearTimer: () => void,
     msg: string,
-    volume: string,
     capture_rms: number[],
     playback_rms: number[],
     state: string,
@@ -87,7 +85,6 @@ export class SidePanel extends React.Component<
     this.state = {
       clearTimer: () => {},
       msg: '',
-      volume: '',
       capture_rms: [],
       playback_rms: [],
       state: 'backend offline',
@@ -103,16 +100,15 @@ export class SidePanel extends React.Component<
     this.timer = this.timer.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
     this.applyConfig = this.applyConfig.bind(this)
-    this.setVolume = this.setVolume.bind(this)
   }
 
   async componentDidMount() {
     const intervalId = setInterval(this.timer, 500)
     this.setState({ clearTimer: () => {  clearInterval(intervalId) } })
     try {
-      const dsp_ver_req = await fetch(FLASKURL + "/api/version")
-      const pylib_ver_req = await fetch(FLASKURL + "/api/libraryversion")
-      const backend_ver_req = await fetch(FLASKURL + "/api/backendversion")
+      const dsp_ver_req = await fetch("/api/version")
+      const pylib_ver_req = await fetch("/api/libraryversion")
+      const backend_ver_req = await fetch("/api/backendversion")
       const dsp_ver = await dsp_ver_req.json()
       const pylib_ver = await pylib_ver_req.json()
       const backend_ver = await backend_ver_req.json()
@@ -130,7 +126,7 @@ export class SidePanel extends React.Component<
   }
 
   private async timer() {
-    const state_req = await fetch(FLASKURL + "/api/getparam/state")
+    const state_req = await fetch("/api/getparam/state")
     const processingstate = await state_req.text()
     let capture_rms: number[] = []
     let playback_rms: number[] = []
@@ -139,12 +135,12 @@ export class SidePanel extends React.Component<
     let bufferlevel: number | '' = ''
     let nbrclipped: number | '' = ''
     try {
-      const capt_rms_req = await fetch(FLASKURL + "/api/getlistparam/capturesignalrms")
-      const pb_rms_req = await fetch(FLASKURL + "/api/getlistparam/playbacksignalrms")
-      const capturerate_req = await fetch(FLASKURL + "/api/getparam/capturerate")
-      const rateadjust_req = await fetch(FLASKURL + "/api/getparam/rateadjust")
-      const bufferlevel_req = await fetch(FLASKURL + "/api/getparam/bufferlevel")
-      const nbrclipped_req = await fetch(FLASKURL + "/api/getparam/clippedsamples")
+      const capt_rms_req = await fetch("/api/getlistparam/capturesignalrms")
+      const pb_rms_req = await fetch("/api/getlistparam/playbacksignalrms")
+      const capturerate_req = await fetch("/api/getparam/capturerate")
+      const rateadjust_req = await fetch("/api/getparam/rateadjust")
+      const bufferlevel_req = await fetch("/api/getparam/bufferlevel")
+      const nbrclipped_req = await fetch("/api/getparam/clippedsamples")
       capture_rms = await capt_rms_req.json()
       playback_rms = await pb_rms_req.json()
       capturerate = parseInt(await capturerate_req.text())
@@ -168,7 +164,7 @@ export class SidePanel extends React.Component<
   }
 
   private async fetchConfig() {
-    const conf_req = await fetch(FLASKURL + "/api/getconfig")
+    const conf_req = await fetch("/api/getconfig")
     const config = await conf_req.json()
     if (config) {
       this.setState({msg: "OK"})
@@ -178,18 +174,8 @@ export class SidePanel extends React.Component<
     }
   }
 
-  private async setVolume(value: string) {
-    const vol_req = await fetch(FLASKURL + "/api/setparam/volume", {
-      method: "POST",
-      headers: {"Content-Type": "text/plain; charset=us-ascii"},
-      body: value,
-    })
-    const reply = await vol_req.text()
-    this.setState({ volume: value, msg: reply })
-  }
-
   private async applyConfig() {
-    const conf_req = await fetch(FLASKURL + "/api/setconfig", {
+    const conf_req = await fetch("/api/setconfig", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(this.props.config),
@@ -199,7 +185,7 @@ export class SidePanel extends React.Component<
   }
 
   async loadCurrentConfig() {
-    const conf_req = await fetch(FLASKURL + "/api/getactiveconfigfile", {
+    const conf_req = await fetch("/api/getactiveconfigfile", {
       method: "GET",
       headers: {"Content-Type": "text/html"},
       cache: "no-cache",
@@ -215,9 +201,9 @@ export class SidePanel extends React.Component<
       <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
         <Box title="Volume">
-            <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped} />
-            <VolumeSlider volume="0" onChange={this.setVolume} />
-            <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped} />
+          <VuMeterGroup title="In" level={this.state.capture_rms} clipped={this.state.clipped}/>
+          <VolumeSlider setMessage={message => this.setState({msg: message})}/>
+          <VuMeterGroup title="Out" level={this.state.playback_rms} clipped={this.state.clipped}/>
         </Box>
         <Box title="CamillaDSP">
           <div className="two-column-grid">
@@ -238,7 +224,7 @@ export class SidePanel extends React.Component<
           <div className="two-column-grid">
             <div
               data-tip="Get active config from CamillaDSP"
-              className="button"
+              className="button button-with-text"
               onClick={this.fetchConfig}>
               Load from CDSP
             </div>
@@ -247,7 +233,7 @@ export class SidePanel extends React.Component<
                     `Upload config to CamillaDSP and save to ${activeConfigFile}`
                     : `Upload config to CamillaDSP`
                 }
-                className="button"
+                 className="button button-with-text"
                 onClick={this.applyConfig}>
               Apply to CDSP
             </div>
@@ -255,9 +241,9 @@ export class SidePanel extends React.Component<
           <ConfigCheckMessage config={this.props.config} />
         </Box>
         <div className="versions">
-          <div style={{justifySelf: 'start'}}>{SidePanel.version('CamillaDSP', this.state.dsp_ver)}</div>
-          <div style={{justifySelf: 'center'}}>{SidePanel.version('pyCamillaDSP', this.state.pylib_ver)}</div>
-          <div style={{justifySelf: 'end'}}>{SidePanel.version('Backend', this.state.backend_ver)}</div>
+          <div>{SidePanel.version('CamillaDSP', this.state.dsp_ver)}</div>
+          <div>{SidePanel.version('pyCamillaDSP', this.state.pylib_ver)}</div>
+          <div>{SidePanel.version('Backend', this.state.backend_ver)}</div>
         </div>
       </section>
     )

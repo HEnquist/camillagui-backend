@@ -1,22 +1,22 @@
+/* The CSS files have to be imported in exactly this order.
+   Otherwise the custom react-tabs styles in index.css don't work */
+import "react-tabs/style/react-tabs.css";
+import "./index.css";
+
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import "./index.css";
 import {FiltersTab} from "./filterstab";
 import {DevicesTab} from "./devicestab";
 import {MixersTab} from "./mixerstab";
-import {PipelineTab} from "./pipelinetab.js";
+import {PipelineTab} from "./pipelinetab";
 import {SidePanel} from "./sidepanel";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
-import "react-tabs/style/react-tabs.css";
 import {Files} from "./files";
-import {Config, defaultConfig, filterNamesOf, mixerNamesOf, Mixers, Pipeline} from "./config";
+import {Config, defaultConfig} from "./config";
 import {defaultGuiConfig, GuiConfig} from "./guiconfig";
 import {Update} from "./common-tsx";
 import cloneDeep from "lodash/cloneDeep";
-
-//export const FLASKURL = "http://127.0.0.1:5000"
-export const FLASKURL = ""
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -29,37 +29,18 @@ class CamillaConfig extends React.Component<
 > {
   constructor(props: unknown) {
     super(props)
-    this.handleMixers = this.handleMixers.bind(this)
-    this.handlePipeline = this.handlePipeline.bind(this)
     this.handleConfig = this.handleConfig.bind(this)
     this.updateConfig = this.updateConfig.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
-    this.getFullConfig = this.getFullConfig.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
       guiConfig: defaultGuiConfig(),
       config: defaultConfig()
     }
-    fetch(FLASKURL + "/api/guiconfig")
+    fetch("/api/guiconfig")
         .then(data => data.json())
         .then(json => this.setState({guiConfig: json}))
-  }
-
-  private handleMixers(mixers: Mixers) {
-    this.setState(prevState => {
-      const state = Object.assign({}, prevState)
-      state.config.mixers = mixers
-      return { config: state.config }
-    })
-  }
-
-  private handlePipeline(pipeline: Pipeline) {
-    this.setState(prevState => {
-      const state = Object.assign({}, prevState)
-      state.config.pipeline = pipeline
-      return { config: state.config }
-    })
   }
 
   private handleConfig(config: Config) {
@@ -79,18 +60,6 @@ class CamillaConfig extends React.Component<
       activeConfigFile: filename,
       config: config
     });
-  }
-
-  private getFilterNames(): string[] {
-    return filterNamesOf(this.state.config) //TODO call this directly from child components
-  }
-
-  private getFullConfig(): Config {
-    return this.state.config //TODO remove and pass config as props
-  }
-
-  private getMixerNames(): string[] {
-    return mixerNamesOf(this.state.config) //TODO call this directly from child components
   }
 
   componentDidUpdate(prevProps: unknown) {
@@ -146,11 +115,8 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <PipelineTab
-              config={this.state.config.pipeline}
-              filters={this.getFilterNames()}
-              mixers={this.getMixerNames()}
-              onChange={this.handlePipeline}
-              getConfig={this.getFullConfig}
+              config={this.state.config}
+              updateConfig={this.updateConfig}
           />
         </TabPanel>
         <TabPanel>

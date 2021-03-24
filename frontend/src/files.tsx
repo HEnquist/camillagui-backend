@@ -1,6 +1,5 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {FLASKURL} from "./index"
 import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./common-tsx"
 import {mdiAlertCircle, mdiCheck, mdiContentSave, mdiDelete, mdiDownload, mdiRefresh, mdiUpload} from '@mdi/js'
 import {Config} from "./config";
@@ -94,7 +93,7 @@ class FileTable extends Component<
   }
 
   private update() {
-    fetch(`${FLASKURL}/api/stored${this.type}s`)
+    fetch(`/api/stored${this.type}s`)
       .then(response => response.json())
       .then(json => this.setState((prevState) => {
         let files = json as string[];
@@ -109,16 +108,17 @@ class FileTable extends Component<
     const del = window.confirm("Delete?\n" + this.state.selectedFiles.join('\n'))
     if (!del)
       return
-    await fetch(`${FLASKURL}/api/delete${this.type}s`, {
+    await fetch(`/api/delete${this.type}s`, {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify(this.state.selectedFiles),
     })
     this.setState({fileStatus: null})
+    this.update()
   }
 
   private async downloadAsZip() {
-    const response = await fetch(`${FLASKURL}/api/download${this.type}szip`, {
+    const response = await fetch(`/api/download${this.type}szip`, {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify(this.state.selectedFiles),
@@ -131,9 +131,12 @@ class FileTable extends Component<
     doUpload(
         this.type,
         event,
-        () => this.setState({
-          fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
-        }),
+        () => {
+          this.setState({
+            fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
+          })
+          this.update()
+        },
         message => this.setState({
           fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: false, statusText: message}
         })
@@ -142,7 +145,7 @@ class FileTable extends Component<
 
   private async loadConfig(name: string) {
     try {
-      const response = await fetch(`${FLASKURL}/api/getconfigfile?name=${encodeURIComponent(name)}`)
+      const response = await fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
       if (!response.ok) {
         this.showErrorMessage(name, 'load', await response.text())
         return
@@ -171,7 +174,7 @@ class FileTable extends Component<
   private async saveConfig(name: string) {
     const { config, setActiveConfig } = this.props
     try {
-      const response = await fetch(`${FLASKURL}/api/saveconfigfile`, {
+      const response = await fetch(`/api/saveconfigfile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", },
         body: JSON.stringify({filename: name, config: config}),
@@ -179,6 +182,7 @@ class FileTable extends Component<
       if (response.ok) {
         setActiveConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
+        this.update()
       } else {
         const message = await response.text();
         this.showErrorMessage(name, 'save', message)
@@ -320,10 +324,11 @@ function UploadFilesButton(props: {
   const fileStatus = props.fileStatus
   let uploadIcon: { icon: string, className?: string } =
       {icon: mdiUpload}
-  if (fileStatus !== null && fileStatus.action === 'upload' && fileStatus.filename === EMPTY_FILENAME)
-    uploadIcon = fileStatus.success ?
-        {icon: mdiCheck, className: 'success'}
-        : {icon: mdiAlertCircle, className: 'error'}
+  if (fileStatus !== null
+      && fileStatus.action === 'upload'
+      && fileStatus.filename === EMPTY_FILENAME
+      && !fileStatus.success)
+    uploadIcon = {icon: mdiAlertCircle, className: 'error-text'}
   return <UploadButton
       icon={uploadIcon.icon}
       tooltip={'Upload files'}
@@ -345,8 +350,8 @@ function SaveButton(
       {icon: mdiContentSave}
   if (!disableReason && fileStatus !== null && fileStatus.action === 'save' && fileStatus.filename === filename) {
     saveIcon = fileStatus.success ?
-        {icon: mdiCheck, className: 'success'}
-        : {icon: mdiAlertCircle, className: 'error'}
+        {icon: mdiCheck, className: 'success-text'}
+        : {icon: mdiAlertCircle, className: 'error-text'}
   }
   return <MdiButton
       icon={saveIcon.icon}
@@ -368,8 +373,8 @@ function LoadButton(
       {icon: mdiRefresh}
   if (fileStatus !== null && fileStatus.action === 'load' && fileStatus.filename === filename) {
     loadIcon = fileStatus.success ?
-        {icon: mdiCheck, className: 'success'}
-        : {icon: mdiAlertCircle, className: 'error'}
+        {icon: mdiCheck, className: 'success-text'}
+        : {icon: mdiAlertCircle, className: 'error-text'}
   }
   return <MdiButton
       icon={loadIcon.icon}
@@ -380,11 +385,14 @@ function LoadButton(
 
 function FileDownloadButton(props: { type: string, filename: string, highlight: boolean }) {
   const { type, filename, highlight } = props
-  const classNames = highlight ? 'button highlighted' : 'button'
+  const classNames = 'button button-with-text ' + (highlight ? 'highlighted-button' : '')
   return <a className={classNames}
-            style={{width: 'max-content', textDecoration: 'none', color: 'black'}}
+            style={{width: 'max-content'}}
             data-tip={'Download '+filename}
-            href={`${FLASKURL}/${type}/${filename}`}>
+            download={filename}
+            target="_blank"
+            rel="noopener noreferrer"
+            href={`/${type}/${filename}`}>
     {filename}
   </a>
 }
@@ -392,7 +400,7 @@ function FileDownloadButton(props: { type: string, filename: string, highlight: 
 function FileStatusMessage(props: { filename: string, fileStatus: FileStatus | null }) {
   const {fileStatus, filename} = props
   if (fileStatus && !fileStatus.success && fileStatus.filename === filename)
-    return <div className={fileStatus.success ? 'success' : 'error'}>
+    return <div className={fileStatus.success ? 'success-text' : 'error-text'}>
       Could not {fileStatus.action} config:<br/>
       {fileStatus.statusText}
     </div>

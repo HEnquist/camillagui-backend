@@ -13,6 +13,7 @@ The gui is using the following libraries:
 - npm: https://www.npmjs.com/
 - awesome-typescript-loader: https://github.com/s-panferov/awesome-typescript-loader
 - lodash: https://lodash.com/
+- Material Design Icons: https://materialdesignicons.com/
 
 - React: https://reactjs.org/
 - react-tooltip: https://github.com/wwayne/react-tooltip
@@ -23,4 +24,7 @@ The gui is using the following libraries:
 - chart.js: https://www.chartjs.org/
 - react-chartjs-2: https://github.com/jerairrest/react-chartjs-2
 - d3: https://d3js.org/
+- jest: https://jestjs.io/
+- http-proxy-middleware: https://github.com/chimurai/http-proxy-middleware
+- immutable-js: https://github.com/immutable-js/immutable-js
 

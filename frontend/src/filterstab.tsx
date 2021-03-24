@@ -1,7 +1,6 @@
 import React from "react";
 import cloneDeep from "lodash/cloneDeep";
 import "./index.css";
-import {FLASKURL} from "./index";
 import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
 import {
   Config,
@@ -25,13 +24,14 @@ import {
   FloatOption,
   IntOption,
   ListSelectPopup,
-  MdiButton, modifiedCopyOf,
+  MdiButton,
+  modifiedCopyOf,
   ParsedInput,
   TextOption,
   Update,
   UploadButton
 } from "./common-tsx";
-import {List, OrderedSet} from "immutable";
+import {OrderedSet} from "immutable";
 
 export class FiltersTab extends React.Component<
     {
@@ -68,8 +68,8 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles()
   }
 
-  private filterNames(): List<string> {
-    return List(filterNamesOf(this.props.filters))
+  private filterNames(): string[] {
+    return filterNamesOf(this.props.filters)
   }
 
   private addFilter() {
@@ -113,7 +113,7 @@ export class FiltersTab extends React.Component<
   }
 
   private plotFilter(name: string) {
-    fetch(FLASKURL + "/api/evalfilter", {
+    fetch("/api/evalfilter", {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({
@@ -133,7 +133,7 @@ export class FiltersTab extends React.Component<
   }
 
   private updateAvailableCoeffFiles() {
-    fetch(FLASKURL + "/api/storedcoeffs")
+    fetch("/api/storedcoeffs")
         .then(
             result => result.json()
                 .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles})),
@@ -145,7 +145,6 @@ export class FiltersTab extends React.Component<
     let filters = this.props.filters;
     return <div className="tabpanel">
       {this.filterNames()
-          .sort((a, b) => a.localeCompare(b))
           .map(name =>
               <FilterView
                   key={this.state.filterKeys[name]}
@@ -221,8 +220,8 @@ class FilterView extends React.Component<{
         {icon: mdiUpload}
     if (uploadState !== undefined)
       uploadIcon = uploadState.success ?
-          {icon: mdiCheck, className: 'success'}
-          : {icon: mdiAlertCircle, className: 'error', errorMessage: uploadState.message}
+          {icon: mdiCheck, className: 'success-text'}
+          : {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
     return <Box title={
       <ParsedInput
           style={{width: '300px'}}
@@ -333,7 +332,7 @@ class FilterParams extends React.Component<{
       Default: { delay: 0.0, unit: "ms" },
     },
     Gain: {
-      Default: { gain: 0.0, inverted: false },
+      Default: { gain: 0.0, inverted: false, mute: false },
     },
     Volume: {
       Default: { ramp_time: 200 },
@@ -537,6 +536,7 @@ class FilterParams extends React.Component<{
       desc: "low_boost",
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
+    mute: { type: "bool", desc: "mute", tooltip: "Mute" },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     q: { type: "float", desc: "Q", tooltip: "Q-value" },
     q_act: {
