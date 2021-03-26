@@ -198,9 +198,9 @@ async def set_config(request):
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
     default_config = request.app["default_config"]
-    if isfile(active_config):
+    if active_config and isfile(active_config):
         config = active_config
-    elif isfile(default_config):
+    elif default_config and isfile(default_config):
         config = default_config
     else:
         return web.Response(status=404, text="No active or default config")

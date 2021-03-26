@@ -89,6 +89,8 @@ def get_active_config(active_config):
 
 
 def set_as_active_config(active_config, file):
+    if not active_config:
+        return
     if islink(active_config):
         os.unlink(active_config)
     os.symlink(file, active_config)
