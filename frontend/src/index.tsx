@@ -22,7 +22,7 @@ class CamillaConfig extends React.Component<
   unknown,
   {
     activetab: number,
-    activeConfigFile?: string,
+    currentConfigFile?: string,
     guiConfig: GuiConfig,
     config: Config
   }
@@ -31,7 +31,7 @@ class CamillaConfig extends React.Component<
     super(props)
     this.handleConfig = this.handleConfig.bind(this)
     this.updateConfig = this.updateConfig.bind(this)
-    this.setActiveConfig = this.setActiveConfig.bind(this)
+    this.setCurrentConfig = this.setCurrentConfig.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
@@ -55,9 +55,9 @@ class CamillaConfig extends React.Component<
     })
   }
 
-  private setActiveConfig(filename: string, config: Config) {
+  private setCurrentConfig(filename: string, config: Config) {
     this.setState({
-      activeConfigFile: filename,
+      currentConfigFile: filename,
       config: config
     });
   }
@@ -75,10 +75,10 @@ class CamillaConfig extends React.Component<
     return <div className="configapp">
       <ReactTooltip multiline={true} />
       <SidePanel
-          activeConfigFile={this.state.activeConfigFile}
+          currentConfigFile={this.state.currentConfigFile}
           config={this.state.config}
           setConfig={this.handleConfig}
-          setActiveConfig={this.setActiveConfig}
+          setCurrentConfig={this.setCurrentConfig}
       />
       <Tabs
           className="configtabs"
@@ -121,9 +121,9 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <Files
-              activeConfigFile={this.state.activeConfigFile}
+              currentConfigFile={this.state.currentConfigFile}
               config={this.state.config}
-              setActiveConfig={this.setActiveConfig}
+              setCurrentConfig={this.setCurrentConfig}
           />
         </TabPanel>
       </Tabs>

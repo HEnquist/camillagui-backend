@@ -5,6 +5,7 @@ import camillalogo from "./camilladsp.svg";
 import {VolumeBox} from "./volumebox";
 import {Box} from "./common-tsx";
 import {Config} from "./config";
+import {loadActiveConfig} from "./files";
 
 class ConfigCheckMessage extends React.Component<
     { config: Config },
@@ -56,8 +57,8 @@ interface Version { major: number, minor: number, patch: number }
 type SidePanelProps = {
   config: Config,
   setConfig: (config: Config) => void,
-  activeConfigFile?: string,
-  setActiveConfig: (filename: string, config: Config) => void
+  currentConfigFile?: string,
+  setCurrentConfig: (filename: string, config: Config) => void
 }
 
 export class SidePanel extends React.Component<
@@ -177,25 +178,23 @@ export class SidePanel extends React.Component<
     const conf_req = await fetch("/api/setconfig", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(this.props.config),
+      body: JSON.stringify({
+        filename: this.props.currentConfigFile,
+        config: this.props.config
+      }),
     })
     const reply = await conf_req.text()
     this.setState({msg: reply})
   }
 
   async loadCurrentConfig() {
-    const conf_req = await fetch("/api/getactiveconfigfile", {
-      method: "GET",
-      headers: {"Content-Type": "text/html"},
-      cache: "no-cache",
-    });
-    const json = await conf_req.json();
+    const json = await loadActiveConfig();
     this.setState({msg: "OK"});
-    this.props.setActiveConfig(json.configFileName, json.config);
+    this.props.setCurrentConfig(json.configFileName, json.config);
   }
 
   render() {
-    const activeConfigFile = this.props.activeConfigFile;
+    const activeConfigFile = this.props.currentConfigFile;
     return (
       <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
