@@ -10,6 +10,7 @@ from views import (
     get_config,
     set_config,
     get_active_config_file,
+    set_active_config_name,
     config_to_yml,
     yml_to_json,
     validate_config,
@@ -46,6 +47,7 @@ def setup_routes(app):
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
+    app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)
     app.router.add_post("/api/ymltojson", yml_to_json)
     app.router.add_post("/api/validateconfig", validate_config)

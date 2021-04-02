@@ -5,7 +5,7 @@ from camilladsp import CamillaError
 
 from filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
-    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_to_active_config
+    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config
 )
 from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from settings import gui_config_path
@@ -186,12 +186,14 @@ async def get_config(request):
 
 async def set_config(request):
     # Apply a new config to CamillaDSP
-    json_config = await request.json()
+    json = await request.json()
+    json_config = json["config"]
+    filename = json["filename"]
     try:
         set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
-    save_to_active_config(json_config, request)
+    save_config(filename, json_config, request)
     return web.Response(text="OK")
 
 
@@ -216,12 +218,19 @@ async def get_active_config_file(request):
     return web.json_response(json)
 
 
+async def set_active_config_name(request):
+    json = await request.json()
+    config_name = json["name"]
+    config_file = path_of_configfile(request, config_name)
+    set_as_active_config(request.app["active_config"], config_file)
+    return web.Response(text="OK")
+
+
 async def get_config_file(request):
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
     try:
         json_config = get_yaml_as_json(request, config_file)
-        set_as_active_config(request.app["active_config"], config_file)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
     return web.json_response(json_config)
@@ -229,13 +238,7 @@ async def get_config_file(request):
 
 async def save_config_file(request):
     json = await request.json()
-    config_name = json["filename"]
-    json_config = json["config"]
-    config_file = path_of_configfile(request, config_name)
-    yaml_config = yaml.dump(json_config).encode('utf-8')
-    with open(config_file, "wb") as f:
-        f.write(yaml_config)
-    set_as_active_config(request.app["active_config"], config_file)
+    save_config(json["filename"], json["config"], request)
     return web.Response(text="OK")
 
 

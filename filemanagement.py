@@ -96,9 +96,8 @@ def set_as_active_config(active_config, file):
     os.symlink(file, active_config)
 
 
-def save_to_active_config(json_config, request):
-    active_config_file = request.app["active_config"]
-    if active_config_file and islink(active_config_file):
-        yaml_config = yaml.dump(json_config).encode('utf-8')
-        with open(active_config_file, "wb") as f:
-            f.write(yaml_config)
+def save_config(config_name, json_config, request):
+    config_file = path_of_configfile(request, config_name)
+    yaml_config = yaml.dump(json_config).encode('utf-8')
+    with open(config_file, "wb") as f:
+        f.write(yaml_config)
