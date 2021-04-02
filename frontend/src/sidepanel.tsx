@@ -215,7 +215,7 @@ export class SidePanel extends React.Component<
         </Box>
         <Box title="Config">
           {activeConfigFile &&
-          <div style={{width: '225px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
+          <div style={{width: '220px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
             {activeConfigFile}
           </div>
           }
