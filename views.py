@@ -1,22 +1,23 @@
-from os.path import isfile, join
+from os.path import isfile
 
 from aiohttp import web
 from camilladsp import CamillaError
 
 from filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
-    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config
+    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
+    new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
+    replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths
 )
 from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from settings import gui_config_path
 
 try:
-    from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
+    from camilladsp_plot import plot_pipeline, eval_filter, eval_filterstep
     PLOTTING = True
 except ImportError:
     print("No plotting!")
     PLOTTING = False
-from camilladsp_plot import eval_filter, eval_filterstep
 import yaml
 from version import VERSION
 
@@ -106,29 +107,14 @@ async def set_param(request):
     return web.Response(text="OK")
 
 
-async def eval_filter_svg(request):
-    # Plot a filter
-    if PLOTTING:
-        content = await request.json()
-        print("content", content)
-        image = plot_filter(
-            content["config"],
-            name=content["name"],
-            samplerate=content["samplerate"],
-            npoints=1000,
-            toimage=True,
-        )
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
-
-
 async def eval_filter_values(request):
     # Plot a filter
     content = await request.json()
-    print("content", content)
+    config_dir = request.app["config_dir"]
+    config = content["config"]
+    replace_relative_filter_path_with_absolute_paths(config, config_dir)
     data = eval_filter(
-        content["config"],
+        config,
         name=content["name"],
         samplerate=content["samplerate"],
         npoints=300,
@@ -136,29 +122,13 @@ async def eval_filter_values(request):
     return web.json_response(data)
 
 
-async def eval_filterstep_svg(request):
-    # Plot a filter
-    if PLOTTING:
-        content = await request.json()
-        print("content", content)
-        image = plot_filterstep(
-            content["config"],
-            content["index"],
-            name="Filterstep {}".format(content["index"]),
-            npoints=300,
-            toimage=True,
-        )
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
-
-
 async def eval_filterstep_values(request):
     # Plot a filter
     content = await request.json()
-    print("content", content)
+    config = content["config"]
+    config_dir = request.app["config_dir"]
     data = eval_filterstep(
-        content["config"],
+        new_config_with_absolute_filter_paths(config, config_dir),
         content["index"],
         name="Filterstep {}".format(content["index"]),
         npoints=1000,
@@ -170,7 +140,6 @@ async def eval_pipeline_svg(request):
     # Plot a pipeline
     if PLOTTING:
         content = await request.json()
-        print("content", content)
         image = plot_pipeline(content, toimage=True)
     else:
         image = SVG_PLACEHOLDER
@@ -189,8 +158,10 @@ async def set_config(request):
     json = await request.json()
     json_config = json["config"]
     filename = json["filename"]
+    config_dir = request.app["config_dir"]
+    json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
     try:
-        set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
+        set_cdsp_config_or_validate_with_backup_cdsp(json_config_with_absolute_filter_paths, request)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
     save_config(filename, json_config, request)
@@ -200,6 +171,7 @@ async def set_config(request):
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
     default_config = request.app["default_config"]
+    config_dir = request.app["config_dir"]
     if active_config and isfile(active_config):
         config = active_config
     elif default_config and isfile(default_config):
@@ -207,7 +179,7 @@ async def get_active_config_file(request):
     else:
         return web.Response(status=404, text="No active or default config")
     try:
-        json_config = get_yaml_as_json(request, config)
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
     active_config_name = get_active_config(request.app["active_config"])
@@ -227,10 +199,11 @@ async def set_active_config_name(request):
 
 
 async def get_config_file(request):
+    config_dir = request.app["config_dir"]
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
     try:
-        json_config = get_yaml_as_json(request, config_file)
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config_file), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
     return web.json_response(json_config)
@@ -259,10 +232,12 @@ async def yml_to_json(request):
 
 async def validate_config(request):
     # Validate a config, returned completed config
+    config_dir = request.app["config_dir"]
     config = await request.json()
+    config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
     cdsp = cdsp_or_backup_cdsp(request)
     try:
-        _val_config = cdsp.validate_config(config)
+        cdsp.validate_config(config_with_absolute_filter_paths)
     except CamillaError as e:
         return web.Response(text=str(e))
     return web.Response(text="OK")
@@ -343,5 +318,5 @@ async def download_configs_zip(request):
 async def get_gui_config(request):
     with open(gui_config_path) as yaml_config:
         json_config = yaml.safe_load(yaml_config)
-        json_config["coeff_dir"] = join(request.app["coeff_dir"], '')  # append folder separator at the end
+        json_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     return web.json_response(json_config)
