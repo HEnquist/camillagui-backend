@@ -1,7 +1,9 @@
 from os.path import isfile
 
+import yaml
 from aiohttp import web
 from camilladsp import CamillaError
+from camilladsp_plot import eval_filter, eval_filterstep
 
 from filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
@@ -11,14 +13,6 @@ from filemanagement import (
 )
 from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from settings import gui_config_path
-
-try:
-    from camilladsp_plot import plot_pipeline, eval_filter, eval_filterstep
-    PLOTTING = True
-except ImportError:
-    print("No plotting!")
-    PLOTTING = False
-import yaml
 from version import VERSION
 
 SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
@@ -134,16 +128,6 @@ async def eval_filterstep_values(request):
         npoints=1000,
     )
     return web.json_response(data)
-
-
-async def eval_pipeline_svg(request):
-    # Plot a pipeline
-    if PLOTTING:
-        content = await request.json()
-        image = plot_pipeline(content, toimage=True)
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
 
 
 async def get_config(request):

@@ -6,7 +6,6 @@ from views import (
     set_param,
     eval_filter_values,
     eval_filterstep_values,
-    eval_pipeline_svg,
     get_config,
     set_config,
     get_active_config_file,
@@ -40,7 +39,6 @@ def setup_routes(app):
     app.router.add_post("/api/setparam/{name}", set_param)
     app.router.add_post("/api/evalfilter", eval_filter_values)
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
-    app.router.add_post("/api/evalpipelinesvg", eval_pipeline_svg)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
