@@ -186,7 +186,7 @@ export function MdiButton(props: {
 export function CloseButton(props: {
     onClick: () => void
 }) {
-    return <div style={{textAlign: 'right'}} onClick={props.onClick}>✖</div>
+    return <div style={{textAlign: 'right', cursor: 'pointer'}} onClick={props.onClick}>✖</div>
 }
 
 export function OptionLine(props: {
