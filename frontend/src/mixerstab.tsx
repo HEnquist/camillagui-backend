@@ -199,14 +199,14 @@ function MappingView(props: {
   }>
     <div style={{display: 'flex', flexDirection: 'column'}}>
       {mapping.sources.map((source, index) =>
-          <div key={index}>
+          <React.Fragment key={index}>
             <SourceView
                 source={source}
                 channelsIn={channels.in}
                 update={updateSource => update(mixer => updateSource(mixer.sources[index]))}
                 remove={() => update(mixer => mixer.sources.splice(index, 1))}/>
             {index+1 < mapping.sources.length && <hr/>}
-          </div>
+          </React.Fragment>
       )}
       <div>
         <AddButton

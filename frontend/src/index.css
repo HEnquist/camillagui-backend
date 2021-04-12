@@ -128,9 +128,16 @@ input[type='checkbox'] {
 }
 
 div .popup-content {
+  width: 50%;
   background-color: var(--background-color);
   border: var(--box-border);
   border-radius: var(--border-radius);
+}
+
+@media (max-width: 1023px) {
+  div .popup-content {
+    width: 80%;
+  }
 }
 
 .horizontally-spaced-content {

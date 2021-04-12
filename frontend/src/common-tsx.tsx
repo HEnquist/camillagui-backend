@@ -643,7 +643,7 @@ export function ChartPopup(props: {
         )
     }
 
-    return <Popup open={props.open} onClose={props.onClose} contentStyle={{width: '50%'}}>
+    return <Popup open={props.open} onClose={props.onClose}>
         <CloseButton onClick={props.onClose}/>
         <Scatter data={data} options={options}/>
     </Popup>
