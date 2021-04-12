@@ -125,8 +125,6 @@ input[type='checkbox'] {
   border-radius: var(--border-radius);
   border: var(--box-border);
   padding: 5px 12px 12px 12px;
-  display: flex;
-  flex-direction: column;
 }
 
 div .popup-content {
