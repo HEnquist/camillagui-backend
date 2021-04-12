@@ -162,9 +162,9 @@ function MixerStepView(props: {
 }) {
   const {typeSelect, mixers, mixerStep, update, controls} = props
   const mixer = mixers[mixerStep.name]
-  const title = mixer ? `\u00A0\u00A0\u00A0${mixer.channels.in} in, ${mixer.channels.out} out` : ''
+  const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
   const options = [''].concat(mixerNamesOf(mixers))
-  return <Box title={<label>{typeSelect} {title}</label>}>
+  return <Box title={<label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>}>
     <div className="vertically-spaced-content">
       <EnumOption
           value={mixerStep.name}
@@ -196,7 +196,7 @@ function FilterStepView(props: {
       <label data-tip="Channel number">
         channel
         <IntInput
-            className="small-setting"
+            className="small-setting-input"
             style={{marginLeft: '5px'}}
             value={filterStep.channel}
             data-tip="Channel number"

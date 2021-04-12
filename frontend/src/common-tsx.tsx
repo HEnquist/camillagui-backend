@@ -79,7 +79,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
+                <div className="horizontally-spaced-content" style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
                     {props.title}
                 </div>
             </legend>
@@ -195,9 +195,9 @@ export function OptionLine(props: {
     children: ReactNode
     small?: boolean
 }) {
-    const small = props.small
-    return <label className={"setting" + (small ? " small-setting" : "")} data-tip={props['data-tip']}>
-        <span className={"setting-label" + (small ? " small-setting" : "")}>{props.desc}</span>
+    const settingStyle = props.small ? {width:'min-content'} : {}
+    return <label className="setting" data-tip={props['data-tip']} style={settingStyle}>
+        <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
 }
@@ -214,7 +214,7 @@ export function IntOption(props:{
 }) {
     const small = props.small
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
-        <IntInput {...props} className={"setting-input" + (small ? " small-setting" : "")} />
+        <IntInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} />
     </OptionLine>
 }
 
@@ -354,7 +354,7 @@ export function BoolOption(props: {
 }) {
     const small = props.small
     return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
-        <div className={"setting-input" + (small ? " small-setting" : "")}
+        <div className={"setting-input" + (small ? " small-setting-input" : "")}
              data-tip={props["data-tip"]}
              style={{cursor: 'pointer'}}>
             <input

@@ -77,17 +77,17 @@ export class VolumeBox extends React.Component<Props, State> {
         const {volume, mute, dim} = this.state;
         return <Box title={
             <>
-                Volume&nbsp;&nbsp;
-                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right'}}>
+                Volume
+                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right', marginLeft: '5px'}}>
                     {mute ? '' : volume+'dB'}
                 </div>
-                &nbsp;<MdiButton
+                <MdiButton
                     icon={mdiVolumeOff}
                     tooltip={mute ? "Un-Mute" : "Mute"}
                     smallButton={true}
                     className={mute ? "highlighted-button" : ""}
                     onClick={this.mute}/>
-                &nbsp;<MdiButton
+                <MdiButton
                     icon={mdiVolumeMedium}
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
                     smallButton={true}
