@@ -1,6 +1,6 @@
 import React from "react";
 import "./index.css";
-import {AddButton, BoolOption, Box, DeleteButton, IntOption, modifiedCopyOf, ParsedInput, Update} from "./common-tsx";
+import {AddButton, Box, DeleteButton, IntOption, MdiButton, modifiedCopyOf, ParsedInput, Update} from "./common-tsx";
 import {
   Config,
   defaultMapping,
@@ -15,6 +15,7 @@ import {
   renameMixer,
   Source
 } from "./config";
+import {mdiUndoVariant, mdiVolumeOff} from "@mdi/js";
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
@@ -79,7 +80,7 @@ export class MixersTab extends React.Component<{
   render() {
     const {mixers, updateConfig} = this.props;
     return (
-        <div className="tabpanel" style={{width: '550px'}}>
+        <div className="tabpanel">
           {this.mixerNames()
               .map(name =>
                   <MixerView
@@ -146,16 +147,14 @@ function MixerView(props: {
           min={1}
           onChange={channelsOut => update(mixer => mixer.channels.out = channelsOut)}/>
     </div>
-    <div style={{display: 'flex', flexDirection: 'column'}}>
-      {mixer.mapping.map((mapping, index) =>
-          <MappingView
-              key={index}
-              mapping={mapping}
-              channels={mixer.channels}
-              update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
-              remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
-      )}
-    </div>
+    {mixer.mapping.map((mapping, index) =>
+        <MappingView
+            key={index}
+            mapping={mapping}
+            channels={mixer.channels}
+            update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
+            remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
+    )}
     <div>
       {mixer.mapping.length < mixer.channels.out &&
         <AddButton
@@ -185,12 +184,12 @@ function MappingView(props: {
           min={0}
           max={channels.out-1}
           onChange={dest => update(mapping => mapping.dest = dest)}/>
-      <BoolOption
-          value={mapping.mute}
-          desc="mute"
-          data-tip="Mute"
-          small={true}
-          onChange={mute => update(mapping => mapping.mute = mute)}/>
+      <MdiButton
+          icon={mdiVolumeOff}
+          tooltip={"Mute destination channel"}
+          smallButton={true}
+          className={mapping.mute ? "highlighted-button" : ""}
+          onClick={() => update(mapping => mapping.mute = !mapping.mute)}/>
       <DeleteButton
           tooltip="Delete this mapping"
           smallButton={true}
@@ -224,34 +223,38 @@ function SourceView(props: {
   remove: () => void
 }) {
   const {source, channelsIn, update, remove} = props
-  return <div style={{display: 'flex', justifyContent: 'space-between'}}>
-    <IntOption
-        value={source.channel}
-        desc="channel"
-        data-tip="Channel number"
-        small={true}
-        withControls={true}
-        min={0}
-        max={channelsIn-1}
-        onChange={channel => update(source => source.channel = channel)}/>
-    <IntOption
-        value={source.gain}
-        desc="gain"
-        data-tip="Gain in dB"
-        small={true}
-        onChange={gain => update(source => source.gain = gain)}/>
-    <BoolOption
-        value={source.inverted}
-        desc="inverted"
-        data-tip="Invert signal"
-        small={true}
-        onChange={inverted => update(source => source.inverted = inverted)}/>
-    <BoolOption
-        value={source.mute}
-        desc="mute"
-        data-tip="Mute"
-        small={true}
-        onChange={mute => update(source => source.mute = mute)}/>
+  return <div className="horizontally-spaced-content">
+    <div style={{flexGrow: 1}}>
+      <IntOption
+          value={source.channel}
+          desc="channel"
+          data-tip="Channel number"
+          small={true}
+          withControls={true}
+          min={0}
+          max={channelsIn-1}
+          onChange={channel => update(source => source.channel = channel)}/>
+    </div>
+    <div style={{flexGrow: 1}}>
+      <IntOption
+          value={source.gain}
+          desc="gain"
+          data-tip="Gain in dB"
+          small={true}
+          onChange={gain => update(source => source.gain = gain)}/>
+    </div>
+    <MdiButton
+        icon={mdiUndoVariant}
+        tooltip={"Invert source channel"}
+        smallButton={true}
+        className={source.inverted ? "highlighted-button" : ""}
+        onClick={() => update(source => source.inverted = !source.inverted)}/>
+    <MdiButton
+        icon={mdiVolumeOff}
+        tooltip={"Mute source channel"}
+        smallButton={true}
+        className={source.mute ? "highlighted-button" : ""}
+        onClick={() => update(source => source.mute = !source.mute)}/>
     <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
   </div>
 }
