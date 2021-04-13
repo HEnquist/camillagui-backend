@@ -7,7 +7,6 @@ import {
   ChartPopup,
   DeleteButton,
   EnumInput,
-  EnumOption,
   FIELD_ERROR_BACKGROUND,
   IntInput,
   MdiButton,
@@ -166,7 +165,7 @@ function MixerStepView(props: {
   const options = [''].concat(mixerNamesOf(mixers))
   return <Box title={<label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>}>
     <div className="vertically-spaced-content">
-      <EnumOption
+      <EnumInput
           value={mixerStep.name}
           options={options}
           desc="name"
@@ -191,19 +190,22 @@ function FilterStepView(props: {
   const addFilter = () => update(step => step.names.push(options[0]))
   const moveFilterUp = (index: number) => update(step => moveItemUp(step.names, index))
   const moveFilterDown = (index: number) => update(step => moveItemDown(step.names, index))
-  return <Box title={typeSelect}>
+  const title = <div>
+    {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
+    <label data-tip="Channel number">
+      channel
+      <IntInput
+          className="small-setting-input"
+          style={{marginLeft: '5px'}}
+          value={filterStep.channel}
+          data-tip="Channel number"
+          withControls={true}
+          min={0}
+          onChange={channel => update(step => step.channel = channel)}/>
+    </label>
+  </div>
+  return <Box title={title}>
     <div className="vertically-spaced-content">
-      <label data-tip="Channel number">
-        channel
-        <IntInput
-            className="small-setting-input"
-            style={{marginLeft: '5px'}}
-            value={filterStep.channel}
-            data-tip="Channel number"
-            withControls={true}
-            min={0}
-            onChange={channel => update(step => step.channel = channel)}/>
-      </label>
       {filterStep.names.map((name, index) =>
           <div key={index} className="horizontally-spaced-content">
             <EnumInput
