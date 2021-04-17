@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 0.4.0 and up.
+This version works with CamillaDSP 0.5.0 and up.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
@@ -15,20 +15,14 @@ Install the dependencies:
 - websocket-client (required by pycamilladsp)
 - aiohttp
 
-For plotting, install these optional dependencies:
-- numpy (required by pycamilladsp-plot)
-- matplotlib (required by pycamilladsp-plot)
-
-
-
 These are the names of the packages needed:
-| Distribution | python | websocket-client | aiohttp | matplotlib | numpy |
-|--------------|--------|------------------|-------|------------|---------|
-| Fedora | python3 | python3-websocket-client | python3-aiohttp | python3-matplotlib | python3-numpy  |
-| Debian/Raspbian | python3 | python3-websocket | python3-aiohttp | python3-matplotlib | python3-numpy |
-| Arch | python | python-websocket-client | python-aiohttp | python-matplotlib | python-numpy |
-| pip | - | websocket_client | aiohttp | matplotlib | numpy |
-| Anaconda | - | websocket_client | aiohttp | matplotlib | numpy |
+| Distribution | python | websocket-client | aiohttp |
+|--------------|--------|------------------|-------|
+| Fedora | python3 | python3-websocket-client | python3-aiohttp |
+| Debian/Raspbian | python3 | python3-websocket | python3-aiohttp |
+| Arch | python | python-websocket-client | python-aiohttp |
+| pip | - | websocket_client | aiohttp |
+| Anaconda | - | websocket_client | aiohttp |
 
 #### Linux
 Most linux distributions have Python 3.6 or newer installed by default. Use the normal package manager to install the packages.

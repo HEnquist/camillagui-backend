@@ -1,12 +1,11 @@
+import pathlib
+
 from views import (
     get_param,
     get_list_param,
     set_param,
     eval_filter_values,
     eval_filterstep_values,
-    eval_filter_svg,
-    eval_filterstep_svg,
-    eval_pipeline_svg,
     get_config,
     set_config,
     get_active_config_file,
@@ -30,7 +29,6 @@ from views import (
     get_config_file,
     save_config_file
 )
-import pathlib
 
 BASEPATH = pathlib.Path(__file__).parent.absolute()
 
@@ -39,11 +37,8 @@ def setup_routes(app):
     app.router.add_get("/api/getparam/{name}", get_param)
     app.router.add_get("/api/getlistparam/{name}", get_list_param)
     app.router.add_post("/api/setparam/{name}", set_param)
-    app.router.add_post("/api/evalfiltersvg", eval_filter_svg)
-    app.router.add_post("/api/evalfilterstepsvg", eval_filterstep_svg)
     app.router.add_post("/api/evalfilter", eval_filter_values)
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
-    app.router.add_post("/api/evalpipelinesvg", eval_pipeline_svg)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_get("/api/getactiveconfigfile", get_active_config_file)

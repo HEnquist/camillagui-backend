@@ -1,7 +1,8 @@
 import io
 import os
 import zipfile
-from os.path import isfile, islink, split
+from copy import deepcopy
+from os.path import isfile, islink, split, join, relpath, normpath, isabs
 
 import yaml
 from aiohttp import web
@@ -101,3 +102,49 @@ def save_config(config_name, json_config, request):
     yaml_config = yaml.dump(json_config).encode('utf-8')
     with open(config_file, "wb") as f:
         f.write(yaml_config)
+
+
+def coeff_dir_relative_to_config_dir(request):
+    relative_coeff_dir = relpath(request.app["coeff_dir"], start=request.app["config_dir"])
+    coeff_dir_with_folder_separator_at_end = join(relative_coeff_dir, '')
+    return coeff_dir_with_folder_separator_at_end
+
+
+def new_config_with_absolute_filter_paths(json_config, config_dir):
+    def conversion(path): return make_absolute(path, config_dir)
+    return new_config_with_paths_converted(json_config, conversion)
+
+
+def new_config_with_relative_filter_paths(json_config, config_dir):
+    def conversion(path): return make_relative(path, config_dir)
+    return new_config_with_paths_converted(json_config, conversion)
+
+
+def new_config_with_paths_converted(json_config, conversion):
+    config = deepcopy(json_config)
+    filters = config["filters"]
+    for filterName in filters:
+        filter = filters[filterName]
+        convert_filter_path(filter, conversion)
+    return config
+
+
+def convert_filter_path(json_filter, conversion):
+    type = json_filter["type"]
+    parameters = json_filter["parameters"]
+    if type == "Conv" and parameters["type"] == "File":
+        parameters["filename"] = conversion(parameters["filename"])
+
+
+def replace_relative_filter_path_with_absolute_paths(json_filter, config_dir):
+    def conversion(path): return make_absolute(path, config_dir)
+    convert_filter_path(json_filter, conversion)
+
+
+def make_absolute(path, base_dir):
+    return path if isabs(path) else normpath(join(base_dir, path))
+
+
+def make_relative(path, base_dir):
+    return relpath(path, start=base_dir) if isabs(path) else path
+
