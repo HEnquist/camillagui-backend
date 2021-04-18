@@ -651,6 +651,7 @@ export function ChartPopup(props: {
 
 export function ListSelectPopup(props: {
     open: boolean
+    header?: ReactNode
     items: string[]
     onSelect: (value: string) => void
     onClose: () => void
@@ -659,6 +660,7 @@ export function ListSelectPopup(props: {
     const selectItem = (item: string) => { onSelect(item); onClose() }
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'max-content'}}>
         <CloseButton onClick={onClose}/>
+        {props.header}
         <div style={{display: 'flex', flexDirection: 'column'}}>
             {items.map(item =>
                 <div

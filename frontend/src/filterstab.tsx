@@ -31,7 +31,6 @@ import {
   Update,
   UploadButton
 } from "./common-tsx";
-import {OrderedSet} from "immutable";
 
 export class FiltersTab extends React.Component<
     {
@@ -104,7 +103,7 @@ export class FiltersTab extends React.Component<
       })
   }
 
-  private isFreeFilterName(name: string) {
+  private isFreeFilterName(name: string): boolean {
     return !this.filterNames().includes(name)
   }
 
@@ -171,6 +170,17 @@ export class FiltersTab extends React.Component<
   }
 }
 
+function isConvolutionFilter(filter: Filter): boolean {
+  return filter.type === 'Conv' && filter.parameters.type === 'File'
+}
+
+interface FilterDefaults {
+  format?: string
+  skip_bytes?: number
+  read_bytes?: number
+  errors?: string[]
+}
+
 class FilterView extends React.Component<{
   name: string
   filter: Filter
@@ -185,21 +195,27 @@ class FilterView extends React.Component<{
 }, {
   uploadState?: { success: true } | { success: false, message: string }
   popupOpen: boolean
+  filterDefaults: FilterDefaults
+  showDefaults: boolean
 } > {
 
   constructor(props: any) {
-    super(props);
+    super(props)
     this.uploadCoeffs = this.uploadCoeffs.bind(this)
     this.pickFilterFile = this.pickFilterFile.bind(this)
-    this.state = { popupOpen: false}
+    this.updateDefaults = this.updateDefaults.bind(this)
+    this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
+    this.state = {popupOpen: false, showDefaults: false, filterDefaults: {}}
+    if (isConvolutionFilter(this.props.filter))
+      this.updateDefaults(this.props.filter.parameters.filename)
   }
 
   private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
     doUpload('coeff', e,
         filesnames => {
           this.setState({uploadState: {success: true}})
-          const {coeffDir, updateFilter, updateAvailableCoeffFiles} = this.props
-          updateFilter(coeffFileNameUpdate(coeffDir, filesnames[0]))
+          const {updateAvailableCoeffFiles} = this.props
+          this.pickFilterFile(filesnames[0])
           updateAvailableCoeffFiles()
         },
         message => this.setState({uploadState: {success: false, message: message}})
@@ -209,6 +225,34 @@ class FilterView extends React.Component<{
   private pickFilterFile(selectedFilename: string) {
     const {coeffDir, updateFilter} = this.props
     updateFilter(coeffFileNameUpdate(coeffDir, selectedFilename))
+    this.updateDefaults(coeffFilePath(coeffDir, selectedFilename), true)
+  }
+
+  private updateDefaults(filename: string, updateFilter: boolean = false) {
+    const filter = this.props.filter
+    if (isConvolutionFilter(filter)) {
+      fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`)
+          .then(response =>
+              response.json().then(json => {
+                const defaults = json as FilterDefaults
+                this.setState({filterDefaults: defaults, showDefaults: false})
+                if (updateFilter)
+                  this.updateFilterParamsWithDefaults(defaults)
+              })
+          )
+    }
+  }
+
+  private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
+    this.props.updateFilter(filter => {
+      const guiDefaults = defaultParameters[filter.type][filter.parameters.type]
+      filter.parameters.format = defaults.format ?
+          defaults.format : guiDefaults.format
+      filter.parameters.skip_bytes_lines = defaults.skip_bytes ?
+          defaults.skip_bytes : guiDefaults.skip_bytes_lines
+      filter.parameters.read_bytes_lines = defaults.read_bytes ?
+          defaults.read_bytes : guiDefaults.read_bytes_lines
+    })
   }
 
   render() {
@@ -233,38 +277,44 @@ class FilterView extends React.Component<{
       />
     }>
       <div style={{display: 'flex', flexDirection: 'row'}}>
-        <div style={{display: 'flex', flexDirection: 'column-reverse', justifyContent: 'space-between'}}>
-          <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
-          {filter.type === 'Conv' && filter.parameters.type === 'File' &&
+        <div
+            className="vertically-spaced-content"
+            style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
+          {['Biquad', 'BiquadCombo', 'Conv', 'DiffEq'].includes(filter.type) &&
+          <MdiButton
+              icon={mdiChartBellCurveCumulative}
+              tooltip="Plot frequency response of this filter"
+              onClick={this.props.plot}/>
+          }
+          {isConvolutionFilter(filter) &&
           <>
+            <MdiButton
+                icon={mdiFileSearch}
+                tooltip="Pick filter file"
+                onClick={() => this.setState({popupOpen: true})}/>
             <UploadButton
                 icon={uploadIcon.icon}
                 className={uploadIcon.className}
                 tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
                 onChange={this.uploadCoeffs}
                 multiple={true}/>
-            <MdiButton
-                icon={mdiFileSearch}
-                tooltip="Pick filter file"
-                onClick={() => this.setState({popupOpen: true})}/>
           </>
           }
-          {['Biquad', 'BiquadCombo', 'Conv', 'DiffEq'].includes(filter.type) &&
-            <MdiButton
-                icon={mdiChartBellCurveCumulative}
-                tooltip="Plot frequency response of this filter"
-                onClick={this.props.plot}/>
-          }
+          <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
         </div>
         <FilterParams
             filter={this.props.filter}
             updateFilter={this.props.updateFilter}
             availableCoeffFiles={this.props.availableCoeffFiles}
-            coeffDir={this.props.coeffDir}/>
+            coeffDir={this.props.coeffDir}
+            filterDefaults={this.state.filterDefaults}
+            showDefaults={this.state.showDefaults}
+            setShowDefaults={() => this.setState({showDefaults: true})}/>
       </div>
       <ListSelectPopup
           key="filter select popup"
           open={this.state.popupOpen}
+          header={<div style={{margin: '10px 0'}}>Only single channel filter files are supported.</div>}
           items={this.props.availableCoeffFiles}
           onClose={() => this.setState({popupOpen: false})}
           onSelect={this.pickFilterFile}
@@ -277,8 +327,71 @@ function coeffFileNameFromPath(coeffDir: string, absolutePath: string): string {
   return absolutePath.replace(coeffDir, '')
 }
 
+function coeffFilePath(coeffDir: string, filename: string) {
+  return coeffDir + filename;
+}
+
 function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
-  return filter => filter.parameters.filename = coeffDir + filename
+  return filter => filter.parameters.filename = coeffFilePath(coeffDir, filename)
+}
+
+const defaultParameters: {
+  [type: string]: {
+    [subtype: string]: {
+      [parameter: string]: string | number | number[] | boolean
+    }
+  }
+} = {
+  Biquad: {
+    Lowpass: { type: "Lowpass", q: 0.5, freq: 1000 },
+    Highpass: { type: "Highpass", q: 0.5, freq: 1000 },
+    Lowshelf: { type: "Lowshelf", gain: 6, slope: 6, freq: 1000 },
+    Highshelf: { type: "Highshelf", gain: 6, slope: 6, freq: 1000 },
+    LowpassFO: { type: "LowpassFO", freq: 1000 },
+    HighpassFO: { type: "HighpassFO", freq: 1000 },
+    LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
+    HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
+    Peaking: { type: "Peaking", gain: 6, q: 1.5, freq: 1000 },
+    Notch: { type: "Notch", q: 1.5, freq: 1000 },
+    Allpass: { type: "Allpass", q: 0.5, freq: 1000 },
+    AllpassFO: { type: "AllpassFO", freq: 1000 },
+    LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
+    Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
+  },
+  BiquadCombo: {
+    ButterworthLowpass: { type: "ButterworthLowpass", order: 2, freq: 1000 },
+    ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
+    LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
+    LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
+  },
+  Conv: {
+    File: { type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+    Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0], length: 0 },
+  },
+  Delay: {
+    Default: { delay: 0.0, unit: "ms" },
+  },
+  Gain: {
+    Default: { gain: 0.0, inverted: false, mute: false },
+  },
+  Volume: {
+    Default: { ramp_time: 200 },
+  },
+  Loudness: {
+    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, ramp_time: 200 },
+  },
+  DiffEq: {
+    Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
+  },
+  Dither: {
+    Simple: { type: "Simple", bits: 16 },
+    Uniform: { type: "Uniform", bits: 16, amplitude: 1.0 },
+    Lipshitz441: { type: "Lipshitz441", bits: 16 },
+    Fweighted441: { type: "Fweighted441", bits: 16 },
+    Shibata441: { type: "Shibata441", bits: 16 },
+    Shibata48: { type: "Shibata48", bits: 16 },
+    None: { type: "None", bits: 16 },
+  },
 }
 
 class FilterParams extends React.Component<{
@@ -286,96 +399,43 @@ class FilterParams extends React.Component<{
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: string[]
   coeffDir: string
-},unknown> {
+  filterDefaults: FilterDefaults
+  setShowDefaults: () => void
+  showDefaults: boolean
+}, unknown> {
   constructor(props: any) {
-    super(props);
+    super(props)
     this.onTypeChange = this.onTypeChange.bind(this)
     this.onSubtypeChange = this.onSubtypeChange.bind(this)
     this.renderFilterParams = this.renderFilterParams.bind(this)
-    this.coeffFileOptions = this.coeffFileOptions.bind(this)
+    this.hasHiddenDefaultValue = this.hasHiddenDefaultValue.bind(this)
+    this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this)
+    this.filenameField = this.filenameField.bind(this)
   }
-
-  defaultParameters: {
-    [type: string]: {
-      [subtype: string]: {
-        [parameter: string]: string | number | number[] | boolean
-      }
-    }
-  } = {
-    Biquad: {
-      Lowpass: { type: "Lowpass", q: 0.5, freq: 1000 },
-      Highpass: { type: "Highpass", q: 0.5, freq: 1000 },
-      Lowshelf: { type: "Lowshelf", gain: 6, slope: 6, freq: 1000 },
-      Highshelf: { type: "Highshelf", gain: 6, slope: 6, freq: 1000 },
-      LowpassFO: { type: "LowpassFO", freq: 1000 },
-      HighpassFO: { type: "HighpassFO", freq: 1000 },
-      LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
-      HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
-      Peaking: { type: "Peaking", gain: 6, q: 1.5, freq: 1000 },
-      Notch: { type: "Notch", q: 1.5, freq: 1000 },
-      Allpass: { type: "Allpass", q: 0.5, freq: 1000 },
-      AllpassFO: { type: "AllpassFO", freq: 1000 },
-      LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
-      Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
-    },
-    BiquadCombo: {
-      ButterworthLowpass: { type: "ButterworthLowpass", order: 2, freq: 1000 },
-      ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
-      LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
-      LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
-    },
-    Conv: {
-      File: { type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
-      Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0], length: 0 },
-    },
-    Delay: {
-      Default: { delay: 0.0, unit: "ms" },
-    },
-    Gain: {
-      Default: { gain: 0.0, inverted: false, mute: false },
-    },
-    Volume: {
-      Default: { ramp_time: 200 },
-    },
-    Loudness: {
-      Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, ramp_time: 200 },
-    },
-    DiffEq: {
-      Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
-    },
-    Dither: {
-      Simple: { type: "Simple", bits: 16 },
-      Uniform: { type: "Uniform", bits: 16, amplitude: 1.0 },
-      Lipshitz441: { type: "Lipshitz441", bits: 16 },
-      Fweighted441: { type: "Fweighted441", bits: 16 },
-      Shibata441: { type: "Shibata441", bits: 16 },
-      Shibata48: { type: "Shibata48", bits: 16 },
-      None: { type: "None", bits: 16 },
-    },
-  };
 
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
       filter.type = type;
-      const subtypeDefualts = this.defaultParameters[type];
-      const firstSubtypeOrDefault = Object.keys(subtypeDefualts)[0];
-      filter.parameters = cloneDeep(subtypeDefualts[firstSubtypeOrDefault])
+      const subtypeDefaults = defaultParameters[type];
+      const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0];
+      filter.parameters = cloneDeep(subtypeDefaults[firstSubtypeOrDefault])
     });
   }
 
   private onSubtypeChange(subtype: string) {
     this.props.updateFilter(filter =>
-        filter.parameters = cloneDeep(this.defaultParameters[filter.type][subtype])
+        filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
     );
   }
 
   render() {
     const filter = this.props.filter;
-    const subtypeOptions = Object.keys(this.defaultParameters[filter.type])
-    return <div style={{width: '100%'}}>
+    const subtypeOptions = Object.keys(defaultParameters[filter.type])
+    const errors = this.props.filterDefaults.errors;
+    return <div style={{width: '100%', textAlign: 'right'}}>
       <EnumOption
           value={filter.type}
-          options={Object.keys(this.defaultParameters)}
+          options={Object.keys(defaultParameters)}
           desc="type"
           data-tip="Filter type"
           onChange={this.onTypeChange}/>
@@ -388,15 +448,19 @@ class FilterParams extends React.Component<{
           onChange={this.onSubtypeChange}/>
       }
       {this.renderFilterParams(filter.parameters)}
-    </div>;
-  }
-
-  private coeffFileOptions() {
-    const {availableCoeffFiles, filter, coeffDir} = this.props
-    return OrderedSet(availableCoeffFiles)
-        .union(['', coeffFileNameFromPath(coeffDir, filter.parameters.filename)])
-        .sort((a, b) => a.localeCompare(b))
-        .toArray()
+      {isConvolutionFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
+      <div
+          className="button button-with-text"
+          onClick={() => this.props.setShowDefaults()}>
+        ...
+      </div>
+      }
+      {errors && errors.map(error =>
+          <div style={{marginTop: '5px', color: 'var(--error-text-color)'}}>
+            {error}
+          </div>
+      )}
+    </div>
   }
 
   private renderFilterParams(parameters: { [p: string]: any }) {
@@ -415,14 +479,10 @@ class FilterParams extends React.Component<{
         'data-tip': info.tooltip,
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
       }
-      if (parameter === 'filename') {
-        const coeffDir = this.props.coeffDir;
-        const selectedFile = coeffFileNameFromPath(coeffDir, parameters['filename'])
-        return <TextOption
-            {...commonProps}
-            value={selectedFile}
-            onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}/>
-      }
+      if (parameter === 'filename')
+        return this.filenameField(parameters['filename'], commonProps)
+      if (this.isHiddenDefaultValue(parameter))
+        return null;
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')
@@ -437,6 +497,34 @@ class FilterParams extends React.Component<{
         return <EnumOption {...commonProps} options={info.options}/>
       return null
     })
+  }
+
+  private filenameField(
+      filename: string,
+      props: { onChange: (value: any) => void; "data-tip": string; value: any; key: string; desc: string }
+  ) {
+    const coeffDir = this.props.coeffDir;
+    const selectedFile = coeffFileNameFromPath(coeffDir, filename)
+    return <TextOption
+        {...props}
+        value={selectedFile}
+        onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}/>
+  }
+
+  private hasHiddenDefaultValue() {
+    return this.isHiddenDefaultValue('format')
+        || this.isHiddenDefaultValue('skip_bytes_lines')
+        || this.isHiddenDefaultValue('read_bytes_lines')
+  }
+
+  private isHiddenDefaultValue(parameter: string) {
+    const filter = this.props.filter
+    const filterDefaults = this.props.filterDefaults
+    return !this.props.showDefaults && (
+        (parameter === 'format' && filter.parameters.format === filterDefaults.format)
+        || (parameter === 'skip_bytes_lines' && filter.parameters.skip_bytes_lines === filterDefaults.skip_bytes)
+        || (parameter === 'read_bytes_lines' && filter.parameters.read_bytes_lines === filterDefaults.read_bytes)
+    )
   }
 
   parameterInfos: {
