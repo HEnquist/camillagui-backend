@@ -657,7 +657,7 @@ export function ListSelectPopup(props: {
 }) {
     const {open, items, onSelect, onClose} = props
     const selectItem = (item: string) => { onSelect(item); onClose() }
-    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'min-content'}}>
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'max-content'}}>
         <CloseButton onClick={onClose}/>
         <div style={{display: 'flex', flexDirection: 'column'}}>
             {items.map(item =>
