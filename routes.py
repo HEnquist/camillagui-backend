@@ -27,7 +27,8 @@ from views import (
     download_configs_zip,
     get_gui_config,
     get_config_file,
-    save_config_file
+    save_config_file,
+    get_defaults_for_coeffs
 )
 
 BASEPATH = pathlib.Path(__file__).parent.absolute()
@@ -51,6 +52,7 @@ def setup_routes(app):
     app.router.add_get("/api/backendversion", get_backend_version)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
+    app.router.add_get("/api/defaultsforcoeffs", get_defaults_for_coeffs)
     app.router.add_post("/api/uploadconfigs", store_configs)
     app.router.add_post("/api/uploadcoeffs", store_coeffs)
     app.router.add_post("/api/deleteconfigs", delete_configs)

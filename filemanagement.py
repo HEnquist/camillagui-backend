@@ -2,7 +2,7 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, relpath, normpath, isabs
+from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath
 
 import yaml
 from aiohttp import web
@@ -148,3 +148,6 @@ def make_absolute(path, base_dir):
 def make_relative(path, base_dir):
     return relpath(path, start=base_dir) if isabs(path) else path
 
+
+def is_path_in_folder(path, folder):
+    return folder == commonpath([path, folder])

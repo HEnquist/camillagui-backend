@@ -9,8 +9,10 @@ from filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
     new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
-    replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths
+    replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
+    make_absolute
 )
+from filterdefaults import defaults_for_filter
 from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from settings import gui_config_path
 from version import VERSION
@@ -304,3 +306,11 @@ async def get_gui_config(request):
         json_config = yaml.safe_load(yaml_config)
         json_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     return web.json_response(json_config)
+
+
+async def get_defaults_for_coeffs(request):
+    path = request.query["file"]
+    absolute_path = make_absolute(path, request.app["config_dir"])
+    coeff_dir = request.app["coeff_dir"]
+    defaults = defaults_for_filter(absolute_path, coeff_dir)
+    return web.json_response(defaults)
