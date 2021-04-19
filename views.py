@@ -17,8 +17,6 @@ from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup
 from settings import gui_config_path
 from version import VERSION
 
-SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
-
 
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
