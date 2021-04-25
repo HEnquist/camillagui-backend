@@ -1,6 +1,5 @@
-import pathlib
-
-from views import (
+from backend.settings import BASEPATH
+from backend.views import (
     get_param,
     get_list_param,
     set_param,
@@ -28,8 +27,6 @@ from views import (
     get_defaults_for_coeffs,
     get_status
 )
-
-BASEPATH = pathlib.Path(__file__).parent.absolute()
 
 
 def setup_routes(app):

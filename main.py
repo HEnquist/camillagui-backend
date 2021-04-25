@@ -1,8 +1,9 @@
 from aiohttp import web
 from camilladsp import CamillaConnection
-from offline import start_backup_cdsp
-from settings import config
-from routes import setup_routes, setup_static_routes
+
+from backend.offline import start_backup_cdsp
+from backend.routes import setup_routes, setup_static_routes
+from backend.settings import config
 
 app = web.Application(client_max_size=1024 ** 3)
 app["config_dir"] = config["config_dir"]
