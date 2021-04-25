@@ -22,21 +22,47 @@ async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
 
+async def get_status(request):
+    cdsp = request.app["CAMILLA"]
+    try:
+        state = cdsp.get_state()
+    except IOError:
+        try:
+            cdsp.connect()
+            state = cdsp.get_state()
+        except IOError:
+            state = "offline"
+    cdsp_or_backup = cdsp_or_backup_cdsp(request)
+    cdsp_version = cdsp_or_backup.get_version()
+    status = {
+        "state": state,
+        "cdsp_version": version_string(cdsp_version) if cdsp_version else "x.x.x",
+        "py_cdsp_version": version_string(cdsp.get_library_version()),
+        "backend_version": version_string(VERSION),
+    }
+    try:
+        status.update({
+            "capturesignalrms": cdsp.get_capture_signal_rms(),
+            "playbacksignalrms": cdsp.get_playback_signal_rms(),
+            "capturerate": cdsp.get_capture_rate(),
+            "rateadjust": cdsp.get_rate_adjust(),
+            "bufferlevel": cdsp.get_buffer_level(),
+            "clippedsamples": cdsp.get_clipped_samples(),
+        })
+    except IOError:
+        pass
+    return web.json_response(status)
+
+
+def version_string(version_array):
+    return str(version_array[0]) + "." + str(version_array[1]) + "." + str(version_array[2])
+
+
 async def get_param(request):
     # Get a parameter value
     name = request.match_info["name"]
-    print(name)
     cdsp = request.app["CAMILLA"]
-    if name == "state":
-        try:
-            result = cdsp.get_state()
-        except IOError:
-            try:
-                cdsp.connect()
-                result = cdsp.get_state()
-            except IOError:
-                result = "offline"
-    elif name == "volume":
+    if name == "volume":
         result = cdsp.get_volume()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
@@ -44,42 +70,27 @@ async def get_param(request):
         result = cdsp.get_signal_range_dB()
     elif name == "capturerateraw":
         result = cdsp.get_capture_rate_raw()
-    elif name == "capturerate":
-        result = cdsp.get_capture_rate()
-    elif name == "rateadjust":
-        result = cdsp.get_rate_adjust()
     elif name == "updateinterval":
         result = cdsp.get_update_interval()
     elif name == "configname":
         result = cdsp.get_config_name()
     elif name == "configraw":
         result = cdsp.get_config_raw()
-    elif name == "bufferlevel":
-        result = cdsp.get_buffer_level()
-    elif name == "clippedsamples":
-        result = cdsp.get_clipped_samples()
     else:
         result = "ERROR"
-    print(result)
     return web.Response(text=str(result))
 
 
 async def get_list_param(request):
     # Get a parameter value as a list
     name = request.match_info["name"]
-    print(name)
     cdsp = request.app["CAMILLA"]
-    if name == "capturesignalrms":
-        result = cdsp.get_capture_signal_rms()
-    elif name == "capturesignalpeak":
+    if name == "capturesignalpeak":
         result = cdsp.get_capture_signal_peak()
-    elif name == "playbacksignalrms":
-        result = cdsp.get_playback_signal_rms()
     elif name == "playbacksignalpeak":
         result = cdsp.get_playback_signal_peak()
     else:
         result = "[]"
-    print(result)
     return web.json_response(result)
 
 
@@ -87,8 +98,6 @@ async def set_param(request):
     # Set a parameter
     value = await request.text()
     name = request.match_info["name"]
-    # value = request.get_data().decode()
-    print(name, value)
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         cdsp.set_volume(value)
@@ -225,28 +234,6 @@ async def validate_config(request):
     except CamillaError as e:
         return web.Response(text=str(e))
     return web.Response(text="OK")
-
-
-async def get_version(request):
-    cdsp = cdsp_or_backup_cdsp(request)
-    vers_tup = cdsp.get_version()
-    if vers_tup is None:
-        version = {"major": "x", "minor": "x", "patch": "x"}
-    else:
-        version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
-    return web.json_response(version)
-
-
-async def get_library_version(request):
-    cdsp = request.app["CAMILLA"]
-    vers_tup = cdsp.get_library_version()
-    version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
-    return web.json_response(version)
-
-
-async def get_backend_version(request):
-    version = {"major": VERSION[0], "minor": VERSION[1], "patch": VERSION[2]}
-    return web.json_response(version)
 
 
 async def store_coeffs(request):
