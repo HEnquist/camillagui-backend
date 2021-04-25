@@ -5,17 +5,17 @@ from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
 
-from filemanagement import (
+from backend.filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
     new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
     replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
     make_absolute
 )
-from filterdefaults import defaults_for_filter
-from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
-from settings import gui_config_path
-from version import VERSION
+from backend.filterdefaults.filterdefaults import defaults_for_filter
+from backend.offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
+from backend.settings import gui_config_path
+from backend.version import VERSION
 
 
 async def get_gui_index(request):

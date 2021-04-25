@@ -7,7 +7,7 @@ from os.path import isfile, islink, split, join, relpath, normpath, isabs, commo
 import yaml
 from aiohttp import web
 
-from offline import cdsp_or_backup_cdsp
+from backend.offline import cdsp_or_backup_cdsp
 
 
 def file_in_folder(folder, filename):

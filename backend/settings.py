@@ -1,11 +1,11 @@
-import pathlib
-import yaml
 import os
+import pathlib
 
+import yaml
 
-BASEPATH = pathlib.Path(__file__).parent.absolute()
-config_path = BASEPATH/ 'config' / 'camillagui.yml'
-gui_config_path = BASEPATH/ 'config' / 'gui-config.yml'
+BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
+config_path = BASEPATH / 'config' / 'camillagui.yml'
+gui_config_path = BASEPATH / 'config' / 'gui-config.yml'
 
 
 def get_config(path):
