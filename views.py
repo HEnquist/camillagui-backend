@@ -35,7 +35,7 @@ async def get_status(request):
     cdsp_or_backup = cdsp_or_backup_cdsp(request)
     cdsp_version = cdsp_or_backup.get_version()
     status = {
-        "state": state,
+        "cdsp_status": state,
         "cdsp_version": version_string(cdsp_version) if cdsp_version else "x.x.x",
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
