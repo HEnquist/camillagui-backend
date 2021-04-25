@@ -41,32 +41,28 @@ def read_wav_header(filename):
     """
     Reads the wav header to extract sample format, number of channels, and location of the audio data in the file
     """
-    file_in = open(filename, 'rb')
-
-    # Read fixed header
-    buf_header = file_in.read(12)
-    # Verify that the correct identifiers are present
-    if (buf_header[0:4] != b"RIFF") or (buf_header[8:12] != b"WAVE"):
-        raise RuntimeError("Input file is not a standard WAV file")
-
-    wav_info = {}
-
-    # Get file length
-    file_in.seek(0, 2) # Seek to end of file
-    input_filesize = file_in.tell()
-
-    next_chunk_location = 12 # skip the fixed header
-    while True:
-        file_in.seek(next_chunk_location)
-        buf_header = file_in.read(8)
-        chunk_type = buf_header[0:4].decode("utf-8")
-        chunk_length = struct.unpack('<L', buf_header[4:8])[0]
-        analyze_chunk(chunk_type, next_chunk_location, chunk_length, file_in, wav_info)
-        next_chunk_location += (8 + chunk_length)
-        if next_chunk_location >= input_filesize:
-            break
-    file_in.close()
-    return wav_info
+    with open(filename, 'rb') as file_in:
+        # Read fixed header
+        buf_header = file_in.read(12)
+        # Verify that the correct identifiers are present
+        if (buf_header[0:4] != b"RIFF") or (buf_header[8:12] != b"WAVE"):
+            raise RuntimeError("Input file is not a standard WAV file")
+        # Get file length
+        file_in.seek(0, 2) # Seek to end of file
+        input_filesize = file_in.tell()
+        next_chunk_location = 12 # skip the fixed header
+        wav_info = {}
+        while True:
+            file_in.seek(next_chunk_location)
+            buf_header = file_in.read(8)
+            chunk_type = buf_header[0:4].decode("utf-8")
+            chunk_length = struct.unpack('<L', buf_header[4:8])[0]
+            analyze_chunk(chunk_type, next_chunk_location, chunk_length, file_in, wav_info)
+            next_chunk_location += (8 + chunk_length)
+            if next_chunk_location >= input_filesize:
+                break
+        file_in.close()
+        return wav_info
 
 
 def defaults_for_filter(file_path, coeff_dir):
@@ -93,7 +89,7 @@ def defaults_for_filter(file_path, coeff_dir):
 def defaults_for_wav_file(file_path):
     try:
         header = read_wav_header(file_path)
-    except KeyError:
+    except (KeyError, RuntimeError):
         return {"errors": ["Cannot read file."]}
     errors = []
     sample_format = header["SampleFormat"]
