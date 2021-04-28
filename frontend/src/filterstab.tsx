@@ -171,10 +171,11 @@ export class FiltersTab extends React.Component<
 }
 
 function isConvolutionFilter(filter: Filter): boolean {
-  return filter.type === 'Conv' && filter.parameters.type === 'File'
+  return filter.type === 'Conv' && (filter.parameters.type === 'Raw' || filter.parameters.type === 'Wav')
 }
 
 interface FilterDefaults {
+  type?: string
   format?: string
   skip_bytes?: number
   read_bytes?: number
@@ -246,6 +247,8 @@ class FilterView extends React.Component<{
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter(filter => {
       const guiDefaults = defaultParameters[filter.type][filter.parameters.type]
+      filter.parameters.type = defaults.type ?
+          defaults.type : guiDefaults.type
       filter.parameters.format = defaults.format ?
           defaults.format : guiDefaults.format
       filter.parameters.skip_bytes_lines = defaults.skip_bytes ?
@@ -365,11 +368,12 @@ const defaultParameters: {
     LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
   },
   Conv: {
-    File: { type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+    Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+    Wav: { type: "Wav", filename: "", channel: 0 },
     Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0], length: 0 },
   },
   Delay: {
-    Default: { delay: 0.0, unit: "ms" },
+    Default: { delay: 0.0, unit: "ms", subsample: false },
   },
   Gain: {
     Default: { gain: 0.0, inverted: false, mute: false },
@@ -580,6 +584,11 @@ class FilterParams extends React.Component<{
       tooltip: "Comma-separated list of coefficients for b",
     },
     bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
+    channel: {
+      type: "int",
+      desc: "channel",
+      tooltip: "Index of channel to use, starting from 0",
+    },
     delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
     filename: {
       type: "text",
@@ -659,6 +668,11 @@ class FilterParams extends React.Component<{
       type: "float",
       desc: "slope",
       tooltip: "Filter slope in dB per octave",
+    },
+    subsample: { 
+      type: "bool", 
+      desc: "subsample", 
+      tooltip: "Use subsample precision for delays" 
     },
     unit: {
       type: "enum",
