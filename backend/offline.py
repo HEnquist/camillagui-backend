@@ -1,5 +1,6 @@
 import subprocess
 
+# TODO delete this file
 
 def start_backup_cdsp(config):
     backup_cdsp_path = config["backup_camilla_path"]

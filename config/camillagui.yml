@@ -4,7 +4,7 @@ camilla_port: 1234
 port: 5000
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
-default_config: "~/camilladsp/default_config.yml"
-active_config: "~/camilladsp/active_config.yml"
+default_config: "" #~/camilladsp/default_config.yml"
+active_config: "" #"~/camilladsp/active_config.yml"
 backup_camilla_path: ""
 backup_camilla_port: 1235

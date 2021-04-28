@@ -1,6 +1,6 @@
 import struct
 
-
+# TODO delete this file
 def defaults_for_wav_file(file_path):
     try:
         header = read_wav_header(file_path)

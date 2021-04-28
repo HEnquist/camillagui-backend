@@ -1,5 +1,6 @@
 from aiohttp import web
 from camilladsp import CamillaConnection
+from camilladsp_plot.validate_config import CamillaValidator
 
 from backend.offline import start_backup_cdsp
 from backend.routes import setup_routes, setup_static_routes
@@ -14,8 +15,11 @@ setup_routes(app)
 setup_static_routes(app)
 
 camillaconnection = CamillaConnection(config["camilla_host"], config["camilla_port"])
+camillavalidator = CamillaValidator()
 #camillaconnection.connect()
-app['CAMILLA'] = camillaconnection
+app["CAMILLA"] = camillaconnection
+app["VALIDATOR"] = camillavalidator
+# TODO remove
 app["BACKUP-CAMILLA"] = CamillaConnection("127.0.0.1", config["backup_camilla_port"])
 start_backup_cdsp(config)
 web.run_app(app, port=config["port"])

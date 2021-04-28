@@ -74,10 +74,14 @@ def zip_of_files(folder, files):
 
 
 def get_yaml_as_json(request, path):
-    with open(path, 'r') as file:
-        cdsp = cdsp_or_backup_cdsp(request)
-        yaml_config = file.read()
-        return cdsp.read_config(yaml_config)
+    validator = request["VALIDATOR"]
+    validator.validate_file(path)
+    return validator.get_config()
+    # with open(path, 'r') as file:
+        # TODO
+        # cdsp = cdsp_or_backup_cdsp(request)
+        # yaml_config = file.read()
+        # return cdsp.read_config(yaml_config)
 
 
 def get_active_config(active_config):
@@ -132,7 +136,7 @@ def new_config_with_paths_converted(json_config, conversion):
 def convert_filter_path(json_filter, conversion):
     type = json_filter["type"]
     parameters = json_filter["parameters"]
-    if type == "Conv" and parameters["type"] == "File":
+    if type == "Conv" and parameters["type"] in ["Raw", "Wav"]:
         parameters["filename"] = conversion(parameters["filename"])
 
 

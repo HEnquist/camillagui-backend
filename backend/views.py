@@ -24,19 +24,23 @@ async def get_gui_index(request):
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
+    cdsp_version = None
     try:
         state = cdsp.get_state()
+        cdsp_version = cdsp.get_version()
     except IOError:
         try:
             cdsp.connect()
             state = cdsp.get_state()
+            cdsp_version = cdsp.get_version()
         except IOError:
             state = "offline"
-    cdsp_or_backup = cdsp_or_backup_cdsp(request)
-    cdsp_version = cdsp_or_backup.get_version()
+    cdsp_version = cdsp.get_version()
+    if cdsp_version is None:
+        cdsp_version = ['x', 'x', 'x']
     status = {
         "cdsp_status": state,
-        "cdsp_version": version_string(cdsp_version) if cdsp_version else "x.x.x",
+        "cdsp_version": version_string(cdsp_version),
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
     }
@@ -152,11 +156,23 @@ async def set_config(request):
     json_config = json["config"]
     filename = json["filename"]
     config_dir = request.app["config_dir"]
+    cdsp = request.app["CAMILLA"]
+    validator = request.app["VALIDATOR"]
     json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
-    try:
-        set_cdsp_config_or_validate_with_backup_cdsp(json_config_with_absolute_filter_paths, request)
-    except CamillaError as e:
-        return web.Response(status=500, text=str(e))
+    if cdsp.is_connected():
+        try:
+            # TODO
+            #set_cdsp_config_or_validate_with_backup_cdsp(json_config_with_absolute_filter_paths, request)
+            cdsp.set_config(json_config_with_absolute_filter_paths)
+        except CamillaError as e:
+            return web.Response(status=500, text=str(e))
+    else: 
+        validator.validate_config(json_config_with_absolute_filter_paths)
+        errors = validator.get_errors()
+        if len(errors)>0:
+            formatted_errors = [("/".join([str(p) for p in e[0]]), " : ",  e[1]) for e in errors]
+            errorstring = "\n".join(formatted_errors)
+            return web.Response(status=500, text=errorstring)
     save_config(filename, json_config, request)
     return web.Response(text="OK")
 
@@ -218,8 +234,12 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    cdsp = cdsp_or_backup_cdsp(request)
-    config = cdsp.read_config(config_ymlstr)
+    # TODO
+    # cdsp = cdsp_or_backup_cdsp(request)
+    # config = cdsp.read_config(config_ymlstr)
+    validator = request["VALIDATOR"]
+    validator.validate_yamlstring(config_ymlstr)
+    config = validator.get_config()
     return web.json_response(config)
 
 
@@ -228,13 +248,21 @@ async def validate_config(request):
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
-    cdsp = cdsp_or_backup_cdsp(request)
-    try:
-        cdsp.validate_config(config_with_absolute_filter_paths)
-    except CamillaError as e:
-        return web.Response(text=str(e))
+    # TODO
+    # cdsp = cdsp_or_backup_cdsp(request)
+    # try:
+    #     cdsp.validate_config(config_with_absolute_filter_paths)
+    # except CamillaError as e:
+    #     return web.Response(text=str(e))
+    # return web.Response(text="OK")
+    validator = request.app["VALIDATOR"]
+    validator.validate_config(config_with_absolute_filter_paths)
+    errors = validator.get_errors()
+    if len(errors)>0:
+        formatted_errors = [("/".join([str(p) for p in e[0]]) + " : " + e[1]) for e in errors]
+        errorstring = "\n".join(formatted_errors)
+        return web.Response(status=500, text=errorstring)
     return web.Response(text="OK")
-
 
 async def store_coeffs(request):
     folder = request.app["coeff_dir"]
