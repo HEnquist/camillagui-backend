@@ -1,5 +1,5 @@
-from backend.settings import BASEPATH
-from backend.views import (
+from .settings import BASEPATH
+from .views import (
     get_param,
     get_list_param,
     set_param,

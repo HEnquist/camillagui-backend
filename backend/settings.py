@@ -15,8 +15,6 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["active_config"] = absolute_path_or_none_if_empty(config["active_config"])
-    # TODO
-    config["backup_camilla_path"] = absolute_path_or_none_if_empty(config["backup_camilla_path"])
     print(config)
     return config
 

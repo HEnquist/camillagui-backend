@@ -1,6 +1,6 @@
 from os.path import splitext
 
-from backend.filemanagement import is_path_in_folder
+from .filemanagement import is_path_in_folder
 
 FORMAT_MAP = {
     ".txt": "TEXT", 
