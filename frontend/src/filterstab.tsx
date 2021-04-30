@@ -177,8 +177,8 @@ function isConvolutionFilter(filter: Filter): boolean {
 interface FilterDefaults {
   type?: string
   format?: string
-  skip_bytes?: number
-  read_bytes?: number
+  skip_bytes_lines?: number
+  read_bytes_lines?: number
   errors?: string[]
 }
 
@@ -246,15 +246,12 @@ class FilterView extends React.Component<{
 
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter(filter => {
-      const guiDefaults = defaultParameters[filter.type][filter.parameters.type]
-      filter.parameters.type = defaults.type ?
-          defaults.type : guiDefaults.type
-      filter.parameters.format = defaults.format ?
-          defaults.format : guiDefaults.format
-      filter.parameters.skip_bytes_lines = defaults.skip_bytes ?
-          defaults.skip_bytes : guiDefaults.skip_bytes_lines
-      filter.parameters.read_bytes_lines = defaults.read_bytes ?
-          defaults.read_bytes : guiDefaults.read_bytes_lines
+      const subtype = defaults.type ? defaults.type : filter.parameters.type;
+      const guiDefaults = cloneDeep(defaultParameters[filter.type][subtype])
+      const filename = filter.parameters.filename;
+      filter.parameters = guiDefaults;
+      filter.parameters.filename = filename;
+      filter.parameters = {...filter.parameters, ...defaults};
     })
   }
 
@@ -516,8 +513,7 @@ class FilterParams extends React.Component<{
   }
 
   private hasHiddenDefaultValue() {
-    return this.isHiddenDefaultValue('format')
-        || this.isHiddenDefaultValue('skip_bytes_lines')
+    return this.isHiddenDefaultValue('skip_bytes_lines')
         || this.isHiddenDefaultValue('read_bytes_lines')
   }
 
@@ -525,9 +521,8 @@ class FilterParams extends React.Component<{
     const filter = this.props.filter
     const filterDefaults = this.props.filterDefaults
     return !this.props.showDefaults && (
-        (parameter === 'format' && filter.parameters.format === filterDefaults.format)
-        || (parameter === 'skip_bytes_lines' && filter.parameters.skip_bytes_lines === filterDefaults.skip_bytes)
-        || (parameter === 'read_bytes_lines' && filter.parameters.read_bytes_lines === filterDefaults.read_bytes)
+        (parameter === 'skip_bytes_lines' && filter.parameters.skip_bytes_lines === filterDefaults.skip_bytes_lines)
+        || (parameter === 'read_bytes_lines' && filter.parameters.read_bytes_lines === filterDefaults.read_bytes_lines)
     )
   }
 
