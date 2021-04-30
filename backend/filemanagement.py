@@ -7,8 +7,6 @@ from os.path import isfile, islink, split, join, relpath, normpath, isabs, commo
 import yaml
 from aiohttp import web
 
-from backend.offline import cdsp_or_backup_cdsp
-
 
 def file_in_folder(folder, filename):
     if '/' in filename or '\\' in filename:
@@ -77,11 +75,6 @@ def get_yaml_as_json(request, path):
     validator = request["VALIDATOR"]
     validator.validate_file(path)
     return validator.get_config()
-    # with open(path, 'r') as file:
-        # TODO
-        # cdsp = cdsp_or_backup_cdsp(request)
-        # yaml_config = file.read()
-        # return cdsp.read_config(yaml_config)
 
 
 def get_active_config(active_config):

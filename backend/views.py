@@ -13,7 +13,6 @@ from backend.filemanagement import (
     make_absolute
 )
 from backend.filterdefaults.filterdefaults import defaults_for_filter
-from backend.offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
 from backend.settings import gui_config_path
 from backend.version import VERSION
 
@@ -161,8 +160,6 @@ async def set_config(request):
     json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
     if cdsp.is_connected():
         try:
-            # TODO
-            #set_cdsp_config_or_validate_with_backup_cdsp(json_config_with_absolute_filter_paths, request)
             cdsp.set_config(json_config_with_absolute_filter_paths)
         except CamillaError as e:
             return web.Response(status=500, text=str(e))
@@ -234,9 +231,6 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    # TODO
-    # cdsp = cdsp_or_backup_cdsp(request)
-    # config = cdsp.read_config(config_ymlstr)
     validator = request["VALIDATOR"]
     validator.validate_yamlstring(config_ymlstr)
     config = validator.get_config()
@@ -248,13 +242,6 @@ async def validate_config(request):
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
-    # TODO
-    # cdsp = cdsp_or_backup_cdsp(request)
-    # try:
-    #     cdsp.validate_config(config_with_absolute_filter_paths)
-    # except CamillaError as e:
-    #     return web.Response(text=str(e))
-    # return web.Response(text="OK")
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
