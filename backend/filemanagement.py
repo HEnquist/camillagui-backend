@@ -72,7 +72,7 @@ def zip_of_files(folder, files):
 
 
 def get_yaml_as_json(request, path):
-    validator = request["VALIDATOR"]
+    validator = request.app["VALIDATOR"]
     validator.validate_file(path)
     return validator.get_config()
 

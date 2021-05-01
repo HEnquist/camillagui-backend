@@ -231,7 +231,7 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    validator = request["VALIDATOR"]
+    validator = request.app["VALIDATOR"]
     validator.validate_yamlstring(config_ymlstr)
     config = validator.get_config()
     return web.json_response(config)
