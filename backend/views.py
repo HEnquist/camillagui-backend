@@ -14,6 +14,7 @@ from .filemanagement import (
 )
 from .filterdefaults import defaults_for_filter
 from .settings import gui_config_path
+from .validation import errors_as_json_tree
 from .version import VERSION
 
 
@@ -166,10 +167,8 @@ async def set_config(request):
     else: 
         validator.validate_config(json_config_with_absolute_filter_paths)
         errors = validator.get_errors()
-        if len(errors)>0:
-            formatted_errors = [("/".join([str(p) for p in e[0]]), " : ",  e[1]) for e in errors]
-            errorstring = "\n".join(formatted_errors)
-            return web.Response(status=500, text=errorstring)
+        if len(errors) > 0:
+            return web.json_response(data=errors_as_json_tree(errors))
     save_config(filename, json_config, request)
     return web.Response(text="OK")
 
@@ -245,11 +244,10 @@ async def validate_config(request):
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
-    if len(errors)>0:
-        formatted_errors = [("/".join([str(p) for p in e[0]]) + " : " + e[1]) for e in errors]
-        errorstring = "\n".join(formatted_errors)
-        return web.Response(status=500, text=errorstring)
+    if len(errors) > 0:
+        return web.json_response(status=500, data=errors_as_json_tree(errors))
     return web.Response(text="OK")
+
 
 async def store_coeffs(request):
     folder = request.app["coeff_dir"]
@@ -311,6 +309,5 @@ async def get_gui_config(request):
 async def get_defaults_for_coeffs(request):
     path = request.query["file"]
     absolute_path = make_absolute(path, request.app["config_dir"])
-    coeff_dir = request.app["coeff_dir"]
-    defaults = defaults_for_filter(absolute_path, coeff_dir)
+    defaults = defaults_for_filter(absolute_path)
     return web.json_response(defaults)

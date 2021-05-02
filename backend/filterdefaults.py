@@ -1,6 +1,5 @@
 from os.path import splitext
 
-from .filemanagement import is_path_in_folder
 
 FORMAT_MAP = {
     ".txt": "TEXT", 
@@ -18,14 +17,11 @@ FORMAT_MAP = {
     ".i16": "S16LE",
 }
 
-def defaults_for_filter(file_path, coeff_dir):
-    if not is_path_in_folder(file_path, coeff_dir):
-        return {"errors": ["Filter file is not in coeff_dir."]}
+
+def defaults_for_filter(file_path):
     extension = splitext(file_path)[1].lower()
     if extension == ".wav":
-        return {
-            "type": "Wav"
-        }
+        return {"type": "Wav"}
     elif extension in FORMAT_MAP.keys():
         return {
             "type": "Raw",
