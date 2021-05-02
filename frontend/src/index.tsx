@@ -15,16 +15,18 @@ import ReactTooltip from "react-tooltip";
 import {Files} from "./files";
 import {Config, defaultConfig} from "./config";
 import {defaultGuiConfig, GuiConfig} from "./guiconfig";
-import {Update} from "./common-tsx";
+import {MdiIcon, Update} from "./common-tsx";
 import cloneDeep from "lodash/cloneDeep";
+import {mdiAlertCircle} from "@mdi/js";
 
 class CamillaConfig extends React.Component<
   unknown,
   {
-    activetab: number,
-    currentConfigFile?: string,
-    guiConfig: GuiConfig,
+    activetab: number
+    currentConfigFile?: string
+    guiConfig: GuiConfig
     config: Config
+    errors: any
   }
 > {
   constructor(props: unknown) {
@@ -32,11 +34,13 @@ class CamillaConfig extends React.Component<
     this.handleConfig = this.handleConfig.bind(this)
     this.updateConfig = this.updateConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
+    this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
       guiConfig: defaultGuiConfig(),
-      config: defaultConfig()
+      config: defaultConfig(),
+      errors: {}
     }
     fetch("/api/guiconfig")
         .then(data => data.json())
@@ -62,6 +66,10 @@ class CamillaConfig extends React.Component<
     });
   }
 
+  private setErrors(errors: any) {
+    this.setState({errors: errors})
+  }
+
   componentDidUpdate(prevProps: unknown) {
     ReactTooltip.rebuild()
     console.log("=============rebuild tooltips")
@@ -72,12 +80,14 @@ class CamillaConfig extends React.Component<
   }
 
   render() {
+    const errors = this.state.errors;
     return <div className="configapp">
       <ReactTooltip multiline={true} />
       <SidePanel
           currentConfigFile={this.state.currentConfigFile}
           config={this.state.config}
           setConfig={this.handleConfig}
+          setErrors={this.setErrors}
           setCurrentConfig={this.setCurrentConfig}
       />
       <Tabs
@@ -86,10 +96,10 @@ class CamillaConfig extends React.Component<
           onSelect={this.switchTab}
       >
         <TabList>
-          <Tab>Devices</Tab>
-          <Tab>Filters</Tab>
-          <Tab>Mixers</Tab>
-          <Tab>Pipeline</Tab>
+          <Tab>Devices {errors.devices && <ErrorIcon/>}</Tab>
+          <Tab>Filters {errors.filters && <ErrorIcon/>}</Tab>
+          <Tab>Mixers {errors.mixers && <ErrorIcon/>}</Tab>
+          <Tab>Pipeline {errors.pipeline && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
         </TabList>
         <TabPanel>
@@ -97,6 +107,7 @@ class CamillaConfig extends React.Component<
               devices={this.state.config.devices}
               guiConfig={this.state.guiConfig}
               updateConfig={this.updateConfig}
+              errors={errors.devices}
           />
         </TabPanel>
         <TabPanel>
@@ -105,6 +116,7 @@ class CamillaConfig extends React.Component<
               samplerate={this.state.config.devices.samplerate}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
+              errors={errors.filters}
           />
         </TabPanel>
         <TabPanel>
@@ -129,6 +141,13 @@ class CamillaConfig extends React.Component<
       </Tabs>
     </div>
   }
+}
+
+function ErrorIcon(props: {}) {
+  return <MdiIcon
+      icon={mdiAlertCircle}
+      tooltip="There are errors on this tab"
+      style={{color: 'var(--error-text-color)'}}/>
 }
 
 ReactDOM.render(

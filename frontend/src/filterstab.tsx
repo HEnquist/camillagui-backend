@@ -38,6 +38,7 @@ export class FiltersTab extends React.Component<
       samplerate: number
       coeffDir: string
       updateConfig: (update: Update<Config>) => void
+      errors: any
     },
     {
       popupVisible: boolean
@@ -47,7 +48,7 @@ export class FiltersTab extends React.Component<
     }
 > {
   constructor(props: any) {
-    super(props);
+    super(props)
     this.filterNames = this.filterNames.bind(this)
     this.addFilter = this.addFilter.bind(this)
     this.removeFilter = this.removeFilter.bind(this)
@@ -141,7 +142,7 @@ export class FiltersTab extends React.Component<
   }
 
   render() {
-    let filters = this.props.filters;
+    let {filters, errors} = this.props
     return <div className="tabpanel">
       {this.filterNames()
           .map(name =>
@@ -149,6 +150,7 @@ export class FiltersTab extends React.Component<
                   key={this.state.filterKeys[name]}
                   name={name}
                   filter={filters[name]}
+                  errors={errors ? errors[name] : undefined}
                   availableCoeffFiles={this.state.availableCoeffFiles}
                   updateFilter={update => this.updateFilter(name, update)}
                   rename={newName => this.renameFilter(name, newName)}
@@ -185,6 +187,7 @@ interface FilterDefaults {
 class FilterView extends React.Component<{
   name: string
   filter: Filter
+  errors: any
   availableCoeffFiles: string[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
@@ -304,6 +307,7 @@ class FilterView extends React.Component<{
         </div>
         <FilterParams
             filter={this.props.filter}
+            errors={this.props.errors}
             updateFilter={this.props.updateFilter}
             availableCoeffFiles={this.props.availableCoeffFiles}
             coeffDir={this.props.coeffDir}
@@ -397,6 +401,7 @@ const defaultParameters: {
 
 class FilterParams extends React.Component<{
   filter: Filter
+  errors: any
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: string[]
   coeffDir: string
@@ -430,12 +435,12 @@ class FilterParams extends React.Component<{
   }
 
   render() {
-    const filter = this.props.filter;
+    const {filter, errors} = this.props
     const subtypeOptions = Object.keys(defaultParameters[filter.type])
-    const errors = this.props.filterDefaults.errors;
     return <div style={{width: '100%', textAlign: 'right'}}>
       <EnumOption
           value={filter.type}
+          error={errors?.type}
           options={Object.keys(defaultParameters)}
           desc="type"
           data-tip="Filter type"
@@ -443,12 +448,13 @@ class FilterParams extends React.Component<{
       {subtypeOptions[0] !== 'Default' &&
       <EnumOption
           value={filter.parameters.type}
+          error={errors?.parameters?.type}
           options={subtypeOptions}
           desc="subtype"
           data-tip="Filter subtype"
           onChange={this.onSubtypeChange}/>
       }
-      {this.renderFilterParams(filter.parameters)}
+      {this.renderFilterParams(filter.parameters, errors?.parameters)}
       {isConvolutionFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
       <div
           className="button button-with-text"
@@ -456,15 +462,10 @@ class FilterParams extends React.Component<{
         ...
       </div>
       }
-      {errors && errors.map(error =>
-          <div style={{marginTop: '5px', color: 'var(--error-text-color)'}}>
-            {error}
-          </div>
-      )}
     </div>
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }) {
+  private renderFilterParams(parameters: { [p: string]: any }, errors?: any) {
     return Object.keys(parameters).map(parameter => {
       if (parameter === 'type') // 'type' is already rendered by parent component
         return null
@@ -476,6 +477,7 @@ class FilterParams extends React.Component<{
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
+        error: errors ? errors[parameter] : undefined,
         desc: info.desc,
         'data-tip': info.tooltip,
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
@@ -513,8 +515,9 @@ class FilterParams extends React.Component<{
   }
 
   private hasHiddenDefaultValue() {
-    return this.isHiddenDefaultValue('skip_bytes_lines')
-        || this.isHiddenDefaultValue('read_bytes_lines')
+    const filterDefaults = this.props.filterDefaults;
+    return filterDefaults && Object.keys(filterDefaults).length > 0 &&
+        (this.isHiddenDefaultValue('skip_bytes_lines') || this.isHiddenDefaultValue('read_bytes_lines'))
   }
 
   private isHiddenDefaultValue(parameter: string) {

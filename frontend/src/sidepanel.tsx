@@ -8,7 +8,10 @@ import {Config} from "./config";
 import {loadActiveConfig} from "./files";
 
 class ConfigCheckMessage extends React.Component<
-    { config: Config },
+    {
+      config: Config,
+      setErrors: (errors: any) => void
+    },
     { message: string }
 > {
 
@@ -32,10 +35,18 @@ class ConfigCheckMessage extends React.Component<
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(config),
       })
-      const config_errors = await request.text()
-      this.setState({message: config_errors})
+      if (request.ok) {
+        const message = await request.text()
+        this.setState({message: message})
+        this.props.setErrors({})
+      } else {
+        const errors = await request.json()
+        this.props.setErrors(errors)
+        this.setState({message: 'Config has errors'})
+      }
     } catch (err) {
       this.setState({message: ''})
+      this.props.setErrors({})
     }
   }
 
@@ -55,6 +66,7 @@ class ConfigCheckMessage extends React.Component<
 interface SidePanelProps {
   config: Config
   setConfig: (config: Config) => void
+  setErrors: (errors: any) => void
   currentConfigFile?: string
   setCurrentConfig: (filename: string, config: Config) => void
 }
@@ -214,7 +226,7 @@ export class SidePanel extends React.Component<
               Apply to CDSP
             </div>
           </div>
-          <ConfigCheckMessage config={this.props.config} />
+          <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>
         </Box>
         <div className="versions">
           <div>CamillaDSP {this.state.cdsp_version}</div>
