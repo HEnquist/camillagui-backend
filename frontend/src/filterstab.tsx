@@ -172,7 +172,7 @@ export class FiltersTab extends React.Component<
   }
 }
 
-function isConvolutionFilter(filter: Filter): boolean {
+function isConvolutionFileFilter(filter: Filter): boolean {
   return filter.type === 'Conv' && (filter.parameters.type === 'Raw' || filter.parameters.type === 'Wav')
 }
 
@@ -210,7 +210,7 @@ class FilterView extends React.Component<{
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.state = {popupOpen: false, showDefaults: false, filterDefaults: {}}
-    if (isConvolutionFilter(this.props.filter))
+    if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
   }
 
@@ -234,7 +234,7 @@ class FilterView extends React.Component<{
 
   private updateDefaults(filename: string, updateFilter: boolean = false) {
     const filter = this.props.filter
-    if (isConvolutionFilter(filter)) {
+    if (isConvolutionFileFilter(filter)) {
       fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`)
           .then(response =>
               response.json().then(json => {
@@ -249,12 +249,15 @@ class FilterView extends React.Component<{
 
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter(filter => {
-      const subtype = defaults.type ? defaults.type : filter.parameters.type;
-      const guiDefaults = cloneDeep(defaultParameters[filter.type][subtype])
-      const filename = filter.parameters.filename;
-      filter.parameters = guiDefaults;
-      filter.parameters.filename = filename;
-      filter.parameters = {...filter.parameters, ...defaults};
+      const subtype = defaults.type ? defaults.type : filter.parameters.type
+      const guiDefaults = defaultParameters[filter.type][subtype]
+      const channel = filter.parameters.channel
+      filter.parameters = {
+        ...guiDefaults,
+        ...defaults,
+        filename: filter.parameters.filename
+      }
+      if (channel) filter.parameters.channel = channel
     })
   }
 
@@ -289,7 +292,7 @@ class FilterView extends React.Component<{
               tooltip="Plot frequency response of this filter"
               onClick={this.props.plot}/>
           }
-          {isConvolutionFilter(filter) &&
+          {isConvolutionFileFilter(filter) &&
           <>
             <MdiButton
                 icon={mdiFileSearch}
@@ -399,6 +402,8 @@ const defaultParameters: {
   },
 }
 
+const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
+
 class FilterParams extends React.Component<{
   filter: Filter
   errors: any
@@ -429,9 +434,13 @@ class FilterParams extends React.Component<{
   }
 
   private onSubtypeChange(subtype: string) {
-    this.props.updateFilter(filter =>
-        filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
-    );
+    this.props.updateFilter(filter => {
+          const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
+          filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
+          if (oldFilename && isConvolutionFileFilter(filter))
+            filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
+        }
+    )
   }
 
   render() {
@@ -455,7 +464,7 @@ class FilterParams extends React.Component<{
           onChange={this.onSubtypeChange}/>
       }
       {this.renderFilterParams(filter.parameters, errors?.parameters)}
-      {isConvolutionFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
+      {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
       <div
           className="button button-with-text"
           onClick={() => this.props.setShowDefaults()}>
@@ -515,18 +524,18 @@ class FilterParams extends React.Component<{
   }
 
   private hasHiddenDefaultValue() {
-    const filterDefaults = this.props.filterDefaults;
-    return filterDefaults && Object.keys(filterDefaults).length > 0 &&
-        (this.isHiddenDefaultValue('skip_bytes_lines') || this.isHiddenDefaultValue('read_bytes_lines'))
+    const filterDefaults = this.props.filterDefaults
+    return filterDefaults
+        && Object.keys(filterDefaults).some(parameter => this.isHiddenDefaultValue(parameter))
   }
 
   private isHiddenDefaultValue(parameter: string) {
     const filter = this.props.filter
-    const filterDefaults = this.props.filterDefaults
-    return !this.props.showDefaults && (
-        (parameter === 'skip_bytes_lines' && filter.parameters.skip_bytes_lines === filterDefaults.skip_bytes_lines)
-        || (parameter === 'read_bytes_lines' && filter.parameters.read_bytes_lines === filterDefaults.read_bytes_lines)
-    )
+    const filterDefaults: any = this.props.filterDefaults
+    return !this.props.showDefaults
+        && parameter
+        && hiddenParameters.includes(parameter)
+        && filter.parameters[parameter] === filterDefaults[parameter]
   }
 
   parameterInfos: {
