@@ -15,7 +15,7 @@ import {
   renameMixer,
   Source
 } from "./config";
-import {mdiUndoVariant, mdiVolumeOff} from "@mdi/js";
+import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js";
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
@@ -244,7 +244,7 @@ function SourceView(props: {
           onChange={gain => update(source => source.gain = gain)}/>
     </div>
     <MdiButton
-        icon={mdiUndoVariant}
+        icon={mdiPlusMinusVariant}
         tooltip={"Invert source channel"}
         smallButton={true}
         className={source.inverted ? "highlighted-button" : ""}
