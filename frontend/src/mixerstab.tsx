@@ -1,6 +1,16 @@
 import React from "react";
 import "./index.css";
-import {AddButton, Box, DeleteButton, IntOption, MdiButton, modifiedCopyOf, ParsedInput, Update} from "./common-tsx";
+import {
+  AddButton,
+  Box,
+  DeleteButton,
+  ErrorMessage,
+  IntOption,
+  MdiButton,
+  modifiedCopyOf,
+  ParsedInput,
+  Update
+} from "./common-tsx";
 import {
   Config,
   defaultMapping,
@@ -16,9 +26,11 @@ import {
   Source
 } from "./config";
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js";
+import {ErrorsForPath, errorsForSubpath} from "./errors";
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
+  errors: ErrorsForPath
   updateConfig: (update: Update<Config>) => void
 }, {
   mixerKeys: { [name: string]: number}
@@ -78,15 +90,17 @@ export class MixersTab extends React.Component<{
   }
 
   render() {
-    const {mixers, updateConfig} = this.props;
+    const {mixers, errors, updateConfig} = this.props
     return (
         <div className="tabpanel">
+          <ErrorMessage message={errors({path: []})}/>
           {this.mixerNames()
               .map(name =>
                   <MixerView
                       key={this.state.mixerKeys[name]}
                       name={name}
                       mixer={mixers[name]}
+                      errors={errorsForSubpath(errors, name)}
                       update={updateMixer => updateConfig(config => updateMixer(config.mixers[name]))}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
@@ -105,12 +119,13 @@ export class MixersTab extends React.Component<{
 function MixerView(props: {
   name: string
   mixer: Mixer
+  errors: ErrorsForPath
   isFreeMixerName: (name: string) => boolean
   rename: (newName: string) => void
   remove: () => void
   update: (update: Update<Mixer>) => void
 }) {
-  const {name, mixer, rename, remove, update} = props
+  const {name, mixer, errors, rename, remove, update} = props
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName));
   return <Box title={
@@ -129,6 +144,7 @@ function MixerView(props: {
           onClick={remove}/>
     </>
   }>
+    <ErrorMessage message={errors({path: []})}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
@@ -147,10 +163,14 @@ function MixerView(props: {
           min={1}
           onChange={channelsOut => update(mixer => mixer.channels.out = channelsOut)}/>
     </div>
+    <ErrorMessage message={errors({path: ['channels']})}/>
+    <ErrorMessage message={errors({path: ['channels', 'in']})}/>
+    <ErrorMessage message={errors({path: ['channels', 'out']})}/>
     {mixer.mapping.map((mapping, index) =>
         <MappingView
             key={index}
             mapping={mapping}
+            errors={errorsForSubpath(errors, 'mapping', index)}
             channels={mixer.channels}
             update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
             remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
@@ -168,11 +188,12 @@ function MixerView(props: {
 
 function MappingView(props: {
   mapping: Mapping
+  errors: ErrorsForPath
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mapping>) => void
 }) {
-  const {mapping, channels, remove, update} = props
+  const {mapping, errors, channels, remove, update} = props
   return <Box style={{marginTop: '5px'}} title={
     <>
       <IntOption
@@ -196,11 +217,16 @@ function MappingView(props: {
           onClick={remove}/>
     </>
   }>
+    <ErrorMessage message={errors({path: ['dest']})}/>
+    <ErrorMessage message={errors({path: ['mute']})}/>
+    <ErrorMessage message={errors({path: []})}/>
+    <ErrorMessage message={errors({path: ['sources']})}/>
     <div style={{display: 'flex', flexDirection: 'column'}}>
       {mapping.sources.map((source, index) =>
           <React.Fragment key={index}>
             <SourceView
                 source={source}
+                errors={errorsForSubpath(errors, 'sources', index)}
                 channelsIn={channels.in}
                 update={updateSource => update(mixer => updateSource(mixer.sources[index]))}
                 remove={() => update(mixer => mixer.sources.splice(index, 1))}/>
@@ -218,43 +244,47 @@ function MappingView(props: {
 
 function SourceView(props: {
   source: Source
+  errors: ErrorsForPath
   channelsIn: number
   update: (update: Update<Source>) => void
   remove: () => void
 }) {
-  const {source, channelsIn, update, remove} = props
-  return <div className="horizontally-spaced-content">
-    <div style={{flexGrow: 1}}>
-      <IntOption
-          value={source.channel}
-          desc="channel"
-          data-tip="Channel number"
-          small={true}
-          withControls={true}
-          min={0}
-          max={channelsIn-1}
-          onChange={channel => update(source => source.channel = channel)}/>
+  const {source, errors, channelsIn, update, remove} = props
+  return <>
+    <div className="horizontally-spaced-content">
+      <div style={{flexGrow: 1}}>
+        <IntOption
+            value={source.channel}
+            desc="channel"
+            data-tip="Channel number"
+            small={true}
+            withControls={true}
+            min={0}
+            max={channelsIn - 1}
+            onChange={channel => update(source => source.channel = channel)}/>
+      </div>
+      <div style={{flexGrow: 1}}>
+        <IntOption
+            value={source.gain}
+            desc="gain"
+            data-tip="Gain in dB"
+            small={true}
+            onChange={gain => update(source => source.gain = gain)}/>
+      </div>
+      <MdiButton
+          icon={mdiPlusMinusVariant}
+          tooltip={"Invert source channel"}
+          smallButton={true}
+          className={source.inverted ? "highlighted-button" : ""}
+          onClick={() => update(source => source.inverted = !source.inverted)}/>
+      <MdiButton
+          icon={mdiVolumeOff}
+          tooltip={"Mute source channel"}
+          smallButton={true}
+          className={source.mute ? "highlighted-button" : ""}
+          onClick={() => update(source => source.mute = !source.mute)}/>
+      <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
     </div>
-    <div style={{flexGrow: 1}}>
-      <IntOption
-          value={source.gain}
-          desc="gain"
-          data-tip="Gain in dB"
-          small={true}
-          onChange={gain => update(source => source.gain = gain)}/>
-    </div>
-    <MdiButton
-        icon={mdiPlusMinusVariant}
-        tooltip={"Invert source channel"}
-        smallButton={true}
-        className={source.inverted ? "highlighted-button" : ""}
-        onClick={() => update(source => source.inverted = !source.inverted)}/>
-    <MdiButton
-        icon={mdiVolumeOff}
-        tooltip={"Mute source channel"}
-        smallButton={true}
-        className={source.mute ? "highlighted-button" : ""}
-        onClick={() => update(source => source.mute = !source.mute)}/>
-    <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
-  </div>
+    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
+  </>
 }

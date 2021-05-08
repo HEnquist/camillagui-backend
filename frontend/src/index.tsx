@@ -9,7 +9,7 @@ import {FiltersTab} from "./filterstab";
 import {DevicesTab} from "./devicestab";
 import {MixersTab} from "./mixerstab";
 import {PipelineTab} from "./pipelinetab";
-import {SidePanel} from "./sidepanel";
+import {ErrorsForPath, noErrors, errorsForSubpath} from "./errors";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import {Files} from "./files";
@@ -18,6 +18,7 @@ import {defaultGuiConfig, GuiConfig} from "./guiconfig";
 import {MdiIcon, Update} from "./common-tsx";
 import cloneDeep from "lodash/cloneDeep";
 import {mdiAlertCircle} from "@mdi/js";
+import {SidePanel} from "./sidepanel";
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -26,7 +27,7 @@ class CamillaConfig extends React.Component<
     currentConfigFile?: string
     guiConfig: GuiConfig
     config: Config
-    errors: any
+    errors: ErrorsForPath
   }
 > {
   constructor(props: unknown) {
@@ -40,7 +41,7 @@ class CamillaConfig extends React.Component<
       activetab: 0,
       guiConfig: defaultGuiConfig(),
       config: defaultConfig(),
-      errors: {}
+      errors: noErrors
     }
     fetch("/api/guiconfig")
         .then(data => data.json())
@@ -96,10 +97,10 @@ class CamillaConfig extends React.Component<
           onSelect={this.switchTab}
       >
         <TabList>
-          <Tab>Devices {errors.devices && <ErrorIcon/>}</Tab>
-          <Tab>Filters {errors.filters && <ErrorIcon/>}</Tab>
-          <Tab>Mixers {errors.mixers && <ErrorIcon/>}</Tab>
-          <Tab>Pipeline {errors.pipeline && <ErrorIcon/>}</Tab>
+          <Tab>Devices {errors({path: ['devices'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Filters {errors({path: ['filters'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
         </TabList>
         <TabPanel>
@@ -107,7 +108,7 @@ class CamillaConfig extends React.Component<
               devices={this.state.config.devices}
               guiConfig={this.state.guiConfig}
               updateConfig={this.updateConfig}
-              errors={errors.devices}
+              errors={errorsForSubpath(errors, 'devices')}
           />
         </TabPanel>
         <TabPanel>
@@ -116,19 +117,21 @@ class CamillaConfig extends React.Component<
               samplerate={this.state.config.devices.samplerate}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
-              errors={errors.filters}
+              errors={errorsForSubpath(errors, 'filters')}
           />
         </TabPanel>
         <TabPanel>
           <MixersTab
               mixers={this.state.config.mixers}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'mixers')}
           />
         </TabPanel>
         <TabPanel>
           <PipelineTab
               config={this.state.config}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'pipeline')}
           />
         </TabPanel>
         <TabPanel>

@@ -13,17 +13,19 @@ import {
   IntOption,
   TextOption,
   Update
-} from "./common-tsx";
+} from "./common-tsx"
+import {ErrorsForPath, errorsForSubpath} from "./errors"
 
 export function DevicesTab(props: {
   guiConfig: GuiConfig
   devices: Devices
-  errors?: any
+  errors: ErrorsForPath
   updateConfig: (update: Update<Config>) => void
 }) {
   const updateDevices = (update: Update<Devices>) => props.updateConfig(config => update(config.devices))
   const {guiConfig, devices, errors} = props
   return <div className="tabpanel">
+    <ErrorMessage message={errors({path: []})}/>
     <Samplerate
         hide_capture_samplerate={guiConfig.hide_capture_samplerate}
         devices={devices}
@@ -50,12 +52,12 @@ export function DevicesTab(props: {
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
         capture={devices.capture}
-        errors={errors}
+        errors={errorsForSubpath(errors, 'capture')}
         onChange={updateDevices}/>
     <PlaybackOptions
         hide_playback_device={guiConfig.hide_playback_device}
         playback={devices.playback}
-        errors={errors}
+        errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
     />
   </div>;
@@ -64,14 +66,14 @@ export function DevicesTab(props: {
 function Samplerate(props: {
   hide_capture_samplerate: boolean
   devices: Devices
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_capture_samplerate && !props.devices.enable_resampling)
     return null;
   return <SamplerateOption
       samplerate={props.devices.samplerate}
-      error={props.errors?.samplerate}
+      error={props.errors({path: ['samplerate']})}
       desc="samplerate"
       data-tip="Sample rate for processing and output"
       onChange={samplerate => props.onChange(devices => { devices.samplerate = samplerate })}
@@ -122,19 +124,19 @@ function SamplerateOption(props: {
 
 function BufferOptions(props: {
   devices: Devices,
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   return <Box title="Buffers">
     <IntOption
         value={props.devices.chunksize}
-        error={props.errors?.chunksize}
+        error={props.errors({path: ['chunksize']})}
         desc="chunksize"
         data-tip="Chunksize for the processing"
         onChange={chunksize => props.onChange(devices => devices.chunksize = chunksize)}/>
     <IntOption
         value={props.devices.queuelimit}
-        error={props.errors?.queuelimit}
+        error={props.errors({path: ['queuelimit']})}
         desc="queuelimit"
         data-tip="Length limit for internal queues"
         onChange={queuelimit => props.onChange(devices => devices.queuelimit = queuelimit)}/>
@@ -144,7 +146,7 @@ function BufferOptions(props: {
 function SilenceOptions(props: {
   hide_silence: boolean
   devices: Devices
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_silence)
@@ -152,13 +154,13 @@ function SilenceOptions(props: {
   return <Box title="Silence">
     <FloatOption
         value={props.devices.silence_threshold}
-        error={props.errors?.silence_threshold}
+        error={props.errors({path: ['silence_threshold']})}
         desc="silence_threshold"
         data-tip="Threshold for silence in dB"
         onChange={silenceThreshold => props.onChange(devices => devices.silence_threshold = silenceThreshold)}/>
     <FloatOption
         value={props.devices.silence_timeout}
-        error={props.errors?.silence_timeout}
+        error={props.errors({path: ['silence_timeout']})}
         desc="silence_timeout"
         data-tip="Pause processing after this many seconds of silence"
         onChange={silenceTimeout => props.onChange(devices => devices.silence_timeout = silenceTimeout)}/>
@@ -167,7 +169,7 @@ function SilenceOptions(props: {
 
 function RateAdjustOptions(props: {
   devices: Devices
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   let playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type);
@@ -176,19 +178,19 @@ function RateAdjustOptions(props: {
   return <Box title="Rate adjust">
     <BoolOption
         value={props.devices.enable_rate_adjust}
-        error={props.errors?.enable_rate_adjust}
+        error={props.errors({path: ['enable_rate_adjust']})}
         desc="enable_rate_adjust"
         data-tip="Enable rate adjust"
         onChange={enableRateAdjust => props.onChange(devices => devices.enable_rate_adjust = enableRateAdjust)}/>
     <IntOption
         value={props.devices.adjust_period}
-        error={props.errors?.adjust_period}
+        error={props.errors({path: ['adjust_period']})}
         desc="adjust_period"
         data-tip="Delay in seconds between rate adjustments"
         onChange={adjustPeriod => props.onChange(devices => devices.adjust_period = adjustPeriod)}/>
     <IntOption
         value={props.devices.target_level}
-        error={props.errors?.target_level}
+        error={props.errors({path: ['target_level']})}
         desc="target_level"
         data-tip="Target output buffer fill level for rate adjust"
         onChange={targetLevel => props.onChange(devices => devices.target_level = targetLevel)}/>
@@ -198,7 +200,7 @@ function RateAdjustOptions(props: {
 function ResamplingOptions(props: {
   hide_capture_samplerate: boolean
   devices: Devices
-  errors?: any
+  errors: ErrorsForPath
   error?: string
   onChange: (update: Update<Devices>) => void
 }) {
@@ -206,13 +208,13 @@ function ResamplingOptions(props: {
   return <Box title="Resampling">
     <BoolOption
         value={devices.enable_resampling}
-        error={errors?.enable_resampling}
+        error={errors({path: ['enable_resampling']})}
         desc="enable_resampling"
         data-tip="Enable rasampling"
         onChange={enableResampling => props.onChange(devices => devices.enable_resampling = enableResampling)}/>
     <EnumOption
         value={devices.resampler_type}
-        error={errors?.resampler_type}
+        error={errors({path: ['resampler_type']})}
         options={ResamplerTypes}
         desc="resampler_type"
         data-tip="Resampler type"
@@ -220,7 +222,7 @@ function ResamplingOptions(props: {
     {!props.hide_capture_samplerate &&
     <SamplerateOption
         samplerate={devices.capture_samplerate}
-        error={errors?.capture_samplerate}
+        error={errors({path: ['capture_samplerate']})}
         desc="capture_samplerate"
         data-tip="Sample rate for capture device.<br>If different from 'samplerate' then resampling must be enabled"
         onChange={captureSamplerate => props.onChange(devices => devices.capture_samplerate = captureSamplerate)}/>
@@ -231,7 +233,7 @@ function ResamplingOptions(props: {
 function CaptureOptions(props: {
   hide_capture_device: boolean
   capture: CaptureDevice
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_capture_device)
@@ -247,16 +249,17 @@ function CaptureOptions(props: {
   };
   const {capture, onChange, errors} = props
   return <Box title="Capture device">
+    <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={capture.type}
-        error={errors?.capture?.type}
+        error={errors({path: ['type']})}
         options={Object.keys(defaults)}
         desc="type"
         data-tip="Audio backend for capture"
         onChange={captureType => onChange(devices => devices.capture = defaults[captureType])}/>
     <IntOption
         value={capture.channels}
-        error={errors?.capture?.channels}
+        error={errors({path: ['channels']})}
         desc="channels"
         data-tip="Number of channels"
         withControls={true}
@@ -264,7 +267,7 @@ function CaptureOptions(props: {
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
     <EnumOption
         value={capture.format}
-        error={errors?.capture?.format}
+        error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
         data-tip="Sample format"
@@ -272,7 +275,7 @@ function CaptureOptions(props: {
     {(capture.type === 'Alsa' || capture.type === 'CoreAudio' || capture.type === 'Pulse' || capture.type === 'Wasapi') &&
     <TextOption
         value={capture.device}
-        error={errors?.capture?.device}
+        error={errors({path: ['device']})}
         desc="device"
         data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
@@ -282,7 +285,7 @@ function CaptureOptions(props: {
     {capture.type === 'File' &&
     <TextOption
         value={capture.filename}
-        error={errors?.capture?.filename}
+        error={errors({path: ['filename']})}
         desc="filename"
         data-tip="Filename including path"
         onChange={filename => onChange(devices => // @ts-ignore
@@ -292,7 +295,7 @@ function CaptureOptions(props: {
     {(capture.type === 'File' || capture.type === 'Stdin') && <>
       <IntOption
           value={capture.extra_samples}
-          error={errors?.capture?.extra_samples}
+          error={errors({path: ['extra_samples']})}
           desc="extra_samples"
           data-tip="Number of extra samples to insert after end of file"
           onChange={extra_samples => onChange(devices => // @ts-ignore
@@ -300,7 +303,7 @@ function CaptureOptions(props: {
           )}/>
       <IntOption
           value={capture.skip_bytes}
-          error={errors?.capture?.skip_bytes}
+          error={errors({path: ['skip_bytes']})}
           desc="skip_bytes"
           data-tip="Number of bytes to skip at beginning of file"
           onChange={skip_bytes => onChange(devices => // @ts-ignore
@@ -308,7 +311,7 @@ function CaptureOptions(props: {
           )}/>
       <IntOption
           value={capture.read_bytes}
-          error={errors?.capture?.read_bytes}
+          error={errors({path: ['read_bytes']})}
           desc="read_bytes"
           data-tip="Read up to this number of bytes"
           onChange={read_bytes => onChange(devices => // @ts-ignore
@@ -316,13 +319,13 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
-  </Box>;
+  </Box>
 }
 
 function PlaybackOptions(props: {
   hide_playback_device: boolean
   playback: PlaybackDevice
-  errors?: any
+  errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_playback_device)
@@ -337,16 +340,17 @@ function PlaybackOptions(props: {
   };
   const {onChange, playback, errors} = props
   return <Box title="Playback device">
+    <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={props.playback.type}
-        error={errors?.playback?.type}
+        error={errors({path: ['type']})}
         options={Object.keys(defaults)}
         data-tip="Audio backend for playback"
         desc="type"
         onChange={playbackType => props.onChange(devices => devices.playback = defaults[playbackType])}/>
     <IntOption
         value={playback.channels}
-        error={errors?.playback?.channels}
+        error={errors({path: ['channels']})}
         desc="channels"
         data-tip="Number of channels"
         withControls={true}
@@ -354,7 +358,7 @@ function PlaybackOptions(props: {
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
     <EnumOption
         value={playback.format}
-        error={errors?.playback?.format}
+        error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
         data-tip="Sample format"
@@ -362,7 +366,7 @@ function PlaybackOptions(props: {
     {(playback.type === 'Alsa' || playback.type === 'CoreAudio' || playback.type === 'Pulse' || playback.type === 'Wasapi') &&
     <TextOption
         value={playback.device}
-        error={errors?.playback?.device}
+        error={errors({path: ['device']})}
         desc="device"
         data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
@@ -372,7 +376,7 @@ function PlaybackOptions(props: {
     {playback.type === 'File' &&
     <TextOption
         value={playback.filename}
-        error={errors?.playback?.filename}
+        error={errors({path: ['filename']})}
         desc="filename"
         data-tip="Filename including path"
         onChange={filename => onChange(devices => // @ts-ignore

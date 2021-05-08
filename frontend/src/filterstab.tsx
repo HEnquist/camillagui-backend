@@ -20,6 +20,7 @@ import {
   DeleteButton,
   doUpload,
   EnumOption,
+  ErrorMessage,
   FloatListOption,
   FloatOption,
   IntOption,
@@ -31,6 +32,7 @@ import {
   Update,
   UploadButton
 } from "./common-tsx";
+import {ErrorsForPath, errorsForSubpath} from "./errors"
 
 export class FiltersTab extends React.Component<
     {
@@ -38,7 +40,7 @@ export class FiltersTab extends React.Component<
       samplerate: number
       coeffDir: string
       updateConfig: (update: Update<Config>) => void
-      errors: any
+      errors: ErrorsForPath
     },
     {
       popupVisible: boolean
@@ -144,13 +146,14 @@ export class FiltersTab extends React.Component<
   render() {
     let {filters, errors} = this.props
     return <div className="tabpanel">
+      <ErrorMessage message={errors({path: []})}/>
       {this.filterNames()
           .map(name =>
               <FilterView
                   key={this.state.filterKeys[name]}
                   name={name}
                   filter={filters[name]}
-                  errors={errors ? errors[name] : undefined}
+                  errors={errorsForSubpath(errors, name)}
                   availableCoeffFiles={this.state.availableCoeffFiles}
                   updateFilter={update => this.updateFilter(name, update)}
                   rename={newName => this.renameFilter(name, newName)}
@@ -187,7 +190,7 @@ interface FilterDefaults {
 class FilterView extends React.Component<{
   name: string
   filter: Filter
-  errors: any
+  errors: ErrorsForPath
   availableCoeffFiles: string[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
@@ -406,7 +409,7 @@ const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
 
 class FilterParams extends React.Component<{
   filter: Filter
-  errors: any
+  errors: ErrorsForPath
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: string[]
   coeffDir: string
@@ -445,11 +448,13 @@ class FilterParams extends React.Component<{
 
   render() {
     const {filter, errors} = this.props
-    const subtypeOptions = Object.keys(defaultParameters[filter.type])
+    const defaults = defaultParameters[filter.type]
+    const subtypeOptions = defaults ? Object.keys(defaults) : []
     return <div style={{width: '100%', textAlign: 'right'}}>
+      <ErrorMessage message={errors({path: []})}/>
       <EnumOption
           value={filter.type}
-          error={errors?.type}
+          error={errors({path: ['type']})}
           options={Object.keys(defaultParameters)}
           desc="type"
           data-tip="Filter type"
@@ -457,13 +462,14 @@ class FilterParams extends React.Component<{
       {subtypeOptions[0] !== 'Default' &&
       <EnumOption
           value={filter.parameters.type}
-          error={errors?.parameters?.type}
+          error={errors({path: ['parameters', 'type']})}
           options={subtypeOptions}
           desc="subtype"
           data-tip="Filter subtype"
           onChange={this.onSubtypeChange}/>
       }
-      {this.renderFilterParams(filter.parameters, errors?.parameters)}
+      <ErrorMessage message={errors({path: ['parameters']})}/>
+      {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
       <div
           className="button button-with-text"
@@ -474,7 +480,7 @@ class FilterParams extends React.Component<{
     </div>
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }, errors?: any) {
+  private renderFilterParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
     return Object.keys(parameters).map(parameter => {
       if (parameter === 'type') // 'type' is already rendered by parent component
         return null
@@ -486,7 +492,7 @@ class FilterParams extends React.Component<{
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
-        error: errors ? errors[parameter] : undefined,
+        error: errors({path: [parameter]}),
         desc: info.desc,
         'data-tip': info.tooltip,
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)

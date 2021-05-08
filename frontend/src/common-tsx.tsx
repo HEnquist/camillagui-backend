@@ -369,7 +369,7 @@ export const FIELD_ERROR_BACKGROUND = 'var(--error-field-background-color)'
 
 export function ErrorMessage(props: {message?: string}) {
     return props.message ?
-        <div style={{color: 'var(--error-text-color)'}}>{props.message}</div>
+        <div style={{color: 'var(--error-text-color)', whiteSpace: 'pre-wrap'}}>{props.message}</div>
         : null
 }
 
@@ -427,16 +427,18 @@ export function EnumInput<OPTION extends string>(props: {
     className?: string
     onChange: (value: OPTION) => void
 }) {
+    const {options, value} = props
+    const opt = options.includes(value) ? options : [value].concat(options)
     return <select
         id={props.desc}
         name={props.desc}
-        value={props.value}
+        value={value}
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
         className={props.className}
     >
-        {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
+        {opt.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
 }
 

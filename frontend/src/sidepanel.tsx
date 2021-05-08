@@ -6,11 +6,13 @@ import {VolumeBox} from "./volumebox";
 import {Box} from "./common-tsx";
 import {Config} from "./config";
 import {loadActiveConfig} from "./files";
+import {ErrorsForPath, errorsOf, noErrors} from "./errors";
+
 
 class ConfigCheckMessage extends React.Component<
     {
       config: Config,
-      setErrors: (errors: any) => void
+      setErrors: (errors: ErrorsForPath) => void
     },
     { message: string }
 > {
@@ -38,15 +40,17 @@ class ConfigCheckMessage extends React.Component<
       if (request.ok) {
         const message = await request.text()
         this.setState({message: message})
-        this.props.setErrors({})
+        this.props.setErrors(noErrors)
       } else {
-        const errors = await request.json()
+        const json = await request.json()
+        const errors = errorsOf(json)
+        const globalErrors = errors({path:[]})
+        this.setState({message: 'Config has errors' + (globalErrors ? (':\n' + globalErrors) : '')})
         this.props.setErrors(errors)
-        this.setState({message: 'Config has errors'})
       }
     } catch (err) {
-      this.setState({message: ''})
-      this.props.setErrors({})
+      this.setState({message: 'Validation failed'})
+      this.props.setErrors(noErrors)
     }
   }
 
@@ -59,7 +63,7 @@ class ConfigCheckMessage extends React.Component<
       textColor = 'var(--success-text-color)'
     else
       textColor = 'var(--error-text-color)'
-    return <div className="config-status" style={{color: textColor}}>{message}</div>
+    return <div className="config-status" style={{color: textColor, whiteSpace: 'pre-wrap'}}>{message}</div>
   }
 }
 
