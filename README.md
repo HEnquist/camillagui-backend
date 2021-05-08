@@ -54,7 +54,9 @@ Download the zip-file ("camillagui.zip") for the latest release. This includes b
 
 Unzip the file, and edit `config/camillagui.yml` if needed.
 
-#### Configuration
+## Configuration
+
+The backend configuration is stored in `config/camillagui.yml`
 
 ```yaml
 ---
@@ -65,12 +67,15 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
+update_symlink: true
+on_set_active_config: null
+on_get_active_config: null
 ```
 The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
 
-`active_config` is the location, where a symbolic link to the currently active config will be created.
+`active_config` is the location, where a symbolic link to the currently active config will be created, if `update_symlink` is `true`.
 At times, the link might not exist, or point to a non-existent file.
 If you run CamillaDSP on the same machine as CamillaGUI,
 you probably want to use this path as the value for the config parameter of your CamillaDSP executable.
@@ -81,15 +86,22 @@ If this does not exist, the internal default config is used.
 Note: the `active_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts.
 To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `active_config`.
 
-#### Integrating with other software
+### Integrating with other software
 If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
 
-##### Styling the GUI
+#### Setting and getting the active config
+Setting `update_symlink` to `false` means the backend will not keep any symlink updated. This can then instead ww accomplished by the options `on_set_active_config` and `on_get_active_config`. These are shell commands that will be run to set and get the active config.
+
+The `on_set_active_config` command will get the filename appended at the end. If for example the setting is: `on_set_active_config: "my_updater_script.sh"`, then the backend will run the command: `my_updater_script.sh new_active_config.yml`
+
+The `on_get_active_config` command is expected to return a filename on stdout. As an example, read a filename from a text file: `on_get_active_config: "cat myconfig.txt"`.
+
+#### Styling the GUI
 The UI can be styled by editing `build/css-variables.css`.
 Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
 
-##### Hiding GUI Options
+#### Hiding GUI Options
 Options can hidden from your users by editing `config/gui-config.yml`.
 Setting any of the options to `true` hides the corresponding option or section.
 ```yaml

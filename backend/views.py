@@ -187,7 +187,7 @@ async def get_active_config_file(request):
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
-    active_config_name = get_active_config(request.app["active_config"])
+    active_config_name = get_active_config(request)
     if active_config_name:
         json = {"configFileName": active_config_name, "config": json_config}
     else:
@@ -199,7 +199,7 @@ async def set_active_config_name(request):
     json = await request.json()
     config_name = json["name"]
     config_file = path_of_configfile(request, config_name)
-    set_as_active_config(request.app["active_config"], config_file)
+    set_as_active_config(request, config_file)
     return web.Response(text="OK")
 
 
