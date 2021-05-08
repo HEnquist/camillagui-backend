@@ -14,7 +14,6 @@ from .filemanagement import (
 )
 from .filterdefaults import defaults_for_filter
 from .settings import gui_config_path
-from .validation import errors_as_json_tree
 from .version import VERSION
 
 
@@ -168,7 +167,7 @@ async def set_config(request):
         validator.validate_config(json_config_with_absolute_filter_paths)
         errors = validator.get_errors()
         if len(errors) > 0:
-            return web.json_response(data=errors_as_json_tree(errors))
+            return web.json_response(data=errors)
     save_config(filename, json_config, request)
     return web.Response(text="OK")
 
@@ -245,7 +244,7 @@ async def validate_config(request):
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
     if len(errors) > 0:
-        return web.json_response(status=500, data=errors_as_json_tree(errors))
+        return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
 
 
