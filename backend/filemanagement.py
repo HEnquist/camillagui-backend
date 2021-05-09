@@ -81,17 +81,25 @@ def get_active_config(request):
     active_config = request.app["active_config"]
     on_get = request.app["on_get_active_config"]
     if not on_get:
-        if islink(active_config) and isfile(active_config):
+        if os.name == "nt":
+            return None
+        elif islink(active_config) and isfile(active_config):
             target = os.readlink(active_config)
             _head, tail = split(target)
             return tail
         else:
             return None
     else:
-        stream = os.popen(on_get)
-        target = stream.read().strip()
-        _head, tail = split(target)
-        return tail
+        try:
+            print(f"Running command: {on_get}")
+            stream = os.popen(on_get)
+            result = stream.read().strip()
+            _head, tail = split(result)
+            print(f"Command result: {result}, filename: {tail}")
+            return tail
+        except Exception as e:
+            print(f"Failed to run on_get_active_config command, error: {e}")
+            return None
 
 
 
@@ -99,14 +107,22 @@ def set_as_active_config(request, file):
     active_config = request.app["active_config"]
     update = request.app["update_symlink"]
     on_set = request.app["on_set_active_config"]
-    if update:
+    if update and os.name != "nt":
         if not active_config:
             return
-        if islink(active_config):
-            os.unlink(active_config)
-        os.symlink(file, active_config)
+        try:
+            if islink(active_config):
+                os.unlink(active_config)
+            os.symlink(file, active_config)
+        except Exception as e:
+            print(f"Failed to update symlink, error: {e}")
     if on_set:
-        os.system(f"{on_set} {file}")
+        try:
+            cmd = on_set.format(f'"{file}"')
+            print(f"Running command: {cmd}")
+            os.system(cmd)
+        except Exception as e:
+            print(f"Failed to run on_set_active_config command, error: {e}")
 
 
 def save_config(config_name, json_config, request):

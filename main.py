@@ -18,6 +18,10 @@ setup_static_routes(app)
 
 camillaconnection = CamillaConnection(config["camilla_host"], config["camilla_port"])
 camillavalidator = CamillaValidator()
+if config["supported_capture_types"] is not None:
+    camillavalidator.set_supported_capture_types(config["supported_capture_types"])
+if config["supported_playback_types"] is not None:
+    camillavalidator.set_supported_playback_types(config["supported_playback_types"])
 #camillaconnection.connect()
 app["CAMILLA"] = camillaconnection
 app["VALIDATOR"] = camillavalidator

@@ -67,15 +67,18 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
-update_symlink: true
-on_set_active_config: null
-on_get_active_config: null
+update_symlink: true (*)
+on_set_active_config: null (*)
+on_get_active_config: null (*)
+supported_capture_types: null (*)
+supported_playback_types: null (*)
 ```
-The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
+The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
 
 `active_config` is the location, where a symbolic link to the currently active config will be created, if `update_symlink` is `true`.
+Note that this is not supported on Windows.
 At times, the link might not exist, or point to a non-existent file.
 If you run CamillaDSP on the same machine as CamillaGUI,
 you probably want to use this path as the value for the config parameter of your CamillaDSP executable.
@@ -86,14 +89,26 @@ If this does not exist, the internal default config is used.
 Note: the `active_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts.
 To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `active_config`.
 
+By default, the config validator allows all the device types that CamillaDSP can support. To limit this to the types that are supported on a particular system, give the list of supported types as: 
+```yaml
+supported_capture_types: ["Alsa", "File", "Stdin"]
+supported_playback_types: ["Alsa", "File", "Stdout"]
+```
+
 ### Integrating with other software
 If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
 
 #### Setting and getting the active config
-Setting `update_symlink` to `false` means the backend will not keep any symlink updated. This can then instead ww accomplished by the options `on_set_active_config` and `on_get_active_config`. These are shell commands that will be run to set and get the active config.
+Setting `update_symlink` to `false` means the backend will not keep any symlink updated. This can then instead be accomplished by the options `on_set_active_config` and `on_get_active_config`. These are shell commands that will be run to set and get the active config. Since the commands are run in the operating system shell, the syntax depends on which operating system is used. The examples given below are for Linux.
 
-The `on_set_active_config` command will get the filename appended at the end. If for example the setting is: `on_set_active_config: "my_updater_script.sh"`, then the backend will run the command: `my_updater_script.sh new_active_config.yml`
+The `on_set_active_config` uses Python string formatting to insert the filename. This means it must contain an empty set of curly brackets, where the filename will get inserted surrounded by quotes. 
+- Running a script: `on_set_active_config: my_updater_script.sh {}`
+  
+  The backend will run the command: `my_updater_script.sh "/full/path/to/new_active_config.yml"`
+- Saving config filename to a text file: `on_set_active_config: echo {} > active_configname.txt` 
+
+  The backend will run the command: `echo "/full/path/to/new_active_config.yml" > active_configname.txt`
 
 The `on_get_active_config` command is expected to return a filename on stdout. As an example, read a filename from a text file: `on_get_active_config: "cat myconfig.txt"`.
 

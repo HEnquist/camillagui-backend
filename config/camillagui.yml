@@ -9,3 +9,5 @@ active_config: "~/camilladsp/active_config.yml"
 update_symlink: true
 on_set_active_config: null
 on_get_active_config: null
+supported_capture_types: null
+supported_playback_types: null

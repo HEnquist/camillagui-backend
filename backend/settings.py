@@ -21,6 +21,10 @@ def get_config(path):
         config["on_set_active_config"] = None
     if "on_get_active_config" not in config:
         config["on_get_active_config"] = None
+    if "supported_capture_types" not in config:
+        config["supported_capture_types"] = None
+    if "supported_playback_types" not in config:
+        config["supported_playback_types"] = None
     print(config)
     return config
 
