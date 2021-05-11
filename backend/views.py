@@ -10,7 +10,7 @@ from .filemanagement import (
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
     new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
     replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
-    make_absolute
+    make_absolute, replace_tokens_in_filter_config
 )
 from .filterdefaults import defaults_for_filter
 from .settings import gui_config_path
@@ -119,6 +119,7 @@ async def eval_filter_values(request):
     config_dir = request.app["config_dir"]
     config = content["config"]
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
+    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
     data = eval_filter(
         config,
         name=content["name"],
@@ -133,8 +134,13 @@ async def eval_filterstep_values(request):
     content = await request.json()
     config = content["config"]
     config_dir = request.app["config_dir"]
+    plot_config = new_config_with_absolute_filter_paths(config, config_dir)
+    samplerate = plot_config["devices"]["samplerate"]
+    channels = plot_config["devices"]["capture"]["channels"]
+    for _, filt in plot_config["filters"].items():
+        replace_tokens_in_filter_config(filt, samplerate, channels)
     data = eval_filterstep(
-        new_config_with_absolute_filter_paths(config, config_dir),
+        plot_config,
         content["index"],
         name="Filterstep {}".format(content["index"]),
         npoints=1000,
