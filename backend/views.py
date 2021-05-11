@@ -13,7 +13,7 @@ from .filemanagement import (
     make_absolute, replace_tokens_in_filter_config
 )
 from .filterdefaults import defaults_for_filter
-from .settings import gui_config_path
+from .settings import get_gui_config_or_defaults
 from .version import VERSION
 
 
@@ -307,10 +307,9 @@ async def download_configs_zip(request):
 
 
 async def get_gui_config(request):
-    with open(gui_config_path) as yaml_config:
-        json_config = yaml.safe_load(yaml_config)
-        json_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
-    return web.json_response(json_config)
+    gui_config = get_gui_config_or_defaults()
+    gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
+    return web.json_response(gui_config)
 
 
 async def get_defaults_for_coeffs(request):

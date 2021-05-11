@@ -4,9 +4,15 @@ import pathlib
 import yaml
 
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
-config_path = BASEPATH / 'config' / 'camillagui.yml'
-gui_config_path = BASEPATH / 'config' / 'gui-config.yml'
+CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
+GUI_CONFIG_PATH = BASEPATH / 'config' / 'gui-config.yml'
 
+GUI_CONFIG_DEFAULTS = {
+    "hide_capture_samplerate": False,
+    "hide_silence": False,
+    "hide_capture_device": False,
+    "hide_playback_device": False,
+}
 
 def get_config(path):
     with open(path) as f:
@@ -25,7 +31,8 @@ def get_config(path):
         config["supported_capture_types"] = None
     if "supported_playback_types" not in config:
         config["supported_playback_types"] = None
-    print(config)
+    print("Backend configuration:")
+    print(yaml.dump(config))
     return config
 
 
@@ -35,5 +42,13 @@ def absolute_path_or_none_if_empty(path):
     else:
         return None
 
+def get_gui_config_or_defaults():
+    try:
+        with open(GUI_CONFIG_PATH) as yaml_config:
+            json_config = yaml.safe_load(yaml_config)
+        return json_config
+    except Exception:
+        print("Unable to read gui config file, using defaults")
+        return GUI_CONFIG_DEFAULTS
 
-config = get_config(config_path)
+config = get_config(CONFIG_PATH)
