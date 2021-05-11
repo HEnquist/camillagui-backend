@@ -115,6 +115,7 @@ class CamillaConfig extends React.Component<
           <FiltersTab
               filters={this.state.config.filters}
               samplerate={this.state.config.devices.samplerate}
+              channels={this.state.config.devices.capture.channels}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'filters')}

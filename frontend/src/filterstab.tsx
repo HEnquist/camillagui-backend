@@ -38,6 +38,7 @@ export class FiltersTab extends React.Component<
     {
       filters: Filters
       samplerate: number
+      channels: number
       coeffDir: string
       updateConfig: (update: Update<Config>) => void
       errors: ErrorsForPath
@@ -122,6 +123,7 @@ export class FiltersTab extends React.Component<
         name: name,
         config: this.props.filters[name],
         samplerate: this.props.samplerate,
+        channels: this.props.channels,
       }),
     }).then(
       result => result.json()
