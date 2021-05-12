@@ -81,9 +81,7 @@ def get_active_config(request):
     active_config = request.app["active_config"]
     on_get = request.app["on_get_active_config"]
     if not on_get:
-        if os.name == "nt":
-            return None
-        elif islink(active_config) and isfile(active_config):
+        if islink(active_config) and isfile(active_config):
             target = os.readlink(active_config)
             _head, tail = split(target)
             return tail
@@ -107,7 +105,7 @@ def set_as_active_config(request, file):
     active_config = request.app["active_config"]
     update = request.app["update_symlink"]
     on_set = request.app["on_set_active_config"]
-    if update and os.name != "nt":
+    if update:
         if not active_config:
             return
         try:
@@ -116,6 +114,8 @@ def set_as_active_config(request, file):
             os.symlink(file, active_config)
         except Exception as e:
             print(f"Failed to update symlink, error: {e}")
+            if os.name == "nt":
+                print("Creating symlinks on Windows requires special privileges or admin rights.")
     if on_set:
         try:
             cmd = on_set.format(f'"{file}"')
