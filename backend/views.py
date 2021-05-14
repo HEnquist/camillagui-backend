@@ -5,17 +5,16 @@ from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
 
-from backend.filemanagement import (
+from .filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
     new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
     replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
-    make_absolute
+    make_absolute, replace_tokens_in_filter_config
 )
-from backend.filterdefaults.filterdefaults import defaults_for_filter
-from backend.offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
-from backend.settings import gui_config_path
-from backend.version import VERSION
+from .filterdefaults import defaults_for_filter
+from .settings import get_gui_config_or_defaults
+from .version import VERSION
 
 
 async def get_gui_index(request):
@@ -24,19 +23,23 @@ async def get_gui_index(request):
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
+    cdsp_version = None
     try:
         state = cdsp.get_state()
+        cdsp_version = cdsp.get_version()
     except IOError:
         try:
             cdsp.connect()
             state = cdsp.get_state()
+            cdsp_version = cdsp.get_version()
         except IOError:
             state = "offline"
-    cdsp_or_backup = cdsp_or_backup_cdsp(request)
-    cdsp_version = cdsp_or_backup.get_version()
+    cdsp_version = cdsp.get_version()
+    if cdsp_version is None:
+        cdsp_version = ['x', 'x', 'x']
     status = {
         "cdsp_status": state,
-        "cdsp_version": version_string(cdsp_version) if cdsp_version else "x.x.x",
+        "cdsp_version": version_string(cdsp_version),
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
     }
@@ -116,6 +119,7 @@ async def eval_filter_values(request):
     config_dir = request.app["config_dir"]
     config = content["config"]
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
+    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
     data = eval_filter(
         config,
         name=content["name"],
@@ -130,8 +134,13 @@ async def eval_filterstep_values(request):
     content = await request.json()
     config = content["config"]
     config_dir = request.app["config_dir"]
+    plot_config = new_config_with_absolute_filter_paths(config, config_dir)
+    samplerate = plot_config["devices"]["samplerate"]
+    channels = plot_config["devices"]["capture"]["channels"]
+    for _, filt in plot_config["filters"].items():
+        replace_tokens_in_filter_config(filt, samplerate, channels)
     data = eval_filterstep(
-        new_config_with_absolute_filter_paths(config, config_dir),
+        plot_config,
         content["index"],
         name="Filterstep {}".format(content["index"]),
         npoints=1000,
@@ -152,11 +161,19 @@ async def set_config(request):
     json_config = json["config"]
     filename = json["filename"]
     config_dir = request.app["config_dir"]
+    cdsp = request.app["CAMILLA"]
+    validator = request.app["VALIDATOR"]
     json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
-    try:
-        set_cdsp_config_or_validate_with_backup_cdsp(json_config_with_absolute_filter_paths, request)
-    except CamillaError as e:
-        return web.Response(status=500, text=str(e))
+    if cdsp.is_connected():
+        try:
+            cdsp.set_config(json_config_with_absolute_filter_paths)
+        except CamillaError as e:
+            return web.Response(status=500, text=str(e))
+    else: 
+        validator.validate_config(json_config_with_absolute_filter_paths)
+        errors = validator.get_errors()
+        if len(errors) > 0:
+            return web.json_response(data=errors)
     save_config(filename, json_config, request)
     return web.Response(text="OK")
 
@@ -175,7 +192,9 @@ async def get_active_config_file(request):
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
-    active_config_name = get_active_config(request.app["active_config"])
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    active_config_name = get_active_config(request)
     if active_config_name:
         json = {"configFileName": active_config_name, "config": json_config}
     else:
@@ -187,7 +206,7 @@ async def set_active_config_name(request):
     json = await request.json()
     config_name = json["name"]
     config_file = path_of_configfile(request, config_name)
-    set_as_active_config(request.app["active_config"], config_file)
+    set_as_active_config(request, config_file)
     return web.Response(text="OK")
 
 
@@ -218,8 +237,9 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    cdsp = cdsp_or_backup_cdsp(request)
-    config = cdsp.read_config(config_ymlstr)
+    validator = request.app["VALIDATOR"]
+    validator.validate_yamlstring(config_ymlstr)
+    config = validator.get_config()
     return web.json_response(config)
 
 
@@ -228,11 +248,11 @@ async def validate_config(request):
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
-    cdsp = cdsp_or_backup_cdsp(request)
-    try:
-        cdsp.validate_config(config_with_absolute_filter_paths)
-    except CamillaError as e:
-        return web.Response(text=str(e))
+    validator = request.app["VALIDATOR"]
+    validator.validate_config(config_with_absolute_filter_paths)
+    errors = validator.get_errors()
+    if len(errors) > 0:
+        return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
 
 
@@ -287,15 +307,13 @@ async def download_configs_zip(request):
 
 
 async def get_gui_config(request):
-    with open(gui_config_path) as yaml_config:
-        json_config = yaml.safe_load(yaml_config)
-        json_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
-    return web.json_response(json_config)
+    gui_config = get_gui_config_or_defaults()
+    gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
+    return web.json_response(gui_config)
 
 
 async def get_defaults_for_coeffs(request):
     path = request.query["file"]
     absolute_path = make_absolute(path, request.app["config_dir"])
-    coeff_dir = request.app["coeff_dir"]
-    defaults = defaults_for_filter(absolute_path, coeff_dir)
+    defaults = defaults_for_filter(absolute_path)
     return web.json_response(defaults)

@@ -7,8 +7,6 @@ from os.path import isfile, islink, split, join, relpath, normpath, isabs, commo
 import yaml
 from aiohttp import web
 
-from backend.offline import cdsp_or_backup_cdsp
-
 
 def file_in_folder(folder, filename):
     if '/' in filename or '\\' in filename:
@@ -74,27 +72,57 @@ def zip_of_files(folder, files):
 
 
 def get_yaml_as_json(request, path):
-    with open(path, 'r') as file:
-        cdsp = cdsp_or_backup_cdsp(request)
-        yaml_config = file.read()
-        return cdsp.read_config(yaml_config)
+    validator = request.app["VALIDATOR"]
+    validator.validate_file(path)
+    return validator.get_config()
 
 
-def get_active_config(active_config):
-    if islink(active_config) and isfile(active_config):
-        target = os.readlink(active_config)
-        head, tail = split(target)
-        return tail
+def get_active_config(request):
+    active_config = request.app["active_config"]
+    on_get = request.app["on_get_active_config"]
+    if not on_get:
+        if islink(active_config) and isfile(active_config):
+            target = os.readlink(active_config)
+            _head, tail = split(target)
+            return tail
+        else:
+            return None
     else:
-        return None
+        try:
+            print(f"Running command: {on_get}")
+            stream = os.popen(on_get)
+            result = stream.read().strip()
+            _head, tail = split(result)
+            print(f"Command result: {result}, filename: {tail}")
+            return tail
+        except Exception as e:
+            print(f"Failed to run on_get_active_config command, error: {e}")
+            return None
 
 
-def set_as_active_config(active_config, file):
-    if not active_config:
-        return
-    if islink(active_config):
-        os.unlink(active_config)
-    os.symlink(file, active_config)
+
+def set_as_active_config(request, file):
+    active_config = request.app["active_config"]
+    update = request.app["update_symlink"]
+    on_set = request.app["on_set_active_config"]
+    if update:
+        if not active_config:
+            return
+        try:
+            if islink(active_config):
+                os.unlink(active_config)
+            os.symlink(file, active_config)
+        except Exception as e:
+            print(f"Failed to update symlink, error: {e}")
+            if os.name == "nt":
+                print("Creating symlinks on Windows requires special privileges or admin rights.")
+    if on_set:
+        try:
+            cmd = on_set.format(f'"{file}"')
+            print(f"Running command: {cmd}")
+            os.system(cmd)
+        except Exception as e:
+            print(f"Failed to run on_set_active_config command, error: {e}")
 
 
 def save_config(config_name, json_config, request):
@@ -116,7 +144,7 @@ def new_config_with_absolute_filter_paths(json_config, config_dir):
 
 
 def new_config_with_relative_filter_paths(json_config, config_dir):
-    def conversion(path): return make_relative(path, config_dir)
+    conversion = lambda path : make_relative(path, config_dir)
     return new_config_with_paths_converted(json_config, conversion)
 
 
@@ -124,25 +152,35 @@ def new_config_with_paths_converted(json_config, conversion):
     config = deepcopy(json_config)
     filters = config["filters"]
     for filterName in filters:
-        filter = filters[filterName]
-        convert_filter_path(filter, conversion)
+        filt = filters[filterName]
+        convert_filter_path(filt, conversion)
     return config
 
 
 def convert_filter_path(json_filter, conversion):
-    type = json_filter["type"]
+    ftype = json_filter["type"]
     parameters = json_filter["parameters"]
-    if type == "Conv" and parameters["type"] == "File":
+    if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
         parameters["filename"] = conversion(parameters["filename"])
 
 
 def replace_relative_filter_path_with_absolute_paths(json_filter, config_dir):
-    def conversion(path): return make_absolute(path, config_dir)
+    conversion = lambda path : make_absolute(path, config_dir)
     convert_filter_path(json_filter, conversion)
 
 
 def make_absolute(path, base_dir):
     return path if isabs(path) else normpath(join(base_dir, path))
+
+def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
+    ftype = filterconfig["type"]
+    parameters = filterconfig["parameters"]
+    if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
+        filename = parameters["filename"]
+        filename = filename.replace("$samplerate$", str(samplerate))
+        filename = filename.replace("$channels$", str(channels))
+        parameters["filename"] = filename
+
 
 
 def make_relative(path, base_dir):
