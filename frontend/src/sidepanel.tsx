@@ -6,9 +6,14 @@ import {VolumeBox} from "./volumebox";
 import {Box} from "./common-tsx";
 import {Config} from "./config";
 import {loadActiveConfig} from "./files";
+import {ErrorsForPath, errorsOf, noErrors} from "./errors";
+
 
 class ConfigCheckMessage extends React.Component<
-    { config: Config },
+    {
+      config: Config,
+      setErrors: (errors: ErrorsForPath) => void
+    },
     { message: string }
 > {
 
@@ -32,10 +37,20 @@ class ConfigCheckMessage extends React.Component<
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(config),
       })
-      const config_errors = await request.text()
-      this.setState({message: config_errors})
+      if (request.ok) {
+        const message = await request.text()
+        this.setState({message: message})
+        this.props.setErrors(noErrors)
+      } else {
+        const json = await request.json()
+        const errors = errorsOf(json)
+        const globalErrors = errors({path:[]})
+        this.setState({message: 'Config has errors' + (globalErrors ? (':\n' + globalErrors) : '')})
+        this.props.setErrors(errors)
+      }
     } catch (err) {
-      this.setState({message: ''})
+      this.setState({message: 'Validation failed'})
+      this.props.setErrors(noErrors)
     }
   }
 
@@ -48,13 +63,14 @@ class ConfigCheckMessage extends React.Component<
       textColor = 'var(--success-text-color)'
     else
       textColor = 'var(--error-text-color)'
-    return <div className="config-status" style={{color: textColor}}>{message}</div>
+    return <div className="config-status" style={{color: textColor, whiteSpace: 'pre-wrap'}}>{message}</div>
   }
 }
 
 interface SidePanelProps {
   config: Config
   setConfig: (config: Config) => void
+  setErrors: (errors: any) => void
   currentConfigFile?: string
   setCurrentConfig: (filename: string, config: Config) => void
 }
@@ -214,7 +230,7 @@ export class SidePanel extends React.Component<
               Apply to CDSP
             </div>
           </div>
-          <ConfigCheckMessage config={this.props.config} />
+          <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>
         </Box>
         <div className="versions">
           <div>CamillaDSP {this.state.cdsp_version}</div>

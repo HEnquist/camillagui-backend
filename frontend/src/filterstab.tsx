@@ -20,6 +20,7 @@ import {
   DeleteButton,
   doUpload,
   EnumOption,
+  ErrorMessage,
   FloatListOption,
   FloatOption,
   IntOption,
@@ -31,13 +32,16 @@ import {
   Update,
   UploadButton
 } from "./common-tsx";
+import {ErrorsForPath, errorsForSubpath} from "./errors"
 
 export class FiltersTab extends React.Component<
     {
       filters: Filters
       samplerate: number
+      channels: number
       coeffDir: string
       updateConfig: (update: Update<Config>) => void
+      errors: ErrorsForPath
     },
     {
       popupVisible: boolean
@@ -47,7 +51,7 @@ export class FiltersTab extends React.Component<
     }
 > {
   constructor(props: any) {
-    super(props);
+    super(props)
     this.filterNames = this.filterNames.bind(this)
     this.addFilter = this.addFilter.bind(this)
     this.removeFilter = this.removeFilter.bind(this)
@@ -119,6 +123,7 @@ export class FiltersTab extends React.Component<
         name: name,
         config: this.props.filters[name],
         samplerate: this.props.samplerate,
+        channels: this.props.channels,
       }),
     }).then(
       result => result.json()
@@ -141,14 +146,16 @@ export class FiltersTab extends React.Component<
   }
 
   render() {
-    let filters = this.props.filters;
+    let {filters, errors} = this.props
     return <div className="tabpanel">
+      <ErrorMessage message={errors({path: []})}/>
       {this.filterNames()
           .map(name =>
               <FilterView
                   key={this.state.filterKeys[name]}
                   name={name}
                   filter={filters[name]}
+                  errors={errorsForSubpath(errors, name)}
                   availableCoeffFiles={this.state.availableCoeffFiles}
                   updateFilter={update => this.updateFilter(name, update)}
                   rename={newName => this.renameFilter(name, newName)}
@@ -170,20 +177,22 @@ export class FiltersTab extends React.Component<
   }
 }
 
-function isConvolutionFilter(filter: Filter): boolean {
-  return filter.type === 'Conv' && filter.parameters.type === 'File'
+function isConvolutionFileFilter(filter: Filter): boolean {
+  return filter.type === 'Conv' && (filter.parameters.type === 'Raw' || filter.parameters.type === 'Wav')
 }
 
 interface FilterDefaults {
+  type?: string
   format?: string
-  skip_bytes?: number
-  read_bytes?: number
+  skip_bytes_lines?: number
+  read_bytes_lines?: number
   errors?: string[]
 }
 
 class FilterView extends React.Component<{
   name: string
   filter: Filter
+  errors: ErrorsForPath
   availableCoeffFiles: string[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
@@ -206,7 +215,7 @@ class FilterView extends React.Component<{
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.state = {popupOpen: false, showDefaults: false, filterDefaults: {}}
-    if (isConvolutionFilter(this.props.filter))
+    if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
   }
 
@@ -230,7 +239,7 @@ class FilterView extends React.Component<{
 
   private updateDefaults(filename: string, updateFilter: boolean = false) {
     const filter = this.props.filter
-    if (isConvolutionFilter(filter)) {
+    if (isConvolutionFileFilter(filter)) {
       fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`)
           .then(response =>
               response.json().then(json => {
@@ -245,13 +254,15 @@ class FilterView extends React.Component<{
 
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter(filter => {
-      const guiDefaults = defaultParameters[filter.type][filter.parameters.type]
-      filter.parameters.format = defaults.format ?
-          defaults.format : guiDefaults.format
-      filter.parameters.skip_bytes_lines = defaults.skip_bytes ?
-          defaults.skip_bytes : guiDefaults.skip_bytes_lines
-      filter.parameters.read_bytes_lines = defaults.read_bytes ?
-          defaults.read_bytes : guiDefaults.read_bytes_lines
+      const subtype = defaults.type ? defaults.type : filter.parameters.type
+      const guiDefaults = defaultParameters[filter.type][subtype]
+      const channel = filter.parameters.channel
+      filter.parameters = {
+        ...guiDefaults,
+        ...defaults,
+        filename: filter.parameters.filename
+      }
+      if (channel) filter.parameters.channel = channel
     })
   }
 
@@ -286,7 +297,7 @@ class FilterView extends React.Component<{
               tooltip="Plot frequency response of this filter"
               onClick={this.props.plot}/>
           }
-          {isConvolutionFilter(filter) &&
+          {isConvolutionFileFilter(filter) &&
           <>
             <MdiButton
                 icon={mdiFileSearch}
@@ -304,6 +315,7 @@ class FilterView extends React.Component<{
         </div>
         <FilterParams
             filter={this.props.filter}
+            errors={this.props.errors}
             updateFilter={this.props.updateFilter}
             availableCoeffFiles={this.props.availableCoeffFiles}
             coeffDir={this.props.coeffDir}
@@ -365,11 +377,12 @@ const defaultParameters: {
     LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
   },
   Conv: {
-    File: { type: "File", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+    Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+    Wav: { type: "Wav", filename: "", channel: 0 },
     Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0], length: 0 },
   },
   Delay: {
-    Default: { delay: 0.0, unit: "ms" },
+    Default: { delay: 0.0, unit: "ms", subsample: false },
   },
   Gain: {
     Default: { gain: 0.0, inverted: false, mute: false },
@@ -394,8 +407,11 @@ const defaultParameters: {
   },
 }
 
+const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
+
 class FilterParams extends React.Component<{
   filter: Filter
+  errors: ErrorsForPath
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: string[]
   coeffDir: string
@@ -423,18 +439,24 @@ class FilterParams extends React.Component<{
   }
 
   private onSubtypeChange(subtype: string) {
-    this.props.updateFilter(filter =>
-        filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
-    );
+    this.props.updateFilter(filter => {
+          const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
+          filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
+          if (oldFilename && isConvolutionFileFilter(filter))
+            filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
+        }
+    )
   }
 
   render() {
-    const filter = this.props.filter;
-    const subtypeOptions = Object.keys(defaultParameters[filter.type])
-    const errors = this.props.filterDefaults.errors;
+    const {filter, errors} = this.props
+    const defaults = defaultParameters[filter.type]
+    const subtypeOptions = defaults ? Object.keys(defaults) : []
     return <div style={{width: '100%', textAlign: 'right'}}>
+      <ErrorMessage message={errors({path: []})}/>
       <EnumOption
           value={filter.type}
+          error={errors({path: ['type']})}
           options={Object.keys(defaultParameters)}
           desc="type"
           data-tip="Filter type"
@@ -442,28 +464,25 @@ class FilterParams extends React.Component<{
       {subtypeOptions[0] !== 'Default' &&
       <EnumOption
           value={filter.parameters.type}
+          error={errors({path: ['parameters', 'type']})}
           options={subtypeOptions}
           desc="subtype"
           data-tip="Filter subtype"
           onChange={this.onSubtypeChange}/>
       }
-      {this.renderFilterParams(filter.parameters)}
-      {isConvolutionFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
+      <ErrorMessage message={errors({path: ['parameters']})}/>
+      {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
+      {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
       <div
           className="button button-with-text"
           onClick={() => this.props.setShowDefaults()}>
         ...
       </div>
       }
-      {errors && errors.map(error =>
-          <div style={{marginTop: '5px', color: 'var(--error-text-color)'}}>
-            {error}
-          </div>
-      )}
     </div>
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }) {
+  private renderFilterParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
     return Object.keys(parameters).map(parameter => {
       if (parameter === 'type') // 'type' is already rendered by parent component
         return null
@@ -475,6 +494,7 @@ class FilterParams extends React.Component<{
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
+        error: errors({path: [parameter]}),
         desc: info.desc,
         'data-tip': info.tooltip,
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
@@ -512,19 +532,18 @@ class FilterParams extends React.Component<{
   }
 
   private hasHiddenDefaultValue() {
-    return this.isHiddenDefaultValue('format')
-        || this.isHiddenDefaultValue('skip_bytes_lines')
-        || this.isHiddenDefaultValue('read_bytes_lines')
+    const filterDefaults = this.props.filterDefaults
+    return filterDefaults
+        && Object.keys(filterDefaults).some(parameter => this.isHiddenDefaultValue(parameter))
   }
 
   private isHiddenDefaultValue(parameter: string) {
     const filter = this.props.filter
-    const filterDefaults = this.props.filterDefaults
-    return !this.props.showDefaults && (
-        (parameter === 'format' && filter.parameters.format === filterDefaults.format)
-        || (parameter === 'skip_bytes_lines' && filter.parameters.skip_bytes_lines === filterDefaults.skip_bytes)
-        || (parameter === 'read_bytes_lines' && filter.parameters.read_bytes_lines === filterDefaults.read_bytes)
-    )
+    const filterDefaults: any = this.props.filterDefaults
+    return !this.props.showDefaults
+        && parameter
+        && hiddenParameters.includes(parameter)
+        && filter.parameters[parameter] === filterDefaults[parameter]
   }
 
   parameterInfos: {
@@ -580,6 +599,11 @@ class FilterParams extends React.Component<{
       tooltip: "Comma-separated list of coefficients for b",
     },
     bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
+    channel: {
+      type: "int",
+      desc: "channel",
+      tooltip: "Index of channel to use, starting from 0",
+    },
     delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
     filename: {
       type: "text",
@@ -659,6 +683,11 @@ class FilterParams extends React.Component<{
       type: "float",
       desc: "slope",
       tooltip: "Filter slope in dB per octave",
+    },
+    subsample: { 
+      type: "bool", 
+      desc: "subsample", 
+      tooltip: "Use subsample precision for delays" 
     },
     unit: {
       type: "enum",

@@ -183,6 +183,16 @@ export function MdiButton(props: {
     </div>
 }
 
+export function MdiIcon(props: {
+    icon: string
+    tooltip: string
+    style?: CSSProperties
+}) {
+    return <span data-tip={props.tooltip} style={props.style}>
+        <Icon path={props.icon} size={'15px'}/>
+    </span>
+}
+
 export function CloseButton(props: {
     onClick: () => void
 }) {
@@ -204,6 +214,7 @@ export function OptionLine(props: {
 
 export function IntOption(props:{
     value: number
+    error?: string
     desc: string
     'data-tip': string
     onChange: (value: number) => void
@@ -213,9 +224,12 @@ export function IntOption(props:{
     max?: number
 }) {
     const small = props.small
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
-        <IntInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} />
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+            <IntInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} />
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 export function IntInput(props: {
@@ -246,51 +260,59 @@ export function IntInput(props: {
 
 export function FloatOption(props:{
     value: number
+    error?: string
     desc: string
     'data-tip': string
     onChange: (value: number) => void
 }) {
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <ParsedInput
-            className="setting-input"
-            value={props.value}
-            data-tip={props["data-tip"]}
-            onChange={props.onChange}
-            asString={(float: number) => float.toString()}
-            parseValue={(rawValue: string) => {
-                const parsedvalue = parseFloat(rawValue)
-                return isNaN(parsedvalue) ? undefined : parsedvalue
-            }}
-        />
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <ParsedInput
+                className="setting-input"
+                value={props.value}
+                data-tip={props["data-tip"]}
+                onChange={props.onChange}
+                asString={(float: number) => float.toString()}
+                parseValue={(rawValue: string) => {
+                    const parsedvalue = parseFloat(rawValue)
+                    return isNaN(parsedvalue) ? undefined : parsedvalue
+                }}
+            />
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 export function FloatListOption(props: {
     value: number[]
+    error?: string
     desc: string
     'data-tip': string
     onChange: (value: number[]) => void
 }) {
-    return <OptionLine desc={props.desc} data-tip={props['data-tip']}>
-        <ParsedInput
-            className="setting-input"
-            value={props.value}
-            data-tip={props['data-tip']}
-            asString={(value: number[]) => value.join(", ")}
-            parseValue={(rawValue: string) => {
-                const parsedvalue = [];
-                const values = rawValue.split(",");
-                for (let value of values) {
-                    const tempvalue = parseFloat(value);
-                    if (isNaN(tempvalue))
-                        return undefined;
-                    parsedvalue.push(tempvalue);
-                }
-                return parsedvalue
-            }}
-            onChange={props.onChange}
-        />
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props['data-tip']}>
+            <ParsedInput
+                className="setting-input"
+                value={props.value}
+                data-tip={props['data-tip']}
+                asString={(value: number[]) => value.join(", ")}
+                parseValue={(rawValue: string) => {
+                    const parsedvalue = [];
+                    const values = rawValue.split(",");
+                    for (let value of values) {
+                        const tempvalue = parseFloat(value);
+                        if (isNaN(tempvalue))
+                            return undefined;
+                        parsedvalue.push(tempvalue);
+                    }
+                    return parsedvalue
+                }}
+                onChange={props.onChange}
+            />
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 type ParsedInputProps<TYPE> = {
@@ -345,31 +367,42 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
 
 export const FIELD_ERROR_BACKGROUND = 'var(--error-field-background-color)'
 
+export function ErrorMessage(props: {message?: string}) {
+    return props.message ?
+        <div style={{color: 'var(--error-text-color)', whiteSpace: 'pre-wrap'}}>{props.message}</div>
+        : null
+}
+
 export function BoolOption(props: {
-    value: boolean,
-    desc: string,
+    value: boolean
+    error?: string
+    desc: string
     'data-tip': string
     small?: boolean
     onChange: (value: boolean) => void
 }) {
     const small = props.small
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
-        <div className={"setting-input" + (small ? " small-setting-input" : "")}
-             data-tip={props["data-tip"]}
-             style={{cursor: 'pointer'}}>
-            <input
-                style={{marginLeft: 0, marginTop: '8px', marginBottom: '8px'}}
-                type="checkbox"
-                checked={props.value}
-                data-tip={props["data-tip"]}
-                onChange={(e) => props.onChange(e.target.checked)}/>
-        </div>
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+            <div className={"setting-input" + (small ? " small-setting-input" : "")}
+                 data-tip={props["data-tip"]}
+                 style={{cursor: 'pointer'}}>
+                <input
+                    style={{marginLeft: 0, marginTop: '8px', marginBottom: '8px'}}
+                    type="checkbox"
+                    checked={props.value}
+                    data-tip={props["data-tip"]}
+                    onChange={(e) => props.onChange(e.target.checked)}/>
+            </div>
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 export function EnumOption<OPTION extends string>(props: {
     value: OPTION
     options: OPTION[]
+    error?: string
     desc: string
     'data-tip': string
     style?: CSSProperties
@@ -377,9 +410,12 @@ export function EnumOption<OPTION extends string>(props: {
     onChange: (value: OPTION) => void
 }) {
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <EnumInput {...props} className={className}/>
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <EnumInput {...props} className={className}/>
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 export function EnumInput<OPTION extends string>(props: {
@@ -391,32 +427,38 @@ export function EnumInput<OPTION extends string>(props: {
     className?: string
     onChange: (value: OPTION) => void
 }) {
+    const {options, value} = props
+    const opt = options.includes(value) ? options : [value].concat(options)
     return <select
         id={props.desc}
         name={props.desc}
-        value={props.value}
+        value={value}
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
         className={props.className}
     >
-        {props.options.map((option) => <option key={option} value={option}>{option}</option>)}
+        {opt.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
 }
 
 export function TextOption(props: {
-    value: string,
-    desc: string,
+    value: string
+    error?: string
+    desc: string
     'data-tip': string
     onChange: (value: string) => void
 }) {
-    return <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-        <TextInput
-            className="setting-input"
-            value={props.value}
-            data-tip={props["data-tip"]}
-            onChange={props.onChange}/>
-    </OptionLine>
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <TextInput
+                className="setting-input"
+                value={props.value}
+                data-tip={props["data-tip"]}
+                onChange={props.onChange}/>
+        </OptionLine>
+        <ErrorMessage message={props.error}/>
+    </>
 }
 
 export function TextInput(props: {
