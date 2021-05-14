@@ -9,22 +9,25 @@ import {FiltersTab} from "./filterstab";
 import {DevicesTab} from "./devicestab";
 import {MixersTab} from "./mixerstab";
 import {PipelineTab} from "./pipelinetab";
-import {SidePanel} from "./sidepanel";
+import {ErrorsForPath, noErrors, errorsForSubpath} from "./errors";
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
 import ReactTooltip from "react-tooltip";
 import {Files} from "./files";
 import {Config, defaultConfig} from "./config";
 import {defaultGuiConfig, GuiConfig} from "./guiconfig";
-import {Update} from "./common-tsx";
+import {MdiIcon, Update} from "./common-tsx";
 import cloneDeep from "lodash/cloneDeep";
+import {mdiAlertCircle} from "@mdi/js";
+import {SidePanel} from "./sidepanel";
 
 class CamillaConfig extends React.Component<
   unknown,
   {
-    activetab: number,
-    currentConfigFile?: string,
-    guiConfig: GuiConfig,
+    activetab: number
+    currentConfigFile?: string
+    guiConfig: GuiConfig
     config: Config
+    errors: ErrorsForPath
   }
 > {
   constructor(props: unknown) {
@@ -32,11 +35,13 @@ class CamillaConfig extends React.Component<
     this.handleConfig = this.handleConfig.bind(this)
     this.updateConfig = this.updateConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
+    this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.state = {
       activetab: 0,
       guiConfig: defaultGuiConfig(),
-      config: defaultConfig()
+      config: defaultConfig(),
+      errors: noErrors
     }
     fetch("/api/guiconfig")
         .then(data => data.json())
@@ -62,6 +67,10 @@ class CamillaConfig extends React.Component<
     });
   }
 
+  private setErrors(errors: any) {
+    this.setState({errors: errors})
+  }
+
   componentDidUpdate(prevProps: unknown) {
     ReactTooltip.rebuild()
     console.log("=============rebuild tooltips")
@@ -72,12 +81,14 @@ class CamillaConfig extends React.Component<
   }
 
   render() {
+    const errors = this.state.errors;
     return <div className="configapp">
       <ReactTooltip multiline={true} />
       <SidePanel
           currentConfigFile={this.state.currentConfigFile}
           config={this.state.config}
           setConfig={this.handleConfig}
+          setErrors={this.setErrors}
           setCurrentConfig={this.setCurrentConfig}
       />
       <Tabs
@@ -86,10 +97,10 @@ class CamillaConfig extends React.Component<
           onSelect={this.switchTab}
       >
         <TabList>
-          <Tab>Devices</Tab>
-          <Tab>Filters</Tab>
-          <Tab>Mixers</Tab>
-          <Tab>Pipeline</Tab>
+          <Tab>Devices {errors({path: ['devices'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Filters {errors({path: ['filters'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
         </TabList>
         <TabPanel>
@@ -97,26 +108,31 @@ class CamillaConfig extends React.Component<
               devices={this.state.config.devices}
               guiConfig={this.state.guiConfig}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'devices')}
           />
         </TabPanel>
         <TabPanel>
           <FiltersTab
               filters={this.state.config.filters}
               samplerate={this.state.config.devices.samplerate}
+              channels={this.state.config.devices.capture.channels}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'filters')}
           />
         </TabPanel>
         <TabPanel>
           <MixersTab
               mixers={this.state.config.mixers}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'mixers')}
           />
         </TabPanel>
         <TabPanel>
           <PipelineTab
               config={this.state.config}
               updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'pipeline')}
           />
         </TabPanel>
         <TabPanel>
@@ -129,6 +145,13 @@ class CamillaConfig extends React.Component<
       </Tabs>
     </div>
   }
+}
+
+function ErrorIcon(props: {}) {
+  return <MdiIcon
+      icon={mdiAlertCircle}
+      tooltip="There are errors on this tab"
+      style={{color: 'var(--error-text-color)'}}/>
 }
 
 ReactDOM.render(

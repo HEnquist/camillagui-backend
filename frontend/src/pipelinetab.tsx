@@ -7,7 +7,7 @@ import {
   ChartPopup,
   DeleteButton,
   EnumInput,
-  EnumOption,
+  ErrorMessage,
   FIELD_ERROR_BACKGROUND,
   IntInput,
   MdiButton,
@@ -30,10 +30,13 @@ import {
   PipelineStep
 } from "./config"
 import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
+import {ErrorsForPath, errorsForSubpath} from "./errors"
+
 
 export class PipelineTab extends React.Component<{
   config: Config
   updateConfig: (update: Update<Config>) => void
+  errors: ErrorsForPath
 }, {
   plotPipeline: boolean
   plotFilterStep: boolean
@@ -86,12 +89,15 @@ export class PipelineTab extends React.Component<{
       this.updatePipeline(pipeline => moveItemDown(pipeline, index))
 
   render() {
+    const errors = this.props.errors
     const pipeline = this.props.config.pipeline
     return <div className="tabpanel">
+      <ErrorMessage message={errors({path: []})}/>
       <div className="pipeline-channel">
         Capture: {this.props.config.devices.capture.channels} channels in
       </div>
       {pipeline.map((step: PipelineStep, i: number) => {
+            const stepErrors = errorsForSubpath(errors, i)
             const typeSelect = <EnumInput
                 value={step.type}
                 options={['Mixer', 'Filter']}
@@ -119,6 +125,7 @@ export class PipelineTab extends React.Component<{
                   filters={this.props.config.filters}
                   update={update => this.updateStep(i, update as Update<PipelineStep>)}
                   plot={() => this.plotFilterStep(i)}
+                  errors={stepErrors}
                   controls={controls}/>
             if (step.type === 'Mixer')
               return <MixerStepView
@@ -127,6 +134,7 @@ export class PipelineTab extends React.Component<{
                   mixerStep={step}
                   mixers={this.props.config.mixers}
                   update={update => this.updateStep(i, update as Update<PipelineStep>)}
+                  errors={stepErrors}
                   controls={controls}/>
             else
               return null
@@ -158,15 +166,17 @@ function MixerStepView(props: {
   mixerStep: MixerStep
   mixers: Mixers
   update: (update: Update<MixerStep>) => void
+  errors: ErrorsForPath
   controls: ReactNode
 }) {
   const {typeSelect, mixers, mixerStep, update, controls} = props
   const mixer = mixers[mixerStep.name]
-  const title = mixer ? `\u00A0\u00A0\u00A0${mixer.channels.in} in, ${mixer.channels.out} out` : ''
+  const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
   const options = [''].concat(mixerNamesOf(mixers))
-  return <Box title={<label>{typeSelect} {title}</label>}>
+  return <Box title={<label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>}>
     <div className="vertically-spaced-content">
-      <EnumOption
+      <ErrorMessage message={props.errors({path: [], includeChildren: true})}/>
+      <EnumInput
           value={mixerStep.name}
           options={options}
           desc="name"
@@ -184,6 +194,7 @@ function FilterStepView(props: {
   filters: Filters
   update: (update: Update<FilterStep>) => void
   plot: () => void
+  errors: ErrorsForPath
   controls: ReactNode
 }) {
   const {typeSelect, filterStep, filters, update, plot, controls} = props
@@ -191,20 +202,26 @@ function FilterStepView(props: {
   const addFilter = () => update(step => step.names.push(options[0]))
   const moveFilterUp = (index: number) => update(step => moveItemUp(step.names, index))
   const moveFilterDown = (index: number) => update(step => moveItemDown(step.names, index))
-  return <Box title={typeSelect}>
+  const title = <div>
+    {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
+    <label data-tip="Channel number">
+      channel
+      <IntInput
+          className="small-setting-input"
+          style={{marginLeft: '5px'}}
+          value={filterStep.channel}
+          data-tip="Channel number"
+          withControls={true}
+          min={0}
+          onChange={channel => update(step => step.channel = channel)}/>
+    </label>
+  </div>
+  return <Box title={title}>
     <div className="vertically-spaced-content">
-      <label data-tip="Channel number">
-        channel
-        <IntInput
-            className="small-setting"
-            style={{marginLeft: '5px'}}
-            value={filterStep.channel}
-            data-tip="Channel number"
-            withControls={true}
-            min={0}
-            onChange={channel => update(step => step.channel = channel)}/>
-      </label>
+      <ErrorMessage message={props.errors({path: ['channel']})}/>
+      <ErrorMessage message={props.errors({path: []})}/>
       {filterStep.names.map((name, index) =>
+      <>
           <div key={index} className="horizontally-spaced-content">
             <EnumInput
                 value={name}
@@ -233,7 +250,10 @@ function FilterStepView(props: {
                 smallButton={true}
                 onClick={() => update(step => step.names.splice(index, 1))}/>
           </div>
+          <ErrorMessage message={props.errors({path: ['names', index]})}/>
+      </>
       )}
+      <ErrorMessage message={props.errors({path: ['names']})}/>
       <div className="horizontally-spaced-content">
         {controls}
         <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>

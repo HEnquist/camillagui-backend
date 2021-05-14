@@ -16,10 +16,10 @@ export function PipelinePopup(props: {
       open={props.open}
       closeOnDocumentClick
       onClose={props.onClose}
-      contentStyle={{width: 'min-content'}}
+      contentStyle={{width: '80%'}}
   >
     <CloseButton onClick={props.onClose}/>
-    <PipelinePlot width={1000} height={500} config={props.config}/>
+    <PipelinePlot config={props.config}/>
   </Popup>
 }
 
@@ -57,7 +57,10 @@ interface Block {
   output: Point
 }
 
-class PipelinePlot extends React.Component<{width: number, height: number, config: Config}> {
+class PipelinePlot extends React.Component<{config: Config}> {
+
+  private width = 1000
+  private height = 500
 
   private textColor?: string
   private borderColor?: string
@@ -319,11 +322,11 @@ class PipelinePlot extends React.Component<{width: number, height: number, confi
     const yScale = d3
       .scaleLinear()
       .domain([-max_v, max_v])
-      .range([0, this.props.height])
+      .range([0, this.height])
     const xScale = d3
       .scaleLinear()
       .domain([-2, max_h])
-      .range([0, this.props.width])
+      .range([0, this.width])
 
     const linkGen = d3
         .linkHorizontal()
@@ -402,6 +405,10 @@ class PipelinePlot extends React.Component<{width: number, height: number, confi
   }
 
   render() {
-    return <svg ref={node => this.node = node} width={this.props.width} height={this.props.height}/>
+    return <svg
+        ref={node => this.node = node}
+        viewBox={`0 0 ${this.width} ${this.height}`}
+        style={{width: '100%', height: 'auto'}}
+    />
   }
 }

@@ -12,12 +12,12 @@ type Props = {
 };
 
 type State = {
-    volume: string
+    volume: number
     mute: boolean
     dim: boolean
 };
 
-const minVolume = '-99'
+const minVolume = -99
 
 export class VolumeBox extends React.Component<Props, State> {
 
@@ -25,16 +25,16 @@ export class VolumeBox extends React.Component<Props, State> {
         super(props);
         this.mute = this.mute.bind(this)
         this.dim = this.dim.bind(this)
-        this.state = {volume: '0', mute: false, dim: false}
+        this.state = {volume: 0, mute: false, dim: false}
         this.updateVolume()
     }
 
     private async updateVolume() {
         const vol_req = await fetch("/api/getparam/volume")
-        let volume = '0'
+        let volume = 0
         try {
             if (vol_req.ok) {
-                volume = parseInt(await vol_req.text(), 10).toString()
+                volume = parseInt(await vol_req.text(), 10)
                 this.setState({volume: volume})
             }
         } catch (e) {}
@@ -47,26 +47,21 @@ export class VolumeBox extends React.Component<Props, State> {
     }
 
     private mute() {
-        this.setState(({mute, volume}) => ({
-            volume: volume,
-            mute: !mute,
-            dim: false
-        }))
+        this.setState(({mute}) => ({mute: !mute}))
     }
 
     private dim() {
         this.setState(({volume, dim}) => ({
-            volume: (parseFloat(volume) + (dim ? 20.0 : -20.0)).toString(),
-            dim: !dim,
-            mute: false
+            volume: volume + (dim ? 20.0 : -20.0),
+            dim: !dim
         }))
     }
 
-    private async setVolume(value: string) {
+    private async setVolume(value: number) {
         const vol_req = await fetch("/api/setparam/volume", {
             method: "POST",
             headers: {"Content-Type": "text/plain; charset=us-ascii"},
-            body: value,
+            body: value.toString(),
         })
         const message = await vol_req.text()
         this.props.setMessage(message)
@@ -77,21 +72,22 @@ export class VolumeBox extends React.Component<Props, State> {
         const {volume, mute, dim} = this.state;
         return <Box title={
             <>
-                Volume&nbsp;&nbsp;
-                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right'}}>
+                Volume
+                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right', marginLeft: '5px'}}>
                     {mute ? '' : volume+'dB'}
                 </div>
-                &nbsp;<MdiButton
+                <MdiButton
                     icon={mdiVolumeOff}
                     tooltip={mute ? "Un-Mute" : "Mute"}
                     smallButton={true}
                     className={mute ? "highlighted-button" : ""}
                     onClick={this.mute}/>
-                &nbsp;<MdiButton
+                <MdiButton
                     icon={mdiVolumeMedium}
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
                     smallButton={true}
                     className={dim ? "highlighted-button" : ""}
+                    enabled={dim || volume >= minVolume + 20}
                     onClick={this.dim}/>
             </>
         }>
@@ -103,7 +99,7 @@ export class VolumeBox extends React.Component<Props, State> {
                 max="0"
                 value={mute ? minVolume : volume}
                 id="volume"
-                onChange={e => this.setState({volume: e.target.value, mute: false, dim: false})}
+                onChange={e => this.setState({volume: e.target.valueAsNumber, mute: false, dim: false})}
             />
             <VuMeterGroup title="Out" level={props.playback_rms} clipped={props.clipped}/>
         </Box>
