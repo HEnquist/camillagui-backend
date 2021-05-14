@@ -1,47 +1,71 @@
-from os.path import isfile, join
+from os.path import isfile
 
+import yaml
 from aiohttp import web
 from camilladsp import CamillaError
-
-from filemanagement import (
-    path_of_configfile, store_files, list_of_files_in_directory, delete_files,
-    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config
-)
-from offline import cdsp_or_backup_cdsp, set_cdsp_config_or_validate_with_backup_cdsp
-from settings import gui_config_path
-
-try:
-    from camilladsp_plot import plot_pipeline, plot_filter, plot_filterstep
-    PLOTTING = True
-except ImportError:
-    print("No plotting!")
-    PLOTTING = False
 from camilladsp_plot import eval_filter, eval_filterstep
-import yaml
-from version import VERSION
 
-SVG_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text x="20" y="40">Plotting not available!</text></svg>'
+from .filemanagement import (
+    path_of_configfile, store_files, list_of_files_in_directory, delete_files,
+    zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
+    new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
+    replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
+    make_absolute, replace_tokens_in_filter_config
+)
+from .filterdefaults import defaults_for_filter
+from .settings import get_gui_config_or_defaults
+from .version import VERSION
 
 
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
 
+async def get_status(request):
+    cdsp = request.app["CAMILLA"]
+    cdsp_version = None
+    try:
+        state = cdsp.get_state()
+        cdsp_version = cdsp.get_version()
+    except IOError:
+        try:
+            cdsp.connect()
+            state = cdsp.get_state()
+            cdsp_version = cdsp.get_version()
+        except IOError:
+            state = "offline"
+    cdsp_version = cdsp.get_version()
+    if cdsp_version is None:
+        cdsp_version = ['x', 'x', 'x']
+    status = {
+        "cdsp_status": state,
+        "cdsp_version": version_string(cdsp_version),
+        "py_cdsp_version": version_string(cdsp.get_library_version()),
+        "backend_version": version_string(VERSION),
+    }
+    try:
+        status.update({
+            "capturesignalrms": cdsp.get_capture_signal_rms(),
+            "playbacksignalrms": cdsp.get_playback_signal_rms(),
+            "capturerate": cdsp.get_capture_rate(),
+            "rateadjust": cdsp.get_rate_adjust(),
+            "bufferlevel": cdsp.get_buffer_level(),
+            "clippedsamples": cdsp.get_clipped_samples(),
+        })
+    except IOError:
+        pass
+    return web.json_response(status)
+
+
+def version_string(version_array):
+    return str(version_array[0]) + "." + str(version_array[1]) + "." + str(version_array[2])
+
+
 async def get_param(request):
     # Get a parameter value
     name = request.match_info["name"]
-    print(name)
     cdsp = request.app["CAMILLA"]
-    if name == "state":
-        try:
-            result = cdsp.get_state()
-        except IOError:
-            try:
-                cdsp.connect()
-                result = cdsp.get_state()
-            except IOError:
-                result = "offline"
-    elif name == "volume":
+    if name == "volume":
         result = cdsp.get_volume()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
@@ -49,42 +73,27 @@ async def get_param(request):
         result = cdsp.get_signal_range_dB()
     elif name == "capturerateraw":
         result = cdsp.get_capture_rate_raw()
-    elif name == "capturerate":
-        result = cdsp.get_capture_rate()
-    elif name == "rateadjust":
-        result = cdsp.get_rate_adjust()
     elif name == "updateinterval":
         result = cdsp.get_update_interval()
     elif name == "configname":
         result = cdsp.get_config_name()
     elif name == "configraw":
         result = cdsp.get_config_raw()
-    elif name == "bufferlevel":
-        result = cdsp.get_buffer_level()
-    elif name == "clippedsamples":
-        result = cdsp.get_clipped_samples()
     else:
         result = "ERROR"
-    print(result)
     return web.Response(text=str(result))
 
 
 async def get_list_param(request):
     # Get a parameter value as a list
     name = request.match_info["name"]
-    print(name)
     cdsp = request.app["CAMILLA"]
-    if name == "capturesignalrms":
-        result = cdsp.get_capture_signal_rms()
-    elif name == "capturesignalpeak":
+    if name == "capturesignalpeak":
         result = cdsp.get_capture_signal_peak()
-    elif name == "playbacksignalrms":
-        result = cdsp.get_playback_signal_rms()
     elif name == "playbacksignalpeak":
         result = cdsp.get_playback_signal_peak()
     else:
         result = "[]"
-    print(result)
     return web.json_response(result)
 
 
@@ -92,8 +101,6 @@ async def set_param(request):
     # Set a parameter
     value = await request.text()
     name = request.match_info["name"]
-    # value = request.get_data().decode()
-    print(name, value)
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         cdsp.set_volume(value)
@@ -106,29 +113,15 @@ async def set_param(request):
     return web.Response(text="OK")
 
 
-async def eval_filter_svg(request):
-    # Plot a filter
-    if PLOTTING:
-        content = await request.json()
-        print("content", content)
-        image = plot_filter(
-            content["config"],
-            name=content["name"],
-            samplerate=content["samplerate"],
-            npoints=1000,
-            toimage=True,
-        )
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
-
-
 async def eval_filter_values(request):
     # Plot a filter
     content = await request.json()
-    print("content", content)
+    config_dir = request.app["config_dir"]
+    config = content["config"]
+    replace_relative_filter_path_with_absolute_paths(config, config_dir)
+    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
     data = eval_filter(
-        content["config"],
+        config,
         name=content["name"],
         samplerate=content["samplerate"],
         npoints=300,
@@ -136,45 +129,23 @@ async def eval_filter_values(request):
     return web.json_response(data)
 
 
-async def eval_filterstep_svg(request):
-    # Plot a filter
-    if PLOTTING:
-        content = await request.json()
-        print("content", content)
-        image = plot_filterstep(
-            content["config"],
-            content["index"],
-            name="Filterstep {}".format(content["index"]),
-            npoints=300,
-            toimage=True,
-        )
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
-
-
 async def eval_filterstep_values(request):
     # Plot a filter
     content = await request.json()
-    print("content", content)
+    config = content["config"]
+    config_dir = request.app["config_dir"]
+    plot_config = new_config_with_absolute_filter_paths(config, config_dir)
+    samplerate = plot_config["devices"]["samplerate"]
+    channels = plot_config["devices"]["capture"]["channels"]
+    for _, filt in plot_config["filters"].items():
+        replace_tokens_in_filter_config(filt, samplerate, channels)
     data = eval_filterstep(
-        content["config"],
+        plot_config,
         content["index"],
         name="Filterstep {}".format(content["index"]),
         npoints=1000,
     )
     return web.json_response(data)
-
-
-async def eval_pipeline_svg(request):
-    # Plot a pipeline
-    if PLOTTING:
-        content = await request.json()
-        print("content", content)
-        image = plot_pipeline(content, toimage=True)
-    else:
-        image = SVG_PLACEHOLDER
-    return web.Response(body=image, content_type="image/svg+xml")
 
 
 async def get_config(request):
@@ -189,10 +160,20 @@ async def set_config(request):
     json = await request.json()
     json_config = json["config"]
     filename = json["filename"]
-    try:
-        set_cdsp_config_or_validate_with_backup_cdsp(json_config, request)
-    except CamillaError as e:
-        return web.Response(status=500, text=str(e))
+    config_dir = request.app["config_dir"]
+    cdsp = request.app["CAMILLA"]
+    validator = request.app["VALIDATOR"]
+    json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
+    if cdsp.is_connected():
+        try:
+            cdsp.set_config(json_config_with_absolute_filter_paths)
+        except CamillaError as e:
+            return web.Response(status=500, text=str(e))
+    else: 
+        validator.validate_config(json_config_with_absolute_filter_paths)
+        errors = validator.get_errors()
+        if len(errors) > 0:
+            return web.json_response(data=errors)
     save_config(filename, json_config, request)
     return web.Response(text="OK")
 
@@ -200,6 +181,7 @@ async def set_config(request):
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
     default_config = request.app["default_config"]
+    config_dir = request.app["config_dir"]
     if active_config and isfile(active_config):
         config = active_config
     elif default_config and isfile(default_config):
@@ -207,10 +189,12 @@ async def get_active_config_file(request):
     else:
         return web.Response(status=404, text="No active or default config")
     try:
-        json_config = get_yaml_as_json(request, config)
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
-    active_config_name = get_active_config(request.app["active_config"])
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    active_config_name = get_active_config(request)
     if active_config_name:
         json = {"configFileName": active_config_name, "config": json_config}
     else:
@@ -222,15 +206,16 @@ async def set_active_config_name(request):
     json = await request.json()
     config_name = json["name"]
     config_file = path_of_configfile(request, config_name)
-    set_as_active_config(request.app["active_config"], config_file)
+    set_as_active_config(request, config_file)
     return web.Response(text="OK")
 
 
 async def get_config_file(request):
+    config_dir = request.app["config_dir"]
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
     try:
-        json_config = get_yaml_as_json(request, config_file)
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config_file), config_dir)
     except CamillaError as e:
         return web.Response(status=500, text=str(e))
     return web.json_response(json_config)
@@ -252,42 +237,23 @@ async def config_to_yml(request):
 async def yml_to_json(request):
     # Parse a yml string and return as json
     config_ymlstr = await request.text()
-    cdsp = cdsp_or_backup_cdsp(request)
-    config = cdsp.read_config(config_ymlstr)
+    validator = request.app["VALIDATOR"]
+    validator.validate_yamlstring(config_ymlstr)
+    config = validator.get_config()
     return web.json_response(config)
 
 
 async def validate_config(request):
     # Validate a config, returned completed config
+    config_dir = request.app["config_dir"]
     config = await request.json()
-    cdsp = cdsp_or_backup_cdsp(request)
-    try:
-        _val_config = cdsp.validate_config(config)
-    except CamillaError as e:
-        return web.Response(text=str(e))
+    config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
+    validator = request.app["VALIDATOR"]
+    validator.validate_config(config_with_absolute_filter_paths)
+    errors = validator.get_errors()
+    if len(errors) > 0:
+        return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
-
-
-async def get_version(request):
-    cdsp = cdsp_or_backup_cdsp(request)
-    vers_tup = cdsp.get_version()
-    if vers_tup is None:
-        version = {"major": "x", "minor": "x", "patch": "x"}
-    else:
-        version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
-    return web.json_response(version)
-
-
-async def get_library_version(request):
-    cdsp = request.app["CAMILLA"]
-    vers_tup = cdsp.get_library_version()
-    version = {"major": vers_tup[0], "minor": vers_tup[1], "patch": vers_tup[2]}
-    return web.json_response(version)
-
-
-async def get_backend_version(request):
-    version = {"major": VERSION[0], "minor": VERSION[1], "patch": VERSION[2]}
-    return web.json_response(version)
 
 
 async def store_coeffs(request):
@@ -341,7 +307,13 @@ async def download_configs_zip(request):
 
 
 async def get_gui_config(request):
-    with open(gui_config_path) as yaml_config:
-        json_config = yaml.safe_load(yaml_config)
-        json_config["coeff_dir"] = join(request.app["coeff_dir"], '')  # append folder separator at the end
-    return web.json_response(json_config)
+    gui_config = get_gui_config_or_defaults()
+    gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
+    return web.json_response(gui_config)
+
+
+async def get_defaults_for_coeffs(request):
+    path = request.query["file"]
+    absolute_path = make_absolute(path, request.app["config_dir"])
+    defaults = defaults_for_filter(absolute_path)
+    return web.json_response(defaults)

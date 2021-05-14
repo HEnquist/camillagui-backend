@@ -6,5 +6,8 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
-backup_camilla_path: ""
-backup_camilla_port: 1235
+update_symlink: true
+on_set_active_config: null
+on_get_active_config: null
+supported_capture_types: null
+supported_playback_types: null
