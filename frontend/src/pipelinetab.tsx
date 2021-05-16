@@ -11,6 +11,7 @@ import {
   FIELD_ERROR_BACKGROUND,
   IntInput,
   MdiButton,
+  moveItem,
   moveItemDown,
   moveItemUp,
   PlotButton,
@@ -29,8 +30,11 @@ import {
   Pipeline,
   PipelineStep
 } from "./config"
-import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
+import {mdiArrowDownBold, mdiArrowUpBold, mdiDrag} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./errors"
+import Icon from "@mdi/react"
+import {DndProvider, DropTargetMonitor, useDrag, useDrop} from 'react-dnd'
+import {HTML5Backend} from 'react-dnd-html5-backend'
 
 
 export class PipelineTab extends React.Component<{
@@ -49,9 +53,6 @@ export class PipelineTab extends React.Component<{
 
   updatePipeline = (update: Update<Pipeline>) =>
       this.props.updateConfig(config => update(config.pipeline))
-
-  handleStepUpdate = (mixValue: any) =>
-      this.updatePipeline(pipeline => pipeline[mixValue.idx] = mixValue.value)
 
   addStep = () =>
       this.updatePipeline(pipeline => pipeline.push(defaultFilterStep(this.props.config)))
@@ -91,73 +92,76 @@ export class PipelineTab extends React.Component<{
   render() {
     const errors = this.props.errors
     const pipeline = this.props.config.pipeline
-    return <div className="tabpanel">
-      <ErrorMessage message={errors({path: []})}/>
-      <div className="pipeline-channel">
-        Capture: {this.props.config.devices.capture.channels} channels in
+    return <DndProvider backend={HTML5Backend}>
+      <div className="tabpanel">
+        <ErrorMessage message={errors({path: []})}/>
+        <div className="pipeline-channel">
+          Capture: {this.props.config.devices.capture.channels} channels in
+        </div>
+        {pipeline.map((step: PipelineStep, index: number) => {
+              const stepErrors = errorsForSubpath(errors, index)
+              const typeSelect = <EnumInput
+                  value={step.type}
+                  options={['Mixer', 'Filter']}
+                  desc="type"
+                  data-tip="Step type, Mixer or Filter"
+                  onChange={type => this.setStepType(index, type)}/>
+              const controls = <>
+                <DeleteButton tooltip="Delete this step" onClick={() => this.removeStep(index)}/>
+                <MdiButton
+                    icon={mdiArrowUpBold}
+                    tooltip="Move this step up"
+                    enabled={index > 0}
+                    onClick={() => this.moveStepUp(index)}/>
+                <MdiButton
+                    icon={mdiArrowDownBold}
+                    tooltip="Move this step down"
+                    enabled={index+1 < pipeline.length}
+                    onClick={() => this.moveStepDown(index)}/>
+              </>
+              if (step.type === 'Filter')
+                return <FilterStepView
+                    key={index}
+                    stepIndex={index}
+                    typeSelect={typeSelect}
+                    filterStep={step}
+                    filters={this.props.config.filters}
+                    updatePipeline={this.updatePipeline}
+                    plot={() => this.plotFilterStep(index)}
+                    errors={stepErrors}
+                    controls={controls}/>
+              if (step.type === 'Mixer')
+                return <MixerStepView
+                    key={index}
+                    typeSelect={typeSelect}
+                    mixerStep={step}
+                    mixers={this.props.config.mixers}
+                    update={update => this.updateStep(index, update as Update<PipelineStep>)}
+                    errors={stepErrors}
+                    controls={controls}/>
+              else
+                return null
+            }
+        )}
+        <div className="horizontally-spaced-content">
+          <AddButton tooltip="Add a pipeline step" onClick={this.addStep}/>
+          <PlotButton tooltip="Plot the pipeline" onClick={() => this.setState({plotPipeline: true})}/>
+        </div>
+        <div className="pipeline-channel">
+          Playback: {this.props.config.devices.playback.channels} channels out
+        </div>
+        <PipelinePopup
+            key={this.state.plotPipeline as any}
+            open={this.state.plotPipeline}
+            config={this.props.config}
+            onClose={() => this.setState({plotPipeline: false})}/>
+        {this.state.plotFilterStep && <ChartPopup
+            key={this.state.plotFilterStep as any}
+            open={this.state.plotFilterStep}
+            data={this.state.data}
+            onClose={() => this.setState({plotFilterStep: false})}/>}
       </div>
-      {pipeline.map((step: PipelineStep, i: number) => {
-            const stepErrors = errorsForSubpath(errors, i)
-            const typeSelect = <EnumInput
-                value={step.type}
-                options={['Mixer', 'Filter']}
-                desc="type"
-                data-tip="Step type, Mixer or Filter"
-                onChange={type => this.setStepType(i, type)}/>
-            const controls = <>
-              <DeleteButton tooltip="Delete this step" onClick={() => this.removeStep(i)}/>
-              <MdiButton
-                  icon={mdiArrowUpBold}
-                  tooltip="Move this step up"
-                  enabled={i > 0}
-                  onClick={() => this.moveStepUp(i)}/>
-              <MdiButton
-                  icon={mdiArrowDownBold}
-                  tooltip="Move this step down"
-                  enabled={i+1 < pipeline.length}
-                  onClick={() => this.moveStepDown(i)}/>
-            </>
-            if (step.type === 'Filter')
-              return <FilterStepView
-                  key={i}
-                  typeSelect={typeSelect}
-                  filterStep={step}
-                  filters={this.props.config.filters}
-                  update={update => this.updateStep(i, update as Update<PipelineStep>)}
-                  plot={() => this.plotFilterStep(i)}
-                  errors={stepErrors}
-                  controls={controls}/>
-            if (step.type === 'Mixer')
-              return <MixerStepView
-                  key={i}
-                  typeSelect={typeSelect}
-                  mixerStep={step}
-                  mixers={this.props.config.mixers}
-                  update={update => this.updateStep(i, update as Update<PipelineStep>)}
-                  errors={stepErrors}
-                  controls={controls}/>
-            else
-              return null
-          }
-      )}
-      <div className="horizontally-spaced-content">
-        <AddButton tooltip="Add a pipeline step" onClick={this.addStep}/>
-        <PlotButton tooltip="Plot the pipeline" onClick={() => this.setState({plotPipeline: true})}/>
-      </div>
-      <div className="pipeline-channel">
-        Playback: {this.props.config.devices.playback.channels} channels out
-      </div>
-      <PipelinePopup
-          key={this.state.plotPipeline as any}
-          open={this.state.plotPipeline}
-          config={this.props.config}
-          onClose={() => this.setState({plotPipeline: false})}/>
-      {this.state.plotFilterStep && <ChartPopup
-          key={this.state.plotFilterStep as any}
-          open={this.state.plotFilterStep}
-          data={this.state.data}
-          onClose={() => this.setState({plotFilterStep: false})}/>}
-    </div>
+    </DndProvider>
   }
 }
 
@@ -189,19 +193,35 @@ function MixerStepView(props: {
 }
 
 function FilterStepView(props: {
+  stepIndex: number
   typeSelect: ReactNode
   filterStep: FilterStep
   filters: Filters
-  update: (update: Update<FilterStep>) => void
+  updatePipeline: (update: Update<Pipeline>) => void
   plot: () => void
   errors: ErrorsForPath
   controls: ReactNode
 }) {
-  const {typeSelect, filterStep, filters, update, plot, controls} = props
+  const {stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls} = props
   const options = [''].concat(filterNamesOf(filters))
+  const update = (update: Update<FilterStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as FilterStep))
   const addFilter = () => update(step => step.names.push(options[0]))
   const moveFilterUp = (index: number) => update(step => moveItemUp(step.names, index))
   const moveFilterDown = (index: number) => update(step => moveItemDown(step.names, index))
+  const moveFilter = (fromStep: number, fromIndex: number, toStep: number, toIndex: number) =>
+      update(step => {
+            if (fromStep === toStep)
+              moveItem(step.names, fromIndex, toIndex)
+            else {
+              updatePipeline(pipeline => {
+                const from = pipeline[fromStep] as FilterStep
+                const filter = from.names.splice(fromIndex, 1)
+                const to = pipeline[toStep] as FilterStep
+                to.names.splice(toIndex, 0, ...filter)
+              })
+            }
+          }
+      )
   const title = <div>
     {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
     <label data-tip="Channel number">
@@ -220,39 +240,40 @@ function FilterStepView(props: {
     <div className="vertically-spaced-content">
       <ErrorMessage message={props.errors({path: ['channel']})}/>
       <ErrorMessage message={props.errors({path: []})}/>
-      {filterStep.names.map((name, index) =>
-      <>
-          <div key={index} className="horizontally-spaced-content">
-            <EnumInput
-                value={name}
+      <div className="vertically-spaced-content">
+        {filterStep.names.map((name, index) =>
+            <FilterStepFilter
+                stepIndex={stepIndex}
+                key={index}
+                index={index}
+                name={name}
                 options={options}
-                desc=""
-                data-tip="Filter name"
-                style={{
-                  width: '100%',
-                  backgroundColor: name === '' ? FIELD_ERROR_BACKGROUND : undefined
-                }}
-                onChange={filterName => update(step => step.names[index] = filterName)}/>
-            <MdiButton
-                icon={mdiArrowUpBold}
-                tooltip="Move filter up"
-                smallButton={true}
-                enabled={index > 0}
-                onClick={() => moveFilterUp(index)}/>
-            <MdiButton
-                icon={mdiArrowDownBold}
-                tooltip="Move filter down"
-                smallButton={true}
-                enabled={index + 1 < filterStep.names.length}
-                onClick={() => moveFilterDown(index)}/>
-            <DeleteButton
-                tooltip="Remove this filter from the list"
-                smallButton={true}
-                onClick={() => update(step => step.names.splice(index, 1))}/>
-          </div>
-          <ErrorMessage message={props.errors({path: ['names', index]})}/>
-      </>
-      )}
+                setName={filterName => update(step => step.names[index] = filterName)}
+                moveFilter={moveFilter}
+                errors={props.errors({path: ['names', index]})}
+                controls={
+                  <>
+                    <MdiButton
+                        icon={mdiArrowUpBold}
+                        tooltip="Move filter up"
+                        smallButton={true}
+                        enabled={index > 0}
+                        onClick={() => moveFilterUp(index)}/>
+                    <MdiButton
+                        icon={mdiArrowDownBold}
+                        tooltip="Move filter down"
+                        smallButton={true}
+                        enabled={index + 1 < filterStep.names.length}
+                        onClick={() => moveFilterDown(index)}/>
+                    <DeleteButton
+                        tooltip="Remove this filter from the list"
+                        smallButton={true}
+                        onClick={() => update(step => step.names.splice(index, 1))}/>
+                  </>
+                }
+            />
+        )}
+      </div>
       <ErrorMessage message={props.errors({path: ['names']})}/>
       <div className="horizontally-spaced-content">
         {controls}
@@ -261,4 +282,61 @@ function FilterStepView(props: {
       </div>
     </div>
   </Box>
+}
+
+interface FilterDragItem {
+  stepIndex: number
+  index: number
+  name: string
+}
+
+function FilterStepFilter(props: {
+  stepIndex: number
+  index: number
+  options: string[]
+  name: string
+  setName: (name: string) => void
+  moveFilter: (fromStep: number, fromIndex: number, toStep: number, toIndex: number) => void
+  errors?: string
+  controls: ReactNode
+}) {
+  const {stepIndex, index, options, name, setName, moveFilter, errors, controls} = props
+  const [{isDragging}, drag, preview] = useDrag(() => ({
+    type: 'filter',
+    item: {name, stepIndex, index},
+    options: {dropEffect: 'move'},
+    collect: monitor => ({isDragging: monitor.isDragging()})
+  }))
+  const [{canDrop}, drop] = useDrop(() => ({
+    accept: 'filter',
+    collect: (monitor: DropTargetMonitor<FilterDragItem>) => {
+      const item = monitor.getItem()
+      return {
+        canDrop: monitor.isOver() && (item.index !== index || item.stepIndex !== stepIndex)
+      }
+    },
+    drop: (item: FilterDragItem) => moveFilter(item.stepIndex, item.index, stepIndex, index)
+  }))
+  return <div ref={drop}>
+    <div ref={preview} style={{position: 'relative'}}>
+      <div className={`horizontally-spaced-content${isDragging ? ' dragSource' : ''}${canDrop ? ' dropTarget' : ''}`}
+           style={{alignItems: 'center'}}>
+      <span ref={drag} style={{display: "flex", alignItems: 'center'}}>
+        <Icon path={mdiDrag} size={'24px'} className="filter-drag-handle" data-tip="Drag filter to sort"/>
+      </span>
+        <EnumInput
+            value={name}
+            options={options}
+            desc={`step${stepIndex}-filter${index}`}
+            data-tip="Filter name"
+            style={{
+              width: '100%',
+              backgroundColor: errors ? FIELD_ERROR_BACKGROUND : undefined
+            }}
+            onChange={setName}/>
+        {controls}
+      </div>
+      <ErrorMessage message={errors}/>
+    </div>
+  </div>
 }

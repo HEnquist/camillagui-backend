@@ -22,12 +22,16 @@ export function sortedAlphabetically(array: string[]): string[] {
 }
 
 export function moveItemUp<T>(array: T[], index: number) {
-    const removed = array.splice(index, 1);
-    array.splice(index-1, 0, ...removed)
+    moveItem(array, index, index-1)
 }
 
 export function moveItemDown<T>(array: T[], index: number) {
-    moveItemUp(array, index+1)
+    moveItem(array, index, index+1)
+}
+
+export function moveItem<T>(array: T[], fromIndex: number, toIndex: number) {
+    const removed = array.splice(fromIndex, 1)
+    array.splice(toIndex, 0, ...removed)
 }
 
 export function cssStyles(): CSSStyleDeclaration {
