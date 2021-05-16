@@ -230,7 +230,10 @@ export function IntOption(props:{
     const small = props.small
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
-            <IntInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} />
+            <IntInput
+                {...props}
+                className={'setting-input' + (small ? ' small-setting-input' : '')}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
         </OptionLine>
         <ErrorMessage message={props.error}/>
     </>
@@ -281,6 +284,7 @@ export function FloatOption(props:{
                     const parsedvalue = parseFloat(rawValue)
                     return isNaN(parsedvalue) ? undefined : parsedvalue
                 }}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
             />
         </OptionLine>
         <ErrorMessage message={props.error}/>
@@ -313,6 +317,7 @@ export function FloatListOption(props: {
                     return parsedvalue
                 }}
                 onChange={props.onChange}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
             />
         </OptionLine>
         <ErrorMessage message={props.error}/>
@@ -363,13 +368,14 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={{backgroundColor: valid ? undefined : FIELD_ERROR_BACKGROUND, ...props.style}}
+            style={valid ? props.style : {...props.style, ...ERROR_BACKGROUND_STYLE}}
             onChange={e => this.updateValue(e.target.value)}/>
     }
 
 }
 
-export const FIELD_ERROR_BACKGROUND = 'var(--error-field-background-color)'
+export const ERROR_BACKGROUND_STYLE: CSSProperties =
+    Object.freeze({backgroundColor: 'var(--error-field-background-color)'})
 
 export function ErrorMessage(props: {message?: string}) {
     return props.message ?
@@ -409,14 +415,13 @@ export function EnumOption<OPTION extends string>(props: {
     error?: string
     desc: string
     'data-tip': string
-    style?: CSSProperties
     className?: string
     onChange: (value: OPTION) => void
 }) {
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <EnumInput {...props} className={className}/>
+            <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
         </OptionLine>
         <ErrorMessage message={props.error}/>
     </>
@@ -459,6 +464,7 @@ export function TextOption(props: {
                 className="setting-input"
                 value={props.value}
                 data-tip={props["data-tip"]}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
                 onChange={props.onChange}/>
         </OptionLine>
         <ErrorMessage message={props.error}/>

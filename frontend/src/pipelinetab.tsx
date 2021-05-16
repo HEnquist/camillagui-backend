@@ -7,8 +7,8 @@ import {
   ChartPopup,
   DeleteButton,
   EnumInput,
+  ERROR_BACKGROUND_STYLE,
   ErrorMessage,
-  FIELD_ERROR_BACKGROUND,
   IntInput,
   MdiButton,
   moveItem,
@@ -177,16 +177,19 @@ function MixerStepView(props: {
   const mixer = mixers[mixerStep.name]
   const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
   const options = [''].concat(mixerNamesOf(mixers))
+  const nameError = props.errors({path: ['name']})
   return <Box title={<label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>}>
     <div className="vertically-spaced-content">
-      <ErrorMessage message={props.errors({path: [], includeChildren: true})}/>
+      <ErrorMessage message={props.errors({path: []})}/>
+      <ErrorMessage message={props.errors({path: ['type']})}/>
       <EnumInput
           value={mixerStep.name}
           options={options}
           desc="name"
           data-tip="Mixer name"
-          style={{backgroundColor: mixerStep.name === '' ? FIELD_ERROR_BACKGROUND : undefined}}
+          style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
           onChange={name => update(step => step.name = name)}/>
+      <ErrorMessage message={nameError}/>
       <div className="horizontally-spaced-content">{controls}</div>
     </div>
   </Box>
@@ -238,6 +241,7 @@ function FilterStepView(props: {
   </div>
   return <Box title={title}>
     <div className="vertically-spaced-content">
+      <ErrorMessage message={props.errors({path: ['type']})}/>
       <ErrorMessage message={props.errors({path: ['channel']})}/>
       <ErrorMessage message={props.errors({path: []})}/>
       <div className="vertically-spaced-content">
@@ -331,7 +335,7 @@ function FilterStepFilter(props: {
             data-tip="Filter name"
             style={{
               width: '100%',
-              backgroundColor: errors ? FIELD_ERROR_BACKGROUND : undefined
+              ...(errors ? ERROR_BACKGROUND_STYLE : {})
             }}
             onChange={setName}/>
         {controls}
