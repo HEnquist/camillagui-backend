@@ -326,7 +326,7 @@ class FilterView extends React.Component<{
       <ListSelectPopup
           key="filter select popup"
           open={this.state.popupOpen}
-          header={<div style={{margin: '10px 0'}}>Only single channel filter files are supported.</div>}
+          header={<div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>}
           items={this.props.availableCoeffFiles}
           onClose={() => this.setState({popupOpen: false})}
           onSelect={this.pickFilterFile}
