@@ -30,11 +30,9 @@ import {
   Pipeline,
   PipelineStep
 } from "./config"
-import {mdiArrowDownBold, mdiArrowUpBold, mdiDrag} from "@mdi/js"
+import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./errors"
-import Icon from "@mdi/react"
-import {DndProvider, DropTargetMonitor, useDrag, useDrop} from 'react-dnd'
-import {HTML5Backend} from 'react-dnd-html5-backend'
+import {DndContainer, DndSortable, DragHandle, useDndSort} from "./utilities/dragndrop"
 
 
 export class PipelineTab extends React.Component<{
@@ -59,9 +57,6 @@ export class PipelineTab extends React.Component<{
 
   removeStep = (index: number) =>
       this.updatePipeline(pipeline => pipeline.splice(index, 1))
-
-  updateStep = (index: number, update: Update<PipelineStep>) =>
-      this.updatePipeline(pipeline => update(pipeline[index]))
 
   setStepType = (index: number, type: 'Filter' | 'Mixer') =>
       this.updatePipeline(pipeline => {
@@ -92,7 +87,7 @@ export class PipelineTab extends React.Component<{
   render() {
     const errors = this.props.errors
     const pipeline = this.props.config.pipeline
-    return <DndProvider backend={HTML5Backend}>
+    return <DndContainer>
       <div className="tabpanel">
         <ErrorMessage message={errors({path: []})}/>
         <div className="pipeline-channel">
@@ -133,10 +128,11 @@ export class PipelineTab extends React.Component<{
               if (step.type === 'Mixer')
                 return <MixerStepView
                     key={index}
+                    stepIndex={index}
                     typeSelect={typeSelect}
                     mixerStep={step}
                     mixers={this.props.config.mixers}
-                    update={update => this.updateStep(index, update as Update<PipelineStep>)}
+                    updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>
               else
@@ -161,38 +157,55 @@ export class PipelineTab extends React.Component<{
             data={this.state.data}
             onClose={() => this.setState({plotFilterStep: false})}/>}
       </div>
-    </DndProvider>
+    </DndContainer>
   }
 }
 
+function usePipelineStepDndSort(stepIndex: number, updatePipeline: (update: Update<Pipeline>) => void) {
+  return useDndSort(
+      'step', {stepIndex},
+      ({stepIndex: from}, {stepIndex: to}) => updatePipeline(pipeline => moveItem(pipeline, from, to))
+  )
+}
+
 function MixerStepView(props: {
+  stepIndex: number
   typeSelect: ReactNode
   mixerStep: MixerStep
   mixers: Mixers
-  update: (update: Update<MixerStep>) => void
+  updatePipeline: (update: Update<Pipeline>) => void
   errors: ErrorsForPath
   controls: ReactNode
 }) {
-  const {typeSelect, mixers, mixerStep, update, controls} = props
+  const {stepIndex, typeSelect, mixers, mixerStep, updatePipeline, controls} = props
+  const update = (update: Update<MixerStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as MixerStep))
   const mixer = mixers[mixerStep.name]
   const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
   const options = [''].concat(mixerNamesOf(mixers))
   const nameError = props.errors({path: ['name']})
-  return <Box title={<label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>}>
-    <div className="vertically-spaced-content">
-      <ErrorMessage message={props.errors({path: []})}/>
-      <ErrorMessage message={props.errors({path: ['type']})}/>
-      <EnumInput
-          value={mixerStep.name}
-          options={options}
-          desc="name"
-          data-tip="Mixer name"
-          style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
-          onChange={name => update(step => step.name = name)}/>
-      <ErrorMessage message={nameError}/>
-      <div className="horizontally-spaced-content">{controls}</div>
-    </div>
-  </Box>
+  const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
+  return <DndSortable {...dndProps}>
+    <Box title={
+      <>
+        <DragHandle drag={dndProps.drag} tooltip="Drag mixer to sort"/>
+        <label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>
+      </>
+    }>
+      <div className="vertically-spaced-content">
+        <ErrorMessage message={props.errors({path: []})}/>
+        <ErrorMessage message={props.errors({path: ['type']})}/>
+        <EnumInput
+            value={mixerStep.name}
+            options={options}
+            desc="name"
+            data-tip="Mixer name"
+            style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
+            onChange={name => update(step => step.name = name)}/>
+        <ErrorMessage message={nameError}/>
+        <div className="horizontally-spaced-content">{controls}</div>
+      </div>
+    </Box>
+  </DndSortable>
 }
 
 function FilterStepView(props: {
@@ -225,7 +238,9 @@ function FilterStepView(props: {
             }
           }
       )
-  const title = <div>
+  const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
+  const title = <>
+    <DragHandle drag={dndProps.drag} tooltip="Drag filter step to sort"/>
     {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
     <label data-tip="Channel number">
       channel
@@ -238,60 +253,56 @@ function FilterStepView(props: {
           min={0}
           onChange={channel => update(step => step.channel = channel)}/>
     </label>
-  </div>
-  return <Box title={title}>
-    <div className="vertically-spaced-content">
-      <ErrorMessage message={props.errors({path: ['type']})}/>
-      <ErrorMessage message={props.errors({path: ['channel']})}/>
-      <ErrorMessage message={props.errors({path: []})}/>
+  </>
+  return <DndSortable {...dndProps}>
+    <Box title={title}>
       <div className="vertically-spaced-content">
-        {filterStep.names.map((name, index) =>
-            <FilterStepFilter
-                stepIndex={stepIndex}
-                key={index}
-                index={index}
-                name={name}
-                options={options}
-                setName={filterName => update(step => step.names[index] = filterName)}
-                moveFilter={moveFilter}
-                errors={props.errors({path: ['names', index]})}
-                controls={
-                  <>
-                    <MdiButton
-                        icon={mdiArrowUpBold}
-                        tooltip="Move filter up"
-                        smallButton={true}
-                        enabled={index > 0}
-                        onClick={() => moveFilterUp(index)}/>
-                    <MdiButton
-                        icon={mdiArrowDownBold}
-                        tooltip="Move filter down"
-                        smallButton={true}
-                        enabled={index + 1 < filterStep.names.length}
-                        onClick={() => moveFilterDown(index)}/>
-                    <DeleteButton
-                        tooltip="Remove this filter from the list"
-                        smallButton={true}
-                        onClick={() => update(step => step.names.splice(index, 1))}/>
-                  </>
-                }
-            />
-        )}
+        <ErrorMessage message={props.errors({path: ['type']})}/>
+        <ErrorMessage message={props.errors({path: ['channel']})}/>
+        <ErrorMessage message={props.errors({path: []})}/>
+        <div className="vertically-spaced-content">
+          {filterStep.names.map((name, index) =>
+              <FilterStepFilter
+                  stepIndex={stepIndex}
+                  key={index}
+                  index={index}
+                  name={name}
+                  options={options}
+                  setName={filterName => update(step => step.names[index] = filterName)}
+                  moveFilter={moveFilter}
+                  errors={props.errors({path: ['names', index]})}
+                  controls={
+                    <>
+                      <MdiButton
+                          icon={mdiArrowUpBold}
+                          tooltip="Move filter up"
+                          smallButton={true}
+                          enabled={index > 0}
+                          onClick={() => moveFilterUp(index)}/>
+                      <MdiButton
+                          icon={mdiArrowDownBold}
+                          tooltip="Move filter down"
+                          smallButton={true}
+                          enabled={index + 1 < filterStep.names.length}
+                          onClick={() => moveFilterDown(index)}/>
+                      <DeleteButton
+                          tooltip="Remove this filter from the list"
+                          smallButton={true}
+                          onClick={() => update(step => step.names.splice(index, 1))}/>
+                    </>
+                  }
+              />
+          )}
+        </div>
+        <ErrorMessage message={props.errors({path: ['names']})}/>
+        <div className="horizontally-spaced-content">
+          {controls}
+          <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>
+          <PlotButton tooltip="Plot response of this step" onClick={plot}/>
+        </div>
       </div>
-      <ErrorMessage message={props.errors({path: ['names']})}/>
-      <div className="horizontally-spaced-content">
-        {controls}
-        <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>
-        <PlotButton tooltip="Plot response of this step" onClick={plot}/>
-      </div>
-    </div>
-  </Box>
-}
-
-interface FilterDragItem {
-  stepIndex: number
-  index: number
-  name: string
+    </Box>
+  </DndSortable>
 }
 
 function FilterStepFilter(props: {
@@ -305,42 +316,27 @@ function FilterStepFilter(props: {
   controls: ReactNode
 }) {
   const {stepIndex, index, options, name, setName, moveFilter, errors, controls} = props
-  const [{isDragging}, drag, preview] = useDrag(() => ({
-    type: 'filter',
-    item: {name, stepIndex, index},
-    options: {dropEffect: 'move'},
-    collect: monitor => ({isDragging: monitor.isDragging()})
-  }))
-  const [{canDrop}, drop] = useDrop(() => ({
-    accept: 'filter',
-    collect: (monitor: DropTargetMonitor<FilterDragItem>) => {
-      const item = monitor.getItem()
-      return {
-        canDrop: monitor.isOver() && (item.index !== index || item.stepIndex !== stepIndex)
-      }
-    },
-    drop: (item: FilterDragItem) => moveFilter(item.stepIndex, item.index, stepIndex, index)
-  }))
-  return <div ref={drop}>
-    <div ref={preview} style={{position: 'relative'}}>
-      <div className={`horizontally-spaced-content${isDragging ? ' dragSource' : ''}${canDrop ? ' dropTarget' : ''}`}
-           style={{alignItems: 'center'}}>
-      <span ref={drag} style={{display: "flex", alignItems: 'center'}}>
-        <Icon path={mdiDrag} size={'24px'} className="filter-drag-handle" data-tip="Drag filter to sort"/>
-      </span>
-        <EnumInput
-            value={name}
-            options={options}
-            desc={`step${stepIndex}-filter${index}`}
-            data-tip="Filter name"
-            style={{
-              width: '100%',
-              ...(errors ? ERROR_BACKGROUND_STYLE : {})
-            }}
-            onChange={setName}/>
-        {controls}
-      </div>
-      <ErrorMessage message={errors}/>
+  const {isDragging, canDrop, drag, preview, drop} = useDndSort(
+      'filter',
+      {stepIndex, index},
+      ({stepIndex: fromStep, index: fromIndex}, {stepIndex: toStep, index: toIndex}) =>
+          moveFilter(fromStep, fromIndex, toStep, toIndex)
+  )
+  return <DndSortable isDragging={isDragging} canDrop={canDrop} drag={drag} preview={preview} drop={drop}>
+    <div className={`horizontally-spaced-content`}>
+      <DragHandle drag={drag} tooltip="Drag filter to sort"/>
+      <EnumInput
+          value={name}
+          options={options}
+          desc={`step${stepIndex}-filter${index}`}
+          data-tip="Filter name"
+          style={{
+            width: '100%',
+            ...(errors ? ERROR_BACKGROUND_STYLE : {})
+          }}
+          onChange={setName}/>
+      {controls}
     </div>
-  </div>
+    <ErrorMessage message={errors}/>
+  </DndSortable>
 }
