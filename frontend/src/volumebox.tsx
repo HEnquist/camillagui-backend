@@ -1,28 +1,28 @@
-import React from "react";
-import "./index.css";
-import {VuMeterGroup} from "./vumeter";
-import {Box, MdiButton} from "./common-tsx";
-import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js";
+import React from "react"
+import "./index.css"
+import {VuMeterGroup} from "./vumeter"
+import {Box, MdiButton} from "./common-tsx"
+import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
 
 type Props = {
     capture_rms: any
     playback_rms: any
     clipped: boolean
     setMessage: (message: string) => void
-};
+}
 
 type State = {
     volume: number
     mute: boolean
     dim: boolean
-};
+}
 
 const minVolume = -99
 
 export class VolumeBox extends React.Component<Props, State> {
 
     constructor(props: Props) {
-        super(props);
+        super(props)
         this.mute = this.mute.bind(this)
         this.dim = this.dim.bind(this)
         this.state = {volume: 0, mute: false, dim: false}
@@ -69,7 +69,7 @@ export class VolumeBox extends React.Component<Props, State> {
 
     render() {
         const props = this.props
-        const {volume, mute, dim} = this.state;
+        const {volume, mute, dim} = this.state
         return <Box title={
             <>
                 Volume

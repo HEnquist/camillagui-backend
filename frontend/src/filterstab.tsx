@@ -1,7 +1,7 @@
-import React from "react";
-import cloneDeep from "lodash/cloneDeep";
-import "./index.css";
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
+import React from "react"
+import cloneDeep from "lodash/cloneDeep"
+import "./index.css"
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js'
 import {
   Config,
   defaultFilter,
@@ -11,7 +11,7 @@ import {
   newFilterName,
   removeFilter,
   renameFilter
-} from "./config";
+} from "./config"
 import {
   AddButton,
   BoolOption,
@@ -33,7 +33,7 @@ import {
   TextOption,
   Update,
   UploadButton
-} from "./common-tsx";
+} from "./common-tsx"
 import {ErrorsForPath, errorsForSubpath} from "./errors"
 
 export class FiltersTab extends React.Component<
@@ -105,7 +105,7 @@ export class FiltersTab extends React.Component<
               newState.filterKeys[newName] = newState.filterKeys[oldName]
               delete newState.filterKeys[oldName]
             }))
-        renameFilter(config, oldName, newName);
+        renameFilter(config, oldName, newName)
       })
   }
 
@@ -175,7 +175,7 @@ export class FiltersTab extends React.Component<
         data={this.state.data}
         onClose={this.closePopup}
       />
-    </div>;
+    </div>
   }
 }
 
@@ -270,9 +270,9 @@ class FilterView extends React.Component<{
 
   render() {
     const {name, filter} = this.props
-    const uploadState = this.state.uploadState;
+    const uploadState = this.state.uploadState
     const isValidFilterName = (newName: string) =>
-        name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName));
+        name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
     let uploadIcon: { icon: string, className?: string, errorMessage?: string } =
         {icon: mdiUpload}
     if (uploadState !== undefined)
@@ -342,7 +342,7 @@ function coeffFileNameFromPath(coeffDir: string, absolutePath: string): string {
 }
 
 function coeffFilePath(coeffDir: string, filename: string) {
-  return coeffDir + filename;
+  return coeffDir + filename
 }
 
 function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
@@ -435,11 +435,11 @@ class FilterParams extends React.Component<{
 
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
-      filter.type = type;
-      const subtypeDefaults = defaultParameters[type];
-      const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0];
+      filter.type = type
+      const subtypeDefaults = defaultParameters[type]
+      const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0]
       filter.parameters = cloneDeep(subtypeDefaults[firstSubtypeOrDefault])
-    });
+    })
   }
 
   private onSubtypeChange(subtype: string) {
@@ -506,7 +506,7 @@ class FilterParams extends React.Component<{
       if (parameter === 'filename')
         return this.filenameField(parameters['filename'], commonProps)
       if (this.isHiddenDefaultValue(parameter))
-        return null;
+        return null
       if ((this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type))
           && (parameter === 'q' || parameter === 'slope' || parameter === 'bandwidth'))
         return <this.QorBandwithOrSlope
@@ -535,9 +535,15 @@ class FilterParams extends React.Component<{
 
   private filenameField(
       filename: string,
-      props: { onChange: (value: any) => void; "data-tip": string; value: any; key: string; desc: string }
+      props: {
+        onChange: (value: any) => void
+        "data-tip": string
+        value: any
+        key: string
+        desc: string
+      }
   ) {
-    const coeffDir = this.props.coeffDir;
+    const coeffDir = this.props.coeffDir
     const selectedFile = coeffFileNameFromPath(coeffDir, filename)
     return <TextOption
         {...props}

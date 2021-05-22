@@ -2,9 +2,9 @@ import React, {ChangeEvent, CSSProperties, ReactNode} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
-import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js";
-import 'reactjs-popup/dist/index.css';
-import cloneDeep from "lodash/cloneDeep";
+import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
+import 'reactjs-popup/dist/index.css'
+import cloneDeep from "lodash/cloneDeep"
 
 export interface Update<T> {
     (value: T): void
@@ -321,13 +321,13 @@ export function FloatListOption(props: {
                 data-tip={props['data-tip']}
                 asString={(value: number[]) => value.join(", ")}
                 parseValue={(rawValue: string) => {
-                    const parsedvalue = [];
-                    const values = rawValue.split(",");
+                    const parsedvalue = []
+                    const values = rawValue.split(",")
                     for (let value of values) {
-                        const tempvalue = parseFloat(value);
+                        const tempvalue = parseFloat(value)
                         if (isNaN(tempvalue))
-                            return undefined;
-                        parsedvalue.push(tempvalue);
+                            return undefined
+                        parsedvalue.push(tempvalue)
                     }
                     return parsedvalue
                 }}
@@ -373,7 +373,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
 
     render() {
-        const props = this.props;
+        const props = this.props
         const parsedValue = props.parseValue(this.state.rawValue)
         const valid = parsedValue !== undefined
         return <input
@@ -511,7 +511,7 @@ export function ChartPopup(props: {
         return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
     }
 
-    let stateData = props.data;
+    let stateData = props.data
     const name: string = stateData.hasOwnProperty("name") ? stateData["name"] : ""
     let data: any = {labels: [name], datasets: []}
     let x_time = false
@@ -520,7 +520,7 @@ export function ChartPopup(props: {
     let y_gain = false
     let y_ampl = false
 
-    const styles = cssStyles();
+    const styles = cssStyles()
     const axesColor = styles.getPropertyValue('--axes-color')
     const textColor = styles.getPropertyValue('--text-color')
     const gainColor = styles.getPropertyValue('--gain-color')
@@ -627,7 +627,7 @@ export function ChartPopup(props: {
                         100, 200, 300, 400, 500, 600, 700, 800, 900,
                         1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
                         10000, 20000
-                    ];
+                    ]
                 }
             }
         )

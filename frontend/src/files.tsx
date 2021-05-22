@@ -93,12 +93,12 @@ class FileTable extends Component<
   }
 
   componentDidUpdate() {
-    ReactTooltip.rebuild();
+    ReactTooltip.rebuild()
   }
 
   componentDidMount() {
     this.update()
-    const timerId = setInterval(this.update, 1000);
+    const timerId = setInterval(this.update, 1000)
     this.setState({stopTimer: () => clearInterval(timerId)})
     this.loadActiveConfig()
   }
@@ -111,11 +111,11 @@ class FileTable extends Component<
     fetch(`/api/stored${this.type}s`)
       .then(response => response.json())
       .then(json => this.setState((prevState) => {
-        let files = json as string[];
+        let files = json as string[]
         return {
           files: files,
           selectedFiles: prevState.selectedFiles.intersect(files)
-        };
+        }
       }))
   }
 
@@ -138,8 +138,8 @@ class FileTable extends Component<
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify(this.state.selectedFiles),
     })
-    const zipFile = await response.blob();
-    download(this.type + 's.zip', zipFile);
+    const zipFile = await response.blob()
+    download(this.type + 's.zip', zipFile)
   }
 
   private upload(event: ChangeEvent<HTMLInputElement>) {
@@ -166,10 +166,10 @@ class FileTable extends Component<
         return
       }
       const jsonConfig = await response.json()
-      this.props.setCurrentConfig!(name, jsonConfig as Config);
+      this.props.setCurrentConfig!(name, jsonConfig as Config)
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
     } catch(e) {
-      this.showErrorMessage(name, 'load', e);
+      this.showErrorMessage(name, 'load', e)
     }
   }
 
@@ -206,13 +206,13 @@ class FileTable extends Component<
         method: "POST",
         headers: { "Content-Type": "application/json", },
         body: JSON.stringify({filename: name, config: config}),
-      });
+      })
       if (response.ok) {
         setCurrentConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
         this.update()
       } else {
-        const message = await response.text();
+        const message = await response.text()
         this.showErrorMessage(name, 'save', message)
       }
     } catch (e) {
@@ -327,7 +327,7 @@ export function loadActiveConfig(): Promise<{configFileName: string, config: Con
 
 function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
   const {checked, filename, onChange} = props
-  let tooltip = (checked ? "Unselect " : "Select ") + filename;
+  let tooltip = (checked ? "Unselect " : "Select ") + filename
   return <CheckBox tooltip={tooltip} checked={checked} onChange={onChange}/>
 }
 
@@ -376,7 +376,7 @@ function UploadFilesButton(props: {
 }
 
 function SetActiveButton(props: {active: boolean, onClick: () => void}) {
-  const {active, onClick} = props;
+  const {active, onClick} = props
   return <MdiButton
       icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
       tooltip={active ?
@@ -384,7 +384,7 @@ function SetActiveButton(props: {active: boolean, onClick: () => void}) {
           : "Make this config active<br> It will then be used by default"
       }
       className={active ? "highlighted-button" : ""}
-      onClick={onClick}/>;
+      onClick={onClick}/>
 }
 
 function SaveButton(
@@ -463,9 +463,9 @@ function reasonToDisableSaveNewFileButton(newFileName: string, files: ReadonlyAr
     return 'Please enter a valid file name.'
   else if (files.includes(newFileName))
     return `File "${newFileName}" already exists`
-  return undefined;
+  return undefined
 }
 
 function isValidFilename(newFileName: string) {
-  return newFileName.trim().length > 0;
+  return newFileName.trim().length > 0
 }

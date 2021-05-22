@@ -1,5 +1,5 @@
-import React from "react";
-import "./index.css";
+import React from "react"
+import "./index.css"
 import {
   AddButton,
   Box,
@@ -10,7 +10,7 @@ import {
   modifiedCopyOf,
   ParsedInput,
   Update
-} from "./common-tsx";
+} from "./common-tsx"
 import {
   Config,
   defaultMapping,
@@ -24,9 +24,9 @@ import {
   removeMixer,
   renameMixer,
   Source
-} from "./config";
-import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js";
-import {ErrorsForPath, errorsForSubpath} from "./errors";
+} from "./config"
+import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
+import {ErrorsForPath, errorsForSubpath} from "./errors"
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
@@ -36,7 +36,7 @@ export class MixersTab extends React.Component<{
   mixerKeys: { [name: string]: number}
 }> {
   constructor(props: any) {
-    super(props);
+    super(props)
     this.mixerNames = this.mixerNames.bind(this)
     this.addMixer = this.addMixer.bind(this)
     this.renameMixer = this.renameMixer.bind(this)
@@ -81,7 +81,7 @@ export class MixersTab extends React.Component<{
               newState.mixerKeys[newName] = newState.mixerKeys[oldName]
               delete newState.mixerKeys[oldName]
             }))
-        renameMixer(config, oldName, newName);
+        renameMixer(config, oldName, newName)
       })
   }
 
@@ -112,7 +112,7 @@ export class MixersTab extends React.Component<{
             <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
           </div>
         </div>
-    );
+    )
   }
 }
 
@@ -127,7 +127,7 @@ function MixerView(props: {
 }) {
   const {name, mixer, errors, rename, remove, update} = props
   const isValidMixerName = (newName: string) =>
-      name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName));
+      name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
   return <Box title={
     <>
       <ParsedInput

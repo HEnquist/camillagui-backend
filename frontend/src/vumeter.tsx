@@ -1,6 +1,6 @@
-import React from "react";
-import "./index.css";
-import {Line} from "rc-progress";
+import React from "react"
+import "./index.css"
+import {Line} from "rc-progress"
 
 export function VuMeterGroup(props: { title: string, level: number[], clipped: boolean }) {
   if (props.level.length === 0)

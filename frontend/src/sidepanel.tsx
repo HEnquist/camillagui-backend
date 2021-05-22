@@ -1,12 +1,12 @@
-import React from "react";
-import "./index.css";
-import isEqual from "lodash/isEqual";
-import camillalogo from "./camilladsp.svg";
-import {VolumeBox} from "./volumebox";
-import {Box} from "./common-tsx";
-import {Config} from "./config";
-import {loadActiveConfig} from "./files";
-import {ErrorsForPath, errorsOf, noErrors} from "./errors";
+import React from "react"
+import "./index.css"
+import isEqual from "lodash/isEqual"
+import camillalogo from "./camilladsp.svg"
+import {VolumeBox} from "./volumebox"
+import {Box} from "./common-tsx"
+import {Config} from "./config"
+import {loadActiveConfig} from "./files"
+import {ErrorsForPath, errorsOf, noErrors} from "./errors"
 
 
 class ConfigCheckMessage extends React.Component<
@@ -161,7 +161,7 @@ export class SidePanel extends React.Component<
     const config = await conf_req.json()
     if (config) {
       this.setState({msg: "OK"})
-      this.props.setConfig(config);
+      this.props.setConfig(config)
     } else {
       this.setState({msg: "No config received"})
     }
@@ -181,9 +181,9 @@ export class SidePanel extends React.Component<
   }
 
   async loadCurrentConfig() {
-    const json = await loadActiveConfig();
-    this.setState({msg: "OK"});
-    this.props.setCurrentConfig(json.configFileName, json.config);
+    const json = await loadActiveConfig()
+    this.setState({msg: "OK"})
+    this.props.setCurrentConfig(json.configFileName, json.config)
   }
 
   render() {

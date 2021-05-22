@@ -6,7 +6,7 @@ import {
     newFilterName,
     removeFilter, removeMixer,
     renameFilter, renameMixer
-} from "./config";
+} from "./config"
 
 test('newFilterName ', () => {
     const config = defaultConfig()
@@ -70,7 +70,7 @@ test('defaultMapping counts destination channel up until out channel count', () 
 })
 
 test('defaultSource counts input channel up until in channel count', () => {
-    const source = defaultSource(1, []);
+    const source = defaultSource(1, [])
     expect(source.channel).toBe(0)
     expect(defaultSource(1, [source]).channel).toBe(0)
     expect(defaultSource(2, [source]).channel).toBe(1)
