@@ -19,8 +19,10 @@ import {
   ChartPopup,
   DeleteButton,
   doUpload,
+  EnumInput,
   EnumOption,
   ErrorMessage,
+  FloatInput,
   FloatListOption,
   FloatOption,
   IntOption,
@@ -355,17 +357,18 @@ const defaultParameters: {
   }
 } = {
   Biquad: {
-    Lowpass: { type: "Lowpass", q: 0.5, freq: 1000 },
-    Highpass: { type: "Highpass", q: 0.5, freq: 1000 },
-    Lowshelf: { type: "Lowshelf", gain: 6, slope: 6, freq: 1000 },
-    Highshelf: { type: "Highshelf", gain: 6, slope: 6, freq: 1000 },
+    Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
+    Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
+    Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
+    Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
     LowpassFO: { type: "LowpassFO", freq: 1000 },
     HighpassFO: { type: "HighpassFO", freq: 1000 },
     LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
     HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
-    Peaking: { type: "Peaking", gain: 6, q: 1.5, freq: 1000 },
-    Notch: { type: "Notch", q: 1.5, freq: 1000 },
-    Allpass: { type: "Allpass", q: 0.5, freq: 1000 },
+    Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
+    Notch: { type: "Notch", freq: 1000, q: 1.5 },
+    Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
+    Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
     AllpassFO: { type: "AllpassFO", freq: 1000 },
     LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
     Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
@@ -427,6 +430,7 @@ class FilterParams extends React.Component<{
     this.hasHiddenDefaultValue = this.hasHiddenDefaultValue.bind(this)
     this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this)
     this.filenameField = this.filenameField.bind(this)
+    this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
   }
 
   private onTypeChange(type: string) {
@@ -503,6 +507,16 @@ class FilterParams extends React.Component<{
         return this.filenameField(parameters['filename'], commonProps)
       if (this.isHiddenDefaultValue(parameter))
         return null;
+      if ((this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type))
+          && (parameter === 'q' || parameter === 'slope' || parameter === 'bandwidth'))
+        return <this.QorBandwithOrSlope
+            {...commonProps}
+            parameter={parameter}
+            parameters={parameters}
+            onDescChange={option => this.props.updateFilter(filter => {
+              this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
+              filter.parameters[option] = this.defaultParameterValues[option]
+            })}/>
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')
@@ -573,10 +587,20 @@ class FilterParams extends React.Component<{
       desc: "a2",
       tooltip: "Value for Biquad a2 coefficient",
     },
+    amplitude: {
+      type: "float",
+      desc: "amplitude",
+      tooltip: "Dither amplitude relative to target LSB",
+    },
     b0: {
       type: "float",
       desc: "b0",
       tooltip: "Value for Biquad b0 coefficient",
+    },
+    b: {
+      type: "floatlist",
+      desc: "b",
+      tooltip: "Comma-separated list of coefficients for b",
     },
     b1: {
       type: "float",
@@ -588,15 +612,10 @@ class FilterParams extends React.Component<{
       desc: "b2",
       tooltip: "Value for Biquad b2 coefficient",
     },
-    amplitude: {
+    bandwidth: {
       type: "float",
-      desc: "amplitude",
-      tooltip: "Dither amplitude relative to target LSB",
-    },
-    b: {
-      type: "floatlist",
-      desc: "b",
-      tooltip: "Comma-separated list of coefficients for b",
+      desc: "bandwidth",
+      tooltip: "Filter bandwidth in octaves"
     },
     bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
     channel: {
@@ -700,5 +719,56 @@ class FilterParams extends React.Component<{
       desc: "values",
       tooltip: "Comma separated list of filter coefficients",
     },
-  };
+  }
+
+  qBandwithSlope = ['q', 'slope', 'bandwidth']
+
+  qAndBandwidthFilters = ['Peaking', 'Allpass', 'Notch', 'Bandpass']
+
+  qAndSlopeFilters = ['Lowshelf', 'Highshelf']
+
+  defaultParameterValues: { [parameter: string]: number } = {
+    'q': 0.5,
+    'slope': 6,
+    'bandwidth': 1
+  }
+
+  QorBandwithOrSlope(props: {
+    parameter: string
+    parameters: { [p: string]: any }
+    desc: string
+    value: number
+    error?: string
+    'data-tip': string
+    onDescChange: (option: string) => void
+    onChange: (value: number) => void
+  }) {
+    const {parameter, parameters, desc, value, error, onDescChange, onChange} = props
+    let descOptions
+    if (this.qAndSlopeFilters.includes(parameters.type))
+      descOptions = ['q', 'slope']
+    else if (this.qAndBandwidthFilters.includes(parameters.type))
+      descOptions = ['q', 'bandwidth']
+    else
+      return <ErrorMessage message={error}/>
+    return <>
+      <label className="setting" style={{textAlign: 'right'}} data-tip={props['data-tip']}>
+        <EnumInput
+            value={parameter}
+            options={descOptions}
+            desc={desc}
+            style={{display: 'table-cell', width: 'min-content', textAlign: 'right', marginRight: '5px'}}
+            data-tip={props["data-tip"]}
+            onChange={onDescChange}/>
+        <FloatInput
+            className="setting-input"
+            error={error !== undefined}
+            value={value}
+            style={{width: '55%'}}
+            data-tip={props["data-tip"]}
+            onChange={onChange}/>
+        <ErrorMessage message={error}/>
+      </label>
+    </>
+  }
 }

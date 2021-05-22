@@ -274,21 +274,36 @@ export function FloatOption(props:{
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <ParsedInput
-                className="setting-input"
-                value={props.value}
-                data-tip={props["data-tip"]}
-                onChange={props.onChange}
-                asString={(float: number) => float.toString()}
-                parseValue={(rawValue: string) => {
-                    const parsedvalue = parseFloat(rawValue)
-                    return isNaN(parsedvalue) ? undefined : parsedvalue
-                }}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-            />
+          <FloatInput
+              value={props.value}
+              data-tip={props["data-tip"]}
+              onChange={props.onChange}
+              className="setting-input"/>
         </OptionLine>
         <ErrorMessage message={props.error}/>
     </>
+}
+
+export function FloatInput(props: {
+    value: number
+    error?: boolean
+    'data-tip': string
+    onChange: (value: number) => void
+    className?: string
+    style?: CSSProperties
+}) {
+    return <ParsedInput
+        value={props.value}
+        data-tip={props["data-tip"]}
+        onChange={props.onChange}
+        asString={(float: number) => float.toString()}
+        parseValue={(rawValue: string) => {
+            const parsedvalue = parseFloat(rawValue)
+            return isNaN(parsedvalue) ? undefined : parsedvalue
+        }}
+        className={props.className}
+        style={{...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined)}}
+    />
 }
 
 export function FloatListOption(props: {
