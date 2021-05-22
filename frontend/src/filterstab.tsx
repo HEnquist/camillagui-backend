@@ -33,8 +33,8 @@ import {
   TextOption,
   Update,
   UploadButton
-} from "./common-tsx"
-import {ErrorsForPath, errorsForSubpath} from "./errors"
+} from "./utilities/common-tsx"
+import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 
 export class FiltersTab extends React.Component<
     {

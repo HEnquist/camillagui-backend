@@ -1,7 +1,7 @@
 import React from "react"
-import "./index.css"
+import "../index.css"
 import {VuMeterGroup} from "./vumeter"
-import {Box, MdiButton} from "./common-tsx"
+import {Box, MdiButton} from "../utilities/common-tsx"
 import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
 
 type Props = {

@@ -1,5 +1,5 @@
 import React, {ReactNode} from "react"
-import "./index.css"
+import "../index.css"
 import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
@@ -16,7 +16,7 @@ import {
   moveItemUp,
   PlotButton,
   Update
-} from "./common-tsx"
+} from "../utilities/common-tsx"
 import {
   Config,
   defaultFilterStep,
@@ -29,10 +29,10 @@ import {
   MixerStep,
   Pipeline,
   PipelineStep
-} from "./config"
+} from "../config"
 import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
-import {ErrorsForPath, errorsForSubpath} from "./errors"
-import {DndContainer, DndSortable, DragHandle, useDndSort} from "./utilities/dragndrop"
+import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
+import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"
 
 
 export class PipelineTab extends React.Component<{

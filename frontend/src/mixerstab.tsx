@@ -10,7 +10,7 @@ import {
   modifiedCopyOf,
   ParsedInput,
   Update
-} from "./common-tsx"
+} from "./utilities/common-tsx"
 import {
   Config,
   defaultMapping,
@@ -26,7 +26,7 @@ import {
   Source
 } from "./config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
-import {ErrorsForPath, errorsForSubpath} from "./errors"
+import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 
 export class MixersTab extends React.Component<{
   mixers: Mixers

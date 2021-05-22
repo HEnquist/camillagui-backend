@@ -1,4 +1,4 @@
-import {moveItem} from "./common-tsx"
+import {moveItem} from "./utilities/common-tsx"
 
 
 test('Move item down', () => {

@@ -13,8 +13,8 @@ import {
   IntOption,
   TextOption,
   Update
-} from "./common-tsx"
-import {ErrorsForPath, errorsForSubpath} from "./errors"
+} from "./utilities/common-tsx"
+import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 
 export function DevicesTab(props: {
   guiConfig: GuiConfig

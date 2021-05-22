@@ -1,6 +1,6 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./common-tsx"
+import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/common-tsx"
 import {
   mdiAlertCircle,
   mdiAlphaABox,
