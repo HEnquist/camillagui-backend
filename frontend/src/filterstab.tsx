@@ -15,7 +15,7 @@ import {
 import {
   AddButton,
   BoolOption,
-  Box,
+  Box, Button,
   ChartPopup,
   DeleteButton,
   doUpload,
@@ -477,11 +477,7 @@ class FilterParams extends React.Component<{
       <ErrorMessage message={errors({path: ['parameters']})}/>
       {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
-      <div
-          className="button button-with-text"
-          onClick={() => this.props.setShowDefaults()}>
-        ...
-      </div>
+      <Button text="..." onClick={() => this.props.setShowDefaults()}/>
       }
     </div>
   }

@@ -108,6 +108,21 @@ export function CheckBox(props: {
     </label>
 }
 
+export function Button(props: {
+    text: string
+    "data-tip"? : string
+    onClick: () => void
+    style?: CSSProperties
+}) {
+    return <div
+        data-tip={props["data-tip"]}
+        className="button button-with-text"
+        style={props.style}
+        onClick={props.onClick}>
+        {props.text}
+    </div>
+}
+
 export function AddButton(props: {
     tooltip: string
     style?: CSSProperties
@@ -730,14 +745,11 @@ export function ListSelectPopup(props: {
         {props.header}
         <div style={{display: 'flex', flexDirection: 'column'}}>
             {items.map(item =>
-                <div
+                <Button
                     key={item}
-                    className="button button-with-text"
+                    text={item}
                     style={{justifyContent: 'flex-start'}}
-                    onClick={() => selectItem(item)}
-                >
-                    {item}
-                </div>
+                    onClick={() => selectItem(item)}/>
             )}
         </div>
     </Popup>

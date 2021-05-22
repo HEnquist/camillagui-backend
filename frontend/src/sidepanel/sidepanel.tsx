@@ -3,7 +3,7 @@ import "../index.css"
 import isEqual from "lodash/isEqual"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
-import {Box} from "../utilities/common-tsx"
+import {Box, Button} from "../utilities/common-tsx"
 import {Config} from "../config"
 import {loadActiveConfig} from "../files"
 import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
@@ -156,21 +156,17 @@ export class SidePanel extends React.Component<
           </div>
           }
           <div className="two-column-grid">
-            <div
-              data-tip="Get active config from CamillaDSP"
-              className="button button-with-text"
-              onClick={this.fetchConfig}>
-              Load from CDSP
-            </div>
-            <div
+            <Button
+                text="Load from CDSP"
+                data-tip="Get active config from CamillaDSP"
+                onClick={this.fetchConfig}/>
+            <Button
+                text="Apply to CDSP"
                 data-tip={activeConfigFile ?
                     `Upload config to CamillaDSP and save to ${activeConfigFile}`
                     : `Upload config to CamillaDSP`
                 }
-                 className="button button-with-text"
-                onClick={this.applyConfig}>
-              Apply to CDSP
-            </div>
+                onClick={this.applyConfig}/>
           </div>
           <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>
         </Box>
