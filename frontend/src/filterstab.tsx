@@ -15,7 +15,8 @@ import {
 import {
   AddButton,
   BoolOption,
-  Box, Button,
+  Box,
+  Button,
   ChartPopup,
   DeleteButton,
   doUpload,
@@ -746,11 +747,11 @@ class FilterParams extends React.Component<{
     onChange: (value: number) => void
   }) {
     const {parameter, parameters, desc, value, error, onDescChange, onChange} = props
-    let descOptions
+    let descOptions: { [parameter: string]: string } = {}
     if (this.qAndSlopeFilters.includes(parameters.type))
-      descOptions = ['q', 'slope']
+      ['q', 'slope'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
     else if (this.qAndBandwidthFilters.includes(parameters.type))
-      descOptions = ['q', 'bandwidth']
+      ['q', 'bandwidth'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
     else
       return <ErrorMessage message={error}/>
     return <>

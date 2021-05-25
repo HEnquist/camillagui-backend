@@ -34,6 +34,12 @@ export function moveItem<T>(array: T[], fromIndex: number, toIndex: number) {
     array.splice(toIndex, 0, ...removed)
 }
 
+export function toMap<T extends string>(array: T[]): { [key: string]: T } {
+    const map: { [key: string]: T } = {}
+    array.forEach(value => map[value] = value)
+    return map
+}
+
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
 }
@@ -457,9 +463,12 @@ export function EnumOption<OPTION extends string>(props: {
     </>
 }
 
+/*
+ options - list of options OR object with value to display text mapping
+ */
 export function EnumInput<OPTION extends string>(props: {
     value: OPTION
-    options: OPTION[]
+    options: OPTION[] | { [key: string]: string }
     desc: string
     'data-tip': string
     style?: CSSProperties
@@ -467,7 +476,9 @@ export function EnumInput<OPTION extends string>(props: {
     onChange: (value: OPTION) => void
 }) {
     const {options, value} = props
-    const opt = options.includes(value) ? options : [value].concat(options)
+    const optionsMap = Array.isArray(options) ? toMap(options) : options
+    if (!Object.keys(optionsMap).includes(value))
+        optionsMap[value] = value
     return <select
         id={props.desc}
         name={props.desc}
@@ -477,7 +488,7 @@ export function EnumInput<OPTION extends string>(props: {
         style={props.style}
         className={props.className}
     >
-        {opt.map((option) => <option key={option} value={option}>{option}</option>)}
+        {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
     </select>
 }
 

@@ -1,4 +1,4 @@
-import {moveItem} from "./utilities/common-tsx"
+import {moveItem, toMap} from "./common-tsx"
 
 
 test('Move item down', () => {
@@ -23,4 +23,13 @@ test('Move another item up', () => {
     const array = [0, 1, 2]
     moveItem(array, 2, 1)
     expect(array).toEqual([0, 2, 1])
+})
+
+test('Convert array toMap', () => {
+    const array = ['a', 'b', 'c'];
+    expect(toMap(array)).toEqual({
+        'a': 'a',
+        'b': 'b',
+        'c': 'c'
+    })
 })
