@@ -1,7 +1,7 @@
 import React from "react"
 import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js'
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload} from '@mdi/js'
 import {
   Config,
   defaultFilter,
