@@ -276,10 +276,8 @@ class FilterView extends React.Component<{
         name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
     let uploadIcon: { icon: string, className?: string, errorMessage?: string } =
         {icon: mdiUpload}
-    if (uploadState !== undefined)
-      uploadIcon = uploadState.success ?
-          {icon: mdiCheck, className: 'success-text'}
-          : {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
+    if (uploadState !== undefined && !uploadState.success)
+      uploadIcon = {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
     return <Box title={
       <ParsedInput
           style={{width: '300px'}}
@@ -301,18 +299,10 @@ class FilterView extends React.Component<{
               onClick={this.props.plot}/>
           }
           {isConvolutionFileFilter(filter) &&
-          <>
-            <MdiButton
-                icon={mdiFileSearch}
-                tooltip="Pick filter file"
-                onClick={() => this.setState({popupOpen: true})}/>
-            <UploadButton
-                icon={uploadIcon.icon}
-                className={uploadIcon.className}
-                tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
-                onChange={this.uploadCoeffs}
-                multiple={true}/>
-          </>
+          <MdiButton
+              icon={mdiFileSearch}
+              tooltip="Pick filter file"
+              onClick={() => this.setState({popupOpen: true})}/>
           }
           <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
         </div>
@@ -329,7 +319,17 @@ class FilterView extends React.Component<{
       <ListSelectPopup
           key="filter select popup"
           open={this.state.popupOpen}
-          header={<div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>}
+          header={
+            <>
+              <UploadButton
+                  icon={uploadIcon.icon}
+                  className={uploadIcon.className}
+                  tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
+                  onChange={this.uploadCoeffs}
+                  multiple={true}/>
+              <div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>
+            </>
+          }
           items={this.props.availableCoeffFiles}
           onClose={() => this.setState({popupOpen: false})}
           onSelect={this.pickFilterFile}
