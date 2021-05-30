@@ -1,6 +1,6 @@
-import React from "react";
-import "./index.css";
-import {Line} from "rc-progress";
+import React from "react"
+import "../index.css"
+import {Line} from "rc-progress"
 
 export function VuMeterGroup(props: { title: string, level: number[], clipped: boolean }) {
   if (props.level.length === 0)
@@ -16,7 +16,7 @@ export function VuMeterGroup(props: { title: string, level: number[], clipped: b
   )
 }
 
-export function VuMeter(props: { level: number, clipped: boolean}) {
+function VuMeter(props: { level: number, clipped: boolean}) {
   const color = props.clipped ? 'var(--error-text-color)' : 'var(--success-text-color)'
   let level = props.level
   if (level < -100) level = -100

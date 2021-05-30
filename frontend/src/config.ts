@@ -1,4 +1,4 @@
-import {sortedAlphabetically} from "./common-tsx";
+import {sortedAlphabetically} from "./utilities/common-tsx"
 
 export function defaultConfig(): Config {
     return {
@@ -29,7 +29,7 @@ export function defaultConfig(): Config {
         filters: {},
         mixers: {},
         pipeline: [],
-    };
+    }
 }
 
 export function filterNamesOf(configOrFilters: Config | Filters): string[] {
@@ -50,7 +50,7 @@ function newName(prefix: string, existingNames: string[]): string {
         i => existingNames.includes(prefix + i.toString())
     for (let i = 1; ; i++)
         if (!nameIsAlreadyPresent(i))
-            return prefix + i.toString();
+            return prefix + i.toString()
 }
 
 export function defaultFilter() {
@@ -118,7 +118,7 @@ export function defaultMapping(outChannels: number, mappings: Mapping[]): Mappin
         dest: mappings.length,
         sources: [defaultSource(0, [])],
         mute: false
-    };
+    }
 }
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {

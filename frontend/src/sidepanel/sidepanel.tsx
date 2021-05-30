@@ -1,71 +1,13 @@
-import React from "react";
-import "./index.css";
-import isEqual from "lodash/isEqual";
-import camillalogo from "./camilladsp.svg";
-import {VolumeBox} from "./volumebox";
-import {Box} from "./common-tsx";
-import {Config} from "./config";
-import {loadActiveConfig} from "./files";
-import {ErrorsForPath, errorsOf, noErrors} from "./errors";
+import React from "react"
+import "../index.css"
+import isEqual from "lodash/isEqual"
+import camillalogo from "./camilladsp.svg"
+import {VolumeBox} from "./volumebox"
+import {Box, Button} from "../utilities/common-tsx"
+import {Config} from "../config"
+import {loadActiveConfig} from "../files"
+import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
 
-
-class ConfigCheckMessage extends React.Component<
-    {
-      config: Config,
-      setErrors: (errors: ErrorsForPath) => void
-    },
-    { message: string }
-> {
-
-  default_message = "NOT CHECKED"
-
-  constructor(props: any) {
-    super(props)
-    this.get_config_errors = this.get_config_errors.bind(this)
-    this.state = {message: this.default_message}
-  }
-
-  componentDidUpdate(prevProps: { config: Config }) {
-    if (!isEqual(prevProps.config, this.props.config))
-      this.get_config_errors(this.props.config)
-  }
-
-  private async get_config_errors(config: Config) {
-    try {
-      const request = await fetch("/api/validateconfig", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(config),
-      })
-      if (request.ok) {
-        const message = await request.text()
-        this.setState({message: message})
-        this.props.setErrors(noErrors)
-      } else {
-        const json = await request.json()
-        const errors = errorsOf(json)
-        const globalErrors = errors({path:[]})
-        this.setState({message: 'Config has errors' + (globalErrors ? (':\n' + globalErrors) : '')})
-        this.props.setErrors(errors)
-      }
-    } catch (err) {
-      this.setState({message: 'Validation failed'})
-      this.props.setErrors(noErrors)
-    }
-  }
-
-  render() {
-    const message = this.state.message
-    let textColor
-    if (message === this.default_message)
-      textColor = 'var(--neutral-text-color)'
-    else if (message === "OK")
-      textColor = 'var(--success-text-color)'
-    else
-      textColor = 'var(--error-text-color)'
-    return <div className="config-status" style={{color: textColor, whiteSpace: 'pre-wrap'}}>{message}</div>
-  }
-}
 
 interface SidePanelProps {
   config: Config
@@ -161,7 +103,7 @@ export class SidePanel extends React.Component<
     const config = await conf_req.json()
     if (config) {
       this.setState({msg: "OK"})
-      this.props.setConfig(config);
+      this.props.setConfig(config)
     } else {
       this.setState({msg: "No config received"})
     }
@@ -181,9 +123,9 @@ export class SidePanel extends React.Component<
   }
 
   async loadCurrentConfig() {
-    const json = await loadActiveConfig();
-    this.setState({msg: "OK"});
-    this.props.setCurrentConfig(json.configFileName, json.config);
+    const json = await loadActiveConfig()
+    this.setState({msg: "OK"})
+    this.props.setCurrentConfig(json.configFileName, json.config)
   }
 
   render() {
@@ -214,21 +156,17 @@ export class SidePanel extends React.Component<
           </div>
           }
           <div className="two-column-grid">
-            <div
-              data-tip="Get active config from CamillaDSP"
-              className="button button-with-text"
-              onClick={this.fetchConfig}>
-              Load from CDSP
-            </div>
-            <div
+            <Button
+                text="Load from CDSP"
+                data-tip="Get active config from CamillaDSP"
+                onClick={this.fetchConfig}/>
+            <Button
+                text="Apply to CDSP"
                 data-tip={activeConfigFile ?
                     `Upload config to CamillaDSP and save to ${activeConfigFile}`
                     : `Upload config to CamillaDSP`
                 }
-                 className="button button-with-text"
-                onClick={this.applyConfig}>
-              Apply to CDSP
-            </div>
+                onClick={this.applyConfig}/>
           </div>
           <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>
         </Box>
@@ -239,5 +177,63 @@ export class SidePanel extends React.Component<
         </div>
       </section>
     )
+  }
+}
+
+class ConfigCheckMessage extends React.Component<
+    {
+      config: Config,
+      setErrors: (errors: ErrorsForPath) => void
+    },
+    { message: string }
+    > {
+
+  default_message = "NOT CHECKED"
+
+  constructor(props: any) {
+    super(props)
+    this.get_config_errors = this.get_config_errors.bind(this)
+    this.state = {message: this.default_message}
+  }
+
+  componentDidUpdate(prevProps: { config: Config }) {
+    if (!isEqual(prevProps.config, this.props.config))
+      this.get_config_errors(this.props.config)
+  }
+
+  private async get_config_errors(config: Config) {
+    try {
+      const request = await fetch("/api/validateconfig", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(config),
+      })
+      if (request.ok) {
+        const message = await request.text()
+        this.setState({message: message})
+        this.props.setErrors(noErrors)
+      } else {
+        const json = await request.json()
+        const errors = errorsOf(json)
+        const globalErrors = errors({path:[]})
+        this.setState({message: 'Config has errors' + (globalErrors ? (':\n' + globalErrors) : '')})
+        this.props.setErrors(errors)
+      }
+    } catch (err) {
+      this.setState({message: 'Validation failed'})
+      this.props.setErrors(noErrors)
+    }
+  }
+
+  render() {
+    const message = this.state.message
+    let textColor
+    if (message === this.default_message)
+      textColor = 'var(--neutral-text-color)'
+    else if (message === "OK")
+      textColor = 'var(--success-text-color)'
+    else
+      textColor = 'var(--error-text-color)'
+    return <div className="config-status" style={{color: textColor, whiteSpace: 'pre-wrap'}}>{message}</div>
   }
 }

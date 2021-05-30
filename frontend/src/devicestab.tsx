@@ -13,8 +13,8 @@ import {
   IntOption,
   TextOption,
   Update
-} from "./common-tsx"
-import {ErrorsForPath, errorsForSubpath} from "./errors"
+} from "./utilities/common-tsx"
+import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 
 export function DevicesTab(props: {
   guiConfig: GuiConfig
@@ -60,7 +60,7 @@ export function DevicesTab(props: {
         errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
     />
-  </div>;
+  </div>
 }
 
 function Samplerate(props: {
@@ -70,7 +70,7 @@ function Samplerate(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_capture_samplerate && !props.devices.enable_resampling)
-    return null;
+    return null
   return <SamplerateOption
       samplerate={props.devices.samplerate}
       error={props.errors({path: ['samplerate']})}
@@ -94,8 +94,8 @@ function SamplerateOption(props: {
     return !defaultSampleRates.includes(samplerate)
   }
   const other = 'Other'
-  const samplerate = props.samplerate;
-  const padding = props.extraPadding ? '0 12px' : '0';
+  const samplerate = props.samplerate
+  const padding = props.extraPadding ? '0 12px' : '0'
   return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
@@ -108,7 +108,7 @@ function SamplerateOption(props: {
         onChange={value => {
           const parsed = parseInt(value)
           const newSamplerate = isNaN(parsed) ? 0 : parsed
-          props.onChange(newSamplerate);
+          props.onChange(newSamplerate)
         }}/>
     {isNonDefaultSamplerate(samplerate) &&
     <IntInput
@@ -150,7 +150,7 @@ function SilenceOptions(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_silence)
-    return null;
+    return null
   return <Box title="Silence">
     <FloatOption
         value={props.devices.silence_threshold}
@@ -172,9 +172,9 @@ function RateAdjustOptions(props: {
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
-  let playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type);
+  let playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type)
   if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"]))
-    return null;
+    return null
   return <Box title="Rate adjust">
     <BoolOption
         value={props.devices.enable_rate_adjust}
@@ -194,7 +194,7 @@ function RateAdjustOptions(props: {
         desc="target_level"
         data-tip="Target output buffer fill level for rate adjust"
         onChange={targetLevel => props.onChange(devices => devices.target_level = targetLevel)}/>
-  </Box>;
+  </Box>
 }
 
 function ResamplingOptions(props: {
@@ -246,7 +246,7 @@ function CaptureOptions(props: {
     Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
-  };
+  }
   const {capture, onChange, errors} = props
   return <Box title="Capture device">
     <ErrorMessage message={errors({path: []})}/>
@@ -337,7 +337,7 @@ function PlaybackOptions(props: {
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
-  };
+  }
   const {onChange, playback, errors} = props
   return <Box title="Playback device">
     <ErrorMessage message={errors({path: []})}/>

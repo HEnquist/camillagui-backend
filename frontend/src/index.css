@@ -259,3 +259,29 @@ div .popup-content {
   width: 100%;
   text-align: center;
 }
+
+.drag-handle {
+  cursor: move;
+  outline: transparent;
+}
+
+.dragSource {
+  opacity: 0.5;
+  z-index: 10;
+}
+
+.dropTargetParent {
+  position: relative;
+}
+
+.dropTarget:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: var(--border-radius);
+  border: var(--highlighted-button-border);
+}

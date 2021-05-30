@@ -1,7 +1,7 @@
-import React from "react";
-import cloneDeep from "lodash/cloneDeep";
-import "./index.css";
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiCheck, mdiFileSearch, mdiUpload} from '@mdi/js';
+import React from "react"
+import cloneDeep from "lodash/cloneDeep"
+import "./index.css"
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload} from '@mdi/js'
 import {
   Config,
   defaultFilter,
@@ -11,16 +11,19 @@ import {
   newFilterName,
   removeFilter,
   renameFilter
-} from "./config";
+} from "./config"
 import {
   AddButton,
   BoolOption,
   Box,
+  Button,
   ChartPopup,
   DeleteButton,
   doUpload,
+  EnumInput,
   EnumOption,
   ErrorMessage,
+  FloatInput,
   FloatListOption,
   FloatOption,
   IntOption,
@@ -31,8 +34,8 @@ import {
   TextOption,
   Update,
   UploadButton
-} from "./common-tsx";
-import {ErrorsForPath, errorsForSubpath} from "./errors"
+} from "./utilities/common-tsx"
+import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 
 export class FiltersTab extends React.Component<
     {
@@ -103,7 +106,7 @@ export class FiltersTab extends React.Component<
               newState.filterKeys[newName] = newState.filterKeys[oldName]
               delete newState.filterKeys[oldName]
             }))
-        renameFilter(config, oldName, newName);
+        renameFilter(config, oldName, newName)
       })
   }
 
@@ -173,7 +176,7 @@ export class FiltersTab extends React.Component<
         data={this.state.data}
         onClose={this.closePopup}
       />
-    </div>;
+    </div>
   }
 }
 
@@ -268,15 +271,13 @@ class FilterView extends React.Component<{
 
   render() {
     const {name, filter} = this.props
-    const uploadState = this.state.uploadState;
+    const uploadState = this.state.uploadState
     const isValidFilterName = (newName: string) =>
-        name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName));
+        name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
     let uploadIcon: { icon: string, className?: string, errorMessage?: string } =
         {icon: mdiUpload}
-    if (uploadState !== undefined)
-      uploadIcon = uploadState.success ?
-          {icon: mdiCheck, className: 'success-text'}
-          : {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
+    if (uploadState !== undefined && !uploadState.success)
+      uploadIcon = {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
     return <Box title={
       <ParsedInput
           style={{width: '300px'}}
@@ -298,18 +299,10 @@ class FilterView extends React.Component<{
               onClick={this.props.plot}/>
           }
           {isConvolutionFileFilter(filter) &&
-          <>
-            <MdiButton
-                icon={mdiFileSearch}
-                tooltip="Pick filter file"
-                onClick={() => this.setState({popupOpen: true})}/>
-            <UploadButton
-                icon={uploadIcon.icon}
-                className={uploadIcon.className}
-                tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
-                onChange={this.uploadCoeffs}
-                multiple={true}/>
-          </>
+          <MdiButton
+              icon={mdiFileSearch}
+              tooltip="Pick filter file"
+              onClick={() => this.setState({popupOpen: true})}/>
           }
           <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
         </div>
@@ -326,7 +319,17 @@ class FilterView extends React.Component<{
       <ListSelectPopup
           key="filter select popup"
           open={this.state.popupOpen}
-          header={<div style={{margin: '10px 0'}}>Only single channel filter files are supported.</div>}
+          header={
+            <>
+              <UploadButton
+                  icon={uploadIcon.icon}
+                  className={uploadIcon.className}
+                  tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
+                  onChange={this.uploadCoeffs}
+                  multiple={true}/>
+              <div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>
+            </>
+          }
           items={this.props.availableCoeffFiles}
           onClose={() => this.setState({popupOpen: false})}
           onSelect={this.pickFilterFile}
@@ -340,7 +343,7 @@ function coeffFileNameFromPath(coeffDir: string, absolutePath: string): string {
 }
 
 function coeffFilePath(coeffDir: string, filename: string) {
-  return coeffDir + filename;
+  return coeffDir + filename
 }
 
 function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
@@ -355,17 +358,18 @@ const defaultParameters: {
   }
 } = {
   Biquad: {
-    Lowpass: { type: "Lowpass", q: 0.5, freq: 1000 },
-    Highpass: { type: "Highpass", q: 0.5, freq: 1000 },
-    Lowshelf: { type: "Lowshelf", gain: 6, slope: 6, freq: 1000 },
-    Highshelf: { type: "Highshelf", gain: 6, slope: 6, freq: 1000 },
+    Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
+    Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
+    Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
+    Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
     LowpassFO: { type: "LowpassFO", freq: 1000 },
     HighpassFO: { type: "HighpassFO", freq: 1000 },
     LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
     HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
-    Peaking: { type: "Peaking", gain: 6, q: 1.5, freq: 1000 },
-    Notch: { type: "Notch", q: 1.5, freq: 1000 },
-    Allpass: { type: "Allpass", q: 0.5, freq: 1000 },
+    Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
+    Notch: { type: "Notch", freq: 1000, q: 1.5 },
+    Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
+    Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
     AllpassFO: { type: "AllpassFO", freq: 1000 },
     LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
     Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
@@ -427,15 +431,16 @@ class FilterParams extends React.Component<{
     this.hasHiddenDefaultValue = this.hasHiddenDefaultValue.bind(this)
     this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this)
     this.filenameField = this.filenameField.bind(this)
+    this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
   }
 
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
-      filter.type = type;
-      const subtypeDefaults = defaultParameters[type];
-      const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0];
+      filter.type = type
+      const subtypeDefaults = defaultParameters[type]
+      const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0]
       filter.parameters = cloneDeep(subtypeDefaults[firstSubtypeOrDefault])
-    });
+    })
   }
 
   private onSubtypeChange(subtype: string) {
@@ -473,11 +478,7 @@ class FilterParams extends React.Component<{
       <ErrorMessage message={errors({path: ['parameters']})}/>
       {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
-      <div
-          className="button button-with-text"
-          onClick={() => this.props.setShowDefaults()}>
-        ...
-      </div>
+      <Button text="..." onClick={() => this.props.setShowDefaults()}/>
       }
     </div>
   }
@@ -502,7 +503,17 @@ class FilterParams extends React.Component<{
       if (parameter === 'filename')
         return this.filenameField(parameters['filename'], commonProps)
       if (this.isHiddenDefaultValue(parameter))
-        return null;
+        return null
+      if ((this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type))
+          && (parameter === 'q' || parameter === 'slope' || parameter === 'bandwidth'))
+        return <this.QorBandwithOrSlope
+            {...commonProps}
+            parameter={parameter}
+            parameters={parameters}
+            onDescChange={option => this.props.updateFilter(filter => {
+              this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
+              filter.parameters[option] = this.defaultParameterValues[option]
+            })}/>
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')
@@ -521,9 +532,15 @@ class FilterParams extends React.Component<{
 
   private filenameField(
       filename: string,
-      props: { onChange: (value: any) => void; "data-tip": string; value: any; key: string; desc: string }
+      props: {
+        onChange: (value: any) => void
+        "data-tip": string
+        value: any
+        key: string
+        desc: string
+      }
   ) {
-    const coeffDir = this.props.coeffDir;
+    const coeffDir = this.props.coeffDir
     const selectedFile = coeffFileNameFromPath(coeffDir, filename)
     return <TextOption
         {...props}
@@ -573,10 +590,20 @@ class FilterParams extends React.Component<{
       desc: "a2",
       tooltip: "Value for Biquad a2 coefficient",
     },
+    amplitude: {
+      type: "float",
+      desc: "amplitude",
+      tooltip: "Dither amplitude relative to target LSB",
+    },
     b0: {
       type: "float",
       desc: "b0",
       tooltip: "Value for Biquad b0 coefficient",
+    },
+    b: {
+      type: "floatlist",
+      desc: "b",
+      tooltip: "Comma-separated list of coefficients for b",
     },
     b1: {
       type: "float",
@@ -588,15 +615,10 @@ class FilterParams extends React.Component<{
       desc: "b2",
       tooltip: "Value for Biquad b2 coefficient",
     },
-    amplitude: {
+    bandwidth: {
       type: "float",
-      desc: "amplitude",
-      tooltip: "Dither amplitude relative to target LSB",
-    },
-    b: {
-      type: "floatlist",
-      desc: "b",
-      tooltip: "Comma-separated list of coefficients for b",
+      desc: "bandwidth",
+      tooltip: "Filter bandwidth in octaves"
     },
     bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
     channel: {
@@ -700,5 +722,56 @@ class FilterParams extends React.Component<{
       desc: "values",
       tooltip: "Comma separated list of filter coefficients",
     },
-  };
+  }
+
+  qBandwithSlope = ['q', 'slope', 'bandwidth']
+
+  qAndBandwidthFilters = ['Peaking', 'Allpass', 'Notch', 'Bandpass']
+
+  qAndSlopeFilters = ['Lowshelf', 'Highshelf']
+
+  defaultParameterValues: { [parameter: string]: number } = {
+    'q': 0.5,
+    'slope': 6,
+    'bandwidth': 1
+  }
+
+  QorBandwithOrSlope(props: {
+    parameter: string
+    parameters: { [p: string]: any }
+    desc: string
+    value: number
+    error?: string
+    'data-tip': string
+    onDescChange: (option: string) => void
+    onChange: (value: number) => void
+  }) {
+    const {parameter, parameters, desc, value, error, onDescChange, onChange} = props
+    let descOptions: { [parameter: string]: string } = {}
+    if (this.qAndSlopeFilters.includes(parameters.type))
+      ['q', 'slope'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+    else if (this.qAndBandwidthFilters.includes(parameters.type))
+      ['q', 'bandwidth'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+    else
+      return <ErrorMessage message={error}/>
+    return <>
+      <label className="setting" style={{textAlign: 'right'}} data-tip={props['data-tip']}>
+        <EnumInput
+            value={parameter}
+            options={descOptions}
+            desc={desc}
+            style={{display: 'table-cell', width: 'min-content', textAlign: 'right', marginRight: '5px'}}
+            data-tip={props["data-tip"]}
+            onChange={onDescChange}/>
+        <FloatInput
+            className="setting-input"
+            error={error !== undefined}
+            value={value}
+            style={{width: '55%'}}
+            data-tip={props["data-tip"]}
+            onChange={onChange}/>
+        <ErrorMessage message={error}/>
+      </label>
+    </>
+  }
 }

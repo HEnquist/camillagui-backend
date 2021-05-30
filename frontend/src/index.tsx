@@ -1,24 +1,24 @@
 /* The CSS files have to be imported in exactly this order.
    Otherwise the custom react-tabs styles in index.css don't work */
-import "react-tabs/style/react-tabs.css";
-import "./index.css";
+import "react-tabs/style/react-tabs.css"
+import "./index.css"
 
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import {FiltersTab} from "./filterstab";
-import {DevicesTab} from "./devicestab";
-import {MixersTab} from "./mixerstab";
-import {PipelineTab} from "./pipelinetab";
-import {ErrorsForPath, noErrors, errorsForSubpath} from "./errors";
-import {Tab, TabList, TabPanel, Tabs} from "react-tabs";
-import ReactTooltip from "react-tooltip";
-import {Files} from "./files";
-import {Config, defaultConfig} from "./config";
-import {defaultGuiConfig, GuiConfig} from "./guiconfig";
-import {MdiIcon, Update} from "./common-tsx";
-import cloneDeep from "lodash/cloneDeep";
-import {mdiAlertCircle} from "@mdi/js";
-import {SidePanel} from "./sidepanel";
+import * as React from "react"
+import * as ReactDOM from "react-dom"
+import {FiltersTab} from "./filterstab"
+import {DevicesTab} from "./devicestab"
+import {MixersTab} from "./mixerstab"
+import {PipelineTab} from "./pipeline/pipelinetab"
+import {ErrorsForPath, noErrors, errorsForSubpath} from "./utilities/errors"
+import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
+import ReactTooltip from "react-tooltip"
+import {Files} from "./files"
+import {Config, defaultConfig} from "./config"
+import {defaultGuiConfig, GuiConfig} from "./guiconfig"
+import {MdiIcon, Update} from "./utilities/common-tsx"
+import cloneDeep from "lodash/cloneDeep"
+import {mdiAlertCircle} from "@mdi/js"
+import {SidePanel} from "./sidepanel/sidepanel"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -64,7 +64,7 @@ class CamillaConfig extends React.Component<
     this.setState({
       currentConfigFile: filename,
       config: config
-    });
+    })
   }
 
   private setErrors(errors: any) {
@@ -81,7 +81,7 @@ class CamillaConfig extends React.Component<
   }
 
   render() {
-    const errors = this.state.errors;
+    const errors = this.state.errors
     return <div className="configapp">
       <ReactTooltip multiline={true} />
       <SidePanel
