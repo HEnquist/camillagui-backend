@@ -1,9 +1,10 @@
 {
   "name": "camillagui",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "homepage": ".",
   "dependencies": {
+    "@babel/core": "^7.9.0",
     "@mdi/js": "^5.9.55",
     "@mdi/react": "^1.5.0",
     "@testing-library/jest-dom": "^4.2.4",
@@ -16,13 +17,13 @@
     "immutable": "^4.0.0-rc.12",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
-    "rc-progress": "^3.1.3",
+    "rc-progress": "^3.1.4",
     "react": "^16.14.0",
     "react-chartjs-2": "^2.11.2",
     "react-dnd": "^14.0.2",
     "react-dnd-html5-backend": "^14.0.0",
     "react-dom": "^16.14.0",
-    "react-scripts": "3.4.1",
+    "react-scripts": "^3.4.4",
     "react-tabs": "^3.2.2",
     "react-tooltip": "^4.2.19",
     "reactjs-popup": "^2.0.0"
