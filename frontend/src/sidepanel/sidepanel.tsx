@@ -157,14 +157,14 @@ export class SidePanel extends React.Component<
           }
           <div className="two-column-grid">
             <Button
-                text="Load from CDSP"
-                data-tip="Get active config from CamillaDSP"
+                text="Fetch from DSP"
+                data-tip="Fetch active config from the running CamillaDSP process"
                 onClick={this.fetchConfig}/>
             <Button
-                text="Apply to CDSP"
+                text="Apply to DSP"
                 data-tip={activeConfigFile ?
-                    `Upload config to CamillaDSP and save to ${activeConfigFile}`
-                    : `Upload config to CamillaDSP`
+                    `Apply config to the running CamillaDSP process, and save to ${activeConfigFile}`
+                    : `Apply config to the running CamillaDSP process`
                 }
                 onClick={this.applyConfig}/>
           </div>

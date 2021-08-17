@@ -49,6 +49,11 @@ export function DevicesTab(props: {
         devices={devices}
         errors={errors}
         onChange={updateDevices}/>
+    <RateMonitoringOptions
+        hide_rate_monitoring={guiConfig.hide_rate_monitoring}
+        devices={devices}
+        errors={errors}
+        onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
         capture={devices.capture}
@@ -230,6 +235,31 @@ function ResamplingOptions(props: {
   </Box>
 }
 
+function RateMonitoringOptions(props: {
+    hide_rate_monitoring: boolean
+    devices: Devices
+    errors: ErrorsForPath
+    error?: string
+    onChange: (update: Update<Devices>) => void
+  }) {
+    if (props.hide_rate_monitoring)
+        return null
+    return <Box title="Capture rate monitoring">
+        <FloatOption
+            value={props.devices.rate_measure_interval}
+            error={props.errors({path: ['rate_measure_interval']})}
+            desc="rate_measure_interval"
+            data-tip="Interval for rate measurements, in seconds"
+            onChange={rateMeasureInterval => props.onChange(devices => devices.rate_measure_interval = rateMeasureInterval)}/>
+        <BoolOption
+            value={props.devices.stop_on_rate_change}
+            error={props.errors({path: ['stop_on_rate_change']})}
+            desc="stop_on_rate_change"
+            data-tip="Stop processing when a sample rate change is detected"
+            onChange={stopOnRateChange => props.onChange(devices => devices.stop_on_rate_change = stopOnRateChange)}/>
+    </Box>
+  }
+
 function CaptureOptions(props: {
   hide_capture_device: boolean
   capture: CaptureDevice
@@ -239,10 +269,11 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0', retry_on_error: false, avoid_blocking_read: false },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin'},
+    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false, loopback: false},
+    Jack: { type: 'Jack', channels: 2, device: 'default'},
     Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
@@ -265,13 +296,17 @@ function CaptureOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
+    {(capture.type !== 'Jack') &&
     <EnumOption
         value={capture.format}
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
         data-tip="Sample format"
-        onChange={format => onChange(devices => devices.capture.format = format)}/>
+        onChange={format => onChange(devices => // @ts-ignore
+            devices.capture.format = format
+        )}/>
+    }
     {(capture.type === 'Alsa' || capture.type === 'CoreAudio' || capture.type === 'Pulse' || capture.type === 'Wasapi') &&
     <TextOption
         value={capture.device}
@@ -281,6 +316,44 @@ function CaptureOptions(props: {
         onChange={device => onChange(devices => // @ts-ignore
             devices.capture.device = device
         )}/>
+    }
+    {(capture.type === 'Alsa') && <>
+        <BoolOption
+            value={capture.retry_on_error}
+            error={errors({path: ['device']})}
+            desc="retry_on_error"
+            data-tip="Retry reading from device on errors, may help with buggy devices"
+            onChange={retry_on_error => onChange(devices => // @ts-ignore
+                devices.capture.retry_on_error = retry_on_error
+            )}/>
+        <BoolOption
+            value={capture.avoid_blocking_read}
+            error={errors({path: ['device']})}
+            desc="avoid_blocking_read"
+            data-tip="Avoid blocking on reads, may help with buggy devices"
+            onChange={avoid_blocking_read => onChange(devices => // @ts-ignore
+                devices.capture.avoid_blocking_read = avoid_blocking_read
+            )}/>
+        </>
+    }
+    {(capture.type === 'Wasapi') && <>
+        <BoolOption
+            value={capture.exclusive}
+            error={errors({path: ['exclusive']})}
+            desc="exclusive"
+            data-tip="Use exclusive mode"
+            onChange={exclusive => onChange(devices => // @ts-ignore
+                devices.capture.exclusive = exclusive
+            )}/>
+        <BoolOption
+            value={capture.loopback}
+            error={errors({path: ['loopback']})}
+            desc="loopback"
+            data-tip="Use loopback capture mode to capture from a playback device"
+            onChange={loopback => onChange(devices => // @ts-ignore
+                devices.capture.loopback = loopback
+            )}/>
+        </>
     }
     {capture.type === 'File' &&
     <TextOption
@@ -334,7 +407,8 @@ function PlaybackOptions(props: {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
-    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin'},
+    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false},
+    Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
   }
@@ -356,13 +430,17 @@ function PlaybackOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
+    {(playback.type !== 'Jack') &&
     <EnumOption
         value={playback.format}
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
         data-tip="Sample format"
-        onChange={format => onChange(devices => devices.playback.format = format)}/>
+        onChange={format => onChange(devices =>  // @ts-ignore
+          devices.playback.format = format
+        )}/>
+    }
     {(playback.type === 'Alsa' || playback.type === 'CoreAudio' || playback.type === 'Pulse' || playback.type === 'Wasapi') &&
     <TextOption
         value={playback.device}
@@ -371,6 +449,16 @@ function PlaybackOptions(props: {
         data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.playback.device = device
+        )}/>
+    }
+    {(playback.type === 'Wasapi') &&
+    <BoolOption
+        value={playback.exclusive}
+        error={errors({path: ['device']})}
+        desc="exclusive"
+        data-tip="Use exclusive mode"
+        onChange={exclusive => onChange(devices => // @ts-ignore
+            devices.playback.exclusive = exclusive
         )}/>
     }
     {playback.type === 'File' &&
