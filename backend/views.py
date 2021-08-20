@@ -161,7 +161,7 @@ async def set_config(request):
     # Apply a new config to CamillaDSP
     json = await request.json()
     json_config = json["config"]
-    filename = json["filename"]
+    filename = json.get("filename", None)
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
@@ -176,7 +176,8 @@ async def set_config(request):
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors)
-    save_config(filename, json_config, request)
+    if filename:
+        save_config(filename, json_config, request)
     return web.Response(text="OK")
 
 
