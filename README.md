@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 0.5.2 and up.
+This version works with CamillaDSP 0.6.0 and up.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
@@ -37,13 +37,14 @@ On macOS use either Anaconda or Homebrew. The Anaconda procedure is the same as 
 For Homebrew, install Python with `brew install python`, after which you can install the needed packages with pip, `pip3 install websocket_client` etc.
 
 ### CamillaDSP Python libraries
-For you need both the CamillaDSP companion python libraries:
-- pycamilladsp from https://github.com/HEnquist/pycamilladsp
-- pycamilladsp-plot from https://github.com/HEnquist/pycamilladsp-plot
+You need both the CamillaDSP companion python libraries:
+- `pycamilladsp` version 0.6.0 from https://github.com/HEnquist/pycamilladsp
+- `pycamilladsp-plot` version 0.6.0 from https://github.com/HEnquist/pycamilladsp-plot
 
-To install a library first download it, either by `git clone` or by downloading a zip file of the code. Then unpack the files, go to the folder containing the `setup.py` file and run
+To install the libraries, use `pip` to install directly from github:
 ```sh
-pip install .
+pip install git+https://github.com/HEnquist/pycamilladsp.git@v0.6.0
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v0.6.0
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
