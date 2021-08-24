@@ -26,19 +26,21 @@ async def get_status(request):
     cdsp_version = None
     try:
         state = cdsp.get_state()
+        state_str = state.name
         cdsp_version = cdsp.get_version()
     except IOError:
         try:
             cdsp.connect()
             state = cdsp.get_state()
+            state_str = state.name
             cdsp_version = cdsp.get_version()
         except IOError:
-            state = "offline"
+            state_str = "offline"
     cdsp_version = cdsp.get_version()
     if cdsp_version is None:
         cdsp_version = ['x', 'x', 'x']
     status = {
-        "cdsp_status": state,
+        "cdsp_status": state_str,
         "cdsp_version": version_string(cdsp_version),
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
@@ -159,7 +161,7 @@ async def set_config(request):
     # Apply a new config to CamillaDSP
     json = await request.json()
     json_config = json["config"]
-    filename = json["filename"]
+    filename = json.get("filename", None)
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
@@ -174,7 +176,8 @@ async def set_config(request):
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors)
-    save_config(filename, json_config, request)
+    if filename:
+        save_config(filename, json_config, request)
     return web.Response(text="OK")
 
 

@@ -126,6 +126,7 @@ hide_capture_samplerate: false
 hide_silence: false
 hide_capture_device: false
 hide_playback_device: false
+hide_rate_monitoring: false
 ```
 
 ## Running
