@@ -337,7 +337,7 @@ function DownloadFilesAsZipButton(props: { selectedFiles: Set<string>, downloadA
   return <MdiButton
       icon={mdiDownload}
       tooltip={selectedFiles.isEmpty()
-          ? 'Select files to download'
+          ? 'Download selected files<br>Select at least one file first!'
           : `Download ${selectedFiles.size} ${fileOrFiles} as zip file`}
       enabled={!selectedFiles.isEmpty()}
       onClick={downloadAsZip}/>
@@ -349,7 +349,7 @@ function DeleteFilesButton(props: { selectedFiles: Set<string>, delete: () => {}
   return <MdiButton
       icon={mdiDelete}
       tooltip={selectedFiles.isEmpty()
-          ? 'Select files to delete'
+          ? 'Delete selected files<br>Select at least one file first!'
           : `Delete ${selectedFiles.size} ${fileOrFiles}`}
       enabled={!selectedFiles.isEmpty()}
       onClick={props.delete}/>
@@ -407,7 +407,7 @@ function SaveButton(
       icon={saveIcon.icon}
       className={saveIcon.className}
       enabled={!disableReason}
-      tooltip={disableReason ? disableReason : `Save to ${filename}`}
+      tooltip={disableReason ? disableReason : `Save from GUI to ${filename}`}
       onClick={() => saveConfig(filename)}/>
 }
 
@@ -429,7 +429,7 @@ function LoadButton(
   return <MdiButton
       icon={loadIcon.icon}
       className={loadIcon.className}
-      tooltip={`Load ${filename}`}
+      tooltip={`Load into GUI from ${filename}`}
       onClick={() => loadConfig(filename)}/>
 }
 
