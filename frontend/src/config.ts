@@ -1,4 +1,4 @@
-import {sortedAlphabetically} from "./utilities/common-tsx"
+import {sortedAlphabetically} from "./utilities/arrays"
 
 export function defaultConfig(): Config {
     return {

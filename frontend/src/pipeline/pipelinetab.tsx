@@ -11,12 +11,8 @@ import {
   ErrorMessage,
   IntInput,
   MdiButton,
-  moveItem,
-  moveItemDown,
-  moveItemUp,
-  PlotButton,
-  Update
-} from "../utilities/common-tsx"
+  PlotButton
+} from "../utilities/ui-components"
 import {
   Config,
   defaultFilterStep,
@@ -33,6 +29,8 @@ import {
 import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
 import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"
+import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
+import {Update} from "../utilities/common"
 
 
 export class PipelineTab extends React.Component<{

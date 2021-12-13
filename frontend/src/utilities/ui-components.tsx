@@ -4,41 +4,7 @@ import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
-import cloneDeep from "lodash/cloneDeep"
-
-export interface Update<T> {
-    (value: T): void
-}
-
-export function modifiedCopyOf<T>(object: T, modification: (copy: T) => void): T {
-    const copy = cloneDeep(object)
-    modification(copy)
-    return copy
-}
-
-export function sortedAlphabetically(array: string[]): string[] {
-    array.sort((a,b) => a.localeCompare(b))
-    return array
-}
-
-export function moveItemUp<T>(array: T[], index: number) {
-    moveItem(array, index, index-1)
-}
-
-export function moveItemDown<T>(array: T[], index: number) {
-    moveItem(array, index, index+1)
-}
-
-export function moveItem<T>(array: T[], fromIndex: number, toIndex: number) {
-    const removed = array.splice(fromIndex, 1)
-    array.splice(toIndex, 0, ...removed)
-}
-
-export function toMap<T extends string>(array: T[]): { [key: string]: T } {
-    const map: { [key: string]: T } = {}
-    array.forEach(value => map[value] = value)
-    return map
-}
+import {toMap} from "./arrays"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)

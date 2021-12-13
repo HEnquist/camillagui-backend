@@ -7,10 +7,8 @@ import {
   ErrorMessage,
   IntOption,
   MdiButton,
-  modifiedCopyOf,
-  ParsedInput,
-  Update
-} from "./utilities/common-tsx"
+  ParsedInput
+} from "./utilities/ui-components"
 import {
   Config,
   defaultMapping,
@@ -27,6 +25,7 @@ import {
 } from "./config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {modifiedCopyOf, Update} from "./utilities/common"
 
 export class MixersTab extends React.Component<{
   mixers: Mixers

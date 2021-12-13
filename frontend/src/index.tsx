@@ -15,10 +15,11 @@ import ReactTooltip from "react-tooltip"
 import {Files} from "./files"
 import {Config, defaultConfig} from "./config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
-import {MdiIcon, Update} from "./utilities/common-tsx"
+import {MdiIcon} from "./utilities/ui-components"
 import cloneDeep from "lodash/cloneDeep"
 import {mdiAlertCircle} from "@mdi/js"
 import {SidePanel} from "./sidepanel/sidepanel"
+import {Update} from "./utilities/common"
 
 class CamillaConfig extends React.Component<
   unknown,

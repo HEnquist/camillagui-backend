@@ -11,10 +11,10 @@ import {
   FloatOption,
   IntInput,
   IntOption,
-  TextOption,
-  Update
-} from "./utilities/common-tsx"
+  TextOption
+} from "./utilities/ui-components"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {Update} from "./utilities/common"
 
 export function DevicesTab(props: {
   guiConfig: GuiConfig

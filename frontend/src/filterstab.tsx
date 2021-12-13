@@ -29,13 +29,12 @@ import {
   IntOption,
   ListSelectPopup,
   MdiButton,
-  modifiedCopyOf,
   ParsedInput,
   TextOption,
-  Update,
   UploadButton
-} from "./utilities/common-tsx"
+} from "./utilities/ui-components"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {modifiedCopyOf, Update} from "./utilities/common"
 
 export class FiltersTab extends React.Component<
     {

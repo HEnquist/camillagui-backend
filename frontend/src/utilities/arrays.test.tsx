@@ -1,4 +1,4 @@
-import {moveItem, toMap} from "./common-tsx"
+import {moveItem, toMap} from "./arrays"
 
 
 test('Move item down', () => {
