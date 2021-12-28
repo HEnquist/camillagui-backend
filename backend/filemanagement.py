@@ -100,7 +100,6 @@ def get_active_config(request):
             return None
 
 
-
 def set_as_active_config(request, file):
     active_config = request.app["active_config"]
     update = request.app["update_symlink"]
@@ -144,7 +143,7 @@ def new_config_with_absolute_filter_paths(json_config, config_dir):
 
 
 def new_config_with_relative_filter_paths(json_config, config_dir):
-    conversion = lambda path : make_relative(path, config_dir)
+    def conversion(path): return make_relative(path, config_dir)
     return new_config_with_paths_converted(json_config, conversion)
 
 
@@ -165,22 +164,21 @@ def convert_filter_path(json_filter, conversion):
 
 
 def replace_relative_filter_path_with_absolute_paths(json_filter, config_dir):
-    conversion = lambda path : make_absolute(path, config_dir)
+    def conversion(path): return make_absolute(path, config_dir)
     convert_filter_path(json_filter, conversion)
 
 
 def make_absolute(path, base_dir):
     return path if isabs(path) else normpath(join(base_dir, path))
 
+
 def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
     ftype = filterconfig["type"]
     parameters = filterconfig["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
-        filename = parameters["filename"]
-        filename = filename.replace("$samplerate$", str(samplerate))
-        filename = filename.replace("$channels$", str(channels))
-        parameters["filename"] = filename
-
+        parameters["filename"] = parameters["filename"]\
+            .replace("$samplerate$", str(samplerate))\
+            .replace("$channels$", str(channels))
 
 
 def make_relative(path, base_dir):

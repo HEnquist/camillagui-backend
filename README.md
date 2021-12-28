@@ -139,3 +139,9 @@ python main.py
 The gui should now be available at: http://localhost:5000/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
+
+### Running the tests (for developers)
+
+```sh
+python -m unittest discover -p "*_test.py"
+```

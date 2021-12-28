@@ -12,7 +12,7 @@ from .filemanagement import (
     replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
     make_absolute, replace_tokens_in_filter_config
 )
-from .filterdefaults import defaults_for_filter
+from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
 from .version import VERSION
 
@@ -121,32 +121,46 @@ async def eval_filter_values(request):
     config_dir = request.app["config_dir"]
     config = content["config"]
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
-    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
+    channels = content["channels"]
+    samplerate = content["samplerate"]
+    filter_file_names = list_of_files_in_directory(request.app["coeff_dir"])
+    filename = config["parameters"]["filename"]
+    options = filter_options(filter_file_names, filename)
+    replace_tokens_in_filter_config(config, samplerate, channels)
     data = eval_filter(
         config,
         name=content["name"],
-        samplerate=content["samplerate"],
+        samplerate=samplerate,
         npoints=300,
     )
+    data["channels"] = channels
+    data["options"] = options
     return web.json_response(data)
 
 
 async def eval_filterstep_values(request):
-    # Plot a filter
+    # Plot a filter step
     content = await request.json()
     config = content["config"]
+    step_index = content["index"]
     config_dir = request.app["config_dir"]
+    samplerate = content["samplerate"]
+    channels = content["channels"]
+    config["devices"]["samplerate"] = samplerate
+    config["devices"]["capture"]["channels"] = channels
     plot_config = new_config_with_absolute_filter_paths(config, config_dir)
-    samplerate = plot_config["devices"]["samplerate"]
-    channels = plot_config["devices"]["capture"]["channels"]
+    filter_file_names = list_of_files_in_directory(request.app["coeff_dir"])
+    options = pipeline_step_options(filter_file_names, config, step_index)
     for _, filt in plot_config["filters"].items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
     data = eval_filterstep(
         plot_config,
-        content["index"],
-        name="Filterstep {}".format(content["index"]),
+        step_index,
+        name="Filterstep {}".format(step_index),
         npoints=1000,
     )
+    data["channels"] = channels
+    data["options"] = options
     return web.json_response(data)
 
 
