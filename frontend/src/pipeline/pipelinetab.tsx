@@ -4,6 +4,7 @@ import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
   Box,
+  ChartData,
   ChartPopup,
   DeleteButton,
   EnumInput,
@@ -40,11 +41,21 @@ export class PipelineTab extends React.Component<{
 }, {
   plotPipeline: boolean
   plotFilterStep: boolean
-  data?: any
+  stepIndex?: number
+  data: ChartData
 }> {
   constructor(props: any) {
     super(props)
-    this.state = {plotPipeline: false, plotFilterStep: false}
+    this.state = {
+      plotPipeline: false,
+      plotFilterStep: false,
+      data: {
+        name: "Pipeline step",
+        f: [],
+        time: [],
+        options: [{name: ""}]
+      }
+    }
   }
 
   updatePipeline = (update: Update<Pipeline>) =>
@@ -64,14 +75,20 @@ export class PipelineTab extends React.Component<{
           pipeline[index] = defaultFilterStep(this.props.config)
       })
 
-  plotFilterStep = (index: number) => {
+  plotFilterStep = (index: number, samplerate?: number, channels?: number) => {
+    const config = this.props.config
     fetch("/api/evalfilterstep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({index: index, config: this.props.config}),
+      body: JSON.stringify({
+        index: index,
+        config: config,
+        samplerate: samplerate || config.devices.samplerate,
+        channels: channels || config.devices.capture.channels
+      }),
     }).then(
         result => result.json()
-            .then(data => this.setState({plotFilterStep: true, data: data})),
+            .then(data => this.setState({plotFilterStep: true, stepIndex: index, data: data})),
         error => console.log("Failed", error)
     )
   }
@@ -153,6 +170,10 @@ export class PipelineTab extends React.Component<{
             key={this.state.plotFilterStep as any}
             open={this.state.plotFilterStep}
             data={this.state.data}
+            onChange={name => {
+              const current = this.state.data.options.filter(o => o.name === name)[0]
+              this.plotFilterStep(this.state.stepIndex!!, current.samplerate, current.channels)
+            }}
             onClose={() => this.setState({plotFilterStep: false})}/>}
       </div>
     </DndContainer>

@@ -17,6 +17,7 @@ import {
   BoolOption,
   Box,
   Button,
+  ChartData,
   ChartPopup,
   DeleteButton,
   doUpload,
@@ -47,7 +48,7 @@ export class FiltersTab extends React.Component<
     },
     {
       popupVisible: boolean
-      data: { name: string }
+      data: ChartData
       filterKeys: { [name: string]: number}
       availableCoeffFiles: string[]
     }
@@ -65,7 +66,12 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles = this.updateAvailableCoeffFiles.bind(this)
     this.state = {
       popupVisible: false,
-      data: {name: ""},
+      data: {
+        name: "",
+        f: [],
+        time: [],
+        options: [{name: ""}]
+      },
       filterKeys: {},
       availableCoeffFiles: []
     }
@@ -117,15 +123,15 @@ export class FiltersTab extends React.Component<
     this.props.updateConfig(config => update(config.filters[name]))
   }
 
-  private plotFilter(name: string) {
+  private plotFilter(name: string, samplerate?: number, channels?: number) {
     fetch("/api/evalfilter", {
       method: "POST",
       headers: { "Content-Type": "application/json", },
       body: JSON.stringify({
         name: name,
         config: this.props.filters[name],
-        samplerate: this.props.samplerate,
-        channels: this.props.channels,
+        samplerate: samplerate || this.props.samplerate,
+        channels: channels || this.props.channels,
       }),
     }).then(
       result => result.json()
@@ -173,6 +179,10 @@ export class FiltersTab extends React.Component<
         key={'plot-filter-popup'}
         open={this.state.popupVisible}
         data={this.state.data}
+        onChange={file => {
+          const current = this.state.data.options.filter(o => o.name === file)[0]
+          this.plotFilter(this.state.data.name, current.samplerate, current.channels)
+        }}
         onClose={this.closePopup}
       />
     </div>

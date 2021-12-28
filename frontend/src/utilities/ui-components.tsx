@@ -494,18 +494,35 @@ export function TextInput(props: {
         onChange={e => props.onChange(e.target.value)}/>
 }
 
+export interface ChartData {
+    name: string
+    samplerate?: number
+    channels?: number
+    options: FilterOption[]
+    f: number[]
+    magnitude?: number[]
+    phase?: number[]
+    impulse?: number[]
+    time: number[]
+}
+
+export interface FilterOption {
+    name: string
+    channels?: number
+    samplerate?: number
+}
+
 export function ChartPopup(props: {
-    open: boolean,
-    data: any,
+    open: boolean
+    data: ChartData
+    onChange: (item: string) => void
     onClose: () => void
 }){
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
         return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
     }
 
-    let stateData = props.data
-    const name: string = stateData.hasOwnProperty("name") ? stateData["name"] : ""
-    let data: any = {labels: [name], datasets: []}
+    let data: any = {labels: [props.data.name], datasets: []}
     let x_time = false
     let x_freq = false
     let y_phase = false
@@ -518,8 +535,9 @@ export function ChartPopup(props: {
     const gainColor = styles.getPropertyValue('--gain-color')
     const phaseColor = styles.getPropertyValue('--phase-color')
     const impulseColor = styles.getPropertyValue('--impulse-color')
-    if (stateData.hasOwnProperty("magnitude")) {
-        const gainpoints = make_pointlist(stateData["f"], stateData["magnitude"], 1.0, 1.0)
+    const magnitude = props.data.magnitude
+    if (magnitude) {
+        const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
         x_freq = true
         y_gain = true
         data.datasets.push(
@@ -535,8 +553,9 @@ export function ChartPopup(props: {
             }
         )
     }
-    if (stateData.hasOwnProperty("phase")) {
-        const phasepoints = make_pointlist(stateData["f"], stateData["phase"], 1.0, 1.0)
+    const phase = props.data.phase
+    if (phase) {
+        const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
         x_freq = true
         y_phase = true
         data.datasets.push(
@@ -552,8 +571,9 @@ export function ChartPopup(props: {
             }
         )
     }
-    if (stateData.hasOwnProperty("impulse")) {
-        const impulsepoints = make_pointlist(stateData["time"], stateData["impulse"], 1000.0, 1.0)
+    const impulse = props.data.impulse
+    if (impulse) {
+        const impulsepoints = make_pointlist(props.data.time, impulse, 1000.0, 1.0)
         x_time = true
         y_ampl = true
         data.datasets.push(
@@ -702,10 +722,34 @@ export function ChartPopup(props: {
         )
     }
 
+    function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
+        if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
+            return a.samplerate - b.samplerate
+        if (a.channels !== b.channels && a.channels !== undefined && b.channels !== undefined)
+            return a.channels - b.channels
+        return 0
+    }
+
     return <Popup open={props.open} onClose={props.onClose}>
         <CloseButton onClick={props.onClose}/>
+        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
+        <div style={{textAlign: 'center'}}>
+            <select
+                data-tip="Select filter file"
+                onChange={e => props.onChange(e.target.value)}
+            >
+                {props.data.options.sort(sortBySamplerateAndChannels)
+                    .map(option => {
+                        const selected = (option.samplerate === undefined || option.samplerate === props.data.samplerate)
+                            && (option.channels === undefined || option.channels === props.data.channels)
+                        return <option key={option.name} selected={selected}>{option.name}</option>
+                    }
+                )}
+            </select>
+        </div>
         <Scatter data={data} options={options}/>
     </Popup>
+
 }
 
 export function ListSelectPopup(props: {
