@@ -27,7 +27,7 @@ export function defaultConfig(): Config {
             stop_on_rate_change: false,
             rate_measure_interval: 1.0,
 
-            capture: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0', retry_on_error: false, avoid_blocking_read: false },
+            capture: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
             playback: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
         },
         filters: {},
@@ -188,10 +188,11 @@ export const ResamplerTypes: ResamplerType[] = ["FastAsync", "BalancedAsync", "A
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format, device: string, retry_on_error: boolean, avoid_blocking_read: boolean }
+    { type: 'Alsa', channels: number, format: Format, device: string }
     | { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean, loopback: boolean }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio' | 'Pulse', channels: number, format: Format, device: string }
+    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean  }
+    | { type: 'Pulse', channels: number, format: Format, device: string}
     | { type: 'File', channels: number, format: Format, filename: '/path/to/file',
         extra_samples: number, skip_bytes: number, read_bytes: number }
     | { type: 'Stdin', channels: number, format: Format,
@@ -200,7 +201,8 @@ export type CaptureDevice =
 export type PlaybackDevice =
     { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa' | 'CoreAudio' | 'Pulse', channels: number, format: Format, device: string }
+    | { type: 'Alsa' | 'Pulse', channels: number, format: Format, device: string }
+    | { type: 'CoreAudio', channels: number, format: Format, device: string, exclusive: boolean, change_format: boolean }
     | { type: 'File', channels: number, format: Format, filename: string}
     | { type: 'Stdout', channels: number, format: Format }
 
