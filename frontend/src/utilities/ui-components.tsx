@@ -283,7 +283,7 @@ export function FloatInput(props: {
         value={props.value}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
-        asString={(float: number) => float.toString()}
+        asString={(float?: number) => float === undefined ? "" : float.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseFloat(rawValue)
             return isNaN(parsedvalue) ? undefined : parsedvalue
