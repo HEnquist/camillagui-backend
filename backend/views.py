@@ -326,6 +326,8 @@ async def download_configs_zip(request):
 async def get_gui_config(request):
     gui_config = get_gui_config_or_defaults()
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
+    gui_config["supported_capture_types"] = request.app["supported_capture_types"]
+    gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     return web.json_response(gui_config)
 
 
