@@ -1,7 +1,7 @@
 import React from "react"
 import "./index.css"
 import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./config"
-import {GuiConfig} from "./guiconfig"
+import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   BoolOption,
   Box,
@@ -56,11 +56,13 @@ export function DevicesTab(props: {
         onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
+        supported_capture_types={guiConfig.supported_capture_types}
         capture={devices.capture}
         errors={errorsForSubpath(errors, 'capture')}
         onChange={updateDevices}/>
     <PlaybackOptions
         hide_playback_device={guiConfig.hide_playback_device}
+        supported_playback_types={guiConfig.supported_playback_types}
         playback={devices.playback}
         errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
@@ -262,6 +264,7 @@ function RateMonitoringOptions(props: {
 
 function CaptureOptions(props: {
   hide_capture_device: boolean
+  supported_capture_types?: CaptureType[]
   capture: CaptureDevice
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
@@ -278,13 +281,17 @@ function CaptureOptions(props: {
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
   }
-  const {capture, onChange, errors} = props
+  const {capture, onChange, errors, supported_capture_types} = props
+  const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
+  const captureTypes = supported_capture_types ?
+      defaultCaptureTypes.filter(type => supported_capture_types.includes(type))
+      : defaultCaptureTypes
   return <Box title="Capture device">
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={capture.type}
         error={errors({path: ['type']})}
-        options={Object.keys(defaults)}
+        options={captureTypes}
         desc="type"
         data-tip="Audio backend for capture"
         onChange={captureType => onChange(devices => devices.capture = defaults[captureType])}/>
@@ -397,6 +404,7 @@ function CaptureOptions(props: {
 
 function PlaybackOptions(props: {
   hide_playback_device: boolean
+  supported_playback_types?: PlaybackType[]
   playback: PlaybackDevice
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
@@ -412,13 +420,17 @@ function PlaybackOptions(props: {
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
   }
-  const {onChange, playback, errors} = props
+  const {onChange, playback, errors, supported_playback_types} = props
+  const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[]
+  const playbackDeviceTypes = supported_playback_types ?
+      defaultPlaybackTypes.filter(type => supported_playback_types.includes(type))
+      : defaultPlaybackTypes
   return <Box title="Playback device">
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={props.playback.type}
         error={errors({path: ['type']})}
-        options={Object.keys(defaults)}
+        options={playbackDeviceTypes}
         data-tip="Audio backend for playback"
         desc="type"
         onChange={playbackType => props.onChange(devices => devices.playback = defaults[playbackType])}/>
