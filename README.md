@@ -130,6 +130,12 @@ hide_playback_device: false
 hide_rate_monitoring: false
 ```
 
+#### Showing the effective volume in dB
+To show the effective volume in dB near the volume indicators, edit `config/gui-config.yml`:
+```yaml
+show_effective_volume_in_db: true
+```
+
 ## Running
 Start the server with:
 ```sh
