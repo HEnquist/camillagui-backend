@@ -32,6 +32,21 @@ interface Status {
   backend_version: string
 }
 
+function defaultStatus(): Status {
+  return {
+    cdsp_status: 'Backend offline',
+    capturesignalrms: [],
+    playbacksignalrms: [],
+    capturerate: '',
+    rateadjust: '',
+    bufferlevel: '',
+    clippedsamples: '',
+    cdsp_version: '',
+    py_cdsp_version: '',
+    backend_version: '',
+  }
+}
+
 export class SidePanel extends React.Component<
   SidePanelProps,
   Status & {
@@ -46,17 +61,8 @@ export class SidePanel extends React.Component<
     this.state = {
       clearTimer: () => {},
       msg: '',
-      capturesignalrms: [],
-      playbacksignalrms: [],
-      cdsp_status: 'backend offline',
-      rateadjust: '',
-      capturerate: '',
-      bufferlevel: '',
-      clippedsamples: '',
       clipped: false,
-      cdsp_version: '',
-      py_cdsp_version: '',
-      backend_version: ''
+      ...defaultStatus()
     }
     this.timer = this.timer.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
@@ -74,25 +80,14 @@ export class SidePanel extends React.Component<
     this.state.clearTimer()
   }
 
-  offline_states = ['backend offline', 'offline']
+  offline_states = ['Backend offline', 'Offline']
 
   private async timer() {
     let status: Status
     try {
       status = await (await fetch("/api/status")).json()
     } catch (err) {
-      status = {
-        cdsp_status: 'backend offline',
-        capturesignalrms: [],
-        playbacksignalrms: [],
-        capturerate: '',
-        rateadjust: '',
-        bufferlevel: '',
-        clippedsamples: '',
-        cdsp_version: '',
-        py_cdsp_version: '',
-        backend_version: '',
-      }
+      status = defaultStatus()
     }
     this.setState((oldState) => ({
       ...status,
