@@ -88,6 +88,7 @@ class CamillaConfig extends React.Component<
       <SidePanel
           currentConfigFile={this.state.currentConfigFile}
           config={this.state.config}
+          guiConfig={this.state.guiConfig}
           setConfig={this.handleConfig}
           setErrors={this.setErrors}
           setCurrentConfig={this.setCurrentConfig}
@@ -148,7 +149,7 @@ class CamillaConfig extends React.Component<
   }
 }
 
-function ErrorIcon(props: {}) {
+function ErrorIcon() {
   return <MdiIcon
       icon={mdiAlertCircle}
       tooltip="There are errors on this tab"

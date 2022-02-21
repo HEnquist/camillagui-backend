@@ -7,10 +7,12 @@ import {Box, Button} from "../utilities/ui-components"
 import {Config} from "../config"
 import {loadActiveConfig} from "../files"
 import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
+import {GuiConfig} from "../guiconfig"
 
 
 interface SidePanelProps {
   config: Config
+  guiConfig: GuiConfig
   setConfig: (config: Config) => void
   setErrors: (errors: any) => void
   currentConfigFile?: string
@@ -138,6 +140,7 @@ export class SidePanel extends React.Component<
             capture_rms={this.state.capturesignalrms}
             playback_rms={this.state.playbacksignalrms}
             clipped={this.state.clipped}
+            showLevelInDB={this.props.guiConfig.show_effective_volume_in_db}
             setMessage={message => this.setState({msg: message})}/>}
         <Box title="CamillaDSP">
           <div className="two-column-grid">

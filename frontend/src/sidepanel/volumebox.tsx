@@ -8,6 +8,7 @@ type Props = {
     capture_rms: any
     playback_rms: any
     clipped: boolean
+    showLevelInDB: boolean
     setMessage: (message: string) => void
 }
 
@@ -91,7 +92,12 @@ export class VolumeBox extends React.Component<Props, State> {
                     onClick={this.dim}/>
             </>
         }>
-            <VuMeterGroup title="In" level={props.capture_rms} clipped={props.clipped}/>
+            <VuMeterGroup
+                title="In"
+                level={props.capture_rms}
+                clipped={props.clipped}
+                showLevelInDB={this.props.showLevelInDB}
+            />
             <input
                 style={{width: '100%', margin: 0, padding: 0}}
                 type="range"
@@ -101,7 +107,12 @@ export class VolumeBox extends React.Component<Props, State> {
                 id="volume"
                 onChange={e => this.setState({volume: e.target.valueAsNumber, mute: false, dim: false})}
             />
-            <VuMeterGroup title="Out" level={props.playback_rms} clipped={props.clipped}/>
+            <VuMeterGroup
+                title="Out"
+                level={props.playback_rms}
+                clipped={props.clipped}
+                showLevelInDB={this.props.showLevelInDB}
+            />
         </Box>
     }
 }
