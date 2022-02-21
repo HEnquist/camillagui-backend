@@ -12,6 +12,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
+    "show_effective_volume_in_db": False
 }
 
 def get_config(path):

@@ -3,3 +3,4 @@
   hide_capture_device: false
   hide_playback_device: false
   hide_rate_monitoring: false
+  show_effective_volume_in_db: false
