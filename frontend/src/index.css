@@ -226,7 +226,7 @@ div .popup-content {
 .disabled-button, .disabled-button:hover, .disabled-button:active {
   background-color: var(--disabled-button-background-color);
   opacity: var(--disabled-button-opacity);
-  cursor: initial;
+  cursor: default;
 }
 
 .highlighted-button, .highlighted-button:hover, .highlighted-button:active {

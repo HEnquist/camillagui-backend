@@ -34,7 +34,7 @@ interface Status {
 
 function defaultStatus(): Status {
   return {
-    cdsp_status: 'Backend offline',
+    cdsp_status: BACKEND_OFFLINE,
     capturesignalrms: [],
     playbacksignalrms: [],
     capturerate: '',
@@ -46,6 +46,10 @@ function defaultStatus(): Status {
     backend_version: '',
   }
 }
+
+const CDSP_OFFLINE = 'Offline'
+const BACKEND_OFFLINE = 'Backend offline'
+const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE]
 
 export class SidePanel extends React.Component<
   SidePanelProps,
@@ -79,8 +83,6 @@ export class SidePanel extends React.Component<
   componentWillUnmount() {
     this.state.clearTimer()
   }
-
-  offline_states = ['Backend offline', 'Offline']
 
   private async timer() {
     let status: Status
@@ -128,10 +130,20 @@ export class SidePanel extends React.Component<
   render() {
     const activeConfigFile = this.props.currentConfigFile
     const cdsp_state = this.state.cdsp_status
+    const cdsp_online = !OFFLINE_STATES.includes(cdsp_state)
+    const backend_online = cdsp_state !== BACKEND_OFFLINE
+    let applyButtonText = 'Apply to DSP'
+    let applyButtonTooltip = 'Apply config to the running CamillaDSP process'
+    if (cdsp_online && activeConfigFile)
+      applyButtonTooltip = `Apply config to the running CamillaDSP process, and save to ${activeConfigFile}`
+    else if (cdsp_state === CDSP_OFFLINE) {
+      applyButtonText = "Save config"
+      applyButtonTooltip = `Save config to ${activeConfigFile}`
+    }
     return (
       <section className="tabpanel" style={{width: '250px'}}>
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
-        {!this.offline_states.includes(cdsp_state) && <VolumeBox
+        {cdsp_online && <VolumeBox
             capture_rms={this.state.capturesignalrms}
             playback_rms={this.state.playbacksignalrms}
             clipped={this.state.clipped}
@@ -155,15 +167,14 @@ export class SidePanel extends React.Component<
           }
           <div className="two-column-grid">
             <Button
+                enabled={cdsp_online}
                 text="Fetch from DSP"
                 data-tip="Fetch active config from the running CamillaDSP process"
                 onClick={this.fetchConfig}/>
             <Button
-                text="Apply to DSP"
-                data-tip={activeConfigFile ?
-                    `Apply config to the running CamillaDSP process, and save to ${activeConfigFile}`
-                    : `Apply config to the running CamillaDSP process`
-                }
+                enabled={backend_online}
+                text={applyButtonText}
+                data-tip={applyButtonTooltip}
                 onClick={this.applyConfig}/>
           </div>
           <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>

@@ -85,12 +85,15 @@ export function Button(props: {
     "data-tip"? : string
     onClick: () => void
     style?: CSSProperties
+    enabled?: boolean
 }) {
+    const enabled = props.enabled
+    const disabledStyle = enabled || enabled === undefined ? "" : " disabled-button"
     return <div
         data-tip={props["data-tip"]}
-        className="button button-with-text"
+        className={"button button-with-text" + disabledStyle}
         style={props.style}
-        onClick={props.onClick}>
+        onClick={enabled ? props.onClick : () => {}}>
         {props.text}
     </div>
 }
