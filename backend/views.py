@@ -45,7 +45,9 @@ async def get_status(request):
     try:
         status.update({
             "capturesignalrms": cdsp.get_capture_signal_rms(),
+            "capturesignalpeak": cdsp.get_capture_signal_peak(),
             "playbacksignalrms": cdsp.get_playback_signal_rms(),
+            "playbacksignalpeak": cdsp.get_playback_signal_peak(),
             "capturerate": cdsp.get_capture_rate(),
             "rateadjust": cdsp.get_rate_adjust(),
             "bufferlevel": cdsp.get_buffer_level(),
