@@ -6,7 +6,9 @@ import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
 
 type Props = {
     capture_rms: any
+    capture_peak: any
     playback_rms: any
+    playback_peak: any
     clipped: boolean
     showLevelInDB: boolean
     setMessage: (message: string) => void
@@ -95,6 +97,7 @@ export class VolumeBox extends React.Component<Props, State> {
             <VuMeterGroup
                 title="In"
                 level={props.capture_rms}
+                peaks={props.capture_peak}
                 clipped={props.clipped}
                 showLevelInDB={this.props.showLevelInDB}
             />
@@ -110,6 +113,7 @@ export class VolumeBox extends React.Component<Props, State> {
             <VuMeterGroup
                 title="Out"
                 level={props.playback_rms}
+                peaks={props.playback_peak}
                 clipped={props.clipped}
                 showLevelInDB={this.props.showLevelInDB}
             />

@@ -22,7 +22,9 @@ interface SidePanelProps {
 interface Status {
   cdsp_status: string
   capturesignalrms: number[]
+  capturesignalpeak: number[]
   playbacksignalrms: number[]
+  playbacksignalpeak: number[]
   capturerate: number | ''
   rateadjust: number | ''
   bufferlevel: number | ''
@@ -36,7 +38,9 @@ function defaultStatus(): Status {
   return {
     cdsp_status: BACKEND_OFFLINE,
     capturesignalrms: [],
+    capturesignalpeak: [],
     playbacksignalrms: [],
+    playbacksignalpeak: [],
     capturerate: '',
     rateadjust: '',
     bufferlevel: '',
@@ -145,7 +149,9 @@ export class SidePanel extends React.Component<
         <img src={camillalogo} alt="graph" width="100%" height="100%" />
         {cdsp_online && <VolumeBox
             capture_rms={this.state.capturesignalrms}
+            capture_peak={this.state.capturesignalpeak}
             playback_rms={this.state.playbacksignalrms}
+            playback_peak={this.state.playbacksignalpeak}
             clipped={this.state.clipped}
             showLevelInDB={this.props.guiConfig.show_effective_volume_in_db}
             setMessage={message => this.setState({msg: message})}/>}
