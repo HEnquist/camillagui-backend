@@ -26,18 +26,21 @@ async def get_status(request):
     cdsp_version = None
     try:
         state = cdsp.get_state()
+        state_str = state.name
         cdsp_version = cdsp.get_version()
     except IOError:
         try:
             cdsp.connect()
             state = cdsp.get_state()
+            state_str = state.name
             cdsp_version = cdsp.get_version()
         except IOError:
-            state = "Offline"
+            state_str = "Offline"
+    cdsp_version = cdsp.get_version()
     if cdsp_version is None:
         cdsp_version = ['x', 'x', 'x']
     status = {
-        "cdsp_status": state,
+        "cdsp_status": state_str,
         "cdsp_version": version_string(cdsp_version),
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
