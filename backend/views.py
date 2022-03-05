@@ -36,7 +36,6 @@ async def get_status(request):
             cdsp_version = cdsp.get_version()
         except IOError:
             state_str = "Offline"
-    cdsp_version = cdsp.get_version()
     if cdsp_version is None:
         cdsp_version = ['x', 'x', 'x']
     status = {
