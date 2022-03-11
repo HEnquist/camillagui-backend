@@ -4,12 +4,12 @@ import {clamp} from "lodash"
 import {cssStyles} from "../utilities/ui-components"
 import {Range} from "immutable"
 
-export function VuMeterGroup(props: { title: string, level: number[], peaks: number[], clipped: boolean, showLevelInDB: boolean }) {
-  const { title, level, peaks, clipped, showLevelInDB } = props
-  if (level.length === 0 || level.length !== peaks.length)
+export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean, showLevelInDB: boolean }) {
+  const { title, levels, peaks, clipped, showLevelInDB } = props
+  if (levels.length === 0 || levels.length !== peaks.length)
     return null
-  const meters = Range(0, level.length).map((index) =>
-      <VuMeter key={index} level={level[index]} peak={peaks[index]} clipped={clipped} showLevelInDB={showLevelInDB}/>
+  const meters = Range(0, levels.length).map((index) =>
+      <VuMeter key={index} level={levels[index]} peak={peaks[index]} clipped={clipped} showLevelInDB={showLevelInDB}/>
   )
   return (
       <div className="split-20-80">
@@ -71,5 +71,5 @@ function drawBars(context: any, width: number, height: number,
                   clipped: boolean) {
   context.fillStyle = cssStyles().getPropertyValue(clipped ? '--error-text-color' : '--success-text-color')
   context.fillRect(0, 0, width * levelInPercent / 100, height) // draw rms bar
-  context.fillRect(Math.min(width - 2, width * peakInPercent / 100), 0, 2, height) // draw peak bar
+  context.fillRect(Math.min(width - 2, width * peakInPercent / 100 - 1), 0, 2, height) // draw peak bar
 }

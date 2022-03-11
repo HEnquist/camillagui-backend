@@ -96,7 +96,7 @@ export class VolumeBox extends React.Component<Props, State> {
         }>
             <VuMeterGroup
                 title="In"
-                level={props.capture_rms}
+                levels={props.capture_rms}
                 peaks={props.capture_peak}
                 clipped={props.clipped}
                 showLevelInDB={this.props.showLevelInDB}
@@ -112,7 +112,7 @@ export class VolumeBox extends React.Component<Props, State> {
             />
             <VuMeterGroup
                 title="Out"
-                level={props.playback_rms}
+                levels={props.playback_rms}
                 peaks={props.playback_peak}
                 clipped={props.clipped}
                 showLevelInDB={this.props.showLevelInDB}
