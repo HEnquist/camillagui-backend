@@ -19,10 +19,12 @@ export function VuMeterGroup(props: { title: string, level: number[], peaks: num
   )
 }
 
+const rangeBeforeClipping = 0.9
+
 function VuMeter(props: { level: number, peak: number, clipped: boolean, showLevelInDB: boolean }) {
   const {level, peak, clipped, showLevelInDB} = props
-  const levelInPercent = clamp(level, -100, 0) + 100
-  const peakInPercent = clamp(peak, -100, 0) + 100
+  const levelInPercent = levelAsPercent(level)
+  const peakInPercent = levelAsPercent(peak)
   const canvasRef = useRef(null)
   const meter = <canvas
       width={showLevelInDB ? '120px' : '170px'}
@@ -33,11 +35,10 @@ function VuMeter(props: { level: number, peak: number, clipped: boolean, showLev
     const context = canvas.getContext('2d')
     const width = context.canvas.width
     const height = context.canvas.height
-    context.fillStyle = cssStyles().getPropertyValue('--button-background-color') // background color
-    context.fillRect(0, 0, width, height) // fill background
-    context.fillStyle = cssStyles().getPropertyValue(clipped ? '--error-text-color' : '--success-text-color') // bar color
-    context.fillRect(0, 0, width*levelInPercent/100, height) // draw rms bar
-    context.fillRect(Math.min(width-2, width*peakInPercent/100), 0, 2, height) // draw peak bar
+    const css = cssStyles()
+    fillBackground(context, css, width, height)
+    draw0dBmarker(context, css, width, height)
+    drawBars(context, width, height, css, levelInPercent, peakInPercent, clipped)
   }, [levelInPercent, peakInPercent, clipped])
   return showLevelInDB ?
       <div style={{display: 'flex'}}>
@@ -46,5 +47,29 @@ function VuMeter(props: { level: number, peak: number, clipped: boolean, showLev
           {level < -99 ? '' : level.toFixed(0)}dB
         </div>
       </div>
-      : meter;
+      : meter
+}
+
+function levelAsPercent(level: number): number {
+  const levelWithClippingBuffer = (level + 100) * rangeBeforeClipping - 100
+  return clamp(levelWithClippingBuffer, -100, 0) + 100
+}
+
+function fillBackground(context: any, css: CSSStyleDeclaration, width: number, height: number) {
+  context.fillStyle = css.getPropertyValue('--button-background-color')
+  context.fillRect(0, 0, width, height)
+}
+
+function draw0dBmarker(context: any, css: CSSStyleDeclaration, width: number, height: number) {
+  context.fillStyle = css.getPropertyValue('--text-color')
+  context.fillRect((width * rangeBeforeClipping) - 1, 0, 2, height)
+}
+
+function drawBars(context: any, width: number, height: number,
+                  css: CSSStyleDeclaration,
+                  levelInPercent: number, peakInPercent: number,
+                  clipped: boolean) {
+  context.fillStyle = cssStyles().getPropertyValue(clipped ? '--error-text-color' : '--success-text-color')
+  context.fillRect(0, 0, width * levelInPercent / 100, height) // draw rms bar
+  context.fillRect(Math.min(width - 2, width * peakInPercent / 100), 0, 2, height) // draw peak bar
 }
