@@ -153,7 +153,6 @@ export class SidePanel extends React.Component<
             playback_rms={this.state.playbacksignalrms}
             playback_peak={this.state.playbacksignalpeak}
             clipped={this.state.clipped}
-            showLevelInDB={this.props.guiConfig.show_effective_volume_in_db}
             setMessage={message => this.setState({msg: message})}/>}
         <Box title="CamillaDSP">
           <div className="two-column-grid">

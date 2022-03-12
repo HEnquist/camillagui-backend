@@ -10,7 +10,6 @@ type Props = {
     playback_rms: any
     playback_peak: any
     clipped: boolean
-    showLevelInDB: boolean
     setMessage: (message: string) => void
 }
 
@@ -99,7 +98,6 @@ export class VolumeBox extends React.Component<Props, State> {
                 levels={props.capture_rms}
                 peaks={props.capture_peak}
                 clipped={props.clipped}
-                showLevelInDB={this.props.showLevelInDB}
             />
             <input
                 style={{width: '100%', margin: 0, padding: 0}}
@@ -115,7 +113,6 @@ export class VolumeBox extends React.Component<Props, State> {
                 levels={props.playback_rms}
                 peaks={props.playback_peak}
                 clipped={props.clipped}
-                showLevelInDB={this.props.showLevelInDB}
             />
         </Box>
     }

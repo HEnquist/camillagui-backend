@@ -4,72 +4,93 @@ import {clamp} from "lodash"
 import {cssStyles} from "../utilities/ui-components"
 import {Range} from "immutable"
 
-export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean, showLevelInDB: boolean }) {
-  const { title, levels, peaks, clipped, showLevelInDB } = props
-  if (levels.length === 0 || levels.length !== peaks.length)
-    return null
-  const meters = Range(0, levels.length).map((index) =>
-      <VuMeter key={index} level={levels[index]} peak={peaks[index]} clipped={clipped} showLevelInDB={showLevelInDB}/>
-  )
-  return (
-      <div className="split-20-80">
-        <div>{title}</div>
-        <div>{meters}</div>
-      </div>
-  )
-}
-
-const rangeBeforeClipping = 0.9
-
-function VuMeter(props: { level: number, peak: number, clipped: boolean, showLevelInDB: boolean }) {
-  const {level, peak, clipped, showLevelInDB} = props
-  const levelInPercent = levelAsPercent(level)
-  const peakInPercent = levelAsPercent(peak)
+export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean}) {
+  const {title, levels, peaks, clipped} = props
   const canvasRef = useRef(null)
-  const meter = <canvas
-      width={showLevelInDB ? '120px' : '170px'}
-      height='10px'
+  const meters = <canvas
+      width='170px'
+      height={levels.length * meterHeightInPX + Math.max(1, levels.length - 0.5) * gapHeightInPX + 'px'}
       ref={canvasRef}/>
   useEffect(() => {
     const canvas: any = canvasRef.current
+    if (canvas === null)
+      return
     const context = canvas.getContext('2d')
     const width = context.canvas.width
     const height = context.canvas.height
     const css = cssStyles()
-    fillBackground(context, css, width, height)
-    draw0dBmarker(context, css, width, height)
-    drawBars(context, width, height, css, levelInPercent, peakInPercent, clipped)
-  }, [levelInPercent, peakInPercent, clipped])
-  return showLevelInDB ?
-      <div style={{display: 'flex'}}>
-        <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>{meter}</div>
-        <div style={{textAlign: 'right', flexGrow: 1}}>
-          {level < -99 ? '' : level.toFixed(0)}dB
+    context.clearRect(0,0,width, height)
+    Range(0, levels.length).forEach(index => {
+      const level = levels[index]
+      const peak = peaks[index]
+      const levelInPercent = levelAsPercent(level)
+      const peakInPercent = levelAsPercent(peak)
+      fillBackground(context, css, width, height, index)
+      drawDbMarkers(context, css, width, height, index)
+      draw0dBmarker(context, css, width, height, index)
+      drawLevelBars(context, width, height, css, levelInPercent, peakInPercent, clipped, index)
+    })
+  }, [levels, peaks, clipped])
+  if (levels.length === 0 || levels.length !== peaks.length)
+    return null
+  else
+    return (
+        <div className="split-20-80">
+          <div>{title}</div>
+          {meters}
         </div>
-      </div>
-      : meter
+    )
 }
+
+const meterHeightInPX = 10
+const gapHeightInPX = 20
+const rangeBeforeClipping = 0.9
+const dbMarkersAt = [0, -12, -24, -36, -48, -60, -72, -84, -96]
+const dbMarkersWithTextLabel = [0, -12, -24, -60, -96]
 
 function levelAsPercent(level: number): number {
   const levelWithClippingBuffer = (level + 100) * rangeBeforeClipping - 100
   return clamp(levelWithClippingBuffer, -100, 0) + 100
 }
 
-function fillBackground(context: any, css: CSSStyleDeclaration, width: number, height: number) {
+function meterYOffset(index: number): number {
+  return index * meterHeightInPX + index * gapHeightInPX + gapHeightInPX/4
+}
+
+function fillBackground(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
   context.fillStyle = css.getPropertyValue('--button-background-color')
-  context.fillRect(0, 0, width, height)
+  context.fillRect(0, meterYOffset(index), width, meterHeightInPX)
 }
 
-function draw0dBmarker(context: any, css: CSSStyleDeclaration, width: number, height: number) {
+function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
-  context.fillRect((width * rangeBeforeClipping) - 1, 0, 2, height)
+  const dbMarkerHeight = gapHeightInPX / 4
+  dbMarkersAt.forEach(marker => {
+    const x = width * levelAsPercent(marker) / 100 - 1
+    const y = meterYOffset(index) - dbMarkerHeight
+    context.fillRect(x, y, 2, dbMarkerHeight)
+    context.fillRect(x, y + meterHeightInPX + dbMarkerHeight, 2, dbMarkerHeight)
+    if (dbMarkersWithTextLabel.includes(marker)) {
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.font = 'Arial'
+      context.fillText(marker.toString(10), x+1, y + gapHeightInPX + dbMarkerHeight + 1)
+    }
+  })
 }
 
-function drawBars(context: any, width: number, height: number,
+function draw0dBmarker(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+  context.fillStyle = css.getPropertyValue('--text-color')
+  context.fillRect((width * rangeBeforeClipping) - 1, meterYOffset(index), 2, meterHeightInPX)
+}
+
+function drawLevelBars(context: any, width: number, height: number,
                   css: CSSStyleDeclaration,
                   levelInPercent: number, peakInPercent: number,
-                  clipped: boolean) {
-  context.fillStyle = cssStyles().getPropertyValue(clipped ? '--error-text-color' : '--success-text-color')
-  context.fillRect(0, 0, width * levelInPercent / 100, height) // draw rms bar
-  context.fillRect(Math.min(width - 2, width * peakInPercent / 100 - 1), 0, 2, height) // draw peak bar
+                  clipped: boolean, index: number) {
+  context.fillStyle = css.getPropertyValue(clipped ? '--error-text-color' : '--success-text-color')
+  const rmsBarWidth = Math.round(width * levelInPercent / 100)
+  context.fillRect(0, meterYOffset(index), rmsBarWidth, meterHeightInPX) // draw rms bar
+  const peakX = Math.min(width - 2, Math.round(width * peakInPercent / 100 - 1))
+  context.fillRect(peakX, meterYOffset(index), 2, meterHeightInPX) // draw peak bar
 }
