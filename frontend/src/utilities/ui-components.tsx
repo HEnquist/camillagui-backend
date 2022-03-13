@@ -771,12 +771,9 @@ export function ListSelectPopup(props: {
             {items.map(item =>
                 <Button
                     key={item}
-                    text={item + "test"}
+                    text={item}
                     style={{justifyContent: 'flex-start'}}
-                    onClick={() => {
-                        console.log("click")
-                        selectItem(item);
-                    }}/>
+                    onClick={() => selectItem(item)}/>
             )}
         </div>
     </Popup>
