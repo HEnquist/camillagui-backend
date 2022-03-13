@@ -87,8 +87,8 @@ export function Button(props: {
     style?: CSSProperties
     enabled?: boolean
 }) {
-    const enabled = props.enabled
-    const disabledStyle = enabled || enabled === undefined ? "" : " disabled-button"
+    const enabled = props.enabled || props.enabled === undefined
+    const disabledStyle = enabled ? "" : " disabled-button"
     return <div
         data-tip={props["data-tip"]}
         className={"button button-with-text" + disabledStyle}
@@ -771,9 +771,12 @@ export function ListSelectPopup(props: {
             {items.map(item =>
                 <Button
                     key={item}
-                    text={item}
+                    text={item + "test"}
                     style={{justifyContent: 'flex-start'}}
-                    onClick={() => selectItem(item)}/>
+                    onClick={() => {
+                        console.log("click")
+                        selectItem(item);
+                    }}/>
             )}
         </div>
     </Popup>
