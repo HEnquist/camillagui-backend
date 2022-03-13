@@ -733,22 +733,24 @@ export function ChartPopup(props: {
         return 0
     }
 
+    const sampleRateOptions = props.data.options.sort(sortBySamplerateAndChannels)
+        .map(option => {
+                const selected = (option.samplerate === undefined || option.samplerate === props.data.samplerate)
+                    && (option.channels === undefined || option.channels === props.data.channels)
+                return <option key={option.name} selected={selected}>{option.name}</option>
+            }
+        )
+
     return <Popup open={props.open} onClose={props.onClose}>
         <CloseButton onClick={props.onClose}/>
         <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
         <div style={{textAlign: 'center'}}>
-            <select
+            {props.data.options.length > 0 && <select
                 data-tip="Select filter file"
                 onChange={e => props.onChange(e.target.value)}
             >
-                {props.data.options.sort(sortBySamplerateAndChannels)
-                    .map(option => {
-                        const selected = (option.samplerate === undefined || option.samplerate === props.data.samplerate)
-                            && (option.channels === undefined || option.channels === props.data.channels)
-                        return <option key={option.name} selected={selected}>{option.name}</option>
-                    }
-                )}
-            </select>
+                {sampleRateOptions}
+            </select>}
         </div>
         <Scatter data={data} options={options}/>
     </Popup>

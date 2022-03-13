@@ -180,8 +180,9 @@ export class FiltersTab extends React.Component<
         open={this.state.popupVisible}
         data={this.state.data}
         onChange={file => {
-          const current = this.state.data.options.filter(o => o.name === file)[0]
-          this.plotFilter(this.state.data.name, current.samplerate, current.channels)
+          const options = this.state.data.options
+          const current = options.length === 0 ? undefined : options.filter(o => o.name === file)[0]
+          this.plotFilter(this.state.data.name, current?.samplerate, current?.channels)
         }}
         onClose={this.closePopup}
       />
