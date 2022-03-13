@@ -10,7 +10,7 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
   const canvasRef = useRef(null)
   const meters = <canvas
       width='170px'
-      height={levels.length * meterHeightInPX + levels.length * gapHeightInPX + dbMarkerLabelHeight + 'px'}
+      height={levels.length * meterHeightInPX + (levels.length+1) * gapHeightInPX + 2*dbMarkerLabelHeight + 'px'}
       ref={canvasRef}/>
   useEffect(() => {
     const canvas: any = canvasRef.current
@@ -26,12 +26,13 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
       const peak = peaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
-      fillBackground(context, css, width, height, index)
-      drawDbMarkers(context, css, width, height, index)
-      draw0dBmarker(context, css, width, height, index)
-      drawLevelBars(context, width, height, css, levelInPercent, peakInPercent, clipped, index)
+      fillBackground(context, css, width, height, index+1)
+      drawDbMarkers(context, css, width, height, index+1)
+      draw0dBmarker(context, css, width, height, index+1)
+      drawLevelBars(context, width, height, css, levelInPercent, peakInPercent, clipped, index+1)
     })
-    drawDbMarkerLabels(context, css, width, height, levels.length)
+    drawDbMarkerLabels(context, css, width, height, 0)
+    drawDbMarkerLabels(context, css, width, height, levels.length+1)
   }, [levels, peaks, clipped])
   if (levels.length === 0 || levels.length !== peaks.length)
     return null
