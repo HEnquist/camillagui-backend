@@ -20,7 +20,7 @@ type State = {
 }
 
 const mutedVolume = -99
-export const minVolume = -50
+export const minVolume = -51
 
 export class VolumeBox extends React.Component<Props, State> {
 

@@ -55,7 +55,7 @@ const dbMarkersWithTextLabel = [0, -12, -24, -36, -48]
  * @param dBFS
  */
 export function levelAsPercent(dBFS: number): number {
-  return (clamp(dBFS, minVolume, 10) + 50) * 100 / 60
+  return (clamp(dBFS, minVolume, 10) - minVolume) * 100 / 60
 }
 
 function meterYOffset(index: number): number {
