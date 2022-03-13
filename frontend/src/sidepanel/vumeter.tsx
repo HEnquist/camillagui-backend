@@ -10,7 +10,7 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
   const canvasRef = useRef(null)
   const meters = <canvas
       width='170px'
-      height={levels.length * meterHeightInPX + Math.max(1, levels.length - 0.5) * gapHeightInPX + 'px'}
+      height={levels.length * meterHeightInPX + levels.length * gapHeightInPX + dbMarkerLabelHeight + 'px'}
       ref={canvasRef}/>
   useEffect(() => {
     const canvas: any = canvasRef.current
@@ -31,6 +31,7 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
       draw0dBmarker(context, css, width, height, index)
       drawLevelBars(context, width, height, css, levelInPercent, peakInPercent, clipped, index)
     })
+    drawDbMarkerLabels(context, css, width, height, levels.length)
   }, [levels, peaks, clipped])
   if (levels.length === 0 || levels.length !== peaks.length)
     return null
@@ -44,7 +45,8 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
 }
 
 const meterHeightInPX = 10
-const gapHeightInPX = 20
+const gapHeightInPX = 5
+const dbMarkerLabelHeight = 10
 const dbMarkersAt = [6, 0, -6, -12, -18, -24, -30, -36, -42, -48]
 const dbMarkersWithTextLabel = [0, -12, -24, -36, -48]
 
@@ -59,7 +61,7 @@ export function levelAsPercent(dBFS: number): number {
 }
 
 function meterYOffset(index: number): number {
-  return index * meterHeightInPX + index * gapHeightInPX + gapHeightInPX/4
+  return index * (meterHeightInPX + gapHeightInPX)
 }
 
 function fillBackground(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
@@ -69,7 +71,17 @@ function fillBackground(context: any, css: CSSStyleDeclaration, width: number, h
 
 function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
-  const dbMarkerHeight = gapHeightInPX / 4
+  dbMarkersAt.forEach(marker => {
+    const x = width * levelAsPercent(marker) / 100 - 1
+    const y = meterYOffset(index) - gapHeightInPX
+    context.fillRect(x, y, 2, gapHeightInPX)
+    context.fillRect(x, y + meterHeightInPX + gapHeightInPX, 2, gapHeightInPX)
+  })
+}
+
+function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+  context.fillStyle = css.getPropertyValue('--text-color')
+  const dbMarkerHeight = gapHeightInPX
   dbMarkersAt.forEach(marker => {
     const x = width * levelAsPercent(marker) / 100 - 1
     const y = meterYOffset(index) - dbMarkerHeight
