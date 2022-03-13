@@ -3,6 +3,7 @@ import "../index.css"
 import {clamp} from "lodash"
 import {cssStyles} from "../utilities/ui-components"
 import {Range} from "immutable"
+import {minVolume} from "./volumebox"
 
 export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean}) {
   const {title, levels, peaks, clipped} = props
@@ -44,13 +45,17 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
 
 const meterHeightInPX = 10
 const gapHeightInPX = 20
-const rangeBeforeClipping = 0.9
-const dbMarkersAt = [0, -12, -24, -36, -48, -60, -72, -84, -96]
-const dbMarkersWithTextLabel = [0, -12, -24, -60, -96]
+const dbMarkersAt = [6, 0, -6, -12, -18, -24, -30, -36, -42, -48]
+const dbMarkersWithTextLabel = [0, -12, -24, -36, -48]
 
-function levelAsPercent(level: number): number {
-  const levelWithClippingBuffer = (level + 100) * rangeBeforeClipping - 100
-  return clamp(levelWithClippingBuffer, -100, 0) + 100
+/**
+ * Converts volume level to percent
+ * -50dB ~= 0%
+ * +10dB ~= 100%
+ * @param dBFS
+ */
+export function levelAsPercent(dBFS: number): number {
+  return (clamp(dBFS, minVolume, 10) + 50) * 100 / 60
 }
 
 function meterYOffset(index: number): number {
@@ -81,7 +86,7 @@ function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, he
 
 function draw0dBmarker(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
-  context.fillRect((width * rangeBeforeClipping) - 1, meterYOffset(index), 2, meterHeightInPX)
+  context.fillRect((width * levelAsPercent(0) / 100) - 1, meterYOffset(index), 2, meterHeightInPX)
 }
 
 function drawLevelBars(context: any, width: number, height: number,

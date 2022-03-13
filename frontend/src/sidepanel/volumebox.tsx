@@ -19,7 +19,8 @@ type State = {
     dim: boolean
 }
 
-const minVolume = -99
+const mutedVolume = -99
+export const minVolume = -50
 
 export class VolumeBox extends React.Component<Props, State> {
 
@@ -45,7 +46,7 @@ export class VolumeBox extends React.Component<Props, State> {
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
         const {volume, mute} = this.state
         if (volume !== prevState.volume || mute !== prevState.mute)
-            this.setVolume(mute ? minVolume : volume)
+            this.setVolume(mute ? mutedVolume : volume)
     }
 
     private mute() {
