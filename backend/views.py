@@ -125,12 +125,15 @@ async def eval_filter_values(request):
     channels = content["channels"]
     samplerate = content["samplerate"]
     filter_file_names = list_of_files_in_directory(request.app["coeff_dir"])
-    filename = config["parameters"]["filename"]
-    options = filter_options(filter_file_names, filename)
+    if "filename" in config["parameters"]:
+        filename = config["parameters"]["filename"]
+        options = filter_options(filter_file_names, filename)
+    else:
+        options = []
     replace_tokens_in_filter_config(config, samplerate, channels)
     data = eval_filter(
         config,
-        name=content["name"],
+        name=(content["name"]),
         samplerate=samplerate,
         npoints=300,
     )
