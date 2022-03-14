@@ -1,4 +1,4 @@
-import React, {ChangeEvent, CSSProperties, ReactNode} from "react"
+import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
@@ -85,17 +85,51 @@ export function Button(props: {
     "data-tip"? : string
     onClick: () => void
     style?: CSSProperties
+    className?: string
     enabled?: boolean
 }) {
     const enabled = props.enabled || props.enabled === undefined
-    const disabledStyle = enabled ? "" : " disabled-button"
+    const disabledStyle = enabled ? "" : "disabled-button"
+    const additionalClasses = props.className || ""
     return <div
         data-tip={props["data-tip"]}
-        className={"button button-with-text" + disabledStyle}
+        className={`button button-with-text ${disabledStyle} ${additionalClasses}`}
         style={props.style}
         onClick={enabled ? props.onClick : () => {}}>
         {props.text}
     </div>
+}
+
+export function SuccessFailureButton(props: {
+    text: string
+    "data-tip"? : string
+    onClick: () => Promise<void>
+    style?: CSSProperties
+    enabled?: boolean
+}) {
+    const [success, setSuccess] = useState<boolean | undefined>(undefined)
+    const [timerId, setTimerId] = useState<number | undefined>(undefined)
+    let className = ''
+    if (success === true)
+        className = 'success-text'
+    if (success === false)
+        className = 'error-text'
+    function setSuccessAndtimer(success: boolean) {
+        setSuccess(success)
+        if (timerId)
+            window.clearInterval(timerId)
+        setTimerId(
+            window.setTimeout(() => {
+                setSuccess(undefined)
+                setTimerId(undefined)
+            }, 1000)
+        )
+    }
+    const onClick = () => props.onClick().then(
+        () => setSuccessAndtimer(true),
+        () => setSuccessAndtimer(false)
+    )
+    return <Button {...props} className={className} onClick={onClick}/>
 }
 
 export function AddButton(props: {

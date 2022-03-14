@@ -3,7 +3,7 @@ import "../index.css"
 import isEqual from "lodash/isEqual"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
-import {Box, Button} from "../utilities/ui-components"
+import {Box, SuccessFailureButton} from "../utilities/ui-components"
 import {Config} from "../config"
 import {loadActiveConfig} from "../files"
 import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
@@ -95,14 +95,19 @@ export class SidePanel extends React.Component<
     } catch (err) {
       status = defaultStatus()
     }
-    this.setState((oldState) => ({
+    this.setState(oldState => ({
       ...status,
-      clipped: oldState.clippedsamples >= 0 && status.clippedsamples > oldState.clippedsamples,
+      clipped: oldState.clippedsamples >= 0 && status.clippedsamples > oldState.clippedsamples
     }))
   }
 
   private async fetchConfig() {
     const conf_req = await fetch("/api/getconfig")
+    if (!conf_req.ok) {
+      const errorMessage = await conf_req.text();
+      this.setState({msg: errorMessage})
+      throw new Error(errorMessage)
+    }
     const config = await conf_req.json()
     if (config) {
       this.setState({msg: "OK"})
@@ -121,8 +126,10 @@ export class SidePanel extends React.Component<
         config: this.props.config
       }),
     })
-    const reply = await conf_req.text()
-    this.setState({msg: reply})
+    const message = await conf_req.text()
+    this.setState({msg: message})
+    if (!conf_req.ok)
+      throw new Error(message)
   }
 
   async loadCurrentConfig() {
@@ -171,12 +178,12 @@ export class SidePanel extends React.Component<
           </div>
           }
           <div className="two-column-grid">
-            <Button
+            <SuccessFailureButton
                 enabled={cdsp_online}
                 text="Fetch from DSP"
                 data-tip="Fetch active config from the running CamillaDSP process"
                 onClick={this.fetchConfig}/>
-            <Button
+            <SuccessFailureButton
                 enabled={backend_online}
                 text={applyButtonText}
                 data-tip={applyButtonTooltip}
@@ -220,7 +227,7 @@ class ConfigCheckMessage extends React.Component<
       const request = await fetch("/api/validateconfig", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(config),
+        body: JSON.stringify(config)
       })
       if (request.ok) {
         const message = await request.text()
