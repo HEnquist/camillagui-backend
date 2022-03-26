@@ -217,7 +217,7 @@ class ConfigCheckMessage extends React.Component<
     this.state = {message: this.default_message}
   }
 
-  private timer = delayedExecutor()
+  private timer = delayedExecutor(500)
 
   componentDidUpdate(prevProps: { config: Config }) {
     if (!isEqual(prevProps.config, this.props.config))

@@ -107,8 +107,8 @@ export function SuccessFailureButton(props: {
     style?: CSSProperties
     enabled?: boolean
 }) {
+    const [timer] = useState(() => delayedExecutor(1000))
     const [success, setSuccess] = useState<boolean | undefined>(undefined)
-    const [timerId, setTimerId] = useState<number | undefined>(undefined)
     let className = ''
     if (success === true)
         className = 'success-text'
@@ -116,14 +116,7 @@ export function SuccessFailureButton(props: {
         className = 'error-text'
     function setSuccessAndtimer(success: boolean) {
         setSuccess(success)
-        if (timerId)
-            window.clearInterval(timerId)
-        setTimerId(
-            window.setTimeout(() => {
-                setSuccess(undefined)
-                setTimerId(undefined)
-            }, 1000)
-        )
+        timer(() => setSuccess(undefined))
     }
     const onClick = () => props.onClick().then(
         () => setSuccessAndtimer(true),
@@ -536,10 +529,10 @@ interface Action {
 }
 
 /**
- * Creates an executor, that executes the action after half a second,
+ * Creates an executor, that executes the action after delay in ms,
  * if no other action is received during that time.
  */
-export function delayedExecutor(): (action: Action) => void {
+export function delayedExecutor(delay: number): (action: Action) => void {
     let timerId: undefined | number
     return function (action: Action) {
         if (timerId)
@@ -547,7 +540,7 @@ export function delayedExecutor(): (action: Action) => void {
         timerId = window.setTimeout(() => {
             timerId = undefined
             action()
-        }, 500)
+        }, delay)
     }
 }
 
