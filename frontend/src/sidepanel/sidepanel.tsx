@@ -58,29 +58,33 @@ const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE]
 export class SidePanel extends React.Component<
   SidePanelProps,
   Status & {
+    applyConfigAutomatically: boolean
     clearTimer: () => void
     msg: string
     clipped: boolean
   }
 > {
 
-  constructor(props: any) {
+  private timer = delayedExecutor(500)
+
+  constructor(props: SidePanelProps) {
     super(props)
     this.state = {
+      applyConfigAutomatically: props.guiConfig.applyConfigAutomatically,
       clearTimer: () => {},
       msg: '',
       clipped: false,
       ...defaultStatus()
     }
-    this.timer = this.timer.bind(this)
+    this.updateStatus = this.updateStatus.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
     this.applyConfig = this.applyConfig.bind(this)
   }
 
   async componentDidMount() {
-    const intervalId = setInterval(this.timer, 500)
+    const intervalId = setInterval(this.updateStatus, 500)
     this.setState({clearTimer: () => clearInterval(intervalId)})
-    this.timer()
+    this.updateStatus()
     this.loadCurrentConfig()
   }
 
@@ -88,7 +92,17 @@ export class SidePanel extends React.Component<
     this.state.clearTimer()
   }
 
-  private async timer() {
+  componentDidUpdate(prevProps: { config: Config, guiConfig: GuiConfig }) {
+    const {applyConfigAutomatically} = this.props.guiConfig
+    if (applyConfigAutomatically !== prevProps.guiConfig.applyConfigAutomatically)
+      this.setState({applyConfigAutomatically})
+    if (this.state.applyConfigAutomatically && !isEqual(prevProps.config, this.props.config))
+      this.timer(() => {
+        this.applyConfig().catch(() => {})
+      })
+  }
+
+  private async updateStatus() {
     let status: Status
     try {
       status = await (await fetch("/api/status")).json()
@@ -184,10 +198,19 @@ export class SidePanel extends React.Component<
                 data-tip="Fetch active config from the running CamillaDSP process"
                 onClick={this.fetchConfig}/>
             <SuccessFailureButton
-                enabled={backend_online}
+                enabled={backend_online && !this.state.applyConfigAutomatically}
                 text={applyButtonText}
                 data-tip={applyButtonTooltip}
                 onClick={this.applyConfig}/>
+          </div>
+          <div style={{textAlign: 'center', marginTop: '5px'}}>
+            Apply automatically <input
+                value={"asdf"}
+                style={{}}
+                type="checkbox"
+                checked={this.state.applyConfigAutomatically}
+                data-tip="Save/Apply config automatically after each change"
+                onChange={(e) => this.setState({applyConfigAutomatically: e.target.checked})}/>
           </div>
           <ConfigCheckMessage config={this.props.config} setErrors={this.props.setErrors}/>
         </Box>
