@@ -316,7 +316,7 @@ export function FloatInput(props: {
         asString={(float?: number) => float === undefined ? "" : float.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseFloat(rawValue)
-            return isNaN(parsedvalue) ? undefined : parsedvalue
+            return isNaN(parsedvalue) || rawValue.endsWith(".") ? undefined : parsedvalue
         }}
         className={props.className}
         style={{...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined)}}
