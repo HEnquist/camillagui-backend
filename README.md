@@ -130,6 +130,10 @@ hide_playback_device: false
 hide_rate_monitoring: false
 ```
 
+#### Other GUI Options
+Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
+To enable it by default, in `config/gui-config.yml` set `applyConfigAutomatically` to `true`.
+
 ## Running
 Start the server with:
 ```sh

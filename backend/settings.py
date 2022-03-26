@@ -12,6 +12,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
+    "applyConfigAutomatically": False,
 }
 
 def get_config(path):
@@ -42,13 +43,15 @@ def absolute_path_or_none_if_empty(path):
     else:
         return None
 
+
 def get_gui_config_or_defaults():
     try:
         with open(GUI_CONFIG_PATH) as yaml_config:
             json_config = yaml.safe_load(yaml_config)
         return json_config
-    except Exception:
+    except OSError:
         print("Unable to read gui config file, using defaults")
         return GUI_CONFIG_DEFAULTS
+
 
 config = get_config(CONFIG_PATH)
