@@ -516,7 +516,7 @@ export function TextOption(props: {
 }
 
 export function TextInput(props: {
-    value: string,
+    value: string
     'data-tip': string
     className?: string
     style?: CSSProperties
@@ -529,6 +529,26 @@ export function TextInput(props: {
         className={props.className}
         style={props.style}
         onChange={e => props.onChange(e.target.value)}/>
+}
+
+interface Action {
+    (): void
+}
+
+/**
+ * Creates an executor, that executes the action after half a second,
+ * if no other action is received during that time.
+ */
+export function delayedExecutor(): (action: Action) => void {
+    let timerId: undefined | number
+    return function (action: Action) {
+        if (timerId)
+            window.clearInterval(timerId)
+        timerId = window.setTimeout(() => {
+            timerId = undefined
+            action()
+        }, 500)
+    }
 }
 
 export interface ChartData {

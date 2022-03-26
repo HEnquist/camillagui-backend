@@ -3,7 +3,7 @@ import "../index.css"
 import isEqual from "lodash/isEqual"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
-import {Box, SuccessFailureButton} from "../utilities/ui-components"
+import {Box, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
 import {Config} from "../config"
 import {loadActiveConfig} from "../files"
 import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
@@ -217,9 +217,11 @@ class ConfigCheckMessage extends React.Component<
     this.state = {message: this.default_message}
   }
 
+  private timer = delayedExecutor()
+
   componentDidUpdate(prevProps: { config: Config }) {
     if (!isEqual(prevProps.config, this.props.config))
-      this.get_config_errors(this.props.config)
+      this.timer(() => this.get_config_errors(this.props.config))
   }
 
   private async get_config_errors(config: Config) {
