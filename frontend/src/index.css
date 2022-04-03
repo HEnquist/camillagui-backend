@@ -43,6 +43,16 @@ input[type='checkbox'] {
   cursor: pointer;
 }
 
+textarea {
+  color: var(--text-color);
+  background-color: var(--background-color);
+}
+
+textarea.logfileviewer {
+  resize: none;
+  accent-color: var(--background-color);
+}
+
 .react-tabs__tab--selected {
   color: var(--text-color);
   background: var(--background-color);

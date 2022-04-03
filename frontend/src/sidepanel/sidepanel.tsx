@@ -3,11 +3,12 @@ import "../index.css"
 import isEqual from "lodash/isEqual"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
-import {Box, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
+import {Box, Button, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
 import {Config} from "../config"
 import {loadActiveConfig} from "../files"
 import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
 import {GuiConfig} from "../guiconfig"
+import {LogFileViewerPopup} from "./logfileviewer"
 
 
 interface SidePanelProps {
@@ -62,6 +63,7 @@ export class SidePanel extends React.Component<
     clearTimer: () => void
     msg: string
     clipped: boolean
+    logFileViewerOpen: boolean
   }
 > {
 
@@ -74,7 +76,8 @@ export class SidePanel extends React.Component<
       clearTimer: () => {},
       msg: '',
       clipped: false,
-      ...defaultStatus()
+      ...defaultStatus(),
+      logFileViewerOpen: false
     }
     this.updateStatus = this.updateStatus.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
@@ -184,6 +187,8 @@ export class SidePanel extends React.Component<
             <div className="alignRight">Buffer level:</div><div>{this.state.bufferlevel}</div>
             <div className="alignRight">Message:</div><div>{this.state.msg}</div>
           </div>
+          <Button text="Show log file" onClick={() => this.setState({logFileViewerOpen: true})} style={{marginTop: '10px'}}/>
+          <LogFileViewerPopup open={this.state.logFileViewerOpen} onClose={() => this.setState({logFileViewerOpen: false})}/>
         </Box>
         <Box title="Config">
           {activeConfigFile &&
