@@ -272,8 +272,8 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0', retry_on_error: false, avoid_blocking_read: false },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', change_format: false },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
@@ -324,25 +324,6 @@ function CaptureOptions(props: {
             devices.capture.device = device
         )}/>
     }
-    {(capture.type === 'Alsa') && <>
-        <BoolOption
-            value={capture.retry_on_error}
-            error={errors({path: ['device']})}
-            desc="retry_on_error"
-            data-tip="Retry reading from device on errors, may help with buggy devices"
-            onChange={retry_on_error => onChange(devices => // @ts-ignore
-                devices.capture.retry_on_error = retry_on_error
-            )}/>
-        <BoolOption
-            value={capture.avoid_blocking_read}
-            error={errors({path: ['device']})}
-            desc="avoid_blocking_read"
-            data-tip="Avoid blocking on reads, may help with buggy devices"
-            onChange={avoid_blocking_read => onChange(devices => // @ts-ignore
-                devices.capture.avoid_blocking_read = avoid_blocking_read
-            )}/>
-        </>
-    }
     {(capture.type === 'Wasapi') && <>
         <BoolOption
             value={capture.exclusive}
@@ -361,6 +342,16 @@ function CaptureOptions(props: {
                 devices.capture.loopback = loopback
             )}/>
         </>
+    }
+    {(capture.type === 'CoreAudio') &&
+    <BoolOption
+        value={capture.change_format}
+        error={errors({path: ['device']})}
+        desc="change_format"
+        data-tip="Change format of the device"
+        onChange={change_format => onChange(devices => // @ts-ignore
+            devices.capture.change_format = change_format
+        )}/>
     }
     {capture.type === 'File' &&
     <TextOption
@@ -413,7 +404,7 @@ function PlaybackOptions(props: {
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
-    CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
+    CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', exclusive: false, change_format: false},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
@@ -463,7 +454,7 @@ function PlaybackOptions(props: {
             devices.playback.device = device
         )}/>
     }
-    {(playback.type === 'Wasapi') &&
+    {(playback.type === 'Wasapi' || playback.type === 'CoreAudio') &&
     <BoolOption
         value={playback.exclusive}
         error={errors({path: ['device']})}
@@ -471,6 +462,16 @@ function PlaybackOptions(props: {
         data-tip="Use exclusive mode"
         onChange={exclusive => onChange(devices => // @ts-ignore
             devices.playback.exclusive = exclusive
+        )}/>
+    }
+    {(playback.type === 'CoreAudio') &&
+    <BoolOption
+        value={playback.change_format}
+        error={errors({path: ['device']})}
+        desc="change_format"
+        data-tip="Change format of the device"
+        onChange={change_format => onChange(devices => // @ts-ignore
+            devices.playback.change_format = change_format
         )}/>
     }
     {playback.type === 'File' &&
