@@ -68,6 +68,7 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
+log_file: "~/camilladsp/camilladsp.log"
 update_symlink: true (*)
 on_set_active_config: null (*)
 on_get_active_config: null (*)
@@ -77,6 +78,8 @@ supported_playback_types: null (*)
 The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
+
+If you want to be able to view the log file in the GUI, configure CamillaDSP to log to `log_file`.
 
 `active_config` is the location, where a symbolic link to the currently active config will be created, if `update_symlink` is `true`.
 Note that symlinks cannot be created on Windows without configuring special privileges.

@@ -1,4 +1,4 @@
-from os.path import isfile
+from os.path import isfile, expanduser
 
 import yaml
 from aiohttp import web
@@ -340,3 +340,19 @@ async def get_defaults_for_coeffs(request):
     absolute_path = make_absolute(path, request.app["config_dir"])
     defaults = defaults_for_filter(absolute_path)
     return web.json_response(defaults)
+
+
+async def get_log_file(request):
+    log_file_path = request.app["log_file"]
+    try:
+        with open(expanduser(log_file_path)) as log_file:
+            text = log_file.read()
+            return web.Response(body=text)
+    except OSError:
+        print("Unable to read logfile at " + log_file_path)
+    if log_file_path:
+        error_message = "Please configure CamillaDSP to log to: " + log_file_path
+    else:
+        error_message = "Please configure a valid 'log_file' path"
+    return web.Response(body=error_message)
+
