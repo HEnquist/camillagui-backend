@@ -187,7 +187,12 @@ export class SidePanel extends React.Component<
             <div className="alignRight">Buffer level:</div><div>{this.state.bufferlevel}</div>
             <div className="alignRight">Message:</div><div>{this.state.msg}</div>
           </div>
-          <Button text="Show log file" onClick={() => this.setState({logFileViewerOpen: true})} style={{marginTop: '10px'}}/>
+          <Button
+              text="Show log file"
+              onClick={() => this.setState({logFileViewerOpen: true})}
+              style={{marginTop: '10px'}}
+              enabled={backend_online}
+          />
           <LogFileViewerPopup open={this.state.logFileViewerOpen} onClose={() => this.setState({logFileViewerOpen: false})}/>
         </Box>
         <Box title="Config">
