@@ -1,4 +1,4 @@
-import {sortedAlphabetically} from "./utilities/arrays"
+import {sortedAlphabetically} from "../utilities/arrays"
 
 export function defaultConfig(): Config {
     return {
@@ -246,3 +246,13 @@ export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep
 export interface MixerStep { type: 'Mixer', name: string }
 export interface FilterStep { type: 'Filter', channel: number, names: string[] }
+
+export function filterGain(config: Config, filterName: string): number | undefined {
+    return config.filters[filterName]?.parameters?.gain
+}
+
+export function setFilterGain(config: Config, filterName: string, gain: number) {
+    const parameters = config.filters[filterName]?.parameters
+    if (parameters !== undefined && parameters.hasOwnProperty('gain'))
+        parameters.gain = gain
+}

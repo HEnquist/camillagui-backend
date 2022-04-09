@@ -26,7 +26,7 @@ import {
   MixerStep,
   Pipeline,
   PipelineStep
-} from "../config"
+} from "../camilladsp/config"
 import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
 import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"

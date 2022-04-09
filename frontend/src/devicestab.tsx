@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.css"
-import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./config"
+import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   BoolOption,

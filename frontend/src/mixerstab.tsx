@@ -22,7 +22,7 @@ import {
   removeMixer,
   renameMixer,
   Source
-} from "./config"
+} from "./camilladsp/config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"

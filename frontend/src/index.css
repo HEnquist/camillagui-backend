@@ -172,7 +172,7 @@ div .popup-content {
   display: grid;
   grid-column-gap: 5px;
   grid-row-gap: 2px;
-  grid-template-columns: max-content auto;
+  grid-template-columns: auto auto;
 }
 
 .two-column-grid .alignRight {
@@ -248,6 +248,13 @@ div .popup-content {
   margin: 10px 4px 2px;
 }
 
+.db-label {
+  display: inline-block;
+  width: 5ch;
+  text-align: right;
+  margin-left: 5px;
+}
+
 .versions {
   width: 100%;
   margin: 15px 0;
@@ -255,6 +262,10 @@ div .popup-content {
   flex-direction: row;
   justify-content: space-evenly;
   font-size: xx-small;
+}
+
+.quick-config-switch > * {
+  margin: 5px;
 }
 
 .success-text {

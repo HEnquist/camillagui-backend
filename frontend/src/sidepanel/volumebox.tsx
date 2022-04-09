@@ -3,13 +3,10 @@ import "../index.css"
 import {VuMeterGroup} from "./vumeter"
 import {Box, MdiButton} from "../utilities/ui-components"
 import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
+import {VuMeterStatus} from "../camilladsp/status"
 
 type Props = {
-    capture_rms: any
-    capture_peak: any
-    playback_rms: any
-    playback_peak: any
-    clipped: boolean
+    vuMeterStatus: VuMeterStatus
     setMessage: (message: string) => void
 }
 
@@ -71,12 +68,13 @@ export class VolumeBox extends React.Component<Props, State> {
     }
 
     render() {
-        const props = this.props
+        const {capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms, clipped}
+            = this.props.vuMeterStatus
         const {volume, mute, dim} = this.state
         return <Box title={
             <>
                 Volume
-                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right', marginLeft: '5px'}}>
+                <div className="db-label">
                     {mute ? '' : volume+'dB'}
                 </div>
                 <MdiButton
@@ -96,9 +94,9 @@ export class VolumeBox extends React.Component<Props, State> {
         }>
             <VuMeterGroup
                 title="In"
-                levels={props.capture_rms}
-                peaks={props.capture_peak}
-                clipped={props.clipped}
+                levels={capturesignalrms}
+                peaks={capturesignalpeak}
+                clipped={clipped}
             />
             <input
                 style={{width: '100%', margin: 0, padding: 0}}
@@ -111,9 +109,9 @@ export class VolumeBox extends React.Component<Props, State> {
             />
             <VuMeterGroup
                 title="Out"
-                levels={props.playback_rms}
-                peaks={props.playback_peak}
-                clipped={props.clipped}
+                levels={playbacksignalrms}
+                peaks={playbacksignalpeak}
+                clipped={clipped}
             />
         </Box>
     }

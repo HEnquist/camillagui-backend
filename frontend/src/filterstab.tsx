@@ -11,7 +11,7 @@ import {
   newFilterName,
   removeFilter,
   renameFilter
-} from "./config"
+} from "./camilladsp/config"
 import {
   AddButton,
   BoolOption,
