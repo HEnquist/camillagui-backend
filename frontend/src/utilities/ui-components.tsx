@@ -568,11 +568,22 @@ export function ChartPopup(props: {
     onChange: (item: string) => void
     onClose: () => void
 }){
+    return <Popup open={props.open} onClose={props.onClose}>
+        <CloseButton onClick={props.onClose}/>
+        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
+        <Chart onChange={props.onChange} data={props.data}/>
+    </Popup>
+}
+
+export function Chart(props: {
+    data: ChartData
+    onChange: (item: string) => void
+}) {
+    let data: any = {labels: [props.data.name], datasets: []}
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
         return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
     }
 
-    let data: any = {labels: [props.data.name], datasets: []}
     let x_time = false
     let x_freq = false
     let y_phase = false
@@ -771,7 +782,6 @@ export function ChartPopup(props: {
             }
         )
     }
-
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
             return a.samplerate - b.samplerate
@@ -779,20 +789,18 @@ export function ChartPopup(props: {
             return a.channels - b.channels
         return 0
     }
-
     const sampleRateOptions = props.data.options.sort(sortBySamplerateAndChannels)
-        .map(option => {
-                const selected = (option.samplerate === undefined || option.samplerate === props.data.samplerate)
-                    && (option.channels === undefined || option.channels === props.data.channels)
-                return <option key={option.name} selected={selected}>{option.name}</option>
-            }
+        .map(option =>
+            <option key={option.name}>{option.name}</option>
         )
-
-    return <Popup open={props.open} onClose={props.onClose}>
-        <CloseButton onClick={props.onClose}/>
-        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
+    const selected = props.data.options.find(option =>
+        (option.samplerate === undefined || option.samplerate === props.data.samplerate)
+        && (option.channels === undefined || option.channels === props.data.channels)
+    )?.name
+    return <>
         <div style={{textAlign: 'center'}}>
             {props.data.options.length > 0 && <select
+                value={selected}
                 data-tip="Select filter file"
                 onChange={e => props.onChange(e.target.value)}
             >
@@ -800,8 +808,7 @@ export function ChartPopup(props: {
             </select>}
         </div>
         <Scatter data={data} options={options}/>
-    </Popup>
-
+    </>
 }
 
 export function ListSelectPopup(props: {
