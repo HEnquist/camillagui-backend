@@ -207,7 +207,7 @@ function MappingView(props: {
       <MdiButton
           icon={mdiVolumeOff}
           tooltip={"Mute destination channel"}
-          smallButton={true}
+          buttonSize="small"
           className={mapping.mute ? "highlighted-button" : ""}
           onClick={() => update(mapping => mapping.mute = !mapping.mute)}/>
       <DeleteButton
@@ -273,13 +273,13 @@ function SourceView(props: {
       <MdiButton
           icon={mdiPlusMinusVariant}
           tooltip={"Invert source channel"}
-          smallButton={true}
+          buttonSize="small"
           className={source.inverted ? "highlighted-button" : ""}
           onClick={() => update(source => source.inverted = !source.inverted)}/>
       <MdiButton
           icon={mdiVolumeOff}
           tooltip={"Mute source channel"}
-          smallButton={true}
+          buttonSize="small"
           className={source.mute ? "highlighted-button" : ""}
           onClick={() => update(source => source.mute = !source.mute)}/>
       <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>

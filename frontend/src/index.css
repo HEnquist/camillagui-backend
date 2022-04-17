@@ -220,6 +220,12 @@ div .popup-content {
   width: 32px;
 }
 
+.tinybutton {
+  padding: 1px 3px;
+  width: unset;
+  height: unset;
+}
+
 /* Disable hover for mobile/tablets */
 @media (hover: hover) and (pointer: fine) {
   .button:hover {

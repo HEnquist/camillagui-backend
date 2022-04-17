@@ -80,13 +80,13 @@ export class VolumeBox extends React.Component<Props, State> {
                 <MdiButton
                     icon={mdiVolumeOff}
                     tooltip={mute ? "Un-Mute" : "Mute"}
-                    smallButton={true}
+                    buttonSize="small"
                     className={mute ? "highlighted-button" : ""}
                     onClick={this.mute}/>
                 <MdiButton
                     icon={mdiVolumeMedium}
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
-                    smallButton={true}
+                    buttonSize="small"
                     className={dim ? "highlighted-button" : ""}
                     enabled={dim || volume >= minVolume + 20}
                     onClick={this.dim}/>

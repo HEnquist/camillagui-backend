@@ -295,13 +295,13 @@ function FilterStepView(props: {
                       <MdiButton
                           icon={mdiArrowUpBold}
                           tooltip="Move filter up"
-                          smallButton={true}
+                          buttonSize="small"
                           enabled={index > 0}
                           onClick={() => moveFilterUp(index)}/>
                       <MdiButton
                           icon={mdiArrowDownBold}
                           tooltip="Move filter down"
-                          smallButton={true}
+                          buttonSize="small"
                           enabled={index + 1 < filterStep.names.length}
                           onClick={() => moveFilterDown(index)}/>
                       <DeleteButton

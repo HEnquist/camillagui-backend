@@ -39,13 +39,12 @@ export function CompactView(props: {
   </div>
 }
 
-function DisableCompactViewButton(props: {disableCompactView: () => void}) {
-  return <div onClick={props.disableCompactView}>
-    <MdiButton
-        icon={mdiImageSizeSelectSmall}
-        tooltip="Change to normal view"
-    />
-  </div>
+function DisableCompactViewButton(props: { disableCompactView: () => void }) {
+  return <MdiButton
+      icon={mdiImageSizeSelectSmall}
+      tooltip="Change to normal view"
+      onClick={props.disableCompactView}
+  />
 }
 
 function BassAndTreble(props: {
