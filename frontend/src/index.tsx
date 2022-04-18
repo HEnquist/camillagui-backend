@@ -92,15 +92,16 @@ class CamillaConfig extends React.Component<
   private readonly saveTimer = delayedExecutor(100)
 
   private updateConfig(update: Update<Config>, saveAfterDelay: boolean = false) {
-    this.setState(prevState => {
-      const newConfig = cloneDeep(prevState.undoRedo.current())
-      update(newConfig)
-      if (saveAfterDelay) //TODO move this to componentDidUpdate
-        this.saveTimer(this.applyConfig)
-      return {
-        undoRedo: prevState.undoRedo.changeTo(newConfig)
-      }
-    })
+    this.setState(
+        prevState => {
+          const newConfig = cloneDeep(prevState.undoRedo.current())
+          update(newConfig)
+          return {undoRedo: prevState.undoRedo.changeTo(newConfig)}
+        },
+        () => {
+          if (saveAfterDelay)
+            this.saveTimer(this.applyConfig)
+        })
   }
 
   private async applyConfig(): Promise<void> {
