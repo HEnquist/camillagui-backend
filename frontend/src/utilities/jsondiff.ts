@@ -1,65 +1,60 @@
-import {diff} from 'json-diff'
+import {diff} from 'json8-patch'
+import {cloneDeep} from "lodash"
 
 
 export function jsonDiff(json1: any, json2: any) : string {
-  return jsonDiffAsLines(diff(json1, json2))
+  const converted1 = cloneDeep(json1)
+  const converted2 = cloneDeep(json2)
+  convertArraysToObjects(converted1)
+  convertArraysToObjects(converted2)
+  return diff(converted1, converted2)
+      .map(op => {
+        const path = op.path.substr(1).split('/')
+        switch (op.op) {
+          case "add": return diffEntry(path, "*added*", valueAsString(op.value))
+          case "remove": return diffEntry(path, "*removed*", valueAt(json1, path))
+          case "replace": return diffEntry(path, valueAt(json1, path), valueAsString(op.value))
+        }
+        return ""
+      }).join('<br/>')
 }
 
-const newValuePropertyName = '__new'
-const oldValuePropertyName = '__old'
-const addedPropertySuffix = '__added'
-const deletedPropertySuffix = '__deleted'
-const separator = "<br/>"
-
-function jsonDiffAsLines(diff: any, path: string[] = []): string {
-  return [
-    addedPropertyDiffs(diff, path),
-    newAndOldValueDiff(diff, path),
-    deletedPropertyDiffs(diff, path),
-    getChildrenDiffs(diff, path)
-  ].join('')
-}
-
-function addedPropertyDiffs(diff: any, path: string[]): string {
-  return Object.getOwnPropertyNames(diff)
-      .filter(property => property.endsWith(addedPropertySuffix))
-      .map(property => {
-        const propertyName = property.replace(addedPropertySuffix, '')
-        const newPath = path.concat(propertyName)
-        return diffEntry(newPath, diff[property], 'undefined')
+/**
+ * Recursively converts all array property values to objects.
+ * This is necessary because json8-patch reports a change for the whole array instead of individual array elements.
+ * @param object
+ */
+function convertArraysToObjects(object: any) {
+  Object.getOwnPropertyNames(object)
+      .forEach(property => {
+        const value = object[property]
+        if (Array.isArray(value))
+          object[property] = {...value} // convert Array to Object
+        if (typeof value === 'object')
+          convertArraysToObjects(value)
       })
-      .join('')
 }
 
-function diffEntry(path: string[], newValue: string, oldValue: string): string {
-  return `${path.join(' > ')}: ${oldValue} => ${newValue}${separator}`
+function diffEntry(path: string[], oldValue: string, newValue: string): string {
+  return `${path.join(' > ')}: ${oldValue} => ${newValue}`
 }
 
-function newAndOldValueDiff(diff: any, path: string[]) {
-  const newValue = diff[newValuePropertyName]
-  const oldValue = diff[oldValuePropertyName]
-  return newValue === undefined || oldValue === undefined ? "" : diffEntry(path, newValue, oldValue)
+function valueAt(json: any, path: string[]): any {
+  return path.length === 0 ?
+      valueAsString(json)
+      : valueAt(json[path[0]], path.slice(1))
 }
 
-
-function deletedPropertyDiffs(diff: any, path: string[]): string {
-  return Object.getOwnPropertyNames(diff)
-      .filter(property => property.endsWith(deletedPropertySuffix))
-      .map(property => {
-        const propertyName = property.replace(deletedPropertySuffix, '')
-        const newPath = path.concat(propertyName)
-        return diffEntry(newPath, 'undefined', diff[property])
-      })
-      .join('')
-}
-
-function getChildrenDiffs(diff: any, path: string[]) {
-  return Object.getOwnPropertyNames(diff)
-      .filter(property =>
-          property !== newValuePropertyName
-          && property !== oldValuePropertyName
-          && !property.endsWith(addedPropertySuffix)
-          && !property.endsWith(deletedPropertySuffix))
-      .map(property => jsonDiffAsLines(diff[property], path.concat(property)))
-      .join('')
+function valueAsString(json: any): string {
+  if (Array.isArray(json)) {
+    const array = json as any[]
+    return "[" + array.map(item => valueAsString(item)).join() + "]"
+  } else if (typeof json === 'object')
+    return "{"
+        + Object.getOwnPropertyNames(json)
+            .map(property => property + ":" + valueAsString(json[property]))
+            .join()
+        + "}"
+  else
+    return json
 }

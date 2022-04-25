@@ -47,7 +47,7 @@ export class UndoRedo<T> {
 
   undoDiff(): string {
     return this.canUndo() ?
-        jsonDiff(this.currentItem, this.undoItems[this.undoItems.length-1])
+        jsonDiff(this.undoItems[this.undoItems.length-1], this.currentItem)
         : ""
   }
 
