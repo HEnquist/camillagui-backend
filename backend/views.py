@@ -30,10 +30,12 @@ async def get_status(request):
     reconnect_thread = request.app["RECONNECT_THREAD"]
     cdsp_version = None
     state_str = "Offline"
+    is_online = False
     try:
         state = cdsp.get_state()
         state_str = state.name
         cdsp_version = cdsp.get_version()
+        is_online = True
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
             reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,))
@@ -47,7 +49,7 @@ async def get_status(request):
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
     }
-    if cdsp_version is not None:
+    if is_online:
         try:
             status.update({
                 "capturesignalrms": cdsp.get_capture_signal_rms(),
