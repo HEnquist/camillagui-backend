@@ -1,6 +1,6 @@
 from os.path import isfile, expanduser
-
 import yaml
+import threading
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
@@ -16,26 +16,29 @@ from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
 from .version import VERSION
 
-
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
+def _reconnect(cdsp):
+    try:
+        cdsp.connect()
+    except IOError:
+        pass
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
+    reconnect_thread = request.app["RECONNECT_THREAD"]
     cdsp_version = None
+    state_str = "Offline"
     try:
         state = cdsp.get_state()
         state_str = state.name
         cdsp_version = cdsp.get_version()
     except IOError:
-        try:
-            cdsp.connect()
-            state = cdsp.get_state()
-            state_str = state.name
-            cdsp_version = cdsp.get_version()
-        except IOError:
-            state_str = "Offline"
+        if reconnect_thread is None or not reconnect_thread.is_alive():
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,))
+            reconnect_thread.start()
+            request.app["RECONNECT_THREAD"] = reconnect_thread
     if cdsp_version is None:
         cdsp_version = ['x', 'x', 'x']
     status = {
@@ -44,19 +47,20 @@ async def get_status(request):
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
     }
-    try:
-        status.update({
-            "capturesignalrms": cdsp.get_capture_signal_rms(),
-            "capturesignalpeak": cdsp.get_capture_signal_peak(),
-            "playbacksignalrms": cdsp.get_playback_signal_rms(),
-            "playbacksignalpeak": cdsp.get_playback_signal_peak(),
-            "capturerate": cdsp.get_capture_rate(),
-            "rateadjust": cdsp.get_rate_adjust(),
-            "bufferlevel": cdsp.get_buffer_level(),
-            "clippedsamples": cdsp.get_clipped_samples(),
-        })
-    except IOError:
-        pass
+    if cdsp_version is not None:
+        try:
+            status.update({
+                "capturesignalrms": cdsp.get_capture_signal_rms(),
+                "capturesignalpeak": cdsp.get_capture_signal_peak(),
+                "playbacksignalrms": cdsp.get_playback_signal_rms(),
+                "playbacksignalpeak": cdsp.get_playback_signal_peak(),
+                "capturerate": cdsp.get_capture_rate(),
+                "rateadjust": cdsp.get_rate_adjust(),
+                "bufferlevel": cdsp.get_buffer_level(),
+                "clippedsamples": cdsp.get_clipped_samples(),
+            })
+        except IOError:
+            pass
     return web.json_response(status)
 
 

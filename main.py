@@ -20,6 +20,7 @@ setup_routes(app)
 setup_static_routes(app)
 
 app["CAMILLA"] = CamillaConnection(config["camilla_host"], config["camilla_port"])
+app["RECONNECT_THREAD"] = None
 camillavalidator = CamillaValidator()
 if config["supported_capture_types"] is not None:
     camillavalidator.set_supported_capture_types(config["supported_capture_types"])
