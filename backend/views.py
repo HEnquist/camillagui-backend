@@ -1,6 +1,7 @@
 from os.path import isfile, expanduser
 import yaml
 import threading
+import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
@@ -20,10 +21,13 @@ async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
 def _reconnect(cdsp):
-    try:
-        cdsp.connect()
-    except IOError:
-        pass
+    done = False
+    while not done:
+        try:
+            cdsp.connect()
+            done = True
+        except IOError:
+            time.sleep(1)
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
@@ -38,7 +42,7 @@ async def get_status(request):
         is_online = True
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
-            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,))
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,), daemon=True)
             reconnect_thread.start()
             request.app["RECONNECT_THREAD"] = reconnect_thread
     if cdsp_version is None:
@@ -89,7 +93,7 @@ async def get_param(request):
     elif name == "configraw":
         result = cdsp.get_config_raw()
     else:
-        result = "ERROR"
+        raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result))
 
 
