@@ -1,7 +1,9 @@
 import os
 import pathlib
+import sys
 
 import yaml
+from yaml.scanner import ScannerError
 
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
 CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
@@ -15,9 +17,24 @@ GUI_CONFIG_DEFAULTS = {
     "applyConfigAutomatically": False,
 }
 
+def _load_yaml(path):
+    try:
+        with open(path) as f:
+            config = yaml.safe_load(f)
+            return config
+    except ScannerError as e:
+        print(f"ERROR! Invalid yaml syntax in config file: {path}")
+        print(f"Details: {e}")
+    except OSError as e:
+        print(f"ERROR! Config file could not be opened: {path}")
+        print(f"Details: {e}")
+    return None
+    
+
 def get_config(path):
-    with open(path) as f:
-        config = yaml.safe_load(f)
+    config = _load_yaml(path)
+    if config is None:
+        sys.exit()
     config["config_dir"] = os.path.abspath(os.path.expanduser(config["config_dir"]))
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
@@ -45,13 +62,13 @@ def absolute_path_or_none_if_empty(path):
 
 
 def get_gui_config_or_defaults():
-    try:
-        with open(GUI_CONFIG_PATH) as yaml_config:
-            json_config = yaml.safe_load(yaml_config)
-        return json_config
-    except OSError:
+    config = _load_yaml(GUI_CONFIG_PATH)
+    if config is not None:
+        return config
+    else:    
         print("Unable to read gui config file, using defaults")
         return GUI_CONFIG_DEFAULTS
+
 
 
 config = get_config(CONFIG_PATH)

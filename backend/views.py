@@ -1,6 +1,7 @@
 from os.path import isfile, expanduser
-
 import yaml
+import threading
+import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
@@ -16,26 +17,34 @@ from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
 from .version import VERSION
 
-
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
+def _reconnect(cdsp):
+    done = False
+    while not done:
+        try:
+            cdsp.connect()
+            done = True
+        except IOError:
+            time.sleep(1)
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
+    reconnect_thread = request.app["RECONNECT_THREAD"]
     cdsp_version = None
+    state_str = "Offline"
+    is_online = False
     try:
         state = cdsp.get_state()
         state_str = state.name
         cdsp_version = cdsp.get_version()
+        is_online = True
     except IOError:
-        try:
-            cdsp.connect()
-            state = cdsp.get_state()
-            state_str = state.name
-            cdsp_version = cdsp.get_version()
-        except IOError:
-            state_str = "Offline"
+        if reconnect_thread is None or not reconnect_thread.is_alive():
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,), daemon=True)
+            reconnect_thread.start()
+            request.app["RECONNECT_THREAD"] = reconnect_thread
     if cdsp_version is None:
         cdsp_version = ['x', 'x', 'x']
     status = {
@@ -44,19 +53,20 @@ async def get_status(request):
         "py_cdsp_version": version_string(cdsp.get_library_version()),
         "backend_version": version_string(VERSION),
     }
-    try:
-        status.update({
-            "capturesignalrms": cdsp.get_capture_signal_rms(),
-            "capturesignalpeak": cdsp.get_capture_signal_peak(),
-            "playbacksignalrms": cdsp.get_playback_signal_rms(),
-            "playbacksignalpeak": cdsp.get_playback_signal_peak(),
-            "capturerate": cdsp.get_capture_rate(),
-            "rateadjust": cdsp.get_rate_adjust(),
-            "bufferlevel": cdsp.get_buffer_level(),
-            "clippedsamples": cdsp.get_clipped_samples(),
-        })
-    except IOError:
-        pass
+    if is_online:
+        try:
+            status.update({
+                "capturesignalrms": cdsp.get_capture_signal_rms(),
+                "capturesignalpeak": cdsp.get_capture_signal_peak(),
+                "playbacksignalrms": cdsp.get_playback_signal_rms(),
+                "playbacksignalpeak": cdsp.get_playback_signal_peak(),
+                "capturerate": cdsp.get_capture_rate(),
+                "rateadjust": cdsp.get_rate_adjust(),
+                "bufferlevel": cdsp.get_buffer_level(),
+                "clippedsamples": cdsp.get_clipped_samples(),
+            })
+        except IOError:
+            pass
     return web.json_response(status)
 
 
@@ -83,7 +93,7 @@ async def get_param(request):
     elif name == "configraw":
         result = cdsp.get_config_raw()
     else:
-        result = "ERROR"
+        raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result))
 
 
