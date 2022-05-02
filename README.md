@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 0.6.0 and up.
+This version works with CamillaDSP 1.0.0 and up.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
@@ -38,13 +38,13 @@ For Homebrew, install Python with `brew install python`, after which you can ins
 
 ### CamillaDSP Python libraries
 You need both the CamillaDSP companion python libraries:
-- `pycamilladsp` version 0.6.0 from https://github.com/HEnquist/pycamilladsp
-- `pycamilladsp-plot` version 0.6.0 from https://github.com/HEnquist/pycamilladsp-plot
+- `pycamilladsp` version 1.0.0 from https://github.com/HEnquist/pycamilladsp
+- `pycamilladsp-plot` version 1.0.0 from https://github.com/HEnquist/pycamilladsp-plot
 
 To install the libraries, use `pip` to install directly from github:
 ```sh
-pip install git+https://github.com/HEnquist/pycamilladsp.git@v0.6.0
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v0.6.0
+pip install git+https://github.com/HEnquist/pycamilladsp.git@v1.0.0
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v1.0.0
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
