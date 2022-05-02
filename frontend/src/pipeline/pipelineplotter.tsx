@@ -3,8 +3,8 @@ import 'reactjs-popup/dist/index.css'
 import * as d3 from "d3"
 import React from "react"
 import "../index.css"
-import {CloseButton, cssStyles} from "../utilities/common-tsx"
-import {CaptureDevice, Config, PlaybackDevice} from "../config"
+import {CloseButton, cssStyles} from "../utilities/ui-components"
+import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
 
 
 export function PipelinePopup(props: {

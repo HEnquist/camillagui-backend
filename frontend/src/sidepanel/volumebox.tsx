@@ -1,13 +1,12 @@
 import React from "react"
 import "../index.css"
 import {VuMeterGroup} from "./vumeter"
-import {Box, MdiButton} from "../utilities/common-tsx"
+import {Box, MdiButton} from "../utilities/ui-components"
 import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
+import {VuMeterStatus} from "../camilladsp/status"
 
 type Props = {
-    capture_rms: any
-    playback_rms: any
-    clipped: boolean
+    vuMeterStatus: VuMeterStatus
     setMessage: (message: string) => void
 }
 
@@ -17,7 +16,8 @@ type State = {
     dim: boolean
 }
 
-const minVolume = -99
+const mutedVolume = -99
+export const minVolume = -51
 
 export class VolumeBox extends React.Component<Props, State> {
 
@@ -43,7 +43,7 @@ export class VolumeBox extends React.Component<Props, State> {
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
         const {volume, mute} = this.state
         if (volume !== prevState.volume || mute !== prevState.mute)
-            this.setVolume(mute ? minVolume : volume)
+            this.setVolume(mute ? mutedVolume : volume)
     }
 
     private mute() {
@@ -68,30 +68,36 @@ export class VolumeBox extends React.Component<Props, State> {
     }
 
     render() {
-        const props = this.props
+        const {capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms, clipped}
+            = this.props.vuMeterStatus
         const {volume, mute, dim} = this.state
         return <Box title={
             <>
                 Volume
-                <div style={{display: 'inline-block', width: '5ch', textAlign: 'right', marginLeft: '5px'}}>
+                <div className="db-label">
                     {mute ? '' : volume+'dB'}
                 </div>
                 <MdiButton
                     icon={mdiVolumeOff}
                     tooltip={mute ? "Un-Mute" : "Mute"}
-                    smallButton={true}
+                    buttonSize="small"
                     className={mute ? "highlighted-button" : ""}
                     onClick={this.mute}/>
                 <MdiButton
                     icon={mdiVolumeMedium}
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
-                    smallButton={true}
+                    buttonSize="small"
                     className={dim ? "highlighted-button" : ""}
                     enabled={dim || volume >= minVolume + 20}
                     onClick={this.dim}/>
             </>
         }>
-            <VuMeterGroup title="In" level={props.capture_rms} clipped={props.clipped}/>
+            <VuMeterGroup
+                title="In"
+                levels={capturesignalrms}
+                peaks={capturesignalpeak}
+                clipped={clipped}
+            />
             <input
                 style={{width: '100%', margin: 0, padding: 0}}
                 type="range"
@@ -101,7 +107,12 @@ export class VolumeBox extends React.Component<Props, State> {
                 id="volume"
                 onChange={e => this.setState({volume: e.target.valueAsNumber, mute: false, dim: false})}
             />
-            <VuMeterGroup title="Out" level={props.playback_rms} clipped={props.clipped}/>
+            <VuMeterGroup
+                title="Out"
+                levels={playbacksignalrms}
+                peaks={playbacksignalpeak}
+                clipped={clipped}
+            />
         </Box>
     }
 }

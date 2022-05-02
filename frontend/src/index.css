@@ -43,6 +43,16 @@ input[type='checkbox'] {
   cursor: pointer;
 }
 
+textarea {
+  color: var(--text-color);
+  background-color: var(--background-color);
+}
+
+textarea.logfileviewer {
+  resize: none;
+  accent-color: var(--background-color);
+}
+
 .react-tabs__tab--selected {
   color: var(--text-color);
   background: var(--background-color);
@@ -162,7 +172,7 @@ div .popup-content {
   display: grid;
   grid-column-gap: 5px;
   grid-row-gap: 2px;
-  grid-template-columns: max-content auto;
+  grid-template-columns: auto auto;
 }
 
 .two-column-grid .alignRight {
@@ -192,6 +202,7 @@ div .popup-content {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  user-select: none;
 }
 
 .button-with-text {
@@ -210,6 +221,12 @@ div .popup-content {
   width: 32px;
 }
 
+.tinybutton {
+  padding: 1px 3px;
+  width: unset;
+  height: unset;
+}
+
 /* Disable hover for mobile/tablets */
 @media (hover: hover) and (pointer: fine) {
   .button:hover {
@@ -226,7 +243,7 @@ div .popup-content {
 .disabled-button, .disabled-button:hover, .disabled-button:active {
   background-color: var(--disabled-button-background-color);
   opacity: var(--disabled-button-opacity);
-  cursor: initial;
+  cursor: default;
 }
 
 .highlighted-button, .highlighted-button:hover, .highlighted-button:active {
@@ -238,6 +255,13 @@ div .popup-content {
   margin: 10px 4px 2px;
 }
 
+.db-label {
+  display: inline-block;
+  width: 5ch;
+  text-align: right;
+  margin-left: 5px;
+}
+
 .versions {
   width: 100%;
   margin: 15px 0;
@@ -245,6 +269,10 @@ div .popup-content {
   flex-direction: row;
   justify-content: space-evenly;
   font-size: xx-small;
+}
+
+.quick-config-switch > * {
+  margin: 5px;
 }
 
 .success-text {

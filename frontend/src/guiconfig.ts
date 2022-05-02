@@ -5,7 +5,14 @@ export interface GuiConfig {
     hide_playback_device: boolean
     hide_rate_monitoring: boolean
     coeff_dir: string
+    supported_capture_types?: CaptureType[]
+    supported_playback_types?: PlaybackType[]
+    applyConfigAutomatically: boolean
 }
+
+export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin'
+
+export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdout'
 
 export function defaultGuiConfig(): GuiConfig {
     return {
@@ -14,6 +21,7 @@ export function defaultGuiConfig(): GuiConfig {
         hide_capture_device: false,
         hide_playback_device: false,
         hide_rate_monitoring: false,
-        coeff_dir: ''
+        coeff_dir: '',
+        applyConfigAutomatically: false
     }
 }

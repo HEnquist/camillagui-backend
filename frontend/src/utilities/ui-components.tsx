@@ -1,44 +1,10 @@
-import React, {ChangeEvent, CSSProperties, ReactNode} from "react"
+import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
-import cloneDeep from "lodash/cloneDeep"
-
-export interface Update<T> {
-    (value: T): void
-}
-
-export function modifiedCopyOf<T>(object: T, modification: (copy: T) => void): T {
-    const copy = cloneDeep(object)
-    modification(copy)
-    return copy
-}
-
-export function sortedAlphabetically(array: string[]): string[] {
-    array.sort((a,b) => a.localeCompare(b))
-    return array
-}
-
-export function moveItemUp<T>(array: T[], index: number) {
-    moveItem(array, index, index-1)
-}
-
-export function moveItemDown<T>(array: T[], index: number) {
-    moveItem(array, index, index+1)
-}
-
-export function moveItem<T>(array: T[], fromIndex: number, toIndex: number) {
-    const removed = array.splice(fromIndex, 1)
-    array.splice(toIndex, 0, ...removed)
-}
-
-export function toMap<T extends string>(array: T[]): { [key: string]: T } {
-    const map: { [key: string]: T } = {}
-    array.forEach(value => map[value] = value)
-    return map
-}
+import {toMap} from "./arrays"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -119,14 +85,44 @@ export function Button(props: {
     "data-tip"? : string
     onClick: () => void
     style?: CSSProperties
+    className?: string
+    enabled?: boolean
 }) {
+    const enabled = props.enabled || props.enabled === undefined
+    const disabledStyle = enabled ? "" : "disabled-button"
+    const additionalClasses = props.className || ""
     return <div
         data-tip={props["data-tip"]}
-        className="button button-with-text"
+        className={`button button-with-text ${disabledStyle} ${additionalClasses}`}
         style={props.style}
-        onClick={props.onClick}>
+        onClick={enabled ? props.onClick : () => {}}>
         {props.text}
     </div>
+}
+
+export function SuccessFailureButton(props: {
+    text: string
+    "data-tip"? : string
+    onClick: () => Promise<void>
+    style?: CSSProperties
+    enabled?: boolean
+}) {
+    const [timer] = useState(() => delayedExecutor(1000))
+    const [success, setSuccess] = useState<boolean | undefined>(undefined)
+    let className = ''
+    if (success === true)
+        className = 'success-text'
+    if (success === false)
+        className = 'error-text'
+    function setSuccessAndtimer(success: boolean) {
+        setSuccess(success)
+        timer(() => setSuccess(undefined))
+    }
+    const onClick = () => props.onClick().then(
+        () => setSuccessAndtimer(true),
+        () => setSuccessAndtimer(false)
+    )
+    return <Button {...props} className={className} onClick={onClick}/>
 }
 
 export function AddButton(props: {
@@ -149,7 +145,7 @@ export function DeleteButton(props: {
 }) {
     return <MdiButton
         style={{color: 'var(--button-remove-icon-color)'}}
-        smallButton={props.smallButton}
+        buttonSize={props.smallButton ? "small" : "default"}
         icon={mdiDelete}
         tooltip={props.tooltip}
         onClick={props.onClick}/>
@@ -179,7 +175,7 @@ export function UploadButton(props: {
         <label data-tip={props.tooltip}>
             <input style={{display: 'none'}} type="file" onChange={props.onChange} multiple={props.multiple}/>
             <MdiButton
-                smallButton={props.smallButton}
+                buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
                 tooltip={props.tooltip}
                 className={props.className}
@@ -194,17 +190,18 @@ export function MdiButton(props: {
     className?: string
     style?: CSSProperties
     enabled?: boolean
-    smallButton?: boolean
+    buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const { icon, tooltip, className, enabled, onClick, smallButton } = props
+    const {icon, tooltip, className, enabled, onClick, buttonSize} = props
     const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
     let buttonClass = 'button button-with-icon'
     if (enabled === false) buttonClass += ' disabled-button'
-    if (smallButton === true) buttonClass += ' smallbutton'
+    if (buttonSize === "small") buttonClass += ' smallbutton'
+    else if (buttonSize === "tiny") buttonClass += ' tinybutton'
     if (className !== undefined) buttonClass += ' ' + className
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={'24px'}/>
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'}/>
     </div>
 }
 
@@ -317,10 +314,10 @@ export function FloatInput(props: {
         value={props.value}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
-        asString={(float: number) => float.toString()}
+        asString={(float?: number) => float === undefined ? "" : float.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseFloat(rawValue)
-            return isNaN(parsedvalue) ? undefined : parsedvalue
+            return isNaN(parsedvalue) || rawValue.endsWith(".") ? undefined : parsedvalue
         }}
         className={props.className}
         style={{...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined)}}
@@ -513,7 +510,7 @@ export function TextOption(props: {
 }
 
 export function TextInput(props: {
-    value: string,
+    value: string
     'data-tip': string
     className?: string
     style?: CSSProperties
@@ -528,18 +525,66 @@ export function TextInput(props: {
         onChange={e => props.onChange(e.target.value)}/>
 }
 
+interface Action {
+    (): void
+}
+
+/**
+ * Creates an executor, that executes the action after delay in ms,
+ * if no other action is received during that time.
+ */
+export function delayedExecutor(delay: number): (action: Action) => void {
+    let timerId: undefined | number
+    return function (action: Action) {
+        if (timerId)
+            window.clearInterval(timerId)
+        timerId = window.setTimeout(() => {
+            timerId = undefined
+            action()
+        }, delay)
+    }
+}
+
+export interface ChartData {
+    name: string
+    samplerate?: number
+    channels?: number
+    options: FilterOption[]
+    f: number[]
+    magnitude?: number[]
+    phase?: number[]
+    impulse?: number[]
+    time: number[]
+}
+
+export interface FilterOption {
+    name: string
+    channels?: number
+    samplerate?: number
+}
+
 export function ChartPopup(props: {
-    open: boolean,
-    data: any,
+    open: boolean
+    data: ChartData
+    onChange: (item: string) => void
     onClose: () => void
 }){
+    return <Popup open={props.open} onClose={props.onClose}>
+        <CloseButton onClick={props.onClose}/>
+        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
+        <Chart onChange={props.onChange} data={props.data}/>
+    </Popup>
+}
+
+export function Chart(props: {
+    data: ChartData
+    onChange: (item: string) => void
+}) {
+    let data: any = {labels: [props.data.name], datasets: []}
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
         return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
     }
 
-    let stateData = props.data
-    const name: string = stateData.hasOwnProperty("name") ? stateData["name"] : ""
-    let data: any = {labels: [name], datasets: []}
     let x_time = false
     let x_freq = false
     let y_phase = false
@@ -552,8 +597,9 @@ export function ChartPopup(props: {
     const gainColor = styles.getPropertyValue('--gain-color')
     const phaseColor = styles.getPropertyValue('--phase-color')
     const impulseColor = styles.getPropertyValue('--impulse-color')
-    if (stateData.hasOwnProperty("magnitude")) {
-        const gainpoints = make_pointlist(stateData["f"], stateData["magnitude"], 1.0, 1.0)
+    const magnitude = props.data.magnitude
+    if (magnitude) {
+        const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
         x_freq = true
         y_gain = true
         data.datasets.push(
@@ -569,8 +615,9 @@ export function ChartPopup(props: {
             }
         )
     }
-    if (stateData.hasOwnProperty("phase")) {
-        const phasepoints = make_pointlist(stateData["f"], stateData["phase"], 1.0, 1.0)
+    const phase = props.data.phase
+    if (phase) {
+        const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
         x_freq = true
         y_phase = true
         data.datasets.push(
@@ -586,8 +633,9 @@ export function ChartPopup(props: {
             }
         )
     }
-    if (stateData.hasOwnProperty("impulse")) {
-        const impulsepoints = make_pointlist(stateData["time"], stateData["impulse"], 1000.0, 1.0)
+    const impulse = props.data.impulse
+    if (impulse) {
+        const impulsepoints = make_pointlist(props.data.time, impulse, 1000.0, 1.0)
         x_time = true
         y_ampl = true
         data.datasets.push(
@@ -735,11 +783,33 @@ export function ChartPopup(props: {
             }
         )
     }
-
-    return <Popup open={props.open} onClose={props.onClose}>
-        <CloseButton onClick={props.onClose}/>
+    function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
+        if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
+            return a.samplerate - b.samplerate
+        if (a.channels !== b.channels && a.channels !== undefined && b.channels !== undefined)
+            return a.channels - b.channels
+        return 0
+    }
+    const sampleRateOptions = props.data.options.sort(sortBySamplerateAndChannels)
+        .map(option =>
+            <option key={option.name}>{option.name}</option>
+        )
+    const selected = props.data.options.find(option =>
+        (option.samplerate === undefined || option.samplerate === props.data.samplerate)
+        && (option.channels === undefined || option.channels === props.data.channels)
+    )?.name
+    return <>
+        <div style={{textAlign: 'center'}}>
+            {props.data.options.length > 0 && <select
+                value={selected}
+                data-tip="Select filter file"
+                onChange={e => props.onChange(e.target.value)}
+            >
+                {sampleRateOptions}
+            </select>}
+        </div>
         <Scatter data={data} options={options}/>
-    </Popup>
+    </>
 }
 
 export function ListSelectPopup(props: {

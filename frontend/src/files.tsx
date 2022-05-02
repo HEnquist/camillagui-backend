@@ -1,6 +1,6 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/common-tsx"
+import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
 import {
   mdiAlertCircle,
   mdiAlphaABox,
@@ -12,7 +12,7 @@ import {
   mdiRefresh,
   mdiUpload
 } from '@mdi/js'
-import {Config} from "./config"
+import {Config} from "./camilladsp/config"
 import ReactTooltip from "react-tooltip"
 
 export function Files(props: {
@@ -108,15 +108,11 @@ class FileTable extends Component<
   }
 
   private update() {
-    fetch(`/api/stored${this.type}s`)
-      .then(response => response.json())
-      .then(json => this.setState((prevState) => {
-        let files = json as string[]
-        return {
+    loadFiles(this.type)
+        .then(files => this.setState(prevState => ({
           files: files,
           selectedFiles: prevState.selectedFiles.intersect(files)
-        }
-      }))
+        })))
   }
 
   private async delete() {
@@ -160,7 +156,7 @@ class FileTable extends Component<
 
   private async loadConfig(name: string) {
     try {
-      const response = await fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
+      const response = await loadConfigJson(name)
       if (!response.ok) {
         this.showErrorMessage(name, 'load', await response.text())
         return
@@ -318,6 +314,16 @@ class FileTable extends Component<
       </Box>
     )
   }
+}
+
+export function loadFiles(type: "config" | "coeff"): Promise<string[]> {
+  return fetch(`/api/stored${type}s`)
+      .then(response => response.json())
+      .then(json => json as string[])
+}
+
+export function loadConfigJson(name: string): Promise<Response> {
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
 }
 
 export function loadActiveConfig(): Promise<{configFileName: string, config: Config}> {

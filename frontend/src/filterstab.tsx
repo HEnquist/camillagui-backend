@@ -11,13 +11,15 @@ import {
   newFilterName,
   removeFilter,
   renameFilter
-} from "./config"
+} from "./camilladsp/config"
 import {
   AddButton,
   BoolOption,
   Box,
   Button,
-  ChartPopup,
+  Chart,
+  ChartData,
+  delayedExecutor,
   DeleteButton,
   doUpload,
   EnumInput,
@@ -29,13 +31,13 @@ import {
   IntOption,
   ListSelectPopup,
   MdiButton,
-  modifiedCopyOf,
   ParsedInput,
   TextOption,
-  Update,
   UploadButton
-} from "./utilities/common-tsx"
+} from "./utilities/ui-components"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {modifiedCopyOf, Update} from "./utilities/common"
+import {isEqual} from "lodash"
 
 export class FiltersTab extends React.Component<
     {
@@ -47,8 +49,6 @@ export class FiltersTab extends React.Component<
       errors: ErrorsForPath
     },
     {
-      popupVisible: boolean
-      data: { name: string }
       filterKeys: { [name: string]: number}
       availableCoeffFiles: string[]
     }
@@ -61,12 +61,8 @@ export class FiltersTab extends React.Component<
     this.renameFilter = this.renameFilter.bind(this)
     this.isFreeFilterName = this.isFreeFilterName.bind(this)
     this.updateFilter = this.updateFilter.bind(this)
-    this.plotFilter = this.plotFilter.bind(this)
-    this.closePopup = this.closePopup.bind(this)
     this.updateAvailableCoeffFiles = this.updateAvailableCoeffFiles.bind(this)
     this.state = {
-      popupVisible: false,
-      data: {name: ""},
       filterKeys: {},
       availableCoeffFiles: []
     }
@@ -118,27 +114,6 @@ export class FiltersTab extends React.Component<
     this.props.updateConfig(config => update(config.filters[name]))
   }
 
-  private plotFilter(name: string) {
-    fetch("/api/evalfilter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", },
-      body: JSON.stringify({
-        name: name,
-        config: this.props.filters[name],
-        samplerate: this.props.samplerate,
-        channels: this.props.channels,
-      }),
-    }).then(
-      result => result.json()
-          .then(data => this.setState({popupVisible: true, data: data})),
-      error => console.log("Failed", error)
-    )
-  }
-
-  private closePopup() {
-    this.setState({ popupVisible: false })
-  }
-
   private updateAvailableCoeffFiles() {
     fetch("/api/storedcoeffs")
         .then(
@@ -150,7 +125,7 @@ export class FiltersTab extends React.Component<
 
   render() {
     let {filters, errors} = this.props
-    return <div className="tabpanel">
+    return <div className="tabpanel" style={{width: '700px'}}>
       <ErrorMessage message={errors({path: []})}/>
       {this.filterNames()
           .map(name =>
@@ -164,18 +139,13 @@ export class FiltersTab extends React.Component<
                   rename={newName => this.renameFilter(name, newName)}
                   isFreeFilterName={this.isFreeFilterName}
                   remove={() => this.removeFilter(name)}
-                  plot={() => this.plotFilter(name)}
                   updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
                   coeffDir={this.props.coeffDir}
+                  samplerate={this.props.samplerate}
+                  channels={this.props.channels}
               />
           )}
       <AddButton tooltip="Add a new filter" onClick={this.addFilter}/>
-      <ChartPopup
-        key={'plot-filter-popup'}
-        open={this.state.popupVisible}
-        data={this.state.data}
-        onClose={this.closePopup}
-      />
     </div>
   }
 }
@@ -192,7 +162,7 @@ interface FilterDefaults {
   errors?: string[]
 }
 
-class FilterView extends React.Component<{
+interface FilterViewProps {
   name: string
   filter: Filter
   errors: ErrorsForPath
@@ -201,15 +171,22 @@ class FilterView extends React.Component<{
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
   remove: () => void
-  plot: () => void
   updateAvailableCoeffFiles: () => void
   coeffDir: string
-}, {
+  samplerate: number
+  channels: number
+}
+
+interface FilterViewState {
   uploadState?: { success: true } | { success: false, message: string }
-  popupOpen: boolean
+  filterFilePopupOpen: boolean
+  showFilterPlot: boolean
+  data?: ChartData
   filterDefaults: FilterDefaults
   showDefaults: boolean
-} > {
+}
+
+class FilterView extends React.Component<FilterViewProps, FilterViewState> {
 
   constructor(props: any) {
     super(props)
@@ -217,10 +194,21 @@ class FilterView extends React.Component<{
     this.pickFilterFile = this.pickFilterFile.bind(this)
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
-    this.state = {popupOpen: false, showDefaults: false, filterDefaults: {}}
+    this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
+    this.plotFilterInitially = this.plotFilterInitially.bind(this)
+    this.plotFilter = this.plotFilter.bind(this)
+    this.state = {
+      filterFilePopupOpen: false,
+      showFilterPlot: false,
+      showDefaults: false,
+      filterDefaults: {}
+    }
     if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
+    this.plotFilter()
   }
+
+  private timer = delayedExecutor(500)
 
   private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
     doUpload('coeff', e,
@@ -269,6 +257,50 @@ class FilterView extends React.Component<{
     })
   }
 
+  componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>, snapshot?: any) {
+    if (this.state.showFilterPlot) {
+      const prevFilter = prevProps.filter
+      const currentFilter = this.props.filter
+      if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters))
+        this.timer(() => this.plotFilter())
+    }
+  }
+
+  private toggleFilterPlot() {
+    const showFilterPlot = !this.state.showFilterPlot
+    this.setState({showFilterPlot})
+    if (showFilterPlot)
+      this.plotFilter()
+    else
+      this.setState({data: undefined})
+  }
+
+  private plotFilterInitially(file: string) {
+    const options = this.state.data!!.options
+    const current = options.length === 0 ? undefined : options.filter(o => o.name === file)[0]
+    this.plotFilter(current?.samplerate, current?.channels)
+  }
+
+  private plotFilter(samplerate?: number, channels?: number) {
+    fetch("/api/evalfilter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", },
+      body: JSON.stringify({
+        name: this.props.name,
+        config: this.props.filter,
+        samplerate: samplerate || this.props.samplerate,
+        channels: channels || this.props.channels
+      }),
+    }).then(
+        result => result.json()
+            .then(data => {
+              if (this.state.showFilterPlot)
+                this.setState({data: data as ChartData})
+            }),
+        error => console.log("Failed", error)
+    )
+  }
+
   render() {
     const {name, filter} = this.props
     const uploadState = this.state.uploadState
@@ -296,13 +328,13 @@ class FilterView extends React.Component<{
           <MdiButton
               icon={mdiChartBellCurveCumulative}
               tooltip="Plot frequency response of this filter"
-              onClick={this.props.plot}/>
+              onClick={this.toggleFilterPlot}/>
           }
           {isConvolutionFileFilter(filter) &&
           <MdiButton
               icon={mdiFileSearch}
               tooltip="Pick filter file"
-              onClick={() => this.setState({popupOpen: true})}/>
+              onClick={() => this.setState({filterFilePopupOpen: true})}/>
           }
           <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
         </div>
@@ -318,7 +350,7 @@ class FilterView extends React.Component<{
       </div>
       <ListSelectPopup
           key="filter select popup"
-          open={this.state.popupOpen}
+          open={this.state.filterFilePopupOpen}
           header={
             <>
               <UploadButton
@@ -331,9 +363,12 @@ class FilterView extends React.Component<{
             </>
           }
           items={this.props.availableCoeffFiles}
-          onClose={() => this.setState({popupOpen: false})}
+          onClose={() => this.setState({filterFilePopupOpen: false})}
           onSelect={this.pickFilterFile}
       />
+      {this.state.showFilterPlot && this.state.data ?
+          <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
+          : null}
     </Box>
   }
 }

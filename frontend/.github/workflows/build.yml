@@ -13,6 +13,8 @@ jobs:
         node-version: '12.x'
     - run: npm install
     - run: npm run build
+    - name: Run tests
+      run: npm test -- --watchAll=false
     - name: Upload build
       uses: actions/upload-artifact@v2
       with:

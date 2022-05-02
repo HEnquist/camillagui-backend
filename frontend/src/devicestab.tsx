@@ -1,7 +1,7 @@
 import React from "react"
 import "./index.css"
-import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./config"
-import {GuiConfig} from "./guiconfig"
+import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./camilladsp/config"
+import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   BoolOption,
   Box,
@@ -11,10 +11,10 @@ import {
   FloatOption,
   IntInput,
   IntOption,
-  TextOption,
-  Update
-} from "./utilities/common-tsx"
+  TextOption
+} from "./utilities/ui-components"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {Update} from "./utilities/common"
 
 export function DevicesTab(props: {
   guiConfig: GuiConfig
@@ -56,11 +56,13 @@ export function DevicesTab(props: {
         onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
+        supported_capture_types={guiConfig.supported_capture_types}
         capture={devices.capture}
         errors={errorsForSubpath(errors, 'capture')}
         onChange={updateDevices}/>
     <PlaybackOptions
         hide_playback_device={guiConfig.hide_playback_device}
+        supported_playback_types={guiConfig.supported_playback_types}
         playback={devices.playback}
         errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
@@ -262,6 +264,7 @@ function RateMonitoringOptions(props: {
 
 function CaptureOptions(props: {
   hide_capture_device: boolean
+  supported_capture_types?: CaptureType[]
   capture: CaptureDevice
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
@@ -269,8 +272,8 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0', retry_on_error: false, avoid_blocking_read: false },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', change_format: false },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
@@ -278,13 +281,17 @@ function CaptureOptions(props: {
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
   }
-  const {capture, onChange, errors} = props
+  const {capture, onChange, errors, supported_capture_types} = props
+  const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
+  const captureTypes = supported_capture_types ?
+      defaultCaptureTypes.filter(type => supported_capture_types.includes(type))
+      : defaultCaptureTypes
   return <Box title="Capture device">
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={capture.type}
         error={errors({path: ['type']})}
-        options={Object.keys(defaults)}
+        options={captureTypes}
         desc="type"
         data-tip="Audio backend for capture"
         onChange={captureType => onChange(devices => devices.capture = defaults[captureType])}/>
@@ -317,25 +324,6 @@ function CaptureOptions(props: {
             devices.capture.device = device
         )}/>
     }
-    {(capture.type === 'Alsa') && <>
-        <BoolOption
-            value={capture.retry_on_error}
-            error={errors({path: ['device']})}
-            desc="retry_on_error"
-            data-tip="Retry reading from device on errors, may help with buggy devices"
-            onChange={retry_on_error => onChange(devices => // @ts-ignore
-                devices.capture.retry_on_error = retry_on_error
-            )}/>
-        <BoolOption
-            value={capture.avoid_blocking_read}
-            error={errors({path: ['device']})}
-            desc="avoid_blocking_read"
-            data-tip="Avoid blocking on reads, may help with buggy devices"
-            onChange={avoid_blocking_read => onChange(devices => // @ts-ignore
-                devices.capture.avoid_blocking_read = avoid_blocking_read
-            )}/>
-        </>
-    }
     {(capture.type === 'Wasapi') && <>
         <BoolOption
             value={capture.exclusive}
@@ -354,6 +342,16 @@ function CaptureOptions(props: {
                 devices.capture.loopback = loopback
             )}/>
         </>
+    }
+    {(capture.type === 'CoreAudio') &&
+    <BoolOption
+        value={capture.change_format}
+        error={errors({path: ['device']})}
+        desc="change_format"
+        data-tip="Change format of the device"
+        onChange={change_format => onChange(devices => // @ts-ignore
+            devices.capture.change_format = change_format
+        )}/>
     }
     {capture.type === 'File' &&
     <TextOption
@@ -397,6 +395,7 @@ function CaptureOptions(props: {
 
 function PlaybackOptions(props: {
   hide_playback_device: boolean
+  supported_playback_types?: PlaybackType[]
   playback: PlaybackDevice
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
@@ -405,20 +404,24 @@ function PlaybackOptions(props: {
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
-    CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac'},
+    CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', exclusive: false, change_format: false},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
   }
-  const {onChange, playback, errors} = props
+  const {onChange, playback, errors, supported_playback_types} = props
+  const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[]
+  const playbackDeviceTypes = supported_playback_types ?
+      defaultPlaybackTypes.filter(type => supported_playback_types.includes(type))
+      : defaultPlaybackTypes
   return <Box title="Playback device">
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={props.playback.type}
         error={errors({path: ['type']})}
-        options={Object.keys(defaults)}
+        options={playbackDeviceTypes}
         data-tip="Audio backend for playback"
         desc="type"
         onChange={playbackType => props.onChange(devices => devices.playback = defaults[playbackType])}/>
@@ -451,7 +454,7 @@ function PlaybackOptions(props: {
             devices.playback.device = device
         )}/>
     }
-    {(playback.type === 'Wasapi') &&
+    {(playback.type === 'Wasapi' || playback.type === 'CoreAudio') &&
     <BoolOption
         value={playback.exclusive}
         error={errors({path: ['device']})}
@@ -459,6 +462,16 @@ function PlaybackOptions(props: {
         data-tip="Use exclusive mode"
         onChange={exclusive => onChange(devices => // @ts-ignore
             devices.playback.exclusive = exclusive
+        )}/>
+    }
+    {(playback.type === 'CoreAudio') &&
+    <BoolOption
+        value={playback.change_format}
+        error={errors({path: ['device']})}
+        desc="change_format"
+        data-tip="Change format of the device"
+        onChange={change_format => onChange(devices => // @ts-ignore
+            devices.playback.change_format = change_format
         )}/>
     }
     {playback.type === 'File' &&

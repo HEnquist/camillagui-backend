@@ -4,6 +4,7 @@ import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
   Box,
+  ChartData,
   ChartPopup,
   DeleteButton,
   EnumInput,
@@ -11,12 +12,8 @@ import {
   ErrorMessage,
   IntInput,
   MdiButton,
-  moveItem,
-  moveItemDown,
-  moveItemUp,
-  PlotButton,
-  Update
-} from "../utilities/common-tsx"
+  PlotButton
+} from "../utilities/ui-components"
 import {
   Config,
   defaultFilterStep,
@@ -29,10 +26,12 @@ import {
   MixerStep,
   Pipeline,
   PipelineStep
-} from "../config"
+} from "../camilladsp/config"
 import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
 import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"
+import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
+import {Update} from "../utilities/common"
 
 
 export class PipelineTab extends React.Component<{
@@ -42,11 +41,21 @@ export class PipelineTab extends React.Component<{
 }, {
   plotPipeline: boolean
   plotFilterStep: boolean
-  data?: any
+  stepIndex?: number
+  data: ChartData
 }> {
   constructor(props: any) {
     super(props)
-    this.state = {plotPipeline: false, plotFilterStep: false}
+    this.state = {
+      plotPipeline: false,
+      plotFilterStep: false,
+      data: {
+        name: "Pipeline step",
+        f: [],
+        time: [],
+        options: [{name: ""}]
+      }
+    }
   }
 
   updatePipeline = (update: Update<Pipeline>) =>
@@ -66,14 +75,20 @@ export class PipelineTab extends React.Component<{
           pipeline[index] = defaultFilterStep(this.props.config)
       })
 
-  plotFilterStep = (index: number) => {
+  plotFilterStep = (index: number, samplerate?: number, channels?: number) => {
+    const config = this.props.config
     fetch("/api/evalfilterstep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({index: index, config: this.props.config}),
+      body: JSON.stringify({
+        index: index,
+        config: config,
+        samplerate: samplerate || config.devices.samplerate,
+        channels: channels || config.devices.capture.channels
+      }),
     }).then(
         result => result.json()
-            .then(data => this.setState({plotFilterStep: true, data: data})),
+            .then(data => this.setState({plotFilterStep: true, stepIndex: index, data: data})),
         error => console.log("Failed", error)
     )
   }
@@ -155,6 +170,10 @@ export class PipelineTab extends React.Component<{
             key={this.state.plotFilterStep as any}
             open={this.state.plotFilterStep}
             data={this.state.data}
+            onChange={name => {
+              const current = this.state.data.options.filter(o => o.name === name)[0]
+              this.plotFilterStep(this.state.stepIndex!!, current.samplerate, current.channels)
+            }}
             onClose={() => this.setState({plotFilterStep: false})}/>}
       </div>
     </DndContainer>
@@ -276,13 +295,13 @@ function FilterStepView(props: {
                       <MdiButton
                           icon={mdiArrowUpBold}
                           tooltip="Move filter up"
-                          smallButton={true}
+                          buttonSize="small"
                           enabled={index > 0}
                           onClick={() => moveFilterUp(index)}/>
                       <MdiButton
                           icon={mdiArrowDownBold}
                           tooltip="Move filter down"
-                          smallButton={true}
+                          buttonSize="small"
                           enabled={index + 1 < filterStep.names.length}
                           onClick={() => moveFilterDown(index)}/>
                       <DeleteButton
