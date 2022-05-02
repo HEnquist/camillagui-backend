@@ -202,6 +202,7 @@ div .popup-content {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  user-select: none;
 }
 
 .button-with-text {
@@ -218,6 +219,12 @@ div .popup-content {
   padding: 1px 3px;
   height: 28px;
   width: 32px;
+}
+
+.tinybutton {
+  padding: 1px 3px;
+  width: unset;
+  height: unset;
 }
 
 /* Disable hover for mobile/tablets */

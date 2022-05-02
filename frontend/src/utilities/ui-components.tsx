@@ -145,7 +145,7 @@ export function DeleteButton(props: {
 }) {
     return <MdiButton
         style={{color: 'var(--button-remove-icon-color)'}}
-        smallButton={props.smallButton}
+        buttonSize={props.smallButton ? "small" : "default"}
         icon={mdiDelete}
         tooltip={props.tooltip}
         onClick={props.onClick}/>
@@ -175,7 +175,7 @@ export function UploadButton(props: {
         <label data-tip={props.tooltip}>
             <input style={{display: 'none'}} type="file" onChange={props.onChange} multiple={props.multiple}/>
             <MdiButton
-                smallButton={props.smallButton}
+                buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
                 tooltip={props.tooltip}
                 className={props.className}
@@ -190,17 +190,18 @@ export function MdiButton(props: {
     className?: string
     style?: CSSProperties
     enabled?: boolean
-    smallButton?: boolean
+    buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const { icon, tooltip, className, enabled, onClick, smallButton } = props
+    const {icon, tooltip, className, enabled, onClick, buttonSize} = props
     const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
     let buttonClass = 'button button-with-icon'
     if (enabled === false) buttonClass += ' disabled-button'
-    if (smallButton === true) buttonClass += ' smallbutton'
+    if (buttonSize === "small") buttonClass += ' smallbutton'
+    else if (buttonSize === "tiny") buttonClass += ' tinybutton'
     if (className !== undefined) buttonClass += ' ' + className
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={'24px'}/>
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'}/>
     </div>
 }
 
