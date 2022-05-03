@@ -68,7 +68,7 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
-log_file: "~/camilladsp/camilladsp.log"
+log_file: "~/camilladsp/camilladsp.log" (*, defaults to null)
 update_symlink: true (*)
 on_set_active_config: null (*)
 on_get_active_config: null (*)
@@ -125,6 +125,7 @@ Further instructions on how to do this, or switch back to the brighter black/whi
 #### Hiding GUI Options
 Options can hidden from your users by editing `config/gui-config.yml`.
 Setting any of the options to `true` hides the corresponding option or section.
+These are all optional, and default to `false` if left out.
 ```yaml
 hide_capture_samplerate: false
 hide_silence: false

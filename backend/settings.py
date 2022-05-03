@@ -9,12 +9,23 @@ BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
 CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
 GUI_CONFIG_PATH = BASEPATH / 'config' / 'gui-config.yml'
 
+# Default values for the optional gui config.
 GUI_CONFIG_DEFAULTS = {
     "hide_capture_samplerate": False,
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
     "applyConfigAutomatically": False,
+}
+
+# Default values for the optional settings.
+BACKEND_CONFIG_DEFAULTS = {
+    "update_symlink": True,
+    "on_set_active_config": None,
+    "on_get_active_config": None,
+    "supported_capture_types": None,
+    "supported_playback_types": None,
+    "log_file": None,
 }
 
 def _load_yaml(path):
@@ -39,16 +50,9 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["active_config"] = absolute_path_or_none_if_empty(config["active_config"])
-    if "update_symlink" not in config:
-        config["update_symlink"] = True
-    if "on_set_active_config" not in config:
-        config["on_set_active_config"] = None
-    if "on_get_active_config" not in config:
-        config["on_get_active_config"] = None
-    if "supported_capture_types" not in config:
-        config["supported_capture_types"] = None
-    if "supported_playback_types" not in config:
-        config["supported_playback_types"] = None
+    for key, value in BACKEND_CONFIG_DEFAULTS.items():
+        if key not in config:
+            config[key] = value
     print("Backend configuration:")
     print(yaml.dump(config))
     return config
@@ -64,6 +68,9 @@ def absolute_path_or_none_if_empty(path):
 def get_gui_config_or_defaults():
     config = _load_yaml(GUI_CONFIG_PATH)
     if config is not None:
+        for key, value in GUI_CONFIG_DEFAULTS.items():
+            if key not in config:
+                config[key] = value
         return config
     else:    
         print("Unable to read gui config file, using defaults")
