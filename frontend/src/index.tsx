@@ -4,7 +4,7 @@ import "react-tabs/style/react-tabs.css"
 import "./index.css"
 
 import * as React from "react"
-import * as ReactDOM from "react-dom"
+import { createRoot } from 'react-dom/client';
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
@@ -256,7 +256,6 @@ function ErrorIcon() {
       style={{color: 'var(--error-text-color)'}}/>
 }
 
-ReactDOM.render(
-  <CamillaConfig/>,
-  document.getElementById("root")
-)
+const container = document.getElementById('root');
+const root = createRoot(container!);
+root.render(<CamillaConfig/>)

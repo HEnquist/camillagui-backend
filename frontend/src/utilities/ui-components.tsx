@@ -2,9 +2,19 @@ import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {Scatter} from "react-chartjs-2"
+import {Chart as ChartJS,
+    LinearScale,
+    LogarithmicScale,
+    PointElement,
+    LineElement,
+    Tooltip,
+    Legend,
+  } from 'chart.js';
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
 import {toMap} from "./arrays"
+
+ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend);
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -41,7 +51,7 @@ export async function doUpload(
             body: formData
         })
         onSuccess(uploadedFiles)
-    } catch (e) {
+    } catch (e: any) {
         onError(e.message)
     }
 }
@@ -652,30 +662,25 @@ export function Chart(props: {
         )
     }
 
-    const options = {
-        scales: {
-            xAxes: [] as any[],
-            yAxes: [] as any[]
-        },
+    const options: { [key: string]: any } = {
+        scales: {},
         legend: {
             labels: {
-                fontColor: textColor,
+                color: textColor,
             }
         },
     }
 
     if (x_freq) {
-        options.scales.xAxes.push(
-            {
-                id: "freq",
+        options.scales.freq = {
                 type: 'logarithmic',
                 position: 'bottom',
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Frequency, Hz',
-                    fontColor: textColor
+                    text: 'Frequency, Hz',
+                    color: textColor
                 },
-                gridLines: {
+                grid: {
                     zeroLineColor: axesColor,
                     color: axesColor
                 },
@@ -683,7 +688,7 @@ export function Chart(props: {
                     min: 0,
                     max: 30000,
                     maxRotation: 0,
-                    fontColor: textColor,
+                    color: textColor,
                     callback(value: number, index: number, values: any) {
                         if (value === 10 || value === 100)
                             return value.toString()
@@ -695,93 +700,83 @@ export function Chart(props: {
                             return ''
                     }
                 },
-                afterBuildTicks: function (chartObj: any) {
-                    chartObj.ticks = [
-                        10, 20, 30, 40, 50, 60, 70, 80, 90,
-                        100, 200, 300, 400, 500, 600, 700, 800, 900,
-                        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
-                        10000, 20000
-                    ]
-                }
+                //afterBuildTicks: function (chartObj: any) {
+                //    chartObj.ticks = [
+                //        10, 20, 30, 40, 50, 60, 70, 80, 90,
+                //        100, 200, 300, 400, 500, 600, 700, 800, 900,
+                //        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
+                //        10000, 20000
+                //    ]
+                //}
             }
-        )
     }
     if (x_time) {
-        options.scales.xAxes.push(
-            {
-                id: "time",
+        options.scales.time = {
                 type: 'linear',
                 position: 'top',
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Time, ms',
-                    fontColor: textColor
+                    text: 'Time, ms',
+                    color: textColor
                 },
                 ticks: {
-                    fontColor: textColor,
+                    color: textColor,
                 },
-                gridLines: {display: false},
+                grid: {display: false},
             }
-        )
     }
     if (y_gain) {
-        options.scales.yAxes.push(
+        options.scales.gain = 
             {
-                id: "gain",
                 type: 'linear',
                 position: 'left',
                 ticks: {
-                    fontColor: gainColor
+                    color: gainColor
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Gain, dB',
-                    fontColor: gainColor
+                    text: 'Gain, dB',
+                    color: gainColor
                 },
-                gridLines: {
+                grid: {
                     zeroLineColor: axesColor,
                     color: axesColor
                 },
-            },
-        )
+            }
     }
     if (y_phase) {
-        options.scales.yAxes.push(
+        options.scales.phase =
             {
-                id: "phase",
                 type: 'linear',
                 position: 'right',
                 ticks: {
-                    fontColor: phaseColor,
+                    color: phaseColor,
                     suggestedMin: -180,
                     suggestedMax: 180
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Phase, deg',
-                    fontColor: phaseColor
+                    text: 'Phase, deg',
+                    color: phaseColor
                 },
-                gridLines: {display: false}
-            },
-        )
+                grid: {display: false}
+            }
     }
     if (y_ampl) {
-        options.scales.yAxes.push(
+        options.scales.ampl = 
             {
-                id: "ampl",
                 type: 'linear',
                 position: 'right',
                 ticks: {
-                    fontColor: impulseColor
+                    color: impulseColor
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Amplitude',
-                    fontColor: impulseColor
+                    text: 'Amplitude',
+                    color: impulseColor
                 },
                 gridLines: {display: false}
             }
-        )
     }
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
@@ -798,6 +793,8 @@ export function Chart(props: {
         (option.samplerate === undefined || option.samplerate === props.data.samplerate)
         && (option.channels === undefined || option.channels === props.data.channels)
     )?.name
+    console.log(options)
+    console.log(data)
     return <>
         <div style={{textAlign: 'center'}}>
             {props.data.options.length > 0 && <select

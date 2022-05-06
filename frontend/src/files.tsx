@@ -164,7 +164,7 @@ class FileTable extends Component<
       const jsonConfig = await response.json()
       this.props.setCurrentConfig!(name, jsonConfig as Config)
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
-    } catch(e) {
+    } catch(e: any) {
       this.showErrorMessage(name, 'load', e)
     }
   }
@@ -211,7 +211,7 @@ class FileTable extends Component<
         const message = await response.text()
         this.showErrorMessage(name, 'save', message)
       }
-    } catch (e) {
+    } catch (e: any) {
       this.showErrorMessage(name, 'save', e.message)
     }
   }
