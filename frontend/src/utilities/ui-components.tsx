@@ -9,12 +9,14 @@ import {Chart as ChartJS,
     LineElement,
     Tooltip,
     Legend,
-  } from 'chart.js';
+    Ticks,
+} from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
 import {toMap} from "./arrays"
 
-ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend);
+ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin);
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -662,6 +664,23 @@ export function Chart(props: {
         )
     }
 
+    const zoomOptions = {
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true,
+          },
+          mode: 'xy',
+          overScaleMode: 'xy',
+        },
+        pan: {
+          enabled: true,
+          mode: 'xy',
+        }
+    };
+
     const options: { [key: string]: any } = {
         scales: {},
         legend: {
@@ -669,6 +688,9 @@ export function Chart(props: {
                 color: textColor,
             }
         },
+        plugins: {
+            zoom: zoomOptions,
+        }
     }
 
     if (x_freq) {
@@ -688,17 +710,43 @@ export function Chart(props: {
                     min: 0,
                     max: 30000,
                     maxRotation: 0,
+                    minRotation: 0,
                     color: textColor,
+                    major: {
+                        enabled: true,
+                    },
                     callback(value: number, index: number, values: any) {
-                        if (value === 10 || value === 100)
-                            return value.toString()
-                        else if (value === 1000)
-                            return '1k'
-                        else if (value === 10000)
-                            return '10k'
-                        else
-                            return ''
+                        let label = Ticks.formatters.logarithmic.apply(this, [value, index, values]);
+                        if (label.endsWith(".0")) {
+                            label = label.replace(".0", "").trim();
+                        }
+                        if (label.endsWith("000")) {
+                            label = label.replace("000", "").trim();
+                                if (label.endsWith("000")) {
+                                    label = label.replace("000", "").trim();
+                                    return label + " M";
+                                }
+                            return label + " k";
+                        }
+                        return label;
                     }
+                    //callback(value: number, index: number, values: any) {
+                    //    //if (value === 10 || value === 100)
+                    //    //    return value.toString()
+                    //    //else if (value === 1000)
+                    //    //    return '1k'
+                    //    //else if (value === 10000)
+                    //    //    return '10k'
+                    //    //else
+                    //    //    return ''
+                    //    
+                    //    if (value%10000 == 0 && value >= 1000000) {
+                    //        return (value/1000000).toString() + "M";
+                    //    }
+                    //    else if (value%100 == 0 && value >= 1000) {
+                    //        return (value/1000).toString() + "k";
+                    //    }
+                    //}
                 },
                 //afterBuildTicks: function (chartObj: any) {
                 //    chartObj.ticks = [
