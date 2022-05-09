@@ -715,47 +715,35 @@ export function Chart(props: {
                     major: {
                         enabled: true,
                     },
-                    callback(value: number, index: number, values: any) {
-                        let label = Ticks.formatters.logarithmic.apply(this, [value, index, values]);
-                        if (label.endsWith(".0")) {
-                            label = label.replace(".0", "").trim();
+                    callback(tickValue: number, index: number, values: any) {
+                        if (tickValue === 0) {
+                            return '0';
                         }
-                        if (label.endsWith("000")) {
-                            label = label.replace("000", "").trim();
-                                if (label.endsWith("000")) {
-                                    label = label.replace("000", "").trim();
-                                    return label + " M";
-                                }
-                            return label + " k";
+                        let value = -1;
+                        let range = values[values.length - 1].value / values[0].value;
+                        const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
+                        const first_digit = tickValue / rounded;
+                        const rest = tickValue % rounded;
+                        if (range > 10) {
+                            if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
+                                value = tickValue;
+                            }
                         }
-                        return label;
+                        else if (rest == 0) {
+                            value = tickValue;
+                        }
+                        if (value >= 1000000) {
+                            return (value / 1000000).toString() + "M";
+                        }
+                        else if (value >= 1000) {
+                            return (value / 1000).toString() + "k";
+                        }
+                        else if (value > 0) {
+                            return value.toString()
+                        }
+                        return '';
                     }
-                    //callback(value: number, index: number, values: any) {
-                    //    //if (value === 10 || value === 100)
-                    //    //    return value.toString()
-                    //    //else if (value === 1000)
-                    //    //    return '1k'
-                    //    //else if (value === 10000)
-                    //    //    return '10k'
-                    //    //else
-                    //    //    return ''
-                    //    
-                    //    if (value%10000 == 0 && value >= 1000000) {
-                    //        return (value/1000000).toString() + "M";
-                    //    }
-                    //    else if (value%100 == 0 && value >= 1000) {
-                    //        return (value/1000).toString() + "k";
-                    //    }
-                    //}
                 },
-                //afterBuildTicks: function (chartObj: any) {
-                //    chartObj.ticks = [
-                //        10, 20, 30, 40, 50, 60, 70, 80, 90,
-                //        100, 200, 300, 400, 500, 600, 700, 800, 900,
-                //        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
-                //        10000, 20000
-                //    ]
-                //}
             }
     }
     if (x_time) {
