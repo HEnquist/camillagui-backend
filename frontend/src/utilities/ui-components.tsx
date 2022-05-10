@@ -9,7 +9,6 @@ import {Chart as ChartJS,
     LineElement,
     Tooltip,
     Legend,
-    Ticks,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
@@ -729,7 +728,7 @@ export function Chart(props: {
                                 value = tickValue;
                             }
                         }
-                        else if (rest == 0) {
+                        else if (rest === 0) {
                             value = tickValue;
                         }
                         if (value >= 1000000) {
