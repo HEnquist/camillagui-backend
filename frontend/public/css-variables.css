@@ -51,9 +51,9 @@
 
     /* Filter plot */
     --axes-color: #555;
-    --gain-color: #4646f0;
-    --phase-color: var(--error-text-color);
-    --impulse-color: var(--success-text-color);
+    --gain-color: #1E90FF;
+    --phase-color: #FF4500;
+    --impulse-color: #32CD32;
 
     /* Pipeline plot */
     --arrow-color: var(--axes-color);

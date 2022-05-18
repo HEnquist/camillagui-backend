@@ -1,8 +1,9 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useState } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import {Scatter} from "react-chartjs-2"
-import {Chart as ChartJS,
+import { Scatter } from "react-chartjs-2"
+import {
+    Chart as ChartJS,
     LinearScale,
     LogarithmicScale,
     PointElement,
@@ -11,9 +12,9 @@ import {Chart as ChartJS,
     Legend,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick } from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
-import {toMap} from "./arrays"
+import { toMap } from "./arrays"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin);
 
@@ -43,7 +44,7 @@ export async function doUpload(
     for (let index = 0; index < files.length; index++) {
         const file = files[index]
         uploadedFiles.push(file.name)
-        formData.append("file"+index, file, file.name)
+        formData.append("file" + index, file, file.name)
     }
     event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     try {
@@ -66,7 +67,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div className="horizontally-spaced-content" style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
+                <div className="horizontally-spaced-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>
@@ -81,19 +82,19 @@ export function CheckBox(props: {
     onChange: (checked: boolean) => void,
     style?: CSSProperties
 }) {
-    const {tooltip, checked, onChange, style} = props
+    const { tooltip, checked, onChange, style } = props
     return <label data-tip={tooltip} className='checkbox-area' style={style}>
         <input
             type="checkbox"
             data-tip={tooltip}
             checked={checked}
-            onChange={(e) => onChange(e.target.checked)}/>
+            onChange={(e) => onChange(e.target.checked)} />
     </label>
 }
 
 export function Button(props: {
     text: string
-    "data-tip"? : string
+    "data-tip"?: string
     onClick: () => void
     style?: CSSProperties
     className?: string
@@ -106,14 +107,14 @@ export function Button(props: {
         data-tip={props["data-tip"]}
         className={`button button-with-text ${disabledStyle} ${additionalClasses}`}
         style={props.style}
-        onClick={enabled ? props.onClick : () => {}}>
+        onClick={enabled ? props.onClick : () => { }}>
         {props.text}
     </div>
 }
 
 export function SuccessFailureButton(props: {
     text: string
-    "data-tip"? : string
+    "data-tip"?: string
     onClick: () => Promise<void>
     style?: CSSProperties
     enabled?: boolean
@@ -133,7 +134,7 @@ export function SuccessFailureButton(props: {
         () => setSuccessAndtimer(true),
         () => setSuccessAndtimer(false)
     )
-    return <Button {...props} className={className} onClick={onClick}/>
+    return <Button {...props} className={className} onClick={onClick} />
 }
 
 export function AddButton(props: {
@@ -141,12 +142,12 @@ export function AddButton(props: {
     style?: CSSProperties
     onClick: () => void
 }) {
-    const style = Object.assign({color: 'var(--button-add-icon-color)'}, props.style)
+    const style = Object.assign({ color: 'var(--button-add-icon-color)' }, props.style)
     return <MdiButton
         icon={mdiPlusThick}
         style={style}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick} />
 }
 
 export function DeleteButton(props: {
@@ -155,11 +156,11 @@ export function DeleteButton(props: {
     smallButton?: boolean
 }) {
     return <MdiButton
-        style={{color: 'var(--button-remove-icon-color)'}}
+        style={{ color: 'var(--button-remove-icon-color)' }}
         buttonSize={props.smallButton ? "small" : "default"}
         icon={mdiDelete}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick} />
 }
 
 export function PlotButton(props: {
@@ -169,7 +170,7 @@ export function PlotButton(props: {
     return <MdiButton
         icon={mdiChartBellCurveCumulative}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick} />
 }
 
 export function UploadButton(props: {
@@ -181,16 +182,16 @@ export function UploadButton(props: {
     style?: CSSProperties
     smallButton?: boolean
 }): JSX.Element {
-    const style = Object.assign({verticalAlign: 'bottom'}, props.style)
+    const style = Object.assign({ verticalAlign: 'bottom' }, props.style)
     return (
         <label data-tip={props.tooltip}>
-            <input style={{display: 'none'}} type="file" onChange={props.onChange} multiple={props.multiple}/>
+            <input style={{ display: 'none' }} type="file" onChange={props.onChange} multiple={props.multiple} />
             <MdiButton
                 buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
                 tooltip={props.tooltip}
                 className={props.className}
-                style={style}/>
+                style={style} />
         </label>
     )
 }
@@ -204,15 +205,15 @@ export function MdiButton(props: {
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const {icon, tooltip, className, enabled, onClick, buttonSize} = props
-    const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
+    const { icon, tooltip, className, enabled, onClick, buttonSize } = props
+    const clickhandler = onClick === undefined || enabled === false ? () => { } : onClick
     let buttonClass = 'button button-with-icon'
     if (enabled === false) buttonClass += ' disabled-button'
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
     if (className !== undefined) buttonClass += ' ' + className
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'}/>
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} />
     </div>
 }
 
@@ -222,14 +223,14 @@ export function MdiIcon(props: {
     style?: CSSProperties
 }) {
     return <span data-tip={props.tooltip} style={props.style}>
-        <Icon path={props.icon} size={'15px'}/>
+        <Icon path={props.icon} size={'15px'} />
     </span>
 }
 
 export function CloseButton(props: {
     onClick: () => void
 }) {
-    return <div style={{textAlign: 'right', cursor: 'pointer'}} onClick={props.onClick}>✖</div>
+    return <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={props.onClick}>✖</div>
 }
 
 export function OptionLine(props: {
@@ -238,14 +239,14 @@ export function OptionLine(props: {
     children: ReactNode
     small?: boolean
 }) {
-    const settingStyle = props.small ? {width:'min-content'} : {}
+    const settingStyle = props.small ? { width: 'min-content' } : {}
     return <label className="setting" data-tip={props['data-tip']} style={settingStyle}>
         <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
 }
 
-export function IntOption(props:{
+export function IntOption(props: {
     value: number
     error?: string
     desc: string
@@ -262,9 +263,9 @@ export function IntOption(props:{
             <IntInput
                 {...props}
                 className={'setting-input' + (small ? ' small-setting-input' : '')}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -278,7 +279,7 @@ export function IntInput(props: {
     className?: string
     style?: CSSProperties
 }) {
-    const {min, max} = props
+    const { min, max } = props
     return <ParsedInput
         {...props}
         asString={(int: number) => int.toString()}
@@ -294,7 +295,7 @@ export function IntInput(props: {
     />
 }
 
-export function FloatOption(props:{
+export function FloatOption(props: {
     value: number
     error?: string
     desc: string
@@ -303,13 +304,13 @@ export function FloatOption(props:{
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-          <FloatInput
-              value={props.value}
-              data-tip={props["data-tip"]}
-              onChange={props.onChange}
-              className="setting-input"/>
+            <FloatInput
+                value={props.value}
+                data-tip={props["data-tip"]}
+                onChange={props.onChange}
+                className="setting-input" />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -331,7 +332,7 @@ export function FloatInput(props: {
             return isNaN(parsedvalue) || rawValue.endsWith(".") ? undefined : parsedvalue
         }}
         className={props.className}
-        style={{...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined)}}
+        style={{ ...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined) }}
     />
 }
 
@@ -364,7 +365,7 @@ export function FloatListOption(props: {
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
             />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -391,11 +392,11 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
 
     componentDidUpdate(prevProps: ParsedInputProps<TYPE>) {
         if (prevProps.value !== this.props.value)
-            this.setState({rawValue: this.props.asString(this.props.value)})
+            this.setState({ rawValue: this.props.asString(this.props.value) })
     }
 
     private updateValue(rawValue: string) {
-        this.setState({rawValue})
+        this.setState({ rawValue })
         const parsed = this.props.parseValue(rawValue)
         if (parsed !== undefined)
             this.props.onChange(parsed)
@@ -412,18 +413,18 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={valid ? props.style : {...props.style, ...ERROR_BACKGROUND_STYLE}}
-            onChange={e => this.updateValue(e.target.value)}/>
+            style={valid ? props.style : { ...props.style, ...ERROR_BACKGROUND_STYLE }}
+            onChange={e => this.updateValue(e.target.value)} />
     }
 
 }
 
 export const ERROR_BACKGROUND_STYLE: CSSProperties =
-    Object.freeze({backgroundColor: 'var(--error-field-background-color)'})
+    Object.freeze({ backgroundColor: 'var(--error-field-background-color)' })
 
-export function ErrorMessage(props: {message?: string}) {
+export function ErrorMessage(props: { message?: string }) {
     return props.message ?
-        <div style={{color: 'var(--error-text-color)', whiteSpace: 'pre-wrap'}}>{props.message}</div>
+        <div style={{ color: 'var(--error-text-color)', whiteSpace: 'pre-wrap' }}>{props.message}</div>
         : null
 }
 
@@ -439,17 +440,17 @@ export function BoolOption(props: {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
             <div className={"setting-input" + (small ? " small-setting-input" : "")}
-                 data-tip={props["data-tip"]}
-                 style={{cursor: 'pointer'}}>
+                data-tip={props["data-tip"]}
+                style={{ cursor: 'pointer' }}>
                 <input
-                    style={{marginLeft: 0, marginTop: '8px', marginBottom: '8px'}}
+                    style={{ marginLeft: 0, marginTop: '8px', marginBottom: '8px' }}
                     type="checkbox"
                     checked={props.value}
                     data-tip={props["data-tip"]}
-                    onChange={(e) => props.onChange(e.target.checked)}/>
+                    onChange={(e) => props.onChange(e.target.checked)} />
             </div>
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -465,9 +466,9 @@ export function EnumOption<OPTION extends string>(props: {
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
+            <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -483,7 +484,7 @@ export function EnumInput<OPTION extends string>(props: {
     className?: string
     onChange: (value: OPTION) => void
 }) {
-    const {options, value} = props
+    const { options, value } = props
     const optionsMap = Array.isArray(options) ? toMap(options) : options
     if (!Object.keys(optionsMap).includes(value))
         optionsMap[value] = value
@@ -514,9 +515,9 @@ export function TextOption(props: {
                 value={props.value}
                 data-tip={props["data-tip"]}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={props.onChange}/>
+                onChange={props.onChange} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -533,7 +534,7 @@ export function TextInput(props: {
         data-tip={props["data-tip"]}
         className={props.className}
         style={props.style}
-        onChange={e => props.onChange(e.target.value)}/>
+        onChange={e => props.onChange(e.target.value)} />
 }
 
 interface Action {
@@ -579,11 +580,11 @@ export function ChartPopup(props: {
     data: ChartData
     onChange: (item: string) => void
     onClose: () => void
-}){
+}) {
     return <Popup open={props.open} onClose={props.onClose}>
-        <CloseButton onClick={props.onClose}/>
-        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
-        <Chart onChange={props.onChange} data={props.data}/>
+        <CloseButton onClick={props.onClose} />
+        <h3 style={{ textAlign: 'center' }}>{props.data.name}</h3>
+        <Chart onChange={props.onChange} data={props.data} />
     </Popup>
 }
 
@@ -591,9 +592,9 @@ export function Chart(props: {
     data: ChartData
     onChange: (item: string) => void
 }) {
-    let data: any = {labels: [props.data.name], datasets: []}
+    let data: any = { labels: [props.data.name], datasets: [] }
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
-        return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
+        return xvect.map((x, idx) => ({ x: scaling_x * x, y: scaling_y * yvect[idx] }))
     }
 
     let x_time = false
@@ -618,6 +619,8 @@ export function Chart(props: {
                 label: 'Gain',
                 fill: false,
                 borderColor: gainColor,
+                backgroundColor: gainColor,
+                pointBackgroundColor: gainColor,
                 pointRadius: 0,
                 showLine: true,
                 data: gainpoints,
@@ -636,6 +639,7 @@ export function Chart(props: {
                 label: 'Phase',
                 fill: false,
                 borderColor: phaseColor,
+                backgroundColor: phaseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: phasepoints,
@@ -654,6 +658,7 @@ export function Chart(props: {
                 label: 'Impulse',
                 fill: false,
                 borderColor: impulseColor,
+                backgroundColor: impulseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: impulsepoints,
@@ -665,153 +670,161 @@ export function Chart(props: {
 
     const zoomOptions = {
         zoom: {
-          wheel: {
-            enabled: true,
-          },
-          pinch: {
-            enabled: true,
-          },
-          mode: 'xy',
-          overScaleMode: 'xy',
+            wheel: {
+                enabled: true,
+            },
+            pinch: {
+                enabled: true,
+            },
+            drag: {
+                enabled: false,
+            },
+            mode: 'xy',
+            overScaleMode: 'xy',
         },
         pan: {
-          enabled: true,
-          mode: 'xy',
+            enabled: true,
+            mode: 'xy',
+            threshold: 3,
+            overScaleMode: 'xy',
         }
     };
 
     const options: { [key: string]: any } = {
         scales: {},
-        legend: {
-            labels: {
-                color: textColor,
-            }
-        },
         plugins: {
             zoom: zoomOptions,
+            legend: {
+                labels: {
+                    color: textColor,
+                }
+            },
+        },
+        animation: {
+            duration: 500
         }
     }
 
     if (x_freq) {
         options.scales.freq = {
-                type: 'logarithmic',
-                position: 'bottom',
-                title: {
-                    display: true,
-                    text: 'Frequency, Hz',
-                    color: textColor
+            type: 'logarithmic',
+            position: 'bottom',
+            title: {
+                display: true,
+                text: 'Frequency, Hz',
+                color: textColor
+            },
+            grid: {
+                zeroLineColor: axesColor,
+                color: axesColor
+            },
+            ticks: {
+                min: 0,
+                max: 30000,
+                maxRotation: 0,
+                minRotation: 0,
+                color: textColor,
+                major: {
+                    enabled: true,
                 },
-                grid: {
-                    zeroLineColor: axesColor,
-                    color: axesColor
-                },
-                ticks: {
-                    min: 0,
-                    max: 30000,
-                    maxRotation: 0,
-                    minRotation: 0,
-                    color: textColor,
-                    major: {
-                        enabled: true,
-                    },
-                    callback(tickValue: number, index: number, values: any) {
-                        if (tickValue === 0) {
-                            return '0';
-                        }
-                        let value = -1;
-                        let range = values[values.length - 1].value / values[0].value;
-                        const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
-                        const first_digit = tickValue / rounded;
-                        const rest = tickValue % rounded;
-                        if (range > 10) {
-                            if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
-                                value = tickValue;
-                            }
-                        }
-                        else if (rest === 0) {
+                callback(tickValue: number, index: number, values: any) {
+                    if (tickValue === 0) {
+                        return '0';
+                    }
+                    let value = -1;
+                    let range = values[values.length - 1].value / values[0].value;
+                    const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
+                    const first_digit = tickValue / rounded;
+                    const rest = tickValue % rounded;
+                    if (range > 10) {
+                        if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
                             value = tickValue;
                         }
-                        if (value >= 1000000) {
-                            return (value / 1000000).toString() + "M";
-                        }
-                        else if (value >= 1000) {
-                            return (value / 1000).toString() + "k";
-                        }
-                        else if (value > 0) {
-                            return value.toString()
-                        }
-                        return '';
                     }
-                },
-            }
+                    else if (rest === 0) {
+                        value = tickValue;
+                    }
+                    if (value >= 1000000) {
+                        return (value / 1000000).toString() + "M";
+                    }
+                    else if (value >= 1000) {
+                        return (value / 1000).toString() + "k";
+                    }
+                    else if (value > 0) {
+                        return value.toString()
+                    }
+                    return '';
+                }
+            },
+        }
     }
     if (x_time) {
         options.scales.time = {
-                type: 'linear',
-                position: 'top',
-                title: {
-                    display: true,
-                    text: 'Time, ms',
-                    color: textColor
-                },
-                ticks: {
-                    color: textColor,
-                },
-                grid: {display: false},
-            }
+            type: 'linear',
+            position: 'top',
+            title: {
+                display: true,
+                text: 'Time, ms',
+                color: textColor
+            },
+            ticks: {
+                color: textColor,
+            },
+            grid: { display: false },
+        }
     }
     if (y_gain) {
-        options.scales.gain = 
-            {
-                type: 'linear',
-                position: 'left',
-                ticks: {
-                    color: gainColor
-                },
-                title: {
-                    display: true,
-                    text: 'Gain, dB',
-                    color: gainColor
-                },
-                grid: {
-                    zeroLineColor: axesColor,
-                    color: axesColor
-                },
-            }
+        options.scales.gain =
+        {
+            type: 'linear',
+            position: 'left',
+            ticks: {
+                color: gainColor
+            },
+            title: {
+                display: true,
+                text: 'Gain, dB',
+                color: gainColor
+            },
+            grid: {
+                zeroLineColor: axesColor,
+                color: axesColor
+            },
+        }
     }
     if (y_phase) {
         options.scales.phase =
-            {
-                type: 'linear',
-                position: 'right',
-                ticks: {
-                    color: phaseColor,
-                    suggestedMin: -180,
-                    suggestedMax: 180
-                },
-                title: {
-                    display: true,
-                    text: 'Phase, deg',
-                    color: phaseColor
-                },
-                grid: {display: false}
-            }
+        {
+            type: 'linear',
+            position: 'right',
+            ticks: {
+                color: phaseColor,
+                suggestedMin: -180,
+                suggestedMax: 180
+            },
+            title: {
+                display: true,
+                text: 'Phase, deg',
+                color: phaseColor
+            },
+            grid: { display: false }
+        }
     }
     if (y_ampl) {
-        options.scales.ampl = 
-            {
-                type: 'linear',
-                position: 'right',
-                ticks: {
-                    color: impulseColor
-                },
-                title: {
-                    display: true,
-                    text: 'Amplitude',
-                    color: impulseColor
-                },
-                gridLines: {display: false}
-            }
+        options.scales.ampl =
+        {
+            type: 'linear',
+            position: 'right',
+            ticks: {
+                color: impulseColor
+            },
+            title: {
+                display: true,
+                text: 'Amplitude',
+                color: impulseColor
+            },
+            gridLines: { display: false }
+        }
     }
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
@@ -831,7 +844,7 @@ export function Chart(props: {
     console.log(options)
     console.log(data)
     return <>
-        <div style={{textAlign: 'center'}}>
+        <div style={{ textAlign: 'center' }}>
             {props.data.options.length > 0 && <select
                 value={selected}
                 data-tip="Select filter file"
@@ -840,7 +853,7 @@ export function Chart(props: {
                 {sampleRateOptions}
             </select>}
         </div>
-        <Scatter data={data} options={options}/>
+        <Scatter data={data} options={options} />
     </>
 }
 
@@ -851,18 +864,18 @@ export function ListSelectPopup(props: {
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const {open, items, onSelect, onClose} = props
+    const { open, items, onSelect, onClose } = props
     const selectItem = (item: string) => { onSelect(item); onClose() }
-    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'max-content'}}>
-        <CloseButton onClick={onClose}/>
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
+        <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{display: 'flex', flexDirection: 'column'}}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
             {items.map(item =>
                 <Button
                     key={item}
                     text={item}
-                    style={{justifyContent: 'flex-start'}}
-                    onClick={() => selectItem(item)}/>
+                    style={{ justifyContent: 'flex-start' }}
+                    onClick={() => selectItem(item)} />
             )}
         </div>
     </Popup>
