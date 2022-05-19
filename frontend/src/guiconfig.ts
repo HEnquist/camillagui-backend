@@ -7,7 +7,8 @@ export interface GuiConfig {
     coeff_dir: string
     supported_capture_types?: CaptureType[]
     supported_playback_types?: PlaybackType[]
-    applyConfigAutomatically: boolean
+    apply_config_automatically: boolean
+    status_update_interval: number
 }
 
 export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin'
@@ -22,6 +23,7 @@ export function defaultGuiConfig(): GuiConfig {
         hide_playback_device: false,
         hide_rate_monitoring: false,
         coeff_dir: '',
-        applyConfigAutomatically: false
+        apply_config_automatically: false,
+        status_update_interval: 100
     }
 }

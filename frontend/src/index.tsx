@@ -132,7 +132,7 @@ class CamillaConfig extends React.Component<
 
   componentDidUpdate(prevProps: unknown) {
     ReactTooltip.rebuild()
-    console.log("=============rebuild tooltips")
+    //console.log("=============rebuild tooltips")
   }
 
   private switchTab(index: number) {

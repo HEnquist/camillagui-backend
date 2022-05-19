@@ -31,14 +31,14 @@ export class SidePanel extends React.Component<
   }
 > {
 
-  private statusPoller = new StatusPoller(cdspStatus => this.setState({cdspStatus}))
+  private statusPoller = new StatusPoller(cdspStatus => this.setState({cdspStatus}), this.props.guiConfig.status_update_interval)
   private timer = delayedExecutor(500)
 
   constructor(props: SidePanelProps) {
     super(props)
     this.state = {
       cdspStatus: defaultStatus(),
-      applyConfigAutomatically: props.guiConfig.applyConfigAutomatically,
+      applyConfigAutomatically: props.guiConfig.apply_config_automatically,
       msg: '',
       logFileViewerOpen: false
     }
@@ -49,9 +49,12 @@ export class SidePanel extends React.Component<
   }
 
   componentDidUpdate(prevProps: { config: Config, guiConfig: GuiConfig }) {
-    const {applyConfigAutomatically} = this.props.guiConfig
-    if (applyConfigAutomatically !== prevProps.guiConfig.applyConfigAutomatically)
-      this.setState({applyConfigAutomatically})
+    const {apply_config_automatically} = this.props.guiConfig
+    if (apply_config_automatically !== prevProps.guiConfig.apply_config_automatically)
+      this.setState({applyConfigAutomatically: apply_config_automatically})
+    const {status_update_interval} = this.props.guiConfig
+    if (status_update_interval !== prevProps.guiConfig.status_update_interval)
+      this.statusPoller.set_interval(status_update_interval);
     if (this.state.applyConfigAutomatically && !isEqual(prevProps.config, this.props.config))
       this.timer(() => {
         this.props.applyConfig().catch(() => {})
