@@ -2,8 +2,10 @@ from aiohttp import web
 from camilladsp import CamillaConnection
 from camilladsp_plot.validate_config import CamillaValidator
 
+from backend.version import VERSION
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import config
+from backend.views import version_string
 
 app = web.Application(client_max_size=1024 ** 3)  # set max upload file size to 1GB
 app["config_dir"] = config["config_dir"]
@@ -21,6 +23,11 @@ setup_static_routes(app)
 
 app["CAMILLA"] = CamillaConnection(config["camilla_host"], config["camilla_port"])
 app["RECONNECT_THREAD"] = None
+app["STATUSCACHE"] = {
+    "backend_version": version_string(VERSION),
+    "py_cdsp_version": version_string(app["CAMILLA"].get_library_version())
+    }
+app["CACHETIME"] = 0
 camillavalidator = CamillaValidator()
 if config["supported_capture_types"] is not None:
     camillavalidator.set_supported_capture_types(config["supported_capture_types"])

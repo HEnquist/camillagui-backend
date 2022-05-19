@@ -136,7 +136,10 @@ hide_rate_monitoring: false
 
 #### Other GUI Options
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
-To enable it by default, in `config/gui-config.yml` set `applyConfigAutomatically` to `true`.
+To enable it by default, in `config/gui-config.yml` set `apply_config_automatically` to `true`.
+
+The update rate of the level meters can be adjusted by changing the `status_update_interval` setting. 
+The value is in milliseconds, and the default value is 100 ms.
 
 ## Running
 Start the server with:

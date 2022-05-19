@@ -15,16 +15,17 @@ from .filemanagement import (
 )
 from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
-from .version import VERSION
+
 
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
-def _reconnect(cdsp):
+def _reconnect(cdsp, cache):
     done = False
     while not done:
         try:
             cdsp.connect()
+            cache["cdsp_version"] = version_string(cdsp.get_version())
             done = True
         except IOError:
             time.sleep(1)
@@ -32,42 +33,49 @@ def _reconnect(cdsp):
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
     reconnect_thread = request.app["RECONNECT_THREAD"]
-    cdsp_version = None
-    state_str = "Offline"
-    is_online = False
+    cache = request.app["STATUSCACHE"]
+    cachetime = request.app["CACHETIME"]
     try:
         state = cdsp.get_state()
         state_str = state.name
-        cdsp_version = cdsp.get_version()
-        is_online = True
-    except IOError:
-        if reconnect_thread is None or not reconnect_thread.is_alive():
-            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp,), daemon=True)
-            reconnect_thread.start()
-            request.app["RECONNECT_THREAD"] = reconnect_thread
-    if cdsp_version is None:
-        cdsp_version = ['x', 'x', 'x']
-    status = {
-        "cdsp_status": state_str,
-        "cdsp_version": version_string(cdsp_version),
-        "py_cdsp_version": version_string(cdsp.get_library_version()),
-        "backend_version": version_string(VERSION),
-    }
-    if is_online:
         try:
-            status.update({
+            cache.update({
+                "cdsp_status": state_str,
                 "capturesignalrms": cdsp.get_capture_signal_rms(),
                 "capturesignalpeak": cdsp.get_capture_signal_peak(),
                 "playbacksignalrms": cdsp.get_playback_signal_rms(),
-                "playbacksignalpeak": cdsp.get_playback_signal_peak(),
-                "capturerate": cdsp.get_capture_rate(),
-                "rateadjust": cdsp.get_rate_adjust(),
-                "bufferlevel": cdsp.get_buffer_level(),
-                "clippedsamples": cdsp.get_clipped_samples(),
+                "playbacksignalpeak": cdsp.get_playback_signal_peak()
             })
+            now = time.time()
+            # These values don't change that fast, let's update them only once per second.
+            if now - cachetime > 1.0:
+                request.app["CACHETIME"] = now
+                cache.update({
+                    "capturerate": cdsp.get_capture_rate(),
+                    "rateadjust": cdsp.get_rate_adjust(),
+                    "bufferlevel": cdsp.get_buffer_level(),
+                    "clippedsamples": cdsp.get_clipped_samples(),
+                })
         except IOError:
             pass
-    return web.json_response(status)
+    except IOError:
+        if reconnect_thread is None or not reconnect_thread.is_alive():
+            cache.update({
+                "cdsp_status": "Offline",
+                "cdsp_version": "(offline)",
+                "capturesignalrms": [],
+                "capturesignalpeak": [],
+                "playbacksignalrms": [],
+                "playbacksignalpeak": [],
+                "capturerate": None,
+                "rateadjust": None,
+                "bufferlevel": None,
+                "clippedsamples": None,
+            })
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
+            reconnect_thread.start()
+            request.app["RECONNECT_THREAD"] = reconnect_thread
+    return web.json_response(cache)
 
 
 def version_string(version_array):

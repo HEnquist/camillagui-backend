@@ -15,7 +15,8 @@ GUI_CONFIG_DEFAULTS = {
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
-    "applyConfigAutomatically": False,
+    "apply_config_automatically": False,
+    "status_update_interval": 100,
 }
 
 # Default values for the optional settings.
