@@ -13,10 +13,17 @@ export function isCompactViewEnabled(): boolean {
 }
 
 export function setCompactViewEnabled(enabled: boolean) {
+  const url = new URL(window.location.href);
+  if (enabled) {
+    url.searchParams.set('compactview', "");
+  }
+  else {
+    url.searchParams.delete('compactview');
+  }
   window.history.pushState(
       undefined,
       'CamillaDSP',
-      enabled ? "/?compactview" : "/"
+      url.href
   )
 }
 
