@@ -724,9 +724,6 @@ export function Chart(props: {
                 maxRotation: 0,
                 minRotation: 0,
                 color: textColor,
-                major: {
-                    enabled: true,
-                },
                 callback(tickValue: number, index: number, values: any) {
                     if (tickValue === 0) {
                         return '0';
@@ -756,6 +753,15 @@ export function Chart(props: {
                     return '';
                 }
             },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
+            },
         }
     }
     if (x_time) {
@@ -771,6 +777,15 @@ export function Chart(props: {
                 color: textColor,
             },
             grid: { display: false },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
+            },
         }
     }
     if (y_gain) {
@@ -779,7 +794,7 @@ export function Chart(props: {
             type: 'linear',
             position: 'left',
             ticks: {
-                color: gainColor
+                color: gainColor,
             },
             title: {
                 display: true,
@@ -788,7 +803,17 @@ export function Chart(props: {
             },
             grid: {
                 zeroLineColor: axesColor,
-                color: axesColor
+                color: axesColor,
+                borderDash: [7, 3],
+            },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
             },
         }
     }
@@ -797,17 +822,45 @@ export function Chart(props: {
         {
             type: 'linear',
             position: 'right',
+            min: -180,
+            max: 180,
+            afterBuildTicks: function (scale: any) {
+                let range = scale.max - scale.min;
+                if (range > 180) {
+                    scale.options.ticks.stepSize = 45
+                }
+                else if (range > 45) {
+                    scale.options.ticks.stepSize = 15
+                }
+                else {
+                    scale.options.ticks.stepSize = 5
+                }
+                return;
+            },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
+            },
             ticks: {
+                stepSize: 5,
                 color: phaseColor,
-                suggestedMin: -180,
-                suggestedMax: 180
             },
             title: {
                 display: true,
                 text: 'Phase, deg',
                 color: phaseColor
             },
-            grid: { display: false }
+            grid: {
+                display: true,
+                zeroLineColor: axesColor,
+                color: axesColor,
+                borderDash: [3, 7],
+            }
         }
     }
     if (y_ampl) {
@@ -823,7 +876,16 @@ export function Chart(props: {
                 text: 'Amplitude',
                 color: impulseColor
             },
-            gridLines: { display: false }
+            grid: { display: false },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
+            },
         }
     }
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
