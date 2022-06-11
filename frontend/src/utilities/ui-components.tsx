@@ -806,6 +806,32 @@ export function Chart(props: {
                 color: axesColor,
                 borderDash: [7, 3],
             },
+            afterBuildTicks: function (scale: any) {
+                var step = 1;
+                let range = scale.max - scale.min;
+                if (range > 150) {
+                    step = 50
+                }
+                else if (range > 60) {
+                    step = 20
+                }
+                else if (range > 30) {
+                    step = 10
+                }
+                else if (range > 20) {
+                    step = 5
+                }
+                else if (range > 10) {
+                    step = 2
+                }
+                let tick = Math.ceil(scale.min/step)*step;
+                var ticks = [];
+                while (tick <= scale.max) {
+                    ticks.push({"value": tick});
+                    tick += step;
+                }
+                scale.ticks = ticks
+            },
             beforeUpdate: function (scale: any) {
                 if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
                     scale.options.display = true
@@ -825,17 +851,24 @@ export function Chart(props: {
             min: -180,
             max: 180,
             afterBuildTicks: function (scale: any) {
+                var step = 1;
                 let range = scale.max - scale.min;
                 if (range > 180) {
-                    scale.options.ticks.stepSize = 45
+                    step = 45
                 }
                 else if (range > 45) {
-                    scale.options.ticks.stepSize = 15
+                    step = 15
                 }
-                else {
-                    scale.options.ticks.stepSize = 5
+                else if (range > 15) {
+                    step = 5
                 }
-                return;
+                let tick = Math.ceil(scale.min/step)*step;
+                var ticks = [];
+                while (tick <= scale.max) {
+                    ticks.push({"value": tick});
+                    tick += step;
+                }
+                scale.ticks = ticks
             },
             beforeUpdate: function (scale: any) {
                 if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
@@ -847,7 +880,6 @@ export function Chart(props: {
                 return;
             },
             ticks: {
-                stepSize: 5,
                 color: phaseColor,
             },
             title: {
