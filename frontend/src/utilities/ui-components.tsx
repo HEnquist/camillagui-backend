@@ -824,10 +824,10 @@ export function Chart(props: {
                 else if (range > 10) {
                     step = 2
                 }
-                let tick = Math.ceil(scale.min/step)*step;
+                let tick = Math.ceil(scale.min / step) * step;
                 var ticks = [];
                 while (tick <= scale.max) {
-                    ticks.push({"value": tick});
+                    ticks.push({ "value": tick });
                     tick += step;
                 }
                 scale.ticks = ticks
@@ -862,10 +862,10 @@ export function Chart(props: {
                 else if (range > 15) {
                     step = 5
                 }
-                let tick = Math.ceil(scale.min/step)*step;
+                let tick = Math.ceil(scale.min / step) * step;
                 var ticks = [];
                 while (tick <= scale.max) {
-                    ticks.push({"value": tick});
+                    ticks.push({ "value": tick });
                     tick += step;
                 }
                 scale.ticks = ticks
