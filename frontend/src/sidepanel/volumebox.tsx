@@ -41,7 +41,6 @@ export class VolumePoller {
 
     private async updateVolume() {
         this.timerId = undefined
-        console.log("poll volume")
         try {
             let volreq = fetch("/api/getparam/volume")
             let mutereq = fetch("/api/getparam/mute")
@@ -54,7 +53,6 @@ export class VolumePoller {
             this.onUpdate(volume)
         } catch (err) { console.log(err) }
         if (this.timerId === undefined) {
-            console.log("start new normal timer")
             this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
         }
     }
@@ -67,12 +65,9 @@ export class VolumePoller {
     }
 
     restart_timer() {
-        console.log("restart volume poll interval")
         if (this.timerId !== undefined) {
-            console.log("clear timer")
             clearTimeout(this.timerId)
         }
-        console.log("start new slow timer")
         this.timerId = setTimeout(this.updateVolume.bind(this), this.holdoff_interval)
     }
 
@@ -189,7 +184,6 @@ export class VolumeBox extends React.Component<Props, State> {
                 max="0"
                 value={10.0*volume}
                 id="volume"
-                //onChange={e => this.setState({ volume: e.target.valueAsNumber/10.0, dim: false, send_to_dsp: true })}
                 onChange={e => this.changeVolume( e.target.valueAsNumber/10.0) }
             />
             <VuMeterGroup
