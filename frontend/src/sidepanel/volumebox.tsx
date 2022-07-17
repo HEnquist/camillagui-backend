@@ -4,6 +4,7 @@ import { VuMeterGroup } from "./vumeter"
 import { Box, MdiButton } from "../utilities/ui-components"
 import { mdiVolumeMedium, mdiVolumeOff } from "@mdi/js"
 import { VuMeterStatus } from "../camilladsp/status"
+import { throttle } from "lodash"
 
 type Props = {
     vuMeterStatus: VuMeterStatus
@@ -59,7 +60,7 @@ export class VolumePoller {
     }
 
     stop() {
-        if (this.timerId !== undefined) { 
+        if (this.timerId !== undefined) {
             clearTimeout(this.timerId)
             this.timerId = undefined
         }
@@ -80,22 +81,25 @@ export class VolumePoller {
 export class VolumeBox extends React.Component<Props, State> {
 
     private volumePoller = new VolumePoller(cdspVolume => this.setState({ volume: cdspVolume.volume, mute: cdspVolume.mute }), 1000.0, 2000.0)
+    private setDspVolumeDebounced: any
 
     constructor(props: Props) {
         super(props)
-        this.toggle_mute = this.toggle_mute.bind(this)
-        this.toggle_dim = this.toggle_dim.bind(this)
+        this.toggleMute = this.toggleMute.bind(this)
+        this.toggleDim = this.toggleDim.bind(this)
+        this.setDspVolumeDebounced = throttle(this.setDspVolume, 250)
         this.state = { volume: -99, mute: false, dim: false, send_to_dsp: false }
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
         const { volume, mute, send_to_dsp } = this.state
         if (send_to_dsp) {
+            if (volume !== prevState.volume || mute !== prevState.mute)
+                this.volumePoller.restart_timer()
             if (volume !== prevState.volume)
-                this.setVolume(volume)
+                this.setDspVolumeDebounced(volume)
             if (mute !== prevState.mute)
-                this.setMute(mute)
-            this.volumePoller.restart_timer()
+                this.setDspMute(mute)
             this.setState({ send_to_dsp: false })
         }
     }
@@ -104,11 +108,13 @@ export class VolumeBox extends React.Component<Props, State> {
         this.volumePoller.stop()
     }
 
-    private toggle_mute() {
+    private toggleMute() {
+        this.volumePoller.restart_timer()
         this.setState(({ mute }) => ({ mute: !mute, send_to_dsp: true }))
     }
 
-    private toggle_dim() {
+    private toggleDim() {
+        this.volumePoller.restart_timer()
         this.setState(({ volume, dim }) => ({
             volume: volume + (dim ? 20.0 : -20.0),
             dim: !dim,
@@ -116,7 +122,16 @@ export class VolumeBox extends React.Component<Props, State> {
         }))
     }
 
-    private async setVolume(value: number) {
+    private changeVolume(volume: number) {
+        this.volumePoller.restart_timer()
+        this.setState({
+            volume: volume,
+            dim: false,
+            send_to_dsp: true
+        })
+    }
+
+    private async setDspVolume(value: number) {
         const vol_req = await fetch("/api/setparam/volume", {
             method: "POST",
             headers: { "Content-Type": "text/plain; charset=us-ascii" },
@@ -126,7 +141,7 @@ export class VolumeBox extends React.Component<Props, State> {
         this.props.setMessage(message)
     }
 
-    private async setMute(value: boolean) {
+    private async setDspMute(value: boolean) {
         const mute_req = await fetch("/api/setparam/mute", {
             method: "POST",
             headers: { "Content-Type": "text/plain; charset=us-ascii" },
@@ -144,21 +159,21 @@ export class VolumeBox extends React.Component<Props, State> {
             <>
                 Volume
                 <div className={mute ? "db-label-muted" : "db-label"}>
-                    {volume}dB
+                    {volume.toFixed(1)}dB
                 </div>
                 <MdiButton
                     icon={mdiVolumeOff}
                     tooltip={mute ? "Un-Mute" : "Mute"}
                     buttonSize="small"
                     className={mute ? "highlighted-button" : ""}
-                    onClick={this.toggle_mute} />
+                    onClick={this.toggleMute} />
                 <MdiButton
                     icon={mdiVolumeMedium}
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
                     buttonSize="small"
                     className={dim ? "highlighted-button" : ""}
                     enabled={dim || volume >= minVolume + 20}
-                    onClick={this.toggle_dim} />
+                    onClick={this.toggleDim} />
             </>
         }>
             <VuMeterGroup
@@ -170,13 +185,12 @@ export class VolumeBox extends React.Component<Props, State> {
             <input
                 style={{ width: '100%', margin: 0, padding: 0 }}
                 type="range"
-                min={minVolume}
+                min={10.0*minVolume}
                 max="0"
-                value={volume}
-                //disabled={mute}
+                value={10.0*volume}
                 id="volume"
-                onChange={e => this.setState({ volume: e.target.valueAsNumber, dim: false, send_to_dsp: true })}
-            //onChange={e => this.volumeDragged(e.target.valueAsNumber)}
+                //onChange={e => this.setState({ volume: e.target.valueAsNumber/10.0, dim: false, send_to_dsp: true })}
+                onChange={e => this.changeVolume( e.target.valueAsNumber/10.0) }
             />
             <VuMeterGroup
                 title="Out"

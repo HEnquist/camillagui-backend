@@ -257,14 +257,14 @@ div .popup-content {
 
 .db-label {
   display: inline-block;
-  width: 5ch;
+  width: 7ch;
   text-align: right;
   margin-left: 5px;
 }
 
 .db-label-muted {
   display: inline-block;
-  width: 5ch;
+  width: 7ch;
   text-align: right;
   margin-left: 5px;
   color: var(--neutral-text-color);

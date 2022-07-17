@@ -40,12 +40,11 @@ export function CompactView(props: {
   const {currentConfigName, config, setConfig, updateConfig, disableCompactView} = props
   return <div className="tabpanel" style={{margin: 'auto'}}>
     <DisableCompactViewButton disableCompactView={disableCompactView}/>
-
+    <VolumeBox vuMeterStatus={defaultStatus()} setMessage={() => {}}/>
     <BassAndTreble config={config} updateConfig={updateConfig}/>
     <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
   </div>
 }
-//     <VolumeBox vuMeterStatus={defaultStatus()} setMessage={() => {}}/>
 
 function DisableCompactViewButton(props: { disableCompactView: () => void }) {
   return <MdiButton
