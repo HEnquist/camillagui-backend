@@ -1,4 +1,3 @@
-import { values } from "lodash"
 import {Versions} from "./versions"
 
 export interface VuMeterStatus {
@@ -15,11 +14,6 @@ export interface Status extends Versions, VuMeterStatus {
   rateadjust: number | ''
   bufferlevel: number | ''
   clippedsamples: number | ''
-}
-
-export interface Volume {
-  volume: number
-  mute: boolean
 }
 
 export function defaultStatus(): Status {
@@ -58,7 +52,7 @@ export function isBackendOnline(status: Status): boolean {
 
 export class StatusPoller {
 
-  private timerId: NodeJS.Timer
+  private timerId: NodeJS.Timeout
   private readonly onUpdate: (status: Status) => void
   private lastClippedSamples = 0
   private update_interval: number
@@ -92,44 +86,3 @@ export class StatusPoller {
 
 }
 
-export class VolumePoller {
-
-  private timerId: NodeJS.Timer
-  private readonly onUpdate: (volume: Volume) => void
-  private update_interval: number
-
-  constructor(onUpdate: (volume: Volume) => void, update_interval: number) {
-    this.onUpdate = onUpdate
-    this.update_interval = update_interval
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
-  }
-
-  private async updateVolume() {
-    console.log("poll volume")
-    try {
-      let vol = await (await fetch("/api/getparam/volume")).text()
-      let mute = await (await fetch("/api/getparam/mute")).text()
-      let volume: Volume = {
-        volume: parseFloat(vol),
-        mute: mute==="True"?true:false,
-      }
-      this.onUpdate(volume)
-    } catch (err) {console.log(err)}
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
-  }
-
-  stop() {
-    clearTimeout(this.timerId)
-  }
-
-  set_interval(interval: number) {
-    this.update_interval = interval
-  }
-
-  restart_interval() {
-    console.log("restart volume poll interval")
-    clearTimeout(this.timerId)
-    this.timerId = setTimeout(this.updateVolume.bind(this), 5*this.update_interval)
-  }
-
-}
