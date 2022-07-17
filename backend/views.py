@@ -88,6 +88,8 @@ async def get_param(request):
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         result = cdsp.get_volume()
+    elif name == "mute":
+        result = cdsp.get_mute()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
     elif name == "signalrangedb":
@@ -125,6 +127,13 @@ async def set_param(request):
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         cdsp.set_volume(value)
+    elif name == "mute":
+        if value.lower() == "true":
+            cdsp.set_mute(True)
+        elif value.lower() == "false":
+            cdsp.set_mute(False)
+        else:
+            return web.Response(status=500, text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
         cdsp.set_update_interval(value)
     elif name == "configname":
