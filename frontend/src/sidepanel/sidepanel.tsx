@@ -32,6 +32,7 @@ export class SidePanel extends React.Component<
 > {
 
   private statusPoller = new StatusPoller(cdspStatus => this.setState({cdspStatus}), this.props.guiConfig.status_update_interval)
+
   private timer = delayedExecutor(500)
 
   constructor(props: SidePanelProps) {

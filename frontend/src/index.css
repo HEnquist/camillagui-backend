@@ -262,6 +262,15 @@ div .popup-content {
   margin-left: 5px;
 }
 
+.db-label-muted {
+  display: inline-block;
+  width: 5ch;
+  text-align: right;
+  margin-left: 5px;
+  color: var(--neutral-text-color);
+  font-style: italic;
+}
+
 .versions {
   width: 100%;
   margin: 15px 0;
