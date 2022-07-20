@@ -148,7 +148,7 @@ function MixerView(props: {
       <IntOption
           value={mixer.channels.in}
           desc="in"
-          data-tip="Number of channels in"
+          data-tip="Number of channels in (source channels)"
           small={true}
           withControls={true}
           min={1}
@@ -156,7 +156,7 @@ function MixerView(props: {
       <IntOption
           value={mixer.channels.out}
           desc="out"
-          data-tip="Number of channels out"
+          data-tip="Number of channels out (destination channels)"
           small={true}
           withControls={true}
           min={1}
@@ -197,8 +197,8 @@ function MappingView(props: {
     <>
       <IntOption
           value={mapping.dest}
-          desc="dest"
-          data-tip="Destination channel"
+          desc="destination"
+          data-tip="Destination channel number"
           small={true}
           withControls={true}
           min={0}
@@ -206,7 +206,7 @@ function MappingView(props: {
           onChange={dest => update(mapping => mapping.dest = dest)}/>
       <MdiButton
           icon={mdiVolumeOff}
-          tooltip={"Mute destination channel"}
+          tooltip={"Mute this destination channel"}
           buttonSize="small"
           className={mapping.mute ? "highlighted-button" : ""}
           onClick={() => update(mapping => mapping.mute = !mapping.mute)}/>
@@ -254,8 +254,8 @@ function SourceView(props: {
       <div style={{flexGrow: 1}}>
         <IntOption
             value={source.channel}
-            desc="channel"
-            data-tip="Channel number"
+            desc="source"
+            data-tip="Source channel number"
             small={true}
             withControls={true}
             min={0}
@@ -266,19 +266,19 @@ function SourceView(props: {
         <IntOption
             value={source.gain}
             desc="gain"
-            data-tip="Gain in dB"
+            data-tip="Gain in dB for this source channel"
             small={true}
             onChange={gain => update(source => source.gain = gain)}/>
       </div>
       <MdiButton
           icon={mdiPlusMinusVariant}
-          tooltip={"Invert source channel"}
+          tooltip={"Invert this source channel"}
           buttonSize="small"
           className={source.inverted ? "highlighted-button" : ""}
           onClick={() => update(source => source.inverted = !source.inverted)}/>
       <MdiButton
           icon={mdiVolumeOff}
-          tooltip={"Mute source channel"}
+          tooltip={"Mute this source channel"}
           buttonSize="small"
           className={source.mute ? "highlighted-button" : ""}
           onClick={() => update(source => source.mute = !source.mute)}/>

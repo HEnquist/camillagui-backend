@@ -12,7 +12,8 @@ body {
 }
 
 hr {
-  margin: 2px 0;
+  margin: 3px 0;
+  border: 1px solid var(--box-border-color);
 }
 
 code {

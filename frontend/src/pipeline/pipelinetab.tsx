@@ -206,7 +206,7 @@ function MixerStepView(props: {
   return <DndSortable {...dndProps}>
     <Box title={
       <>
-        <DragHandle drag={dndProps.drag} tooltip="Drag mixer to sort"/>
+        <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order"/>
         <label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>
       </>
     }>
@@ -259,15 +259,15 @@ function FilterStepView(props: {
       )
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   const title = <>
-    <DragHandle drag={dndProps.drag} tooltip="Drag filter step to sort"/>
+    <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order"/>
     {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
-    <label data-tip="Channel number">
+    <label data-tip="Channel number to process">
       channel
       <IntInput
           className="small-setting-input"
           style={{marginLeft: '5px'}}
           value={filterStep.channel}
-          data-tip="Channel number"
+          data-tip="Channel number to process"
           withControls={true}
           min={0}
           onChange={channel => update(step => step.channel = channel)}/>
@@ -343,7 +343,7 @@ function FilterStepFilter(props: {
   )
   return <DndSortable isDragging={isDragging} canDrop={canDrop} drag={drag} preview={preview} drop={drop}>
     <div className={`horizontally-spaced-content`}>
-      <DragHandle drag={drag} tooltip="Drag filter to sort"/>
+      <DragHandle drag={drag} tooltip="Drag filter to change order"/>
       <EnumInput
           value={name}
           options={options}
