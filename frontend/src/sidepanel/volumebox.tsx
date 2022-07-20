@@ -50,7 +50,11 @@ export class VolumePoller {
                 volume: parseFloat(vol),
                 mute: mute === "True" ? true : false,
             }
-            this.onUpdate(volume)
+            // Only update if the timer hasn't been restarted
+            // while we were reading the volume and mute settings.
+            if (this.timerId === undefined) {
+                this.onUpdate(volume)
+            }
         } catch (err) { console.log(err) }
         if (this.timerId === undefined) {
             this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
@@ -88,14 +92,23 @@ export class VolumeBox extends React.Component<Props, State> {
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
         const { volume, mute, send_to_dsp } = this.state
+        // Lets ignore any change smaller than 0.1 dB.
+        let vol_changed = Math.round(volume * 10) !== Math.round(prevState.volume * 10)
+        let mute_changed = mute !== prevState.mute
         if (send_to_dsp) {
-            if (volume !== prevState.volume || mute !== prevState.mute)
+            if (vol_changed || mute_changed) {
+                // The volume or mute state was changed from this gui instance.
                 this.volumePoller.restart_timer()
-            if (volume !== prevState.volume)
-                this.setDspVolumeDebounced(volume)
-            if (mute !== prevState.mute)
-                this.setDspMute(mute)
-            this.setState({ send_to_dsp: false })
+                if (vol_changed)
+                    this.setDspVolumeDebounced(volume)
+                if (mute_changed)
+                    this.setDspMute(mute)
+                this.setState({ send_to_dsp: false })
+            }
+        }
+        else if (vol_changed) {
+            // The volume was changed from somewhere else.
+            this.setState({ dim: false })
         }
     }
 
@@ -167,7 +180,7 @@ export class VolumeBox extends React.Component<Props, State> {
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
                     buttonSize="small"
                     className={dim ? "highlighted-button" : ""}
-                    enabled={dim || volume >= minVolume + 20}
+                    enabled={(dim && volume <= -20) || (!dim && volume >= minVolume + 20)}
                     onClick={this.toggleDim} />
             </>
         }>
@@ -180,11 +193,11 @@ export class VolumeBox extends React.Component<Props, State> {
             <input
                 style={{ width: '100%', margin: 0, padding: 0 }}
                 type="range"
-                min={10.0*minVolume}
+                min={10.0 * minVolume}
                 max="0"
-                value={10.0*volume}
+                value={10.0 * volume}
                 id="volume"
-                onChange={e => this.changeVolume( e.target.valueAsNumber/10.0) }
+                onChange={e => this.changeVolume(e.target.valueAsNumber / 10.0)}
             />
             <VuMeterGroup
                 title="Out"
