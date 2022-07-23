@@ -2,7 +2,7 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath
+from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath, getmtime
 
 import yaml
 from aiohttp import web
@@ -42,8 +42,12 @@ def list_of_files_in_directory(folder):
     files_list = []
     for f in files:
         fname = os.path.basename(f)
-        files_list.append(fname)
-    return sorted(files_list, key=lambda x: x.lower())
+        filetime = getmtime(f)
+        files_list.append((fname, filetime))
+    sorted_files = sorted(files_list, key=lambda x: x[0].lower())
+    sorted_names = [file[0] for file in sorted_files]
+    sorted_times = [file[1] for file in sorted_files]
+    return (sorted_names, sorted_times)
 
 
 def delete_files(folder, files):
