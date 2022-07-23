@@ -110,7 +110,7 @@ function QuickConfigSwitch(props:{
   const {currentConfigName, setConfig} = props
   const [configFiles, setConfigFiles] = useState<string[]>([])
   useEffect(() => {
-    loadFiles("config").then(files => setConfigFiles(files))
+    loadFiles("config").then(files => setConfigFiles(files[0]))
   }, [])
   return <Box title="Quick Config Switch">
     <div className="quick-config-switch">

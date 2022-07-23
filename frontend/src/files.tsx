@@ -20,7 +20,7 @@ export function Files(props: {
   config: Config
   setCurrentConfig: (filename: string, config: Config) => void
 }) {
-  return <div className="tabpanel">
+  return <div className="wide-tabpanel">
     <FileTable title='Configs'
                type="config"
                currentConfigFile={props.currentConfigFile}
@@ -57,6 +57,7 @@ class FileTable extends Component<
     FileTableProps,
     {
       files: ReadonlyArray<string>
+      dates: ReadonlyArray<string>
       selectedFiles: Set<string>
       activeConfigFileName: string
       newFileName: string
@@ -84,6 +85,7 @@ class FileTable extends Component<
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.state = {
       files: [],
+      dates: [],
       selectedFiles: Set(),
       activeConfigFileName: '',
       newFileName: 'New config.yml',
@@ -110,8 +112,12 @@ class FileTable extends Component<
   private update() {
     loadFiles(this.type)
         .then(files => this.setState(prevState => ({
-          files: files,
-          selectedFiles: prevState.selectedFiles.intersect(files)
+          files: files[0],
+          dates: files[1].map(d => {
+              let date = new Date(1000*parseFloat(d))
+              return date.toDateString()
+            }),
+          selectedFiles: prevState.selectedFiles.intersect(files[0])
         })))
   }
 
@@ -238,7 +244,7 @@ class FileTable extends Component<
   }
 
   render() {
-    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
+    const {files, dates, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
     return (
       <Box title={this.props.title}>
         <div style={{
@@ -261,7 +267,7 @@ class FileTable extends Component<
           </div>
 
           { // File rows
-            files.flatMap(filename => [
+            files.flatMap((filename, index) => [
                   <FileCheckBox
                       key={filename+'(1)'}
                       filename={filename}
@@ -286,6 +292,7 @@ class FileTable extends Component<
                                         filename={filename}
                                         isCurrentConfig={this.props.currentConfigFile === filename}/>
                     <FileStatusMessage filename={filename} fileStatus={fileStatus}/>
+                    {'  ' + dates[index]}
                   </div>
                 ]
             )
@@ -316,10 +323,10 @@ class FileTable extends Component<
   }
 }
 
-export function loadFiles(type: "config" | "coeff"): Promise<string[]> {
+export function loadFiles(type: "config" | "coeff"): Promise<string[][]> {
   return fetch(`/api/stored${type}s`)
       .then(response => response.json())
-      .then(json => json as string[])
+      .then(json => json as string[][])
 }
 
 export function loadConfigJson(name: string): Promise<Response> {

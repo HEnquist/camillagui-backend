@@ -1,4 +1,4 @@
-import {sortedAlphabetically} from "../utilities/arrays"
+import { sortedAlphabetically } from "../utilities/arrays"
 
 export function defaultConfig(): Config {
     return {
@@ -27,13 +27,174 @@ export function defaultConfig(): Config {
             stop_on_rate_change: false,
             rate_measure_interval: 1.0,
 
-            capture: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
-            playback: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
+            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
         },
         filters: {},
         mixers: {},
         pipeline: [],
     }
+}
+
+
+
+export const SortKeys = [
+    "Name",
+    "Type",
+    "Subtype",
+    "Frequency",
+    "Q-value",
+    "Gain",
+]
+
+export function sortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
+    let names = Object.keys(filters)
+    let filters_as_list = names.map(n => ({ name: n, def: filters[n] }));
+    switch (key) {
+        case "Name":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        case "Frequency":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                let a_val = a["def"]["parameters"]["freq"]
+                let b_val = b["def"]["parameters"]["freq"]
+                if (a_val === undefined && b_val !== undefined) {
+                    return 1
+                }
+                else if (a_val !== undefined && b_val === undefined) {
+                    return -1
+                }
+                else if (a_val !== b_val) {
+                    return a_val - b_val
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        case "Q-value":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                let a_val = a["def"]["parameters"]["q"]
+                let b_val = b["def"]["parameters"]["q"]
+                if (a_val === undefined && b_val !== undefined) {
+                    return 1
+                }
+                else if (a_val !== undefined && b_val === undefined) {
+                    return -1
+                }
+                else if (a_val !== b_val) {
+                    return a_val - b_val
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        case "Gain":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                let a_val = a["def"]["parameters"]["gain"]
+                let b_val = b["def"]["parameters"]["gain"]
+                if (a_val === undefined && b_val !== undefined) {
+                    return 1
+                }
+                else if (a_val !== undefined && b_val === undefined) {
+                    return -1
+                }
+                else if (a_val !== b_val) {
+                    return a_val - b_val
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        case "Type":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                let a_val = a["def"]["type"]
+                let b_val = b["def"]["type"]
+                if (a_val !== b_val) {
+                    return a_val.localeCompare(b_val)
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        case "Subtype":
+            filters_as_list.sort((a, b) => {
+                let a_new = a["name"].startsWith("Unnamed ")
+                let b_new = b["name"].startsWith("Unnamed ")
+                if (a_new && !b_new) {
+                    return 1
+                }
+                else if (!a_new && b_new) {
+                    return -1
+                }
+                let a_type = a["def"]["type"]
+                let b_type = b["def"]["type"]
+                let a_val = a["def"]["parameters"]["type"]
+                let b_val = b["def"]["parameters"]["type"]
+                if (a_type !== b_type) {
+                    return a_type.localeCompare(b_type)
+                }
+                else if (a_val === undefined && b_val !== undefined) {
+                    return 1
+                }
+                else if (a_val !== undefined && b_val === undefined) {
+                    return -1
+                }
+                else if (a_val !== b_val) {
+                    return a_val.localeCompare(b_val)
+                }
+                return a["name"].localeCompare(b["name"])
+            })
+            break;
+        //#array.sort((a, b) => a.localeCompare(b))
+    }
+    let names_sorted = filters_as_list.map(n => n["name"]);
+    if (reverse) {
+        names_sorted.reverse()
+    }
+    return names_sorted
+}
+
+export function sortedFilterNamesOf(configOrFilters: Config | Filters, sortKey: string, reverse: boolean): string[] {
+    const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+    return sortedAlphabeticallyOnKey(filters, sortKey, reverse)
 }
 
 export function filterNamesOf(configOrFilters: Config | Filters): string[] {
@@ -46,7 +207,7 @@ function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config
 }
 
 export function newFilterName(filters: Filters): string {
-    return newName('New Filter ', filterNamesOf(filters))
+    return newName('Unnamed Filter ', filterNamesOf(filters))
 }
 
 function newName(prefix: string, existingNames: string[]): string {
@@ -60,7 +221,7 @@ function newName(prefix: string, existingNames: string[]): string {
 export function defaultFilter() {
     return {
         type: "Biquad",
-        parameters: {type: "Lowpass", q: 0.5, freq: 1000},
+        parameters: { type: "Lowpass", q: 0.5, freq: 1000 },
     }
 }
 
@@ -89,7 +250,7 @@ export function mixerNamesOf(configOrMixers: Config | Mixers): string[] {
 }
 
 export function newMixerName(mixers: Mixers): string {
-    return newName('New Mixer ', mixerNamesOf(mixers))
+    return newName('Unnamed Mixer ', mixerNamesOf(mixers))
 }
 
 export function removeMixer(config: Config, name: string) {
@@ -110,7 +271,7 @@ export function renameMixer(config: Config, oldName: string, newName: string) {
 
 export function defaultMixer(): Mixer {
     return {
-        channels: {in: 2, out: 2},
+        channels: { in: 2, out: 2 },
         mapping: [defaultMapping(2, [])]
     }
 }
@@ -127,7 +288,7 @@ export function defaultMapping(outChannels: number, mappings: Mapping[]): Mappin
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {
     const newChannel = sources.length < inChannels ? sources.length : 0
-    return {channel: newChannel, gain: 0, inverted: false, mute: false}
+    return { channel: newChannel, gain: 0, inverted: false, mute: false }
 }
 
 export function defaultFilterStep(config: Config): FilterStep {
@@ -191,26 +352,30 @@ export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format, device: string }
     | { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean, loopback: boolean }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean  }
-    | { type: 'Pulse', channels: number, format: Format, device: string}
-    | { type: 'File', channels: number, format: Format, filename: '/path/to/file',
-        extra_samples: number, skip_bytes: number, read_bytes: number }
-    | { type: 'Stdin', channels: number, format: Format,
-        extra_samples: number, skip_bytes: number, read_bytes: number }
+    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean }
+    | { type: 'Pulse', channels: number, format: Format, device: string }
+    | {
+        type: 'File', channels: number, format: Format, filename: '/path/to/file',
+        extra_samples: number, skip_bytes: number, read_bytes: number
+    }
+    | {
+        type: 'Stdin', channels: number, format: Format,
+        extra_samples: number, skip_bytes: number, read_bytes: number
+    }
 
 export type PlaybackDevice =
     { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean }
     | { type: 'Jack', channels: number, device: string }
     | { type: 'Alsa' | 'Pulse', channels: number, format: Format, device: string }
     | { type: 'CoreAudio', channels: number, format: Format, device: string, exclusive: boolean, change_format: boolean }
-    | { type: 'File', channels: number, format: Format, filename: string}
+    | { type: 'File', channels: number, format: Format, filename: string }
     | { type: 'Stdout', channels: number, format: Format }
 
 export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
 export const Formats: Format[] = ['S16LE', 'S24LE', 'S24LE3', 'S32LE', 'FLOAT32LE', 'FLOAT64LE']
 
 export interface Filters {
-    [name: string] : Filter
+    [name: string]: Filter
 }
 export interface Filter {
     type: string
@@ -218,7 +383,7 @@ export interface Filter {
 }
 
 export type Mixers = {
-    [name: string] : Mixer
+    [name: string]: Mixer
 }
 
 export interface Mixer {

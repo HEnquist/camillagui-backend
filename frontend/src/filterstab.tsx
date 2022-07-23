@@ -10,7 +10,9 @@ import {
   Filters,
   newFilterName,
   removeFilter,
-  renameFilter
+  renameFilter,
+  sortedFilterNamesOf,
+  SortKeys,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -51,11 +53,15 @@ export class FiltersTab extends React.Component<
     {
       filterKeys: { [name: string]: number}
       availableCoeffFiles: string[]
+      sortBy: string
+      sortReverse: boolean
     }
 > {
   constructor(props: any) {
     super(props)
     this.filterNames = this.filterNames.bind(this)
+    this.changeSortBy = this.changeSortBy.bind(this)
+    this.changeSortOrder = this.changeSortOrder.bind(this)
     this.addFilter = this.addFilter.bind(this)
     this.removeFilter = this.removeFilter.bind(this)
     this.renameFilter = this.renameFilter.bind(this)
@@ -64,14 +70,26 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles = this.updateAvailableCoeffFiles.bind(this)
     this.state = {
       filterKeys: {},
-      availableCoeffFiles: []
+      availableCoeffFiles: [],
+      sortBy: "Name",
+      sortReverse: false
     }
     this.filterNames().forEach((name, i) => this.state.filterKeys[name] = i)
     this.updateAvailableCoeffFiles()
   }
 
+  private timer = delayedExecutor(2000)
+
   private filterNames(): string[] {
-    return filterNamesOf(this.props.filters)
+    return sortedFilterNamesOf(this.props.filters, this.state.sortBy, this.state.sortReverse)
+  }
+
+  private changeSortBy(key: string) {
+    this.setState({sortBy: key})
+  }
+
+  private changeSortOrder(reverse: boolean) {
+    this.setState({sortReverse: reverse})
   }
 
   private addFilter() {
@@ -96,13 +114,15 @@ export class FiltersTab extends React.Component<
 
   private renameFilter(oldName: string, newName: string) {
     if (this.isFreeFilterName(newName))
-      this.props.updateConfig(config => {
-        this.setState(oldState =>
-            modifiedCopyOf(oldState, newState => {
-              newState.filterKeys[newName] = newState.filterKeys[oldName]
-              delete newState.filterKeys[oldName]
-            }))
-        renameFilter(config, oldName, newName)
+      this.timer(() => {
+        this.props.updateConfig(config => {
+          this.setState(oldState =>
+              modifiedCopyOf(oldState, newState => {
+                newState.filterKeys[newName] = newState.filterKeys[oldName]
+                delete newState.filterKeys[oldName]
+              }))
+          renameFilter(config, oldName, newName)
+        })
       })
   }
 
@@ -125,28 +145,42 @@ export class FiltersTab extends React.Component<
 
   render() {
     let {filters, errors} = this.props
-    return <div className="tabpanel" style={{width: '700px'}}>
-      <ErrorMessage message={errors({path: []})}/>
+    return <div>
+      <div className="horizontally-spaced-content" style={{width: '700px'}}>
+      <EnumOption
+            value={this.state.sortBy}
+            options={SortKeys}
+            desc="Sort filters by"
+            data-tip="Property used to sort filters"
+            onChange={this.changeSortBy}/>
+      <BoolOption 
+            value={this.state.sortReverse}
+            desc="Reverse order"
+            data-tip="Reverse display order"
+            onChange={this.changeSortOrder} />
+      </div>
+      <div className="tabpanel" style={{width: '700px'}}>
+        <ErrorMessage message={errors({path: []})}/>
       {this.filterNames()
           .map(name =>
-              <FilterView
-                  key={this.state.filterKeys[name]}
-                  name={name}
-                  filter={filters[name]}
-                  errors={errorsForSubpath(errors, name)}
-                  availableCoeffFiles={this.state.availableCoeffFiles}
-                  updateFilter={update => this.updateFilter(name, update)}
-                  rename={newName => this.renameFilter(name, newName)}
-                  isFreeFilterName={this.isFreeFilterName}
-                  remove={() => this.removeFilter(name)}
-                  updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
-                  coeffDir={this.props.coeffDir}
-                  samplerate={this.props.samplerate}
-                  channels={this.props.channels}
-              />
-          )}
+            <FilterView
+            key={this.state.filterKeys[name]}
+            name={name}
+            filter={filters[name]}
+            errors={errorsForSubpath(errors, name)}
+            availableCoeffFiles={this.state.availableCoeffFiles}
+            updateFilter={update => this.updateFilter(name, update)}
+            rename={newName => this.renameFilter(name, newName)}
+            isFreeFilterName={this.isFreeFilterName}
+            remove={() => this.removeFilter(name)}
+            updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
+            coeffDir={this.props.coeffDir}
+            samplerate={this.props.samplerate}
+            channels={this.props.channels}
+            />
+            )}
       <AddButton tooltip="Add a new filter" onClick={this.addFilter}/>
-    </div>
+    </div></div>
   }
 }
 
@@ -208,7 +242,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.plotFilter()
   }
 
-  private timer = delayedExecutor(500)
+  //private timer = delayedExecutor(500)
 
   private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
     doUpload('coeff', e,
@@ -262,7 +296,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
       if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters))
-        this.timer(() => this.plotFilter())
+        this.plotFilter()
     }
   }
 
@@ -469,6 +503,8 @@ class FilterParams extends React.Component<{
     this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
   }
 
+  private timer = delayedExecutor(1000)
+
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
       filter.type = type
@@ -533,7 +569,7 @@ class FilterParams extends React.Component<{
         error: errors({path: [parameter]}),
         desc: info.desc,
         'data-tip': info.tooltip,
-        onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
+        onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
       }
       if (parameter === 'filename')
         return this.filenameField(parameters['filename'], commonProps)
@@ -545,10 +581,10 @@ class FilterParams extends React.Component<{
             {...commonProps}
             parameter={parameter}
             parameters={parameters}
-            onDescChange={option => this.props.updateFilter(filter => {
+            onDescChange={option => this.timer(() => this.props.updateFilter(filter => {
               this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
               filter.parameters[option] = this.defaultParameterValues[option]
-            })}/>
+            }))}/>
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')

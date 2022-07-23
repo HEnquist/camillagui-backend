@@ -83,6 +83,16 @@ textarea.logfileviewer {
   width: 450px;
 }
 
+.wide-tabpanel {
+  border: 4px;
+  text-align: left;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 550px;
+}
+
 .tabpanel > * {
   margin: 5px 0;
 }
@@ -124,6 +134,7 @@ textarea.logfileviewer {
 .setting-input {
   display: table-cell;
   width: 100%;
+  vertical-align: middle;
 }
 
 .small-setting-input {
