@@ -282,6 +282,7 @@ export function IntInput(props: {
     const { min, max } = props
     return <ParsedInput
         {...props}
+        immediate={false} 
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -324,6 +325,7 @@ export function FloatInput(props: {
 }) {
     return <ParsedInput
         value={props.value}
+        immediate={false}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
         asString={(float?: number) => float === undefined ? "" : float.toString()}
@@ -347,6 +349,7 @@ export function FloatListOption(props: {
         <OptionLine desc={props.desc} data-tip={props['data-tip']}>
             <ParsedInput
                 className="setting-input"
+                immediate={false}
                 value={props.value}
                 data-tip={props['data-tip']}
                 asString={(value: number[]) => value.join(", ")}
@@ -377,6 +380,7 @@ type ParsedInputProps<TYPE> = {
     onChange: (value: TYPE) => void
     asString: (value: TYPE) => string
     parseValue: (rawValue: string) => TYPE | undefined
+    immediate: boolean
     withControls?: boolean
     min?: number
     max?: number
@@ -395,11 +399,24 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             this.setState({ rawValue: this.props.asString(this.props.value) })
     }
 
-    private updateValue(rawValue: string) {
+    private updateValue(rawValue: string, perform_callback: boolean) {
         this.setState({ rawValue })
         const parsed = this.props.parseValue(rawValue)
-        if (parsed !== undefined)
+        if (parsed !== undefined && (perform_callback || this.props.immediate)) {
+            console.log("Blur rename", parsed)
             this.props.onChange(parsed)
+        }
+    }
+
+    handleSubmit(event: any) {
+        if (!this.props.immediate && event.key === 'Enter') {
+            event.preventDefault();
+            const parsed = this.props.parseValue(this.state.rawValue)
+            if (parsed !== undefined) {
+                console.log("Submit rename", parsed)
+                this.props.onChange(parsed)
+            }
+        }
     }
 
     render() {
@@ -414,7 +431,9 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             data-tip={props["data-tip"]}
             className={props.className}
             style={valid ? props.style : { ...props.style, ...ERROR_BACKGROUND_STYLE }}
-            onChange={e => this.updateValue(e.target.value)} />
+            onBlur={e => this.updateValue(e.target.value, true)}
+            onChange={e => this.updateValue(e.target.value, false)}
+            onKeyDown={e => this.handleSubmit(e)} />
     }
 
 }

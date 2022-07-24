@@ -78,7 +78,7 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles()
   }
 
-  private timer = delayedExecutor(2000)
+  //private timer = delayedExecutor(2000)
 
   private filterNames(): string[] {
     return sortedFilterNamesOf(this.props.filters, this.state.sortBy, this.state.sortReverse)
@@ -114,7 +114,6 @@ export class FiltersTab extends React.Component<
 
   private renameFilter(oldName: string, newName: string) {
     if (this.isFreeFilterName(newName))
-      this.timer(() => {
         this.props.updateConfig(config => {
           this.setState(oldState =>
               modifiedCopyOf(oldState, newState => {
@@ -123,7 +122,6 @@ export class FiltersTab extends React.Component<
               }))
           renameFilter(config, oldName, newName)
         })
-      })
   }
 
   private isFreeFilterName(name: string): boolean {
@@ -242,7 +240,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.plotFilter()
   }
 
-  //private timer = delayedExecutor(500)
+  private timer = delayedExecutor(500)
 
   private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
     doUpload('coeff', e,
@@ -296,7 +294,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
       if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters))
-        this.plotFilter()
+        this.timer(() => this.plotFilter())
     }
   }
 
@@ -352,6 +350,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           parseValue={newName => isValidFilterName(newName) ? newName : undefined}
           data-tip="Filter name, must be unique"
           onChange={newName => this.props.rename(newName)}
+          immediate={false}
       />
     }>
       <div style={{display: 'flex', flexDirection: 'row'}}>
@@ -503,7 +502,7 @@ class FilterParams extends React.Component<{
     this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
   }
 
-  private timer = delayedExecutor(1000)
+  //private timer = delayedExecutor(1000)
 
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
@@ -569,7 +568,8 @@ class FilterParams extends React.Component<{
         error: errors({path: [parameter]}),
         desc: info.desc,
         'data-tip': info.tooltip,
-        onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
+        //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
+        onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
       }
       if (parameter === 'filename')
         return this.filenameField(parameters['filename'], commonProps)
@@ -581,10 +581,10 @@ class FilterParams extends React.Component<{
             {...commonProps}
             parameter={parameter}
             parameters={parameters}
-            onDescChange={option => this.timer(() => this.props.updateFilter(filter => {
+            onDescChange={option => this.props.updateFilter(filter => {
               this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
               filter.parameters[option] = this.defaultParameterValues[option]
-            }))}/>
+            })}/>
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')

@@ -217,6 +217,13 @@ div .popup-content {
   user-select: none;
 }
 
+.file-link {
+  color: var(--link-color);
+  text-decoration: none;
+  user-select: none;
+  font-weight: bold;
+}
+
 .button-with-text {
   padding: 3px 6px;
 }

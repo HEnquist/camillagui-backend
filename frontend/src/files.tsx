@@ -292,7 +292,7 @@ class FileTable extends Component<
                                         filename={filename}
                                         isCurrentConfig={this.props.currentConfigFile === filename}/>
                     <FileStatusMessage filename={filename} fileStatus={fileStatus}/>
-                    {'  ' + dates[index]}
+                    {' - ' + dates[index]}
                   </div>
                 ]
             )
@@ -448,7 +448,8 @@ function LoadButton(
 
 function FileDownloadButton(props: { type: string, filename: string, isCurrentConfig: boolean }) {
   const { type, filename, isCurrentConfig } = props
-  const classNames = 'button button-with-text ' + (isCurrentConfig ? 'highlighted-button' : '')
+  //const classNames = 'button button-with-text ' + (isCurrentConfig ? 'highlighted-button' : '')
+  const classNames = 'file-link'
   return <a className={classNames}
             style={{width: 'max-content'}}
             data-tip={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}

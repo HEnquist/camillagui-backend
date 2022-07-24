@@ -136,6 +136,7 @@ function MixerView(props: {
           onChange={rename}
           asString={name => name}
           parseValue={name => isValidMixerName(name) ? name : undefined}
+          immediate={false}
       />
       <DeleteButton
           tooltip="Delete this mixer"
