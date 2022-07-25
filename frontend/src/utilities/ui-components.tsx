@@ -282,7 +282,7 @@ export function IntInput(props: {
     const { min, max } = props
     return <ParsedInput
         {...props}
-        immediate={false} 
+        immediate={true} 
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -325,7 +325,7 @@ export function FloatInput(props: {
 }) {
     return <ParsedInput
         value={props.value}
-        immediate={false}
+        immediate={true}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
         asString={(float?: number) => float === undefined ? "" : float.toString()}
@@ -349,7 +349,7 @@ export function FloatListOption(props: {
         <OptionLine desc={props.desc} data-tip={props['data-tip']}>
             <ParsedInput
                 className="setting-input"
-                immediate={false}
+                immediate={true}
                 value={props.value}
                 data-tip={props['data-tip']}
                 asString={(value: number[]) => value.join(", ")}
@@ -386,12 +386,12 @@ type ParsedInputProps<TYPE> = {
     max?: number
 }
 
-export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
+export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string, pending: boolean }> {
 
     constructor(props: ParsedInputProps<TYPE>) {
         super(props)
         this.updateValue = this.updateValue.bind(this)
-        this.state = { rawValue: props.asString(props.value) }
+        this.state = { rawValue: props.asString(props.value), pending: false }
     }
 
     componentDidUpdate(prevProps: ParsedInputProps<TYPE>) {
@@ -400,11 +400,11 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
 
     private updateValue(rawValue: string, perform_callback: boolean) {
-        this.setState({ rawValue })
+        this.setState({ rawValue: rawValue, pending: true })
         const parsed = this.props.parseValue(rawValue)
         if (parsed !== undefined && (perform_callback || this.props.immediate)) {
-            console.log("Blur rename", parsed)
             this.props.onChange(parsed)
+            this.setState({ pending: false })
         }
     }
 
@@ -413,10 +413,22 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             event.preventDefault();
             const parsed = this.props.parseValue(this.state.rawValue)
             if (parsed !== undefined) {
-                console.log("Submit rename", parsed)
                 this.props.onChange(parsed)
+                this.setState({ pending: false })
             }
         }
+    }
+
+    private getStyle(valid: boolean): CSSProperties | undefined {
+        const style = this.props.style
+        const pending = this.state.pending
+        if (!valid) { 
+            return { ...style, ...ERROR_BACKGROUND_STYLE }
+        }
+        else if (pending) {
+            return { ...style, ...PENDING_BACKGROUND_STYLE }
+        }
+        return style
     }
 
     render() {
@@ -430,7 +442,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={valid ? props.style : { ...props.style, ...ERROR_BACKGROUND_STYLE }}
+            style={this.getStyle(valid)}
             onBlur={e => this.updateValue(e.target.value, true)}
             onChange={e => this.updateValue(e.target.value, false)}
             onKeyDown={e => this.handleSubmit(e)} />
@@ -438,8 +450,13 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
 
 }
 
+
+
 export const ERROR_BACKGROUND_STYLE: CSSProperties =
     Object.freeze({ backgroundColor: 'var(--error-field-background-color)' })
+
+export const PENDING_BACKGROUND_STYLE: CSSProperties =
+    Object.freeze({ backgroundColor: 'var(--pending-field-background-color)' })
 
 export function ErrorMessage(props: { message?: string }) {
     return props.message ?
@@ -955,8 +972,6 @@ export function Chart(props: {
         (option.samplerate === undefined || option.samplerate === props.data.samplerate)
         && (option.channels === undefined || option.channels === props.data.channels)
     )?.name
-    console.log(options)
-    console.log(data)
     return <>
         <div style={{ textAlign: 'center' }}>
             {props.data.options.length > 0 && <select

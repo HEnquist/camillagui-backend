@@ -47,148 +47,136 @@ export const SortKeys = [
     "Gain",
 ]
 
+function compare_named_vs_unnamed(a: any, b: any): number {
+    let a_new = a["name"].startsWith("Unnamed ")
+    let b_new = b["name"].startsWith("Unnamed ")
+    if (a_new && !b_new) {
+        return 1
+    }
+    else if (!a_new && b_new) {
+        return -1
+    }
+    return 0
+}
+
+function compare_values(a: number, b: number, reverse: boolean): number {
+    let rev = reverse ? -1: 1
+    if (a === undefined && b !== undefined) {
+        return rev
+    }
+    else if (a !== undefined && b === undefined) {
+        return -rev
+    }
+    else if (a !== b) {
+        return rev*(a - b)
+    }
+    return 0
+}
+
 export function sortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
     let names = Object.keys(filters)
     let filters_as_list = names.map(n => ({ name: n, def: filters[n] }));
+    let rev = reverse ? -1: 1
     switch (key) {
         case "Name":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
-                else if (!a_new && b_new) {
-                    return -1
-                }
-                return a["name"].localeCompare(b["name"])
+                return rev * a["name"].localeCompare(b["name"])
             })
             break;
         case "Frequency":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
-                }
-                else if (!a_new && b_new) {
-                    return -1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
                 let a_val = a["def"]["parameters"]["freq"]
                 let b_val = b["def"]["parameters"]["freq"]
-                if (a_val === undefined && b_val !== undefined) {
-                    return 1
+                let number_res = compare_values(a_val, b_val, reverse)
+                if (number_res !== 0) {
+                    return number_res
                 }
-                else if (a_val !== undefined && b_val === undefined) {
-                    return -1
-                }
-                else if (a_val !== b_val) {
-                    return a_val - b_val
-                }
-                return a["name"].localeCompare(b["name"])
+                return rev*a["name"].localeCompare(b["name"])
             })
             break;
         case "Q-value":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
-                }
-                else if (!a_new && b_new) {
-                    return -1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
                 let a_val = a["def"]["parameters"]["q"]
                 let b_val = b["def"]["parameters"]["q"]
-                if (a_val === undefined && b_val !== undefined) {
-                    return 1
+                let number_res = compare_values(a_val, b_val, reverse)
+                if (number_res !== 0) {
+                    return number_res
                 }
-                else if (a_val !== undefined && b_val === undefined) {
-                    return -1
-                }
-                else if (a_val !== b_val) {
-                    return a_val - b_val
-                }
-                return a["name"].localeCompare(b["name"])
+                return rev*a["name"].localeCompare(b["name"])
             })
             break;
         case "Gain":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
-                }
-                else if (!a_new && b_new) {
-                    return -1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
                 let a_val = a["def"]["parameters"]["gain"]
                 let b_val = b["def"]["parameters"]["gain"]
-                if (a_val === undefined && b_val !== undefined) {
-                    return 1
+                let number_res = compare_values(a_val, b_val, reverse)
+                if (number_res !== 0) {
+                    return number_res
                 }
-                else if (a_val !== undefined && b_val === undefined) {
-                    return -1
-                }
-                else if (a_val !== b_val) {
-                    return a_val - b_val
-                }
-                return a["name"].localeCompare(b["name"])
+                return rev*a["name"].localeCompare(b["name"])
             })
             break;
         case "Type":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
-                }
-                else if (!a_new && b_new) {
-                    return -1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
                 let a_val = a["def"]["type"]
                 let b_val = b["def"]["type"]
                 if (a_val !== b_val) {
-                    return a_val.localeCompare(b_val)
+                    return rev*a_val.localeCompare(b_val)
                 }
-                return a["name"].localeCompare(b["name"])
+                return rev*a["name"].localeCompare(b["name"])
             })
             break;
         case "Subtype":
             filters_as_list.sort((a, b) => {
-                let a_new = a["name"].startsWith("Unnamed ")
-                let b_new = b["name"].startsWith("Unnamed ")
-                if (a_new && !b_new) {
-                    return 1
-                }
-                else if (!a_new && b_new) {
-                    return -1
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
                 }
                 let a_type = a["def"]["type"]
                 let b_type = b["def"]["type"]
                 let a_val = a["def"]["parameters"]["type"]
                 let b_val = b["def"]["parameters"]["type"]
                 if (a_type !== b_type) {
-                    return a_type.localeCompare(b_type)
+                    return rev*a_type.localeCompare(b_type)
                 }
                 else if (a_val === undefined && b_val !== undefined) {
-                    return 1
+                    return rev
                 }
                 else if (a_val !== undefined && b_val === undefined) {
-                    return -1
+                    return -rev
                 }
                 else if (a_val !== b_val) {
-                    return a_val.localeCompare(b_val)
+                    return rev*a_val.localeCompare(b_val)
                 }
-                return a["name"].localeCompare(b["name"])
+                return rev*a["name"].localeCompare(b["name"])
             })
             break;
         //#array.sort((a, b) => a.localeCompare(b))
     }
     let names_sorted = filters_as_list.map(n => n["name"]);
-    if (reverse) {
-        names_sorted.reverse()
-    }
+    //if (reverse) {
+    //    names_sorted.reverse()
+    //}
     return names_sorted
 }
 

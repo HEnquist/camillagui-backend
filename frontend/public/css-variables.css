@@ -19,6 +19,7 @@
     --text-color: #ddd;
     --error-text-color: #dc4646;
     --error-field-background-color: var(--error-text-color);
+    --pending-field-background-color: #226;
     --success-text-color: #46c846;
     --neutral-text-color: #bbb;
     --border-radius: 5px;
@@ -76,6 +77,7 @@
     --text-color: black;
     --error-text-color: #f00;
     --error-field-background-color: var(--error-text-color);
+    --pending-field-background-color: #bbf;
     --success-text-color: #0c0;
     --neutral-text-color: #bbb;
     --border-radius: 5px;
