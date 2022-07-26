@@ -420,13 +420,13 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
 
     private getStyle(valid: boolean): CSSProperties | undefined {
-        const style = this.props.style
+        let style = this.props.style
         const pending = this.state.pending
         if (!valid) { 
-            return { ...style, ...ERROR_BACKGROUND_STYLE }
+            style = { ...style, ...ERROR_BACKGROUND_STYLE }
         }
-        else if (pending) {
-            return { ...style, ...PENDING_BACKGROUND_STYLE }
+        if (pending) {
+            style = { ...style, ...PENDING_BACKGROUND_STYLE }
         }
         return style
     }
@@ -456,7 +456,7 @@ export const ERROR_BACKGROUND_STYLE: CSSProperties =
     Object.freeze({ backgroundColor: 'var(--error-field-background-color)' })
 
 export const PENDING_BACKGROUND_STYLE: CSSProperties =
-    Object.freeze({ backgroundColor: 'var(--pending-field-background-color)' })
+    Object.freeze({ fontStyle: 'italic' })
 
 export function ErrorMessage(props: { message?: string }) {
     return props.message ?

@@ -111,9 +111,9 @@ export class SidePanel extends React.Component<
     const cdsp_online = isCdspOnline(status)
     const activeConfigFile = this.props.currentConfigFile
     let applyButtonText = 'Apply to DSP'
-    let applyButtonTooltip = 'Apply config to the running CamillaDSP process'
+    let applyButtonTooltip = 'Apply config to the running<br>CamillaDSP process'
     if (cdsp_online && activeConfigFile)
-      applyButtonTooltip = `Apply config to the running CamillaDSP process, and save to ${activeConfigFile}`
+      applyButtonTooltip = `Apply config to the running CamillaDSP process,<br>and save to active config file: ${activeConfigFile}`
     else if (isCdspOffline(status)) {
       applyButtonText = "Save config"
       applyButtonTooltip = `Save config to ${activeConfigFile}`
@@ -128,7 +128,7 @@ export class SidePanel extends React.Component<
         <SuccessFailureButton
             enabled={cdsp_online}
             text="Fetch from DSP"
-            data-tip="Fetch active config from the running CamillaDSP process"
+            data-tip="Fetch active config from<br>the running CamillaDSP process"
             onClick={this.props.fetchConfig}/>
         <SuccessFailureButton
             enabled={isBackendOnline(status) && !this.state.applyConfigAutomatically}
@@ -142,7 +142,7 @@ export class SidePanel extends React.Component<
           style={{}}
           type="checkbox"
           checked={this.state.applyConfigAutomatically}
-          data-tip="Save/Apply config automatically after each change"
+          data-tip="Save/Apply config automatically<br>after each change"
           onChange={(e) => this.setState({applyConfigAutomatically: e.target.checked})}/>
       </div>
       <Configcheckmessage config={this.props.config} setErrors={this.props.setErrors}/>
