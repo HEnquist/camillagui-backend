@@ -1,4 +1,4 @@
-import React, { ChangeEvent, CSSProperties, ReactNode, useState } from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback, ForwardedRef } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import { Scatter } from "react-chartjs-2"
@@ -12,9 +12,11 @@ import {
     Legend,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick } from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiDownload, mdiPlusThick, mdiTable } from "@mdi/js"
+import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
+
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin);
 
@@ -283,7 +285,7 @@ export function IntInput(props: {
     const { min, max } = props
     return <ParsedInput
         {...props}
-        immediate={true} 
+        immediate={true}
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -423,7 +425,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     private getStyle(valid: boolean): CSSProperties | undefined {
         let style = this.props.style
         const pending = this.state.pending
-        if (!valid) { 
+        if (!valid) {
             style = { ...style, ...ERROR_BACKGROUND_STYLE }
         }
         if (pending) {
@@ -619,6 +621,7 @@ export function ChartPopup(props: {
     onChange: (item: string) => void
     onClose: () => void
 }) {
+
     return <Popup open={props.open} onClose={props.onClose}>
         <CloseButton onClick={props.onClose} />
         <h3 style={{ textAlign: 'center' }}>{props.data.name}</h3>
@@ -630,10 +633,45 @@ export function Chart(props: {
     data: ChartData
     onChange: (item: string) => void
 }) {
+    const chartRef = useRef(null);
+    const downloadPlot = useCallback(() => {
+        const link = document.createElement('a');
+        link.download = props.data.name.replace(/\s/g, "_") + ".png"
+
+        if (chartRef.current !== null) {
+            let current = chartRef.current as any
+            link.href = current.toBase64Image();
+            link.click();
+        }
+    }, [])
+
+
+
     let data: any = { labels: [props.data.name], datasets: [] }
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
         return xvect.map((x, idx) => ({ x: scaling_x * x, y: scaling_y * yvect[idx] }))
     }
+
+    const downloadData = useCallback(() => {
+        let magdat = props.data.magnitude
+        let phasedat = props.data.phase
+
+        var table = props.data.f.map(function (f, i) {
+            let mag: number | string = ""
+            if (magdat !== undefined)
+                mag = magdat[i]
+            let phase: number | string = ""
+            if (phasedat !== undefined)
+                phase = phasedat[i]
+            return [f, mag, phase];
+        });
+        let csvContent = "data:text/csv;charset=utf-8,frequency,magnitude,phase\n"
+            + table.map(row => row.join(",")).join("\n")
+        const link = document.createElement('a')
+        link.download = props.data.name.replace(/\s/g, "_") + ".csv"
+        link.href = encodeURI(csvContent);
+        link.click();
+    }, [])
 
     let x_time = false
     let x_freq = false
@@ -983,7 +1021,16 @@ export function Chart(props: {
                 {sampleRateOptions}
             </select>}
         </div>
-        <Scatter data={data} options={options} />
+        <Scatter data={data} options={options} ref={chartRef} />
+        <MdiButton
+            icon={mdiDownload}
+            tooltip="Save plot as image"
+            onClick={downloadPlot} />
+        <MdiButton
+            icon={mdiTable}
+            tooltip="Save plot data as csv"
+            onClick={downloadData} />
+        <ReactTooltip />
     </>
 }
 
