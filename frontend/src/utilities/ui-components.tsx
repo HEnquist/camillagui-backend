@@ -63,11 +63,12 @@ export function Box(props: {
     title: string | ReactNode
     style?: CSSProperties
     children: ReactNode
+    tooltip?: string
 }) {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div className="horizontally-spaced-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>

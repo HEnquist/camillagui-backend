@@ -33,6 +33,7 @@ class CamillaConfig extends React.Component<
     errors: ErrorsForPath
     compactView: boolean
     message: string
+    unsavedChanges: boolean
   }
 > {
 
@@ -46,13 +47,15 @@ class CamillaConfig extends React.Component<
     this.switchTab = this.switchTab.bind(this)
     this.setCompactViewEnabled = this.setCompactViewEnabled.bind(this)
     this.NormalContent = this.NormalContent.bind(this)
+    this.saveNotify = this.saveNotify.bind(this)
     this.state = {
       activetab: 1,
       guiConfig: defaultGuiConfig(),
       undoRedo: new UndoRedo(defaultConfig()),
       errors: noErrors,
       compactView: isCompactViewEnabled(),
-      message: ''
+      message: '',
+      unsavedChanges: false,
     }
     this.loadGuiConfig()
     this.loadCurrentConfig()
@@ -79,7 +82,7 @@ class CamillaConfig extends React.Component<
     }
     const config = await conf_req.json()
     if (config)
-      this.setState({message: "OK", undoRedo: new UndoRedo(config)})
+      this.setState({unsavedChanges: false, message: "OK", undoRedo: new UndoRedo(config)})
     else
       this.setState({message: "No config received"})
   }
@@ -89,6 +92,10 @@ class CamillaConfig extends React.Component<
     this.setState({compactView: enabled})
   }
 
+  private saveNotify() {
+    this.setState({unsavedChanges: false})
+  }
+
   private readonly saveTimer = delayedExecutor(100)
 
   private updateConfig(update: Update<Config>, saveAfterDelay: boolean = false) {
@@ -96,7 +103,7 @@ class CamillaConfig extends React.Component<
         prevState => {
           const newConfig = cloneDeep(prevState.undoRedo.current())
           update(newConfig)
-          return {undoRedo: prevState.undoRedo.changeTo(newConfig)}
+          return {unsavedChanges: true, undoRedo: prevState.undoRedo.changeTo(newConfig)}
         },
         () => {
           if (saveAfterDelay)
@@ -119,8 +126,9 @@ class CamillaConfig extends React.Component<
       throw new Error(message)
   }
 
-  private setCurrentConfig(filename: string, config: Config) {
+  private setCurrentConfig(filename: string | undefined, config: Config) {
     this.setState({
+      unsavedChanges: false, 
       currentConfigFile: filename,
       undoRedo: new UndoRedo(config)
     })
@@ -132,7 +140,6 @@ class CamillaConfig extends React.Component<
 
   componentDidUpdate(prevProps: unknown) {
     ReactTooltip.rebuild()
-    //console.log("=============rebuild tooltips")
   }
 
   private switchTab(index: number) {
@@ -171,6 +178,7 @@ class CamillaConfig extends React.Component<
           fetchConfig={this.fetchConfig}
           setErrors={this.setErrors}
           message={this.state.message}
+          unsavedChanges={this.state.unsavedChanges}
       />
       <Tabs
           className="configtabs"
@@ -242,6 +250,7 @@ class CamillaConfig extends React.Component<
               currentConfigFile={this.state.currentConfigFile}
               config={config}
               setCurrentConfig={this.setCurrentConfig}
+              saveNotify={this.saveNotify}
           />
         </TabPanel>
       </Tabs>

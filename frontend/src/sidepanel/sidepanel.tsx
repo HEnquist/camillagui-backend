@@ -19,6 +19,7 @@ interface SidePanelProps {
   setErrors: (errors: any) => void
   currentConfigFile?: string
   message: string
+  unsavedChanges: boolean
 }
 
 export class SidePanel extends React.Component<
@@ -110,6 +111,7 @@ export class SidePanel extends React.Component<
     const status = this.state.cdspStatus
     const cdsp_online = isCdspOnline(status)
     const activeConfigFile = this.props.currentConfigFile
+    const unsaved = this.props.unsavedChanges
     let applyButtonText = 'Apply to DSP'
     let applyButtonTooltip = 'Apply config to the running<br>CamillaDSP process'
     if (cdsp_online && activeConfigFile)
@@ -118,7 +120,7 @@ export class SidePanel extends React.Component<
       applyButtonText = "Save config"
       applyButtonTooltip = `Save config to ${activeConfigFile}`
     }
-    return <Box title="Config">
+    return <Box title={unsaved ? "Config⚠️": "Config"} tooltip={unsaved ? "GUI has unsaved changes": undefined}>
       {activeConfigFile &&
         <div style={{width: '220px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
           {activeConfigFile}

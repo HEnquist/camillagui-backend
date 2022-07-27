@@ -1,6 +1,6 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
+import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
 import {
   mdiAlertCircle,
   mdiAlphaABox,
@@ -12,20 +12,23 @@ import {
   mdiRefresh,
   mdiUpload
 } from '@mdi/js'
-import {Config} from "./camilladsp/config"
+import {Config, defaultConfig} from "./camilladsp/config"
 import ReactTooltip from "react-tooltip"
 
 export function Files(props: {
   currentConfigFile?: string
   config: Config
-  setCurrentConfig: (filename: string, config: Config) => void
+  setCurrentConfig: (filename: string | undefined, config: Config) => void
+  saveNotify: () => void
 }) {
   return <div className="wide-tabpanel">
+    <NewConfig setCurrentConfig={props.setCurrentConfig}/>
     <FileTable title='Configs'
                type="config"
                currentConfigFile={props.currentConfigFile}
                config={props.config}
-               setCurrentConfig={props.setCurrentConfig}/>
+               setCurrentConfig={props.setCurrentConfig}
+               saveNotify={props.saveNotify}/>
     <FileTable title='Filters' type="coeff"/>
   </div>
 }
@@ -36,6 +39,7 @@ interface FileTableProps {
   currentConfigFile?: string
   config?: Config
   setCurrentConfig?: (filename: string, config: Config) => void
+  saveNotify?: () => void
 }
 
 type FileAction = 'load' | 'save' | 'upload'
@@ -212,6 +216,8 @@ class FileTable extends Component<
       if (response.ok) {
         setCurrentConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
+        if (this.props.saveNotify !== undefined)
+          this.props.saveNotify()
         this.update()
       } else {
         const message = await response.text()
@@ -331,6 +337,10 @@ export function loadFiles(type: "config" | "coeff"): Promise<string[][]> {
 
 export function loadConfigJson(name: string): Promise<Response> {
   return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
+}
+
+export function loadDefaultConfigJson(): Promise<Response> {
+  return fetch(`/api/getdefaultconfigfile`)
 }
 
 export function loadActiveConfig(): Promise<{configFileName: string, config: Config}> {
@@ -482,4 +492,71 @@ function reasonToDisableSaveNewFileButton(newFileName: string, files: ReadonlyAr
 
 function isValidFilename(newFileName: string) {
   return newFileName.trim().length > 0
+}
+
+class NewConfig extends Component<
+    {
+      setCurrentConfig?: (filename: string | undefined, config: Config) => void,
+    }> {
+
+  constructor(props: any) {
+    super(props)
+    this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
+  }
+
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
+
+  private async loadDefaultConfig() {
+    try {
+      const response = await loadDefaultConfigJson()
+      if (!response.ok) {
+        console.log(await response.text())
+        return
+      }
+      const jsonConfig = await response.json()
+      console.log(jsonConfig)
+      this.props.setCurrentConfig!(undefined, jsonConfig as Config)
+    } catch(e: any) {
+      console.log(e)
+    }
+  }
+
+  private async loadBlankConfig() {
+    try {
+      let config = defaultConfig()
+      this.props.setCurrentConfig!(undefined, config as Config)
+    } catch(e: any) {
+      console.log(e)
+    }
+  }
+
+  render() {
+    return (
+      <Box title='Create new config'>
+        <div style={{
+          display: 'grid',
+          alignItems: 'center',
+          gridTemplateColumns: '48% 48%',
+          gap: '4% 4%'
+        }}>
+          <Button
+          text="New config from default"
+          onClick={() => this.loadDefaultConfig()}
+          style={{marginTop: '10px'}}
+          enabled={true}
+          data-tip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
+          />
+          <Button
+          text="New blank config"
+          onClick={() => this.loadBlankConfig()}
+          style={{marginTop: '10px'}}
+          enabled={true}
+          data-tip="Create and load a new blank config.<br>Any unsaved changes will be lost."
+          />
+        </div>
+      </Box>
+    )
+  }
 }
