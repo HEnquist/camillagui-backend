@@ -6,7 +6,6 @@ import {
   Config,
   defaultFilter,
   Filter,
-  filterNamesOf,
   Filters,
   newFilterName,
   removeFilter,

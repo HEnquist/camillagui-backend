@@ -1,10 +1,12 @@
 import Popup from "reactjs-popup"
 import 'reactjs-popup/dist/index.css'
 import * as d3 from "d3"
-import React from "react"
+import React, { useCallback } from "react"
 import "../index.css"
 import {CloseButton, cssStyles} from "../utilities/ui-components"
 import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
+import { mdiImage } from "@mdi/js"
+import { MdiButton } from "../utilities/ui-components"
 
 
 export function PipelinePopup(props: {
@@ -12,6 +14,19 @@ export function PipelinePopup(props: {
   open: boolean,
   onClose: () => void
 }) {
+
+  const downloadSvg = useCallback(() => {
+    var svg = document.getElementById("svg_pipeline");
+    if (svg !== null) {
+      var serializer = new XMLSerializer();
+      var source ='<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg);
+      var url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
+      const link = document.createElement('a')
+      link.download = "pipeline.svg"
+      link.href = url
+      link.click()
+    }
+}, [])
   return <Popup
       open={props.open}
       closeOnDocumentClick
@@ -20,14 +35,21 @@ export function PipelinePopup(props: {
   >
     <CloseButton onClick={props.onClose}/>
     <PipelinePlot config={props.config}/>
+    <MdiButton
+            icon={mdiImage}
+            tooltip="Save plot as image"
+            onClick={downloadSvg} />
   </Popup>
 }
+
+
 
 interface Rect {
   x: number
   y: number
   width: number
   height: number
+  radius: number
   fill: string
   stroke: string
   "stroke-width": number
@@ -93,16 +115,24 @@ class PipelinePlot extends React.Component<{config: Config}> {
       y: y - 0.35,
       width: width,
       height: 0.7,
+      radius: 0.1,
       fill: this.blockBgColor!,
       stroke: this.borderColor!,
       "stroke-width": 1,
     }
+    let label_size = 0.25
+    if (label.length > 30)
+      label_size = 0.10
+    else if (label.length > 20)
+      label_size = 0.13
+    else if (label.length > 15)
+      label_size = 0.20
     const text = {
       x: x,
       y: y + 0.1,
       text: label,
       fill: this.blockTextColor!,
-      size: 0.3,
+      size: label_size,
       angle: 0,
     }
     labels.push(text)
@@ -119,20 +149,42 @@ class PipelinePlot extends React.Component<{config: Config}> {
       y: -height / 2 + y,
       width: width,
       height: height,
+      radius: 0.15,
       fill: this.frameBgColor!,
       stroke: this.borderColor!,
       "stroke-width": 1,
     }
+    let label_size = 0.25
+    if (label.length > 40)
+      label_size = 0.15
+    else if (label.length > 30)
+      label_size = 0.17
+    else if (label.length > 20)
+      label_size = 0.22
     const text = {
       x: x,
       y: -height / 2 - 0.2 + y,
       text: label,
       fill: this.textColor!,
-      size: 0.3,
+      size: label_size,
       angle: 0,
     }
     labels.push(text)
     boxes.push(rect)
+  }
+
+  private fillBackground(boxes: Rect[], x: number, y: number, width: number, height:number) {
+    const rect = {
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      radius: 0,
+      fill: this.backgroundColor!,
+      stroke: this.backgroundColor!,
+      "stroke-width": 0,
+    }
+    boxes.unshift(rect)
   }
 
   private appendLink(links: Link[], labels: Text[], source: Point, dest: Point, label?: string) {
@@ -318,6 +370,8 @@ class PipelinePlot extends React.Component<{config: Config}> {
     else
       max_h = 4 * max_v
 
+    this.fillBackground(boxes, -2.5, -max_v, max_h+2.5, 2*max_v)
+
     const node = this.node
     const yScale = d3
       .scaleLinear()
@@ -325,7 +379,7 @@ class PipelinePlot extends React.Component<{config: Config}> {
       .range([0, this.height])
     const xScale = d3
       .scaleLinear()
-      .domain([-2, max_h])
+      .domain([-2.5, max_h])
       .range([0, this.width])
 
     const linkGen = d3
@@ -369,8 +423,8 @@ class PipelinePlot extends React.Component<{config: Config}> {
     rects
       .attr("x", d => xScale(d.x))
       .attr("y", d => yScale(d.y))
-      .attr("rx", xScale(0.1) - xScale(0))
-      .attr("ry", yScale(0.1) - yScale(0))
+      .attr("rx", d => xScale(d.radius) - xScale(0))
+      .attr("ry", d => yScale(d.radius) - yScale(0))
       .attr("width", d => xScale(d.width) - xScale(0))
       .attr("height", d => yScale(d.height) - yScale(0))
       .style("fill", d => d.fill)
@@ -407,6 +461,7 @@ class PipelinePlot extends React.Component<{config: Config}> {
   render() {
     return <svg
         ref={node => this.node = node}
+        id="svg_pipeline"
         viewBox={`0 0 ${this.width} ${this.height}`}
         style={{width: '100%', height: 'auto'}}
     />

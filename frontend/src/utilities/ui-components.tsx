@@ -1,4 +1,4 @@
-import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback, ForwardedRef } from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import { Scatter } from "react-chartjs-2"
@@ -12,7 +12,7 @@ import {
     Legend,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { mdiChartBellCurveCumulative, mdiDelete, mdiDownload, mdiPlusThick, mdiTable } from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable } from "@mdi/js"
 import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
@@ -643,7 +643,7 @@ export function Chart(props: {
             link.href = current.toBase64Image();
             link.click();
         }
-    }, [])
+    }, [props.data.name])
 
 
 
@@ -671,7 +671,7 @@ export function Chart(props: {
         link.download = props.data.name.replace(/\s/g, "_") + ".csv"
         link.href = encodeURI(csvContent);
         link.click();
-    }, [])
+    }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase])
 
     let x_time = false
     let x_freq = false
@@ -1023,7 +1023,7 @@ export function Chart(props: {
         </div>
         <Scatter data={data} options={options} ref={chartRef} />
         <MdiButton
-            icon={mdiDownload}
+            icon={mdiImage}
             tooltip="Save plot as image"
             onClick={downloadPlot} />
         <MdiButton
