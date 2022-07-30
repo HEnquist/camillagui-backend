@@ -916,6 +916,8 @@ export function Chart(props: {
                 color: axesColor,
                 borderDash: [7, 3],
             },
+            suggestedMin: -1,
+            suggestedMax: 1,
             afterBuildTicks: function (scale: any) {
                 var step = 1;
                 let range = scale.max - scale.min;
