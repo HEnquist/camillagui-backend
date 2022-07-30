@@ -135,7 +135,7 @@ export class FiltersTab extends React.Component<
     fetch("/api/storedcoeffs")
         .then(
             result => result.json()
-                .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles})),
+                .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles[0]})),
             error => console.log("Could not load stored coeffs", error)
         )
   }
@@ -356,12 +356,10 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         <div
             className="vertically-spaced-content"
             style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
-          {['Biquad', 'BiquadCombo', 'Conv', 'DiffEq'].includes(filter.type) &&
           <MdiButton
               icon={mdiChartBellCurveCumulative}
               tooltip="Plot frequency response of this filter"
               onClick={this.toggleFilterPlot}/>
-          }
           {isConvolutionFileFilter(filter) &&
           <MdiButton
               icon={mdiFileSearch}

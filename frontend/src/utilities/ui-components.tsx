@@ -12,7 +12,7 @@ import {
     Legend,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable } from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable, mdiSitemapOutline } from "@mdi/js"
 import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
@@ -168,12 +168,14 @@ export function DeleteButton(props: {
 
 export function PlotButton(props: {
     tooltip: string
+    pipeline?: boolean
     onClick: () => void
 }) {
     return <MdiButton
-        icon={mdiChartBellCurveCumulative}
+        icon={props.pipeline ? mdiSitemapOutline : mdiChartBellCurveCumulative}
         tooltip={props.tooltip}
-        onClick={props.onClick} />
+        onClick={props.onClick}
+        rotation={props.pipeline ? 270 : 0} />
 }
 
 export function UploadButton(props: {
@@ -205,6 +207,7 @@ export function MdiButton(props: {
     className?: string
     style?: CSSProperties
     enabled?: boolean
+    rotation?: number
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
@@ -215,8 +218,11 @@ export function MdiButton(props: {
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
     if (className !== undefined) buttonClass += ' ' + className
+    let rot = {}
+    if (props.rotation && props.rotation !== 0)
+        rot = {transform: "rotate("+ props.rotation +"deg)"}
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} />
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot}/>
     </div>
 }
 
@@ -607,6 +613,8 @@ export interface ChartData {
     phase?: number[]
     impulse?: number[]
     time: number[]
+    groupdelay?: number[]
+    f_groupdelay?: number[]
 }
 
 export interface FilterOption {
@@ -655,29 +663,34 @@ export function Chart(props: {
     const downloadData = useCallback(() => {
         let magdat = props.data.magnitude
         let phasedat = props.data.phase
+        let delaydat = props.data.groupdelay
 
         var table = props.data.f.map(function (f, i) {
-            let mag: number | string = ""
+            let mag: number | null = null
             if (magdat !== undefined)
                 mag = magdat[i]
-            let phase: number | string = ""
+            let phase: number | null = null
             if (phasedat !== undefined)
                 phase = phasedat[i]
-            return [f, mag, phase];
+            let delay: number | null = null
+            if (delaydat !== undefined)
+                delay = delaydat[i]
+            return [f, mag, phase, delay];
         });
-        let csvContent = "data:text/csv;charset=utf-8,frequency,magnitude,phase\n"
+        let csvContent = "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n"
             + table.map(row => row.join(",")).join("\n")
         const link = document.createElement('a')
         link.download = props.data.name.replace(/\s/g, "_") + ".csv"
         link.href = encodeURI(csvContent);
         link.click();
-    }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase])
+    }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
 
     let x_time = false
     let x_freq = false
     let y_phase = false
     let y_gain = false
     let y_ampl = false
+    let y_delay = false
 
     const styles = cssStyles()
     const axesColor = styles.getPropertyValue('--axes-color')
@@ -685,6 +698,7 @@ export function Chart(props: {
     const gainColor = styles.getPropertyValue('--gain-color')
     const phaseColor = styles.getPropertyValue('--phase-color')
     const impulseColor = styles.getPropertyValue('--impulse-color')
+    const groupdelayColor = styles.getPropertyValue('--groupdelay-color')
     const magnitude = props.data.magnitude
     if (magnitude) {
         const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
@@ -740,6 +754,26 @@ export function Chart(props: {
                 data: impulsepoints,
                 yAxisID: "ampl",
                 xAxisID: "time",
+            }
+        )
+    }
+    const groupdelay = props.data.groupdelay
+    const f_groupdelay = props.data.f_groupdelay
+    if (groupdelay && f_groupdelay) {
+        const groupdelaypoints = make_pointlist(f_groupdelay, groupdelay, 1.0, 1.0)
+        x_freq = true
+        y_delay = true
+        data.datasets.push(
+            {
+                label: 'Group delay',
+                fill: false,
+                borderColor: groupdelayColor,
+                backgroundColor: groupdelayColor,
+                pointRadius: 0,
+                showLine: true,
+                data: groupdelaypoints,
+                yAxisID: "delay",
+                xAxisID: "freq",
             }
         )
     }
@@ -985,6 +1019,38 @@ export function Chart(props: {
                 color: impulseColor
             },
             grid: { display: false },
+            beforeUpdate: function (scale: any) {
+                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                    scale.options.display = true
+                }
+                else {
+                    scale.options.display = false
+                }
+                return;
+            },
+        }
+    }
+    if (y_delay) {
+        options.scales.delay =
+        {
+            type: 'linear',
+            position: 'right',
+            suggestedMin: -0.001,
+            suggestedMax: 0.001,
+            ticks: {
+                color: groupdelayColor
+            },
+            title: {
+                display: true,
+                text: 'Group delay, ms',
+                color: groupdelayColor
+            },
+            grid: {
+                display: true,
+                zeroLineColor: axesColor,
+                color: axesColor,
+                borderDash: [1, 4],
+            },
             beforeUpdate: function (scale: any) {
                 if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
                     scale.options.display = true

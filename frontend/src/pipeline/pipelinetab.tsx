@@ -156,7 +156,7 @@ export class PipelineTab extends React.Component<{
         )}
         <div className="horizontally-spaced-content">
           <AddButton tooltip="Add a pipeline step" onClick={this.addStep}/>
-          <PlotButton tooltip="Plot the pipeline" onClick={() => this.setState({plotPipeline: true})}/>
+          <PlotButton tooltip="Plot the pipeline" pipeline={true} onClick={() => this.setState({plotPipeline: true})}/>
         </div>
         <div className="pipeline-channel">
           Playback: {this.props.config.devices.playback.channels} channels out

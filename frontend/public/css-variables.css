@@ -57,6 +57,7 @@
     --gain-color: #1E90FF;
     --phase-color: #FF4500;
     --impulse-color: #32CD32;
+    --groupdelay-color: #ffa010;
 
     /* Pipeline plot */
     --arrow-color: var(--axes-color);
