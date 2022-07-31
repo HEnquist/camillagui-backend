@@ -1,7 +1,7 @@
 import React from "react"
 import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload} from '@mdi/js'
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowCollapse, mdiArrowExpand} from '@mdi/js'
 import {
   Config,
   defaultFilter,
@@ -212,6 +212,7 @@ interface FilterViewState {
   uploadState?: { success: true } | { success: false, message: string }
   filterFilePopupOpen: boolean
   showFilterPlot: boolean
+  expandPlot: boolean
   data?: ChartData
   filterDefaults: FilterDefaults
   showDefaults: boolean
@@ -226,11 +227,13 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
+    this.toggleExpand = this.toggleExpand.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
     this.state = {
       filterFilePopupOpen: false,
       showFilterPlot: false,
+      expandPlot: false,
       showDefaults: false,
       filterDefaults: {}
     }
@@ -304,6 +307,11 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       this.plotFilter()
     else
       this.setState({data: undefined})
+  }
+
+  private toggleExpand() {
+    const expandPlot = !this.state.expandPlot
+    this.setState({expandPlot})
   }
 
   private plotFilterInitially(file: string) {
@@ -397,7 +405,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
+          <div style={{width: this.state.expandPlot&&this.state.showFilterPlot ? '1200px': '700px'}}>
           <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
+          <MdiButton
+            icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
+            tooltip="Expand plot"
+            onClick={this.toggleExpand}/></div>
           : null}
     </Box>
   }
