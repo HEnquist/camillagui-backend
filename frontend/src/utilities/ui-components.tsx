@@ -12,7 +12,7 @@ import {
     Legend,
 } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable, mdiSitemapOutline } from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable, mdiSitemapOutline, mdiHome } from "@mdi/js"
 import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
@@ -220,9 +220,9 @@ export function MdiButton(props: {
     if (className !== undefined) buttonClass += ' ' + className
     let rot = {}
     if (props.rotation && props.rotation !== 0)
-        rot = {transform: "rotate("+ props.rotation +"deg)"}
+        rot = { transform: "rotate(" + props.rotation + "deg)" }
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot}/>
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
     </div>
 }
 
@@ -692,16 +692,7 @@ export function Chart(props: {
         link.click();
     }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
 
-    let x_time = false
-    let x_freq = false
-    let y_phase = false
-    let y_gain = false
-    let y_ampl = false
-    let y_delay = false
-
     const styles = cssStyles()
-    const axesColor = styles.getPropertyValue('--axes-color')
-    const textColor = styles.getPropertyValue('--text-color')
     const gainColor = styles.getPropertyValue('--gain-color')
     const phaseColor = styles.getPropertyValue('--phase-color')
     const impulseColor = styles.getPropertyValue('--impulse-color')
@@ -709,8 +700,6 @@ export function Chart(props: {
     const magnitude = props.data.magnitude
     if (magnitude) {
         const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
-        x_freq = true
-        y_gain = true
         data.datasets.push(
             {
                 label: 'Gain',
@@ -729,8 +718,6 @@ export function Chart(props: {
     const phase = props.data.phase
     if (phase) {
         const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
-        x_freq = true
-        y_phase = true
         data.datasets.push(
             {
                 label: 'Phase',
@@ -748,8 +735,6 @@ export function Chart(props: {
     const impulse = props.data.impulse
     if (impulse) {
         const impulsepoints = make_pointlist(props.data.time, impulse, 1000.0, 1.0)
-        x_time = true
-        y_ampl = true
         data.datasets.push(
             {
                 label: 'Impulse',
@@ -768,8 +753,6 @@ export function Chart(props: {
     const f_groupdelay = props.data.f_groupdelay
     if (groupdelay && f_groupdelay) {
         const groupdelaypoints = make_pointlist(f_groupdelay, groupdelay, 1.0, 1.0)
-        x_freq = true
-        y_delay = true
         data.datasets.push(
             {
                 label: 'Group delay',
@@ -785,295 +768,289 @@ export function Chart(props: {
         )
     }
 
-    const zoomOptions = {
-        zoom: {
-            wheel: {
-                enabled: true,
-            },
-            pinch: {
-                enabled: true,
-            },
-            drag: {
-                enabled: false,
-            },
-            mode: 'xy',
-            overScaleMode: 'xy',
-        },
-        pan: {
-            enabled: true,
-            mode: 'xy',
-            threshold: 3,
-            overScaleMode: 'xy',
-        }
-    };
+    // Workaround to prevent the chart from resetting the zoom on every update.
+    const options = useMemo(() => {
 
-    const options: { [key: string]: any } = {
-        scales: {},
-        plugins: {
-            zoom: zoomOptions,
-            legend: {
-                labels: {
+        const styles = cssStyles()
+        const axesColor = styles.getPropertyValue('--axes-color')
+        const textColor = styles.getPropertyValue('--text-color')
+        const gainColor = styles.getPropertyValue('--gain-color')
+        const phaseColor = styles.getPropertyValue('--phase-color')
+        const impulseColor = styles.getPropertyValue('--impulse-color')
+        const groupdelayColor = styles.getPropertyValue('--groupdelay-color')
+
+        const zoomOptions = {
+            zoom: {
+                wheel: {
+                    enabled: true,
+                },
+                pinch: {
+                    enabled: true,
+                },
+                drag: {
+                    enabled: false,
+                },
+                mode: 'xy',
+                overScaleMode: 'xy',
+            },
+            pan: {
+                enabled: true,
+                mode: 'xy',
+                threshold: 3,
+                overScaleMode: 'xy',
+            }
+        };
+        const scales = {
+            'freq': {
+                type: 'logarithmic',
+                position: 'bottom',
+                title: {
+                    display: true,
+                    text: 'Frequency, Hz',
+                    color: textColor
+                },
+                grid: {
+                    zeroLineColor: axesColor,
+                    color: axesColor
+                },
+                ticks: {
+                    min: 0,
+                    max: 30000,
+                    maxRotation: 0,
+                    minRotation: 0,
                     color: textColor,
-                }
-            },
-        },
-        animation: {
-            duration: 500
-        }
-    }
-
-    if (x_freq) {
-        options.scales.freq = {
-            type: 'logarithmic',
-            position: 'bottom',
-            title: {
-                display: true,
-                text: 'Frequency, Hz',
-                color: textColor
-            },
-            grid: {
-                zeroLineColor: axesColor,
-                color: axesColor
-            },
-            ticks: {
-                min: 0,
-                max: 30000,
-                maxRotation: 0,
-                minRotation: 0,
-                color: textColor,
-                callback(tickValue: number, index: number, values: any) {
-                    if (tickValue === 0) {
-                        return '0';
-                    }
-                    let value = -1;
-                    let range = values[values.length - 1].value / values[0].value;
-                    const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
-                    const first_digit = tickValue / rounded;
-                    const rest = tickValue % rounded;
-                    if (range > 10) {
-                        if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
+                    callback(tickValue: number, index: number, values: any) {
+                        if (tickValue === 0) {
+                            return '0';
+                        }
+                        let value = -1;
+                        let range = values[values.length - 1].value / values[0].value;
+                        const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
+                        const first_digit = tickValue / rounded;
+                        const rest = tickValue % rounded;
+                        if (range > 10) {
+                            if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
+                                value = tickValue;
+                            }
+                        }
+                        else if (rest === 0) {
                             value = tickValue;
                         }
+                        if (value >= 1000000) {
+                            return (value / 1000000).toString() + "M";
+                        }
+                        else if (value >= 1000) {
+                            return (value / 1000).toString() + "k";
+                        }
+                        else if (value > 0) {
+                            return value.toString()
+                        }
+                        return '';
                     }
-                    else if (rest === 0) {
-                        value = tickValue;
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
                     }
-                    if (value >= 1000000) {
-                        return (value / 1000000).toString() + "M";
+                    else {
+                        scale.options.display = false
                     }
-                    else if (value >= 1000) {
-                        return (value / 1000).toString() + "k";
+                    return;
+                },
+            },
+            'time': {
+                type: 'linear',
+                position: 'top',
+                title: {
+                    display: true,
+                    text: 'Time, ms',
+                    color: textColor
+                },
+                ticks: {
+                    color: textColor,
+                },
+                grid: { display: false },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
                     }
-                    else if (value > 0) {
-                        return value.toString()
+                    else {
+                        scale.options.display = false
                     }
-                    return '';
+                    return;
+                },
+            },
+            'gain': {
+                type: 'linear',
+                position: 'left',
+                ticks: {
+                    color: gainColor,
+                },
+                title: {
+                    display: true,
+                    text: 'Gain, dB',
+                    color: gainColor
+                },
+                grid: {
+                    zeroLineColor: axesColor,
+                    color: axesColor,
+                    borderDash: [7, 3],
+                },
+                suggestedMin: -1,
+                suggestedMax: 1,
+                afterBuildTicks: function (scale: any) {
+                    var step = 1;
+                    let range = scale.max - scale.min;
+                    if (range > 150) {
+                        step = 50
+                    }
+                    else if (range > 60) {
+                        step = 20
+                    }
+                    else if (range > 30) {
+                        step = 10
+                    }
+                    else if (range > 20) {
+                        step = 5
+                    }
+                    else if (range > 10) {
+                        step = 2
+                    }
+                    let tick = Math.ceil(scale.min / step) * step;
+                    var ticks = [];
+                    while (tick <= scale.max) {
+                        ticks.push({ "value": tick });
+                        tick += step;
+                    }
+                    scale.ticks = ticks
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
+            },
+            'phase': {
+                type: 'linear',
+                position: 'right',
+                min: -180,
+                max: 180,
+                afterBuildTicks: function (scale: any) {
+                    var step = 1;
+                    let range = scale.max - scale.min;
+                    if (range > 180) {
+                        step = 45
+                    }
+                    else if (range > 45) {
+                        step = 15
+                    }
+                    else if (range > 15) {
+                        step = 5
+                    }
+                    let tick = Math.ceil(scale.min / step) * step;
+                    var ticks = [];
+                    while (tick <= scale.max) {
+                        ticks.push({ "value": tick });
+                        tick += step;
+                    }
+                    scale.ticks = ticks
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
+                ticks: {
+                    color: phaseColor,
+                },
+                title: {
+                    display: true,
+                    text: 'Phase, deg',
+                    color: phaseColor
+                },
+                grid: {
+                    display: true,
+                    zeroLineColor: axesColor,
+                    color: axesColor,
+                    borderDash: [3, 7],
                 }
             },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
+            'ampl': {
+                type: 'linear',
+                position: 'right',
+                ticks: {
+                    color: impulseColor
+                },
+                title: {
+                    display: true,
+                    text: 'Amplitude',
+                    color: impulseColor
+                },
+                grid: { display: false },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
             },
-        }
-    }
-    if (x_time) {
-        options.scales.time = {
-            type: 'linear',
-            position: 'top',
-            title: {
-                display: true,
-                text: 'Time, ms',
-                color: textColor
-            },
-            ticks: {
-                color: textColor,
-            },
-            grid: { display: false },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
-            },
-        }
-    }
-    if (y_gain) {
-        options.scales.gain =
-        {
-            type: 'linear',
-            position: 'left',
-            ticks: {
-                color: gainColor,
-            },
-            title: {
-                display: true,
-                text: 'Gain, dB',
-                color: gainColor
-            },
-            grid: {
-                zeroLineColor: axesColor,
-                color: axesColor,
-                borderDash: [7, 3],
-            },
-            suggestedMin: -1,
-            suggestedMax: 1,
-            afterBuildTicks: function (scale: any) {
-                var step = 1;
-                let range = scale.max - scale.min;
-                if (range > 150) {
-                    step = 50
-                }
-                else if (range > 60) {
-                    step = 20
-                }
-                else if (range > 30) {
-                    step = 10
-                }
-                else if (range > 20) {
-                    step = 5
-                }
-                else if (range > 10) {
-                    step = 2
-                }
-                let tick = Math.ceil(scale.min / step) * step;
-                var ticks = [];
-                while (tick <= scale.max) {
-                    ticks.push({ "value": tick });
-                    tick += step;
-                }
-                scale.ticks = ticks
-            },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
-            },
-        }
-    }
-    if (y_phase) {
-        options.scales.phase =
-        {
-            type: 'linear',
-            position: 'right',
-            min: -180,
-            max: 180,
-            afterBuildTicks: function (scale: any) {
-                var step = 1;
-                let range = scale.max - scale.min;
-                if (range > 180) {
-                    step = 45
-                }
-                else if (range > 45) {
-                    step = 15
-                }
-                else if (range > 15) {
-                    step = 5
-                }
-                let tick = Math.ceil(scale.min / step) * step;
-                var ticks = [];
-                while (tick <= scale.max) {
-                    ticks.push({ "value": tick });
-                    tick += step;
-                }
-                scale.ticks = ticks
-            },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
-            },
-            ticks: {
-                color: phaseColor,
-            },
-            title: {
-                display: true,
-                text: 'Phase, deg',
-                color: phaseColor
-            },
-            grid: {
-                display: true,
-                zeroLineColor: axesColor,
-                color: axesColor,
-                borderDash: [3, 7],
+            'delay': {
+                type: 'linear',
+                position: 'right',
+                suggestedMin: -0.001,
+                suggestedMax: 0.001,
+                ticks: {
+                    color: groupdelayColor
+                },
+                title: {
+                    display: true,
+                    text: 'Group delay, ms',
+                    color: groupdelayColor
+                },
+                grid: {
+                    display: true,
+                    zeroLineColor: axesColor,
+                    color: axesColor,
+                    borderDash: [1, 4],
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
             }
         }
-    }
-    if (y_ampl) {
-        options.scales.ampl =
-        {
-            type: 'linear',
-            position: 'right',
-            ticks: {
-                color: impulseColor
+        const options: { [key: string]: any } = {
+            scales: scales,
+            plugins: {
+                zoom: zoomOptions,
+                legend: {
+                    labels: {
+                        color: textColor,
+                    }
+                },
             },
-            title: {
-                display: true,
-                text: 'Amplitude',
-                color: impulseColor
-            },
-            grid: { display: false },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
-            },
+            animation: {
+                duration: 500
+            }
         }
-    }
-    if (y_delay) {
-        options.scales.delay =
-        {
-            type: 'linear',
-            position: 'right',
-            suggestedMin: -0.001,
-            suggestedMax: 0.001,
-            ticks: {
-                color: groupdelayColor
-            },
-            title: {
-                display: true,
-                text: 'Group delay, ms',
-                color: groupdelayColor
-            },
-            grid: {
-                display: true,
-                zeroLineColor: axesColor,
-                color: axesColor,
-                borderDash: [1, 4],
-            },
-            beforeUpdate: function (scale: any) {
-                if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
-                    scale.options.display = true
-                }
-                else {
-                    scale.options.display = false
-                }
-                return;
-            },
-        }
-    }
-
-    // Workaround to prevent the chart from resetting the zoom on every update.
-    const mem_options = useMemo(() => options, [])
+        return options
+    }, [])
 
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
@@ -1100,7 +1077,7 @@ export function Chart(props: {
                 {sampleRateOptions}
             </select>}
         </div>
-        <Scatter data={data} options={mem_options} ref={chartRef} />
+        <Scatter data={data} options={options} ref={chartRef} />
         <MdiButton
             icon={mdiImage}
             tooltip="Save plot as image"
@@ -1110,7 +1087,7 @@ export function Chart(props: {
             tooltip="Save plot data as csv"
             onClick={downloadData} />
         <MdiButton
-            icon={mdiTable}
+            icon={mdiHome}
             tooltip="Reset zoom and pan"
             onClick={resetView} />
         <ReactTooltip />
