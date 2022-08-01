@@ -409,7 +409,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
-            tooltip="Expand plot"
+            tooltip={this.state.expandPlot ? "Collapse plot": "Expand plot" }
             onClick={this.toggleExpand}/></div>
           : null}
     </Box>

@@ -1,4 +1,4 @@
-import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback } from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback, useMemo } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import { Scatter } from "react-chartjs-2"
@@ -653,6 +653,13 @@ export function Chart(props: {
         }
     }, [props.data.name])
 
+    const resetView = useCallback(() => {
+        if (chartRef.current !== null) {
+            let current = chartRef.current as any
+            current.resetZoom();
+        }
+    }, [])
+
 
 
     let data: any = { labels: [props.data.name], datasets: [] }
@@ -1064,6 +1071,10 @@ export function Chart(props: {
             },
         }
     }
+
+    // Workaround to prevent the chart from resetting the zoom on every update.
+    const mem_options = useMemo(() => options, [])
+
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
             return a.samplerate - b.samplerate
@@ -1089,7 +1100,7 @@ export function Chart(props: {
                 {sampleRateOptions}
             </select>}
         </div>
-        <Scatter data={data} options={options} ref={chartRef} />
+        <Scatter data={data} options={mem_options} ref={chartRef} />
         <MdiButton
             icon={mdiImage}
             tooltip="Save plot as image"
@@ -1098,6 +1109,10 @@ export function Chart(props: {
             icon={mdiTable}
             tooltip="Save plot data as csv"
             onClick={downloadData} />
+        <MdiButton
+            icon={mdiTable}
+            tooltip="Reset zoom and pan"
+            onClick={resetView} />
         <ReactTooltip />
     </>
 }
