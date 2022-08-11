@@ -9,6 +9,7 @@ import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
+import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
 import ReactTooltip from "react-tooltip"
@@ -211,6 +212,7 @@ class CamillaConfig extends React.Component<
           <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
+          <Tab>Shortcuts</Tab>
         </TabList>
         <TabPanel/>
         <TabPanel>
@@ -251,6 +253,17 @@ class CamillaConfig extends React.Component<
               config={config}
               setCurrentConfig={this.setCurrentConfig}
               saveNotify={this.saveNotify}
+          />
+        </TabPanel>
+        <TabPanel>
+          <Shortcuts
+              currentConfigName={this.state.currentConfigFile}
+              config={this.state.undoRedo.current()}
+              setConfig={(filename, config) => {
+                this.setCurrentConfig(filename, config)
+                this.applyConfig()
+              }}
+              updateConfig={update => this.updateConfig(update, true)}
           />
         </TabPanel>
       </Tabs>

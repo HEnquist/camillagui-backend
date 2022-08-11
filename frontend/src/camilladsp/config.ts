@@ -404,8 +404,14 @@ export function filterGain(config: Config, filterName: string): number | undefin
     return config.filters[filterName]?.parameters?.gain
 }
 
-export function setFilterGain(config: Config, filterName: string, gain: number) {
+export function filterParameter(config: Config, filterName: string, param: string): number | undefined {
     const parameters = config.filters[filterName]?.parameters
-    if (parameters !== undefined && parameters.hasOwnProperty('gain'))
-        parameters.gain = gain
+    if (parameters !== undefined && parameters.hasOwnProperty(param))
+        return parameters[param]
+}
+
+export function setFilterParameter(config: Config, filterName: string, param: string, value: number) {
+    const parameters = config.filters[filterName]?.parameters
+    if (parameters !== undefined && parameters.hasOwnProperty(param))
+        parameters[param] = value
 }
