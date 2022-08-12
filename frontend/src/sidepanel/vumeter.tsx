@@ -3,7 +3,6 @@ import "../index.css"
 import {clamp} from "lodash"
 import {cssStyles} from "../utilities/ui-components"
 import {Range} from "immutable"
-import {minVolume} from "./volumebox"
 
 export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean}) {
   const {title, levels, peaks, clipped} = props
@@ -48,17 +47,23 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
 const meterHeightInPX = 10
 const gapHeightInPX = 5
 const dbMarkerLabelHeight = 10
-const dbMarkersAt = [6, 0, -6, -12, -18, -24, -30, -36, -42, -48]
-const dbMarkersWithTextLabel = [0, -12, -24, -36, -48]
-
+const dbMarkersAt = [6, 0, -6, -12, -24, -48, -72, -96]
+const dbMarkersWithTextLabel = [6, 0, -6, -12, -24, -48, -72, -96]
 /**
  * Converts volume level to percent
- * -50dB ~= 0%
- * +10dB ~= 100%
+ * Piecewise linear with 24 dB per division at low level, 12 dB in between, and 6 dB per division at high level.
+ * -108dB --> 0%, +9dB --> 100%
  * @param dBFS
  */
 export function levelAsPercent(dBFS: number): number {
-  return (clamp(dBFS, minVolume, 10) - minVolume) * 100 / (10-minVolume)
+  let value: number
+  if (dBFS >= -12)
+    value = 81.25 + 12.5*dBFS/6
+  else if (dBFS >= -24)
+    value = 68.75 + 12.5*dBFS/12
+  else
+    value = 56.25 + 12.5*dBFS/24
+  return clamp(value, 0, 100)
 }
 
 function meterYOffset(index: number): number {
