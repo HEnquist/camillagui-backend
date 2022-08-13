@@ -226,6 +226,21 @@ async def set_config(request):
     return web.Response(text="OK")
 
 
+async def get_default_config_file(request):
+    default_config = request.app["default_config"]
+    config_dir = request.app["config_dir"]
+    if default_config and isfile(default_config):
+        config = default_config
+    else:
+        return web.Response(status=404, text="No default config")
+    try:
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    return web.json_response(json_config)
+
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
     default_config = request.app["default_config"]
