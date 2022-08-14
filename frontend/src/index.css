@@ -131,6 +131,13 @@ textarea.logfileviewer {
   border-right: 5px solid transparent;
 }
 
+.setting-label-wide {
+  display: table-cell;
+  width: 75%;
+  text-align: right;
+  border-right: 5px solid transparent;
+}
+
 .setting-input {
   display: table-cell;
   width: 100%;

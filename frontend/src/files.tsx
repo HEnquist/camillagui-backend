@@ -19,6 +19,7 @@ export function Files(props: {
   currentConfigFile?: string
   config: Config
   setCurrentConfig: (filename: string | undefined, config: Config) => void
+  setCurrentConfigFileName: (filename: string | undefined) => void
   saveNotify: () => void
 }) {
   return <div className="wide-tabpanel">
@@ -28,6 +29,7 @@ export function Files(props: {
                currentConfigFile={props.currentConfigFile}
                config={props.config}
                setCurrentConfig={props.setCurrentConfig}
+               setCurrentConfigFileName={props.setCurrentConfigFileName}
                saveNotify={props.saveNotify}/>
     <FileTable title='Filters' type="coeff"/>
   </div>
@@ -39,6 +41,7 @@ interface FileTableProps {
   currentConfigFile?: string
   config?: Config
   setCurrentConfig?: (filename: string, config: Config) => void
+  setCurrentConfigFileName?: (filename: string | undefined) => void
   saveNotify?: () => void
 }
 
@@ -191,6 +194,8 @@ class FileTable extends Component<
   }
 
   private setActiveConfig(name: string) {
+    if (this.props.setCurrentConfigFileName !== undefined)
+      this.props.setCurrentConfigFileName(name)
     fetch("/api/setactiveconfigfile", {
       method: "POST",
       headers: {"Content-Type": "application/json"},

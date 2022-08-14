@@ -8,6 +8,7 @@ export interface GuiConfig {
     supported_capture_types?: CaptureType[]
     supported_playback_types?: PlaybackType[]
     apply_config_automatically: boolean
+    save_config_automatically: boolean
     status_update_interval: number
 }
 
@@ -24,6 +25,7 @@ export function defaultGuiConfig(): GuiConfig {
         hide_rate_monitoring: false,
         coeff_dir: '',
         apply_config_automatically: false,
+        save_config_automatically: false,
         status_update_interval: 100
     }
 }

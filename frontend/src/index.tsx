@@ -5,6 +5,7 @@ import "./index.css"
 
 import * as React from "react"
 import { createRoot } from 'react-dom/client';
+import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
@@ -35,6 +36,7 @@ class CamillaConfig extends React.Component<
     compactView: boolean
     message: string
     unsavedChanges: boolean
+    unappliedChanges: boolean
   }
 > {
 
@@ -43,12 +45,16 @@ class CamillaConfig extends React.Component<
     this.updateConfig = this.updateConfig.bind(this)
     this.applyConfig = this.applyConfig.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
+    this.saveConfig = this.saveConfig.bind(this)
+    this.saveAndApplyConfig = this.saveAndApplyConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
+    this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.setCompactViewEnabled = this.setCompactViewEnabled.bind(this)
     this.NormalContent = this.NormalContent.bind(this)
     this.saveNotify = this.saveNotify.bind(this)
+    this.applyNotify = this.applyNotify.bind(this)
     this.state = {
       activetab: 1,
       guiConfig: defaultGuiConfig(),
@@ -57,6 +63,7 @@ class CamillaConfig extends React.Component<
       compactView: isCompactViewEnabled(),
       message: '',
       unsavedChanges: false,
+      unappliedChanges: true,
     }
     this.loadGuiConfig()
     this.loadCurrentConfig()
@@ -83,7 +90,7 @@ class CamillaConfig extends React.Component<
     }
     const config = await conf_req.json()
     if (config)
-      this.setState({unsavedChanges: false, message: "OK", undoRedo: new UndoRedo(config)})
+      this.setState({unsavedChanges: false, unappliedChanges: false, message: "OK", undoRedo: new UndoRedo(config)})
     else
       this.setState({message: "No config received"})
   }
@@ -97,6 +104,10 @@ class CamillaConfig extends React.Component<
     this.setState({unsavedChanges: false})
   }
 
+  private applyNotify() {
+    this.setState({unappliedChanges: false})
+  }
+
   private readonly saveTimer = delayedExecutor(100)
 
   private updateConfig(update: Update<Config>, saveAfterDelay: boolean = false) {
@@ -104,7 +115,13 @@ class CamillaConfig extends React.Component<
         prevState => {
           const newConfig = cloneDeep(prevState.undoRedo.current())
           update(newConfig)
-          return {unsavedChanges: true, undoRedo: prevState.undoRedo.changeTo(newConfig)}
+          let unsavedChanges = true
+          let unappliedChanges = true
+          if (isEqual(newConfig, prevState.undoRedo.current())) {
+            unsavedChanges = prevState.unsavedChanges
+            unappliedChanges = prevState.unappliedChanges
+          }
+          return {unsavedChanges: unsavedChanges, unappliedChanges: unappliedChanges, undoRedo: prevState.undoRedo.changeTo(newConfig)}
         },
         () => {
           if (saveAfterDelay)
@@ -117,21 +134,49 @@ class CamillaConfig extends React.Component<
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        filename: this.state.currentConfigFile,
         config: this.state.undoRedo.current()
       }),
     })
     const message = await conf_req.text()
-    this.setState({message: message})
+    this.setState({message: message, unappliedChanges: false})
     if (!conf_req.ok)
       throw new Error(message)
   }
 
+  private async saveConfig() {
+    if (this.state.currentConfigFile) {
+      const conf_req = await fetch("/api/saveconfigfile", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          filename: this.state.currentConfigFile,
+          config: this.state.undoRedo.current()
+        }),
+      })
+      const message = await conf_req.text()
+      this.setState({message: message, unsavedChanges: false})
+      if (!conf_req.ok)
+        throw new Error(message)
+    }
+  }
+
+  private async saveAndApplyConfig() {
+    await this.applyConfig()
+    await this.saveConfig()
+  }
+
   private setCurrentConfig(filename: string | undefined, config: Config) {
     this.setState({
-      unsavedChanges: false, 
+      unsavedChanges: false,
+      unappliedChanges: true, 
       currentConfigFile: filename,
       undoRedo: new UndoRedo(config)
+    })
+  }
+
+  private setCurrentConfigFileName(filename: string | undefined) {
+    this.setState({
+      currentConfigFile: filename,
     })
   }
 
@@ -177,9 +222,12 @@ class CamillaConfig extends React.Component<
           guiConfig={this.state.guiConfig}
           applyConfig={this.applyConfig}
           fetchConfig={this.fetchConfig}
+          saveConfig={this.saveConfig}
+          saveAndApplyConfig={this.saveAndApplyConfig}
           setErrors={this.setErrors}
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
+          unappliedChanges={this.state.unappliedChanges}
       />
       <Tabs
           className="configtabs"
@@ -252,6 +300,7 @@ class CamillaConfig extends React.Component<
               currentConfigFile={this.state.currentConfigFile}
               config={config}
               setCurrentConfig={this.setCurrentConfig}
+              setCurrentConfigFileName={this.setCurrentConfigFileName}
               saveNotify={this.saveNotify}
           />
         </TabPanel>
