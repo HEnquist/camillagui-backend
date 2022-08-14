@@ -118,7 +118,7 @@ def set_as_active_config(request, file):
         except Exception as e:
             print(f"Failed to update symlink, error: {e}")
             if os.name == "nt":
-                print("Creating symlinks on Windows requires special privileges or admin rights.")
+                print("Creating symlinks on Windows requires special privileges or admin rights. Consider setting 'update_symlink: false' in camillagui.yml")
     if on_set:
         try:
             cmd = on_set.format(f'"{file}"')

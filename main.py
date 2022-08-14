@@ -1,4 +1,5 @@
 from aiohttp import web
+import logging
 from camilladsp import CamillaConnection
 from camilladsp_plot.validate_config import CamillaValidator
 
@@ -6,6 +7,8 @@ from backend.version import VERSION
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import config
 from backend.views import version_string
+
+logging.basicConfig(level=logging.WARNING)
 
 app = web.Application(client_max_size=1024 ** 3)  # set max upload file size to 1GB
 app["config_dir"] = config["config_dir"]
