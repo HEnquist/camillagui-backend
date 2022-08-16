@@ -21,7 +21,8 @@ GUI_CONFIG_DEFAULTS = {
 
 # Default values for the optional settings.
 BACKEND_CONFIG_DEFAULTS = {
-    "update_symlink": True,
+    "update_config_symlink": False,
+    "update_config_txt": False,
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
@@ -51,6 +52,7 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["active_config"] = absolute_path_or_none_if_empty(config["active_config"])
+    config["active_config_txt"] = absolute_path_or_none_if_empty(config["active_config_txt"])
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value

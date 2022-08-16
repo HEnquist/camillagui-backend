@@ -68,8 +68,10 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
+active_config_txt: "~/camilladsp/active_config.txt"
 log_file: "~/camilladsp/camilladsp.log" (*, defaults to null)
-update_symlink: true (*)
+update_config_symlink: false (*)
+update_config_txt: false (*)
 on_set_active_config: null (*)
 on_get_active_config: null (*)
 supported_capture_types: null (*)
@@ -81,18 +83,37 @@ The settings for config_dir and coeff_dir point to two folders where the backend
 
 If you want to be able to view the log file in the GUI, configure CamillaDSP to log to `log_file`.
 
-`active_config` is the location, where a symbolic link to the currently active config will be created, if `update_symlink` is `true`.
+### Active config file
+The active config file can be memorized in two different ways. 
+- As a symlink that points to the active config file. This is the recommended way on Linux and macOS.
+- In a text file. This is the recommended way on Windows.
+
+The active config will be loaded into the web interface when it is opened.
+If there is no active config, the `default_config` will be used.
+If this does not exist, the internal default config is used.
+Note: the active config will NOT be automatically applied to CamillaDSP, when the GUI starts.
+
+#### Symlink
+Set `update_config_symlink` to `true` to memorize the active config in a symlink.
+`active_config` is the location, where a symbolic link to the currently active config will be created.
 Note that symlinks cannot be created on Windows without configuring special privileges.
 At times, the link might not exist, or point to a non-existent file.
 If you run CamillaDSP on the same machine as CamillaGUI,
-you probably want to use this path as the value for the config parameter of your CamillaDSP executable.
+set CamillaDSP's config path to the same as `active_config`.
+Then the active config will be automatically used.
 
-The `active_config` will be loaded into the web interface when it is opened.
-If there is no active config, the `default_config` will be used.
-If this does not exist, the internal default config is used.
-Note: the `active_config` will NOT be automatically applied to CamillaDSP, when CamillaDSP or the GUI starts.
-To have CamillaDSP use it on start, set CamillaDSP's config path to the same as `active_config`.
+#### Text file
+Set `update_config_txt` to `true` to memorize the active config file name in a text file.
+The location of the text file is given by `active_config_txt`.
+To easily start CamillaDSP on Windows with this config file, create a `.bat` file with this content (adjust paths and options as needed):
+```cmd
+set /p fname=<%USERPROFILE%\camilladsp\active_config.txt
+%USERPROFILE%\camilladsp\camilladsp.exe %fname% -p 1234 -w
+```
+Then use this batch file to start CamillaDSP.
 
+
+### Limit device types
 By default, the config validator allows all the device types that CamillaDSP can support. To limit this to the types that are supported on a particular system, give the list of supported types as: 
 ```yaml
 supported_capture_types: ["Alsa", "File", "Stdin"]
