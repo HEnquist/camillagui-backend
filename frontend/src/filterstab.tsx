@@ -405,7 +405,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
-          <div style={{width: this.state.expandPlot&&this.state.showFilterPlot ? '1200px': '700px'}}>
+          <div style={{width: this.state.expandPlot&&this.state.showFilterPlot ? '1200px': '670px'}}>
           <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}

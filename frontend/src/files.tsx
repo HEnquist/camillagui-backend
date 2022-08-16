@@ -194,13 +194,12 @@ class FileTable extends Component<
   }
 
   private setActiveConfig(name: string) {
-    if (this.props.setCurrentConfigFileName !== undefined)
-      this.props.setCurrentConfigFileName(name)
     fetch("/api/setactiveconfigfile", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({name: name})
-    }).then(() => this.loadActiveConfig())
+    }).then(() => this.loadConfig(name))
+    this.setState({activeConfigFileName: name})
   }
 
   private overwriteConfig(name: string) {
@@ -408,8 +407,8 @@ function SetActiveButton(props: {active: boolean, onClick: () => void}) {
   return <MdiButton
       icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
       tooltip={active ?
-          "This config is active and will be used by default"
-          : "Make this config active<br> It will then be used by default"
+          "This config file is marked as active."
+          : "Mark this config file as active, and load it into the GUI.<br>Configure your CamillaDSP launcher to load the active file automatically on startup."
       }
       className={active ? "highlighted-button" : ""}
       onClick={onClick}/>
