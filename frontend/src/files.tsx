@@ -1,6 +1,7 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
 import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
+import { GuiConfig } from "./guiconfig"
 import {
   mdiAlertCircle,
   mdiAlphaABox,
@@ -16,6 +17,7 @@ import {Config, defaultConfig} from "./camilladsp/config"
 import ReactTooltip from "react-tooltip"
 
 export function Files(props: {
+  guiConfig: GuiConfig
   currentConfigFile?: string
   config: Config
   setCurrentConfig: (filename: string | undefined, config: Config) => void
@@ -30,7 +32,8 @@ export function Files(props: {
                config={props.config}
                setCurrentConfig={props.setCurrentConfig}
                setCurrentConfigFileName={props.setCurrentConfigFileName}
-               saveNotify={props.saveNotify}/>
+               saveNotify={props.saveNotify}
+               canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
     <FileTable title='Filters' type="coeff"/>
   </div>
 }
@@ -40,6 +43,7 @@ interface FileTableProps {
   type: "config" | "coeff"
   currentConfigFile?: string
   config?: Config
+  canUpdateActiveConfig?: boolean
   setCurrentConfig?: (filename: string, config: Config) => void
   setCurrentConfigFileName?: (filename: string | undefined) => void
   saveNotify?: () => void
@@ -78,7 +82,7 @@ class FileTable extends Component<
   constructor(props: FileTableProps) {
     super(props)
     this.update = this.update.bind(this)
-    this.loadActiveConfig = this.loadActiveConfig.bind(this)
+    this.loadActiveConfigName = this.loadActiveConfigName.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
     this.toggleAllFileSelection = this.toggleAllFileSelection.bind(this)
     this.toggleFileSelection = this.toggleFileSelection.bind(this)
@@ -109,7 +113,7 @@ class FileTable extends Component<
     this.update()
     const timerId = setInterval(this.update, 1000)
     this.setState({stopTimer: () => clearInterval(timerId)})
-    this.loadActiveConfig()
+    this.loadActiveConfigName()
   }
 
   componentWillUnmount() {
@@ -188,7 +192,7 @@ class FileTable extends Component<
     })
   }
 
-  private async loadActiveConfig() {
+  private async loadActiveConfigName() {
     const json = await loadActiveConfig()
     this.setState({activeConfigFileName: json.configFileName})
   }
@@ -286,7 +290,8 @@ class FileTable extends Component<
                   !this.canLoadAndSave ? null : <SetActiveButton
                       key={filename+'(2)'}
                       active={filename === activeConfigFileName}
-                      onClick={() => this.setActiveConfig(filename)}/>,
+                      onClick={() => this.setActiveConfig(filename)}
+                      enabled={this.props.canUpdateActiveConfig}/>,
                   !this.canLoadAndSave ? null : <SaveButton
                       key={filename+'(3)'}
                       filename={filename}
@@ -402,14 +407,25 @@ function UploadFilesButton(props: {
       multiple={true}/>
 }
 
-function SetActiveButton(props: {active: boolean, onClick: () => void}) {
-  const {active, onClick} = props
+function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?: boolean}) {
+  const {active, onClick, enabled} = props
+  let tooltip
+  if (enabled === false) {
+    tooltip = "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
+  }
+  else {
+    if (active) {
+      tooltip = "This config file is marked as active."
+    }
+    else {
+      tooltip = "Mark this config file as active, and load it into the GUI."
+    }
+  }
+
   return <MdiButton
+      enabled={enabled}
       icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
-      tooltip={active ?
-          "This config file is marked as active."
-          : "Mark this config file as active, and load it into the GUI.<br>Configure your CamillaDSP launcher to load the active file automatically on startup."
-      }
+      tooltip={tooltip}
       className={active ? "highlighted-button" : ""}
       onClick={onClick}/>
 }

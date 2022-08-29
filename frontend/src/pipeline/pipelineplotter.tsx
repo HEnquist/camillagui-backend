@@ -1,12 +1,13 @@
 import Popup from "reactjs-popup"
 import 'reactjs-popup/dist/index.css'
 import * as d3 from "d3"
-import React, { useCallback } from "react"
+import React, { useCallback, useState } from "react"
 import "../index.css"
 import {CloseButton, cssStyles} from "../utilities/ui-components"
 import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
-import { mdiImage } from "@mdi/js"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
+import ReactTooltip from "react-tooltip"
 
 
 export function PipelinePopup(props: {
@@ -14,7 +15,7 @@ export function PipelinePopup(props: {
   open: boolean,
   onClose: () => void
 }) {
-
+  const [expandFiltersteps, setExpandFiltersteps] = useState(true);
   const downloadSvg = useCallback(() => {
     var svg = document.getElementById("svg_pipeline");
     if (svg !== null) {
@@ -26,7 +27,8 @@ export function PipelinePopup(props: {
       link.href = url
       link.click()
     }
-}, [])
+  }, [])
+  const toggleExpandFiltersteps = () => setExpandFiltersteps(!expandFiltersteps)
   return <Popup
       open={props.open}
       closeOnDocumentClick
@@ -34,12 +36,18 @@ export function PipelinePopup(props: {
       contentStyle={{width: '80%'}}
   >
     <CloseButton onClick={props.onClose}/>
-    <PipelinePlot config={props.config}/>
+    <PipelinePlot config={props.config} expand_filters={expandFiltersteps}/>
     <MdiButton
             icon={mdiImage}
             tooltip="Save plot as image"
             onClick={downloadSvg} />
+    <MdiButton
+            icon={expandFiltersteps ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal}
+            tooltip={expandFiltersteps ? "Collapse individual filters into filter steps" : "Expand filter steps to individual filters"}
+            onClick={toggleExpandFiltersteps} />
+    <ReactTooltip />
   </Popup>
+  
 }
 
 
@@ -79,7 +87,7 @@ interface Block {
   output: Point
 }
 
-class PipelinePlot extends React.Component<{config: Config}> {
+class PipelinePlot extends React.Component<{config: Config, expand_filters: boolean}> {
 
   private width = 1000
   private height = 500
@@ -207,7 +215,7 @@ class PipelinePlot extends React.Component<{config: Config}> {
         text: label,
         fill: this.textColor!,
         size: 0.2,
-        angle: 1.5 * 180 / 3.14 * Math.atan((dest.y - source.y) / (dest.x - source.x)),
+        angle: 180 / 3.14 * Math.atan(1.5 * (dest.y - source.y) / (dest.x - source.x)),
       }
       labels.push(text)
     }
@@ -223,7 +231,7 @@ class PipelinePlot extends React.Component<{config: Config}> {
       return device.type
   }
 
-  private makeShapes(conf: Config) {
+  private makeShapes(conf: Config, expand_filters:boolean) {
     const spacing_h = 3
     const spacing_v = 1
     let max_v: number
@@ -310,10 +318,44 @@ class PipelinePlot extends React.Component<{config: Config}> {
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
         const ch_nbr = step.channel
-        for (let m = 0; m < step.names.length; m++) {
-          const name = step.names[m]
+        if (expand_filters) {
+          for (let m = 0; m < step.names.length; m++) {
+            const name = step.names[m]
+            const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+            total_length = Math.max(total_length, ch_step)
+            const io_points = this.appendBlock(
+              labels,
+              boxes,
+              name,
+              ch_step * spacing_h,
+              spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
+              2.5
+            )
+            const src_list = stages[stages.length - 1][ch_nbr]
+            const src_p = src_list[src_list.length - 1].output
+            const dest_p = io_points.input
+            stages[stages.length - 1][ch_nbr].push(io_points)
+            this.appendLink(links, labels, src_p, dest_p)
+          }
+        }
+        else {
+          let name = "(empty)"
+          if (step.names.length > 0) {
+            name = step.names[0]
+            if (step.names.length > 1) {
+              name = name + " (+" + (step.names.length - 1) + ")"
+            }
+          }
           const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
           total_length = Math.max(total_length, ch_step)
+          this.appendBlock(
+            labels,
+            boxes,
+            "",
+            ch_step * spacing_h - 0.04,
+            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr)- 0.06,
+            2.5
+          )
           const io_points = this.appendBlock(
             labels,
             boxes,
@@ -364,7 +406,9 @@ class PipelinePlot extends React.Component<{config: Config}> {
   }
 
   createPipelinePlot() {
-    let {labels, boxes, links, max_h, max_v} = this.makeShapes(this.props.config)
+    d3.select(`#svg_pipeline`).selectAll('*').remove()
+
+    let {labels, boxes, links, max_h, max_v} = this.makeShapes(this.props.config, this.props.expand_filters)
     if (max_h > 4 * max_v)
       max_v = max_h / 4
     else

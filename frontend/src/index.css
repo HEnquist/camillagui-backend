@@ -198,14 +198,14 @@ div .popup-content {
   justify-self: right;
 }
 
-.split-20-80 {
+.split-10-90 {
   width: 100%;
   display: grid;
-  grid-template-columns: 20% 80%;
+  grid-template-columns: 10% 90%;
   grid-gap: 5px;
 }
 
-.split-20-80 > * {
+.split-10-90 > * {
   align-self: center;
 }
 
@@ -347,4 +347,10 @@ div .popup-content {
   right: 0;
   border-radius: var(--border-radius);
   border: var(--highlighted-button-border);
+}
+
+.vertical-text {
+  transform: rotate(270deg);
+  transform-origin: center;
+  text-align: center;
 }

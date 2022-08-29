@@ -8,7 +8,7 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
   const {title, levels, peaks, clipped} = props
   const canvasRef = useRef(null)
   const meters = <canvas
-      width='170px'
+      width='184px'
       height={levels.length * meterHeightInPX + (levels.length+1) * gapHeightInPX + 2*dbMarkerLabelHeight + 'px'}
       ref={canvasRef}/>
   useEffect(() => {
@@ -37,8 +37,8 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
     return null
   else
     return (
-        <div className="split-20-80">
-          <div>{title}</div>
+        <div className="split-10-90">
+          <div className="vertical-text">{title}</div>
           {meters}
         </div>
     )

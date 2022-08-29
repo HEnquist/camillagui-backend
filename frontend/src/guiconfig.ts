@@ -10,6 +10,7 @@ export interface GuiConfig {
     apply_config_automatically: boolean
     save_config_automatically: boolean
     status_update_interval: number
+    can_update_active_config: boolean
 }
 
 export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin'
@@ -26,6 +27,7 @@ export function defaultGuiConfig(): GuiConfig {
         coeff_dir: '',
         apply_config_automatically: false,
         save_config_automatically: false,
-        status_update_interval: 100
+        status_update_interval: 100,
+        can_update_active_config: false
     }
 }

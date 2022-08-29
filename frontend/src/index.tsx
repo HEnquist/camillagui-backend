@@ -302,6 +302,7 @@ class CamillaConfig extends React.Component<
               setCurrentConfig={this.setCurrentConfig}
               setCurrentConfigFileName={this.setCurrentConfigFileName}
               saveNotify={this.saveNotify}
+              guiConfig={this.state.guiConfig}
           />
         </TabPanel>
         <TabPanel>
