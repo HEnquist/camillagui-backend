@@ -127,9 +127,11 @@ there are some options to customize the UI for your particular needs.
 #### Setting and getting the active config
 _NOTE: This functionality is experimental, there may be significant changes in future versions._
 
-Setting `update_symlink` to `false` means the backend will not keep any symlink updated. This can then instead be accomplished by the options `on_set_active_config` and `on_get_active_config`. These are shell commands that will be run to set and get the active config. Since the commands are run in the operating system shell, the syntax depends on which operating system is used. The examples given below are for Linux.
+Setting `update_config_symlink` and `update_config_txt` to `false` means the backend will not save the active config file name as a symlink or in a text file. This can then instead be accomplished by the options `on_set_active_config` and `on_get_active_config`. These are shell commands that will be run to set and get the active config. Since the commands are run in the operating system shell, the syntax depends on which operating system is used. The examples given below are for Linux.
 
-The `on_set_active_config` uses Python string formatting to insert the filename. This means it must contain an empty set of curly brackets, where the filename will get inserted surrounded by quotes. 
+The `on_set_active_config` uses Python string formatting to insert the filename. This means it must contain an empty set of curly brackets, where the filename will get inserted surrounded by quotes.
+
+Examples:
 - Running a script: `on_set_active_config: my_updater_script.sh {}`
   
   The backend will run the command: `my_updater_script.sh "/full/path/to/new_active_config.yml"`

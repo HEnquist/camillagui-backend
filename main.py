@@ -31,6 +31,7 @@ app["on_set_active_config"] = config["on_set_active_config"]
 app["on_get_active_config"] = config["on_get_active_config"]
 app["supported_capture_types"] = config["supported_capture_types"]
 app["supported_playback_types"] = config["supported_playback_types"]
+app["can_update_active_config"] = config["can_update_active_config"]
 setup_routes(app)
 setup_static_routes(app)
 
