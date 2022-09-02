@@ -5,7 +5,7 @@ import React, { useCallback, useState } from "react"
 import "../index.css"
 import {CloseButton, cssStyles} from "../utilities/ui-components"
 import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
-import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal } from "@mdi/js"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
 
@@ -16,6 +16,7 @@ export function PipelinePopup(props: {
   onClose: () => void
 }) {
   const [expandFiltersteps, setExpandFiltersteps] = useState(true);
+  const [expandVertical, setExpandVertical] = useState(false);
   const downloadSvg = useCallback(() => {
     var svg = document.getElementById("svg_pipeline");
     if (svg !== null) {
@@ -29,14 +30,15 @@ export function PipelinePopup(props: {
     }
   }, [])
   const toggleExpandFiltersteps = () => setExpandFiltersteps(!expandFiltersteps)
+  const toggleExpandVertical = () => setExpandVertical(!expandVertical)
   return <Popup
       open={props.open}
       closeOnDocumentClick
       onClose={props.onClose}
-      contentStyle={{width: '80%'}}
+      contentStyle={{width: '90%'}}
   >
     <CloseButton onClick={props.onClose}/>
-    <PipelinePlot config={props.config} expand_filters={expandFiltersteps}/>
+    <PipelinePlot config={props.config} expand_filters={expandFiltersteps} expand_vertical={expandVertical}/>
     <MdiButton
             icon={mdiImage}
             tooltip="Save plot as image"
@@ -45,6 +47,10 @@ export function PipelinePopup(props: {
             icon={expandFiltersteps ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal}
             tooltip={expandFiltersteps ? "Collapse individual filters into filter steps" : "Expand filter steps to individual filters"}
             onClick={toggleExpandFiltersteps} />
+    <MdiButton
+            icon={expandVertical ? mdiArrowCollapse : mdiArrowExpand}
+            tooltip={expandVertical ? "Zoom out to display entire plot height" : "Enlarge plot"}
+            onClick={toggleExpandVertical} />
     <ReactTooltip />
   </Popup>
   
@@ -87,10 +93,21 @@ interface Block {
   output: Point
 }
 
-class PipelinePlot extends React.Component<{config: Config, expand_filters: boolean}> {
+type Props = {
+  config: Config, 
+  expand_filters: boolean
+  expand_vertical: boolean
+}
 
-  private width = 1000
-  private height = 500
+type State = {
+  width: number,
+  height: number
+}
+
+class PipelinePlot extends React.Component<Props, State> {
+
+  private width = 1400
+  private height = 900
 
   private textColor?: string
   private borderColor?: string
@@ -100,6 +117,11 @@ class PipelinePlot extends React.Component<{config: Config, expand_filters: bool
   private blockBgColor?: string
   private blockTextColor?: string
   private node?: any
+
+  constructor(props: Props) {
+    super(props)
+    this.state = { height: this.height, width: this.width }
+  }
 
   componentDidMount() {
     const styles = cssStyles()
@@ -113,8 +135,9 @@ class PipelinePlot extends React.Component<{config: Config, expand_filters: bool
     this.createPipelinePlot()
   }
 
-  componentDidUpdate() {
-    this.createPipelinePlot()
+  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
+    if (this.state.width !== prevState.width || this.state.height !== prevState.height)
+      this.createPipelinePlot()
   }
 
   private appendBlock(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number): Block {
@@ -409,18 +432,27 @@ class PipelinePlot extends React.Component<{config: Config, expand_filters: bool
     d3.select(`#svg_pipeline`).selectAll('*').remove()
 
     let {labels, boxes, links, max_h, max_v} = this.makeShapes(this.props.config, this.props.expand_filters)
-    if (max_h > 4 * max_v)
-      max_v = max_h / 4
-    else
-      max_h = 4 * max_v
+    // if (max_h > (2*this.width/this.height) * max_v)
+    //   max_v = max_h / (2*this.width/this.height)
+    // else
+    //    max_h = (2*this.width/this.height) * max_v
 
-    this.fillBackground(boxes, -2.5, -max_v, max_h+2.5, 2*max_v)
+    if (max_h < 10)
+      max_h = 10
+    if (max_v < 4)
+      max_v = 4
+    const total_width = max_h + 2.5
+    const total_height = 2*max_v
+    const calculated_height = this.width * total_height/total_width
+    this.setState({ height: calculated_height, width: this.width })
+
+    this.fillBackground(boxes, -2.5, -max_v, total_width, total_height)
 
     const node = this.node
     const yScale = d3
       .scaleLinear()
       .domain([-max_v, max_v])
-      .range([0, this.height])
+      .range([0, calculated_height])
     const xScale = d3
       .scaleLinear()
       .domain([-2.5, max_h])
@@ -503,11 +535,19 @@ class PipelinePlot extends React.Component<{config: Config, expand_filters: bool
   }
 
   render() {
-    return <svg
+    console.log(this.state.height, this.state.width)
+    return <div style={{width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto'}}>
+      <svg
         ref={node => this.node = node}
         id="svg_pipeline"
-        viewBox={`0 0 ${this.width} ${this.height}`}
-        style={{width: '100%', height: 'auto'}}
-    />
+        viewBox={`0 0 ${this.state.width} ${this.state.height}`}
+        style={this.props.expand_vertical ? {} : {height: '99%', width: '100%'} }
+      />
+
+    </div>
   }
 }
+
+//height='99%' 
+//width='100%'
+// style={{height: '99%', width: '100%'}}
