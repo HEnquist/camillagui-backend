@@ -30,7 +30,7 @@ export function defaultStatus(): Status {
     cdsp_version: '',
     py_cdsp_version: '',
     backend_version: '',
-    clipped: false
+    clipped: false,
   }
 }
 
@@ -52,14 +52,15 @@ export function isBackendOnline(status: Status): boolean {
 
 export class StatusPoller {
 
-  private readonly intervalId: NodeJS.Timer
+  private timerId: NodeJS.Timeout
   private readonly onUpdate: (status: Status) => void
   private lastClippedSamples = 0
+  private update_interval: number
 
-  constructor(onUpdate: (status: Status) => void) {
+  constructor(onUpdate: (status: Status) => void, update_interval: number) {
     this.onUpdate = onUpdate
-    this.intervalId = setInterval(this.updateStatus.bind(this), 500)
-    this.updateStatus()
+    this.update_interval = update_interval
+    this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
   }
 
   private async updateStatus() {
@@ -72,10 +73,16 @@ export class StatusPoller {
     const clipped = this.lastClippedSamples >= 0 && status.clippedsamples > this.lastClippedSamples
     this.lastClippedSamples = status.clippedsamples === '' ? 0 : status.clippedsamples
     this.onUpdate({...status, clipped})
+    this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
   }
 
   stop() {
-    clearInterval(this.intervalId)
+    clearTimeout(this.timerId)
+  }
+
+  set_interval(interval: number) {
+    this.update_interval = interval
   }
 
 }
+

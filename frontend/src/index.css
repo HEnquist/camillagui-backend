@@ -12,7 +12,8 @@ body {
 }
 
 hr {
-  margin: 2px 0;
+  margin: 3px 0;
+  border: 1px solid var(--box-border-color);
 }
 
 code {
@@ -82,6 +83,16 @@ textarea.logfileviewer {
   width: 450px;
 }
 
+.wide-tabpanel {
+  border: 4px;
+  text-align: left;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 550px;
+}
+
 .tabpanel > * {
   margin: 5px 0;
 }
@@ -120,9 +131,17 @@ textarea.logfileviewer {
   border-right: 5px solid transparent;
 }
 
+.setting-label-wide {
+  display: table-cell;
+  width: 75%;
+  text-align: right;
+  border-right: 5px solid transparent;
+}
+
 .setting-input {
   display: table-cell;
   width: 100%;
+  vertical-align: middle;
 }
 
 .small-setting-input {
@@ -179,14 +198,14 @@ div .popup-content {
   justify-self: right;
 }
 
-.split-20-80 {
+.split-10-90 {
   width: 100%;
   display: grid;
-  grid-template-columns: 20% 80%;
+  grid-template-columns: 10% 90%;
   grid-gap: 5px;
 }
 
-.split-20-80 > * {
+.split-10-90 > * {
   align-self: center;
 }
 
@@ -203,6 +222,13 @@ div .popup-content {
   align-items: center;
   cursor: pointer;
   user-select: none;
+}
+
+.file-link {
+  color: var(--link-color);
+  text-decoration: none;
+  user-select: none;
+  font-weight: bold;
 }
 
 .button-with-text {
@@ -257,9 +283,18 @@ div .popup-content {
 
 .db-label {
   display: inline-block;
-  width: 5ch;
+  width: 7ch;
   text-align: right;
   margin-left: 5px;
+}
+
+.db-label-muted {
+  display: inline-block;
+  width: 7ch;
+  text-align: right;
+  margin-left: 5px;
+  color: var(--neutral-text-color);
+  font-style: italic;
 }
 
 .versions {
@@ -312,4 +347,10 @@ div .popup-content {
   right: 0;
   border-radius: var(--border-radius);
   border: var(--highlighted-button-border);
+}
+
+.vertical-text {
+  transform: rotate(270deg);
+  transform-origin: center;
+  text-align: center;
 }

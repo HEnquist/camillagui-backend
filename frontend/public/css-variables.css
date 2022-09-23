@@ -40,6 +40,9 @@
     --highlighted-button-background-color: #242;
     --highlighted-button-border: 2px solid #4b4;
 
+    /* Links */
+    --link-color: #77f;
+
     /* Boxes */
     --box-border-width: 2px;
     --box-border-color: rgb(70, 70, 70);
@@ -51,9 +54,10 @@
 
     /* Filter plot */
     --axes-color: #555;
-    --gain-color: #4646f0;
-    --phase-color: var(--error-text-color);
-    --impulse-color: var(--success-text-color);
+    --gain-color: #1E90FF;
+    --phase-color: #FF4500;
+    --impulse-color: #32CD32;
+    --groupdelay-color: #ffa010;
 
     /* Pipeline plot */
     --arrow-color: var(--axes-color);
@@ -93,6 +97,9 @@
     --disabled-button-border: var(--button-border);
     --highlighted-button-background-color: #cfc;
     --highlighted-button-border: var(--button-border);
+
+    /* Links */
+    --link-color: #44f;
 
     /* Boxes */
     --box-border-width: 1px;

@@ -1,16 +1,17 @@
 import React from "react"
 import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload} from '@mdi/js'
+import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowCollapse, mdiArrowExpand} from '@mdi/js'
 import {
   Config,
   defaultFilter,
   Filter,
-  filterNamesOf,
   Filters,
   newFilterName,
   removeFilter,
-  renameFilter
+  renameFilter,
+  sortedFilterNamesOf,
+  SortKeys,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -51,11 +52,15 @@ export class FiltersTab extends React.Component<
     {
       filterKeys: { [name: string]: number}
       availableCoeffFiles: string[]
+      sortBy: string
+      sortReverse: boolean
     }
 > {
   constructor(props: any) {
     super(props)
     this.filterNames = this.filterNames.bind(this)
+    this.changeSortBy = this.changeSortBy.bind(this)
+    this.changeSortOrder = this.changeSortOrder.bind(this)
     this.addFilter = this.addFilter.bind(this)
     this.removeFilter = this.removeFilter.bind(this)
     this.renameFilter = this.renameFilter.bind(this)
@@ -64,14 +69,26 @@ export class FiltersTab extends React.Component<
     this.updateAvailableCoeffFiles = this.updateAvailableCoeffFiles.bind(this)
     this.state = {
       filterKeys: {},
-      availableCoeffFiles: []
+      availableCoeffFiles: [],
+      sortBy: "Name",
+      sortReverse: false
     }
     this.filterNames().forEach((name, i) => this.state.filterKeys[name] = i)
     this.updateAvailableCoeffFiles()
   }
 
+  //private timer = delayedExecutor(2000)
+
   private filterNames(): string[] {
-    return filterNamesOf(this.props.filters)
+    return sortedFilterNamesOf(this.props.filters, this.state.sortBy, this.state.sortReverse)
+  }
+
+  private changeSortBy(key: string) {
+    this.setState({sortBy: key})
+  }
+
+  private changeSortOrder(reverse: boolean) {
+    this.setState({sortReverse: reverse})
   }
 
   private addFilter() {
@@ -96,14 +113,14 @@ export class FiltersTab extends React.Component<
 
   private renameFilter(oldName: string, newName: string) {
     if (this.isFreeFilterName(newName))
-      this.props.updateConfig(config => {
-        this.setState(oldState =>
-            modifiedCopyOf(oldState, newState => {
-              newState.filterKeys[newName] = newState.filterKeys[oldName]
-              delete newState.filterKeys[oldName]
-            }))
-        renameFilter(config, oldName, newName)
-      })
+        this.props.updateConfig(config => {
+          this.setState(oldState =>
+              modifiedCopyOf(oldState, newState => {
+                newState.filterKeys[newName] = newState.filterKeys[oldName]
+                delete newState.filterKeys[oldName]
+              }))
+          renameFilter(config, oldName, newName)
+        })
   }
 
   private isFreeFilterName(name: string): boolean {
@@ -118,35 +135,49 @@ export class FiltersTab extends React.Component<
     fetch("/api/storedcoeffs")
         .then(
             result => result.json()
-                .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles})),
+                .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles[0]})),
             error => console.log("Could not load stored coeffs", error)
         )
   }
 
   render() {
     let {filters, errors} = this.props
-    return <div className="tabpanel" style={{width: '700px'}}>
-      <ErrorMessage message={errors({path: []})}/>
+    return <div>
+      <div className="horizontally-spaced-content" style={{width: '700px'}}>
+      <EnumOption
+            value={this.state.sortBy}
+            options={SortKeys}
+            desc="Sort filters by"
+            data-tip="Property used to sort filters"
+            onChange={this.changeSortBy}/>
+      <BoolOption 
+            value={this.state.sortReverse}
+            desc="Reverse order"
+            data-tip="Reverse display order"
+            onChange={this.changeSortOrder} />
+      </div>
+      <div className="tabpanel" style={{width: '700px'}}>
+        <ErrorMessage message={errors({path: []})}/>
       {this.filterNames()
           .map(name =>
-              <FilterView
-                  key={this.state.filterKeys[name]}
-                  name={name}
-                  filter={filters[name]}
-                  errors={errorsForSubpath(errors, name)}
-                  availableCoeffFiles={this.state.availableCoeffFiles}
-                  updateFilter={update => this.updateFilter(name, update)}
-                  rename={newName => this.renameFilter(name, newName)}
-                  isFreeFilterName={this.isFreeFilterName}
-                  remove={() => this.removeFilter(name)}
-                  updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
-                  coeffDir={this.props.coeffDir}
-                  samplerate={this.props.samplerate}
-                  channels={this.props.channels}
-              />
-          )}
+            <FilterView
+            key={this.state.filterKeys[name]}
+            name={name}
+            filter={filters[name]}
+            errors={errorsForSubpath(errors, name)}
+            availableCoeffFiles={this.state.availableCoeffFiles}
+            updateFilter={update => this.updateFilter(name, update)}
+            rename={newName => this.renameFilter(name, newName)}
+            isFreeFilterName={this.isFreeFilterName}
+            remove={() => this.removeFilter(name)}
+            updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
+            coeffDir={this.props.coeffDir}
+            samplerate={this.props.samplerate}
+            channels={this.props.channels}
+            />
+            )}
       <AddButton tooltip="Add a new filter" onClick={this.addFilter}/>
-    </div>
+    </div></div>
   }
 }
 
@@ -181,6 +212,7 @@ interface FilterViewState {
   uploadState?: { success: true } | { success: false, message: string }
   filterFilePopupOpen: boolean
   showFilterPlot: boolean
+  expandPlot: boolean
   data?: ChartData
   filterDefaults: FilterDefaults
   showDefaults: boolean
@@ -195,11 +227,13 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
+    this.toggleExpand = this.toggleExpand.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
     this.state = {
       filterFilePopupOpen: false,
       showFilterPlot: false,
+      expandPlot: false,
       showDefaults: false,
       filterDefaults: {}
     }
@@ -275,6 +309,11 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       this.setState({data: undefined})
   }
 
+  private toggleExpand() {
+    const expandPlot = !this.state.expandPlot
+    this.setState({expandPlot})
+  }
+
   private plotFilterInitially(file: string) {
     const options = this.state.data!!.options
     const current = options.length === 0 ? undefined : options.filter(o => o.name === file)[0]
@@ -318,18 +357,17 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           parseValue={newName => isValidFilterName(newName) ? newName : undefined}
           data-tip="Filter name, must be unique"
           onChange={newName => this.props.rename(newName)}
+          immediate={false}
       />
     }>
       <div style={{display: 'flex', flexDirection: 'row'}}>
         <div
             className="vertically-spaced-content"
             style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
-          {['Biquad', 'BiquadCombo', 'Conv', 'DiffEq'].includes(filter.type) &&
           <MdiButton
               icon={mdiChartBellCurveCumulative}
               tooltip="Plot frequency response of this filter"
               onClick={this.toggleFilterPlot}/>
-          }
           {isConvolutionFileFilter(filter) &&
           <MdiButton
               icon={mdiFileSearch}
@@ -367,7 +405,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
+          <div style={{width: this.state.expandPlot&&this.state.showFilterPlot ? '1200px': '670px'}}>
           <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
+          <MdiButton
+            icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
+            tooltip={this.state.expandPlot ? "Collapse plot": "Expand plot" }
+            onClick={this.toggleExpand}/></div>
           : null}
     </Box>
   }
@@ -469,6 +512,8 @@ class FilterParams extends React.Component<{
     this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
   }
 
+  //private timer = delayedExecutor(1000)
+
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
       filter.type = type
@@ -533,6 +578,7 @@ class FilterParams extends React.Component<{
         error: errors({path: [parameter]}),
         desc: info.desc,
         'data-tip': info.tooltip,
+        //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
       }
       if (parameter === 'filename')

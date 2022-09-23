@@ -1,6 +1,7 @@
 import React, {ChangeEvent, Component} from "react"
 import {Set} from "immutable"
-import {Box, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
+import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
+import { GuiConfig } from "./guiconfig"
 import {
   mdiAlertCircle,
   mdiAlphaABox,
@@ -12,20 +13,27 @@ import {
   mdiRefresh,
   mdiUpload
 } from '@mdi/js'
-import {Config} from "./camilladsp/config"
+import {Config, defaultConfig} from "./camilladsp/config"
 import ReactTooltip from "react-tooltip"
 
 export function Files(props: {
+  guiConfig: GuiConfig
   currentConfigFile?: string
   config: Config
-  setCurrentConfig: (filename: string, config: Config) => void
+  setCurrentConfig: (filename: string | undefined, config: Config) => void
+  setCurrentConfigFileName: (filename: string | undefined) => void
+  saveNotify: () => void
 }) {
-  return <div className="tabpanel">
+  return <div className="wide-tabpanel">
+    <NewConfig setCurrentConfig={props.setCurrentConfig}/>
     <FileTable title='Configs'
                type="config"
                currentConfigFile={props.currentConfigFile}
                config={props.config}
-               setCurrentConfig={props.setCurrentConfig}/>
+               setCurrentConfig={props.setCurrentConfig}
+               setCurrentConfigFileName={props.setCurrentConfigFileName}
+               saveNotify={props.saveNotify}
+               canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
     <FileTable title='Filters' type="coeff"/>
   </div>
 }
@@ -35,7 +43,10 @@ interface FileTableProps {
   type: "config" | "coeff"
   currentConfigFile?: string
   config?: Config
+  canUpdateActiveConfig?: boolean
   setCurrentConfig?: (filename: string, config: Config) => void
+  setCurrentConfigFileName?: (filename: string | undefined) => void
+  saveNotify?: () => void
 }
 
 type FileAction = 'load' | 'save' | 'upload'
@@ -57,6 +68,7 @@ class FileTable extends Component<
     FileTableProps,
     {
       files: ReadonlyArray<string>
+      dates: ReadonlyArray<string>
       selectedFiles: Set<string>
       activeConfigFileName: string
       newFileName: string
@@ -70,7 +82,7 @@ class FileTable extends Component<
   constructor(props: FileTableProps) {
     super(props)
     this.update = this.update.bind(this)
-    this.loadActiveConfig = this.loadActiveConfig.bind(this)
+    this.loadActiveConfigName = this.loadActiveConfigName.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
     this.toggleAllFileSelection = this.toggleAllFileSelection.bind(this)
     this.toggleFileSelection = this.toggleFileSelection.bind(this)
@@ -84,6 +96,7 @@ class FileTable extends Component<
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.state = {
       files: [],
+      dates: [],
       selectedFiles: Set(),
       activeConfigFileName: '',
       newFileName: 'New config.yml',
@@ -100,7 +113,7 @@ class FileTable extends Component<
     this.update()
     const timerId = setInterval(this.update, 1000)
     this.setState({stopTimer: () => clearInterval(timerId)})
-    this.loadActiveConfig()
+    this.loadActiveConfigName()
   }
 
   componentWillUnmount() {
@@ -110,8 +123,12 @@ class FileTable extends Component<
   private update() {
     loadFiles(this.type)
         .then(files => this.setState(prevState => ({
-          files: files,
-          selectedFiles: prevState.selectedFiles.intersect(files)
+          files: files[0],
+          dates: files[1].map(d => {
+              let date = new Date(1000*parseFloat(d))
+              return date.toDateString()
+            }),
+          selectedFiles: prevState.selectedFiles.intersect(files[0])
         })))
   }
 
@@ -164,7 +181,7 @@ class FileTable extends Component<
       const jsonConfig = await response.json()
       this.props.setCurrentConfig!(name, jsonConfig as Config)
       this.setState({fileStatus: {filename: name, action: 'load', success: true}})
-    } catch(e) {
+    } catch(e: any) {
       this.showErrorMessage(name, 'load', e)
     }
   }
@@ -175,7 +192,7 @@ class FileTable extends Component<
     })
   }
 
-  private async loadActiveConfig() {
+  private async loadActiveConfigName() {
     const json = await loadActiveConfig()
     this.setState({activeConfigFileName: json.configFileName})
   }
@@ -185,7 +202,8 @@ class FileTable extends Component<
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({name: name})
-    }).then(() => this.loadActiveConfig())
+    }).then(() => this.loadConfig(name))
+    this.setState({activeConfigFileName: name})
   }
 
   private overwriteConfig(name: string) {
@@ -206,12 +224,14 @@ class FileTable extends Component<
       if (response.ok) {
         setCurrentConfig!(name, config!)
         this.setState({fileStatus: {filename: name, action: 'save', success: true}})
+        if (this.props.saveNotify !== undefined)
+          this.props.saveNotify()
         this.update()
       } else {
         const message = await response.text()
         this.showErrorMessage(name, 'save', message)
       }
-    } catch (e) {
+    } catch (e: any) {
       this.showErrorMessage(name, 'save', e.message)
     }
   }
@@ -238,7 +258,7 @@ class FileTable extends Component<
   }
 
   render() {
-    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
+    const {files, dates, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
     return (
       <Box title={this.props.title}>
         <div style={{
@@ -261,7 +281,7 @@ class FileTable extends Component<
           </div>
 
           { // File rows
-            files.flatMap(filename => [
+            files.flatMap((filename, index) => [
                   <FileCheckBox
                       key={filename+'(1)'}
                       filename={filename}
@@ -270,7 +290,8 @@ class FileTable extends Component<
                   !this.canLoadAndSave ? null : <SetActiveButton
                       key={filename+'(2)'}
                       active={filename === activeConfigFileName}
-                      onClick={() => this.setActiveConfig(filename)}/>,
+                      onClick={() => this.setActiveConfig(filename)}
+                      enabled={this.props.canUpdateActiveConfig}/>,
                   !this.canLoadAndSave ? null : <SaveButton
                       key={filename+'(3)'}
                       filename={filename}
@@ -286,6 +307,7 @@ class FileTable extends Component<
                                         filename={filename}
                                         isCurrentConfig={this.props.currentConfigFile === filename}/>
                     <FileStatusMessage filename={filename} fileStatus={fileStatus}/>
+                    {' - ' + dates[index]}
                   </div>
                 ]
             )
@@ -316,14 +338,18 @@ class FileTable extends Component<
   }
 }
 
-export function loadFiles(type: "config" | "coeff"): Promise<string[]> {
+export function loadFiles(type: "config" | "coeff"): Promise<string[][]> {
   return fetch(`/api/stored${type}s`)
       .then(response => response.json())
-      .then(json => json as string[])
+      .then(json => json as string[][])
 }
 
 export function loadConfigJson(name: string): Promise<Response> {
   return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
+}
+
+export function loadDefaultConfigJson(): Promise<Response> {
+  return fetch(`/api/getdefaultconfigfile`)
 }
 
 export function loadActiveConfig(): Promise<{configFileName: string, config: Config}> {
@@ -381,14 +407,25 @@ function UploadFilesButton(props: {
       multiple={true}/>
 }
 
-function SetActiveButton(props: {active: boolean, onClick: () => void}) {
-  const {active, onClick} = props
+function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?: boolean}) {
+  const {active, onClick, enabled} = props
+  let tooltip
+  if (enabled === false) {
+    tooltip = "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
+  }
+  else {
+    if (active) {
+      tooltip = "This config file is marked as active."
+    }
+    else {
+      tooltip = "Mark this config file as active, and load it into the GUI."
+    }
+  }
+
   return <MdiButton
+      enabled={enabled}
       icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
-      tooltip={active ?
-          "This config is active and will be used by default"
-          : "Make this config active<br> It will then be used by default"
-      }
+      tooltip={tooltip}
       className={active ? "highlighted-button" : ""}
       onClick={onClick}/>
 }
@@ -441,7 +478,8 @@ function LoadButton(
 
 function FileDownloadButton(props: { type: string, filename: string, isCurrentConfig: boolean }) {
   const { type, filename, isCurrentConfig } = props
-  const classNames = 'button button-with-text ' + (isCurrentConfig ? 'highlighted-button' : '')
+  //const classNames = 'button button-with-text ' + (isCurrentConfig ? 'highlighted-button' : '')
+  const classNames = 'file-link'
   return <a className={classNames}
             style={{width: 'max-content'}}
             data-tip={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
@@ -474,4 +512,71 @@ function reasonToDisableSaveNewFileButton(newFileName: string, files: ReadonlyAr
 
 function isValidFilename(newFileName: string) {
   return newFileName.trim().length > 0
+}
+
+class NewConfig extends Component<
+    {
+      setCurrentConfig?: (filename: string | undefined, config: Config) => void,
+    }> {
+
+  constructor(props: any) {
+    super(props)
+    this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
+  }
+
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
+
+  private async loadDefaultConfig() {
+    try {
+      const response = await loadDefaultConfigJson()
+      if (!response.ok) {
+        console.log(await response.text())
+        return
+      }
+      const jsonConfig = await response.json()
+      console.log(jsonConfig)
+      this.props.setCurrentConfig!(undefined, jsonConfig as Config)
+    } catch(e: any) {
+      console.log(e)
+    }
+  }
+
+  private async loadBlankConfig() {
+    try {
+      let config = defaultConfig()
+      this.props.setCurrentConfig!(undefined, config as Config)
+    } catch(e: any) {
+      console.log(e)
+    }
+  }
+
+  render() {
+    return (
+      <Box title='Create new config'>
+        <div style={{
+          display: 'grid',
+          alignItems: 'center',
+          gridTemplateColumns: '48% 48%',
+          gap: '4% 4%'
+        }}>
+          <Button
+          text="New config from default"
+          onClick={() => this.loadDefaultConfig()}
+          style={{marginTop: '10px'}}
+          enabled={true}
+          data-tip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
+          />
+          <Button
+          text="New blank config"
+          onClick={() => this.loadBlankConfig()}
+          style={{marginTop: '10px'}}
+          enabled={true}
+          data-tip="Create and load a new blank config.<br>Any unsaved changes will be lost."
+          />
+        </div>
+      </Box>
+    )
+  }
 }

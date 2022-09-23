@@ -1,10 +1,24 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useState, useRef, useCallback, useMemo } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import {Scatter} from "react-chartjs-2"
-import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick} from "@mdi/js"
+import { Scatter } from "react-chartjs-2"
+import {
+    Chart as ChartJS,
+    LinearScale,
+    LogarithmicScale,
+    PointElement,
+    LineElement,
+    Tooltip,
+    Legend,
+} from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable, mdiSitemapOutline, mdiHome } from "@mdi/js"
+import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
-import {toMap} from "./arrays"
+import { toMap } from "./arrays"
+
+
+ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin);
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -32,7 +46,7 @@ export async function doUpload(
     for (let index = 0; index < files.length; index++) {
         const file = files[index]
         uploadedFiles.push(file.name)
-        formData.append("file"+index, file, file.name)
+        formData.append("file" + index, file, file.name)
     }
     event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     try {
@@ -41,7 +55,7 @@ export async function doUpload(
             body: formData
         })
         onSuccess(uploadedFiles)
-    } catch (e) {
+    } catch (e: any) {
         onError(e.message)
     }
 }
@@ -51,11 +65,12 @@ export function Box(props: {
     title: string | ReactNode
     style?: CSSProperties
     children: ReactNode
+    tooltip?: string
 }) {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div className="horizontally-spaced-content" style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
+                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>
@@ -70,19 +85,19 @@ export function CheckBox(props: {
     onChange: (checked: boolean) => void,
     style?: CSSProperties
 }) {
-    const {tooltip, checked, onChange, style} = props
+    const { tooltip, checked, onChange, style } = props
     return <label data-tip={tooltip} className='checkbox-area' style={style}>
         <input
             type="checkbox"
             data-tip={tooltip}
             checked={checked}
-            onChange={(e) => onChange(e.target.checked)}/>
+            onChange={(e) => onChange(e.target.checked)} />
     </label>
 }
 
 export function Button(props: {
     text: string
-    "data-tip"? : string
+    "data-tip"?: string
     onClick: () => void
     style?: CSSProperties
     className?: string
@@ -95,14 +110,14 @@ export function Button(props: {
         data-tip={props["data-tip"]}
         className={`button button-with-text ${disabledStyle} ${additionalClasses}`}
         style={props.style}
-        onClick={enabled ? props.onClick : () => {}}>
+        onClick={enabled ? props.onClick : () => { }}>
         {props.text}
     </div>
 }
 
 export function SuccessFailureButton(props: {
     text: string
-    "data-tip"? : string
+    "data-tip"?: string
     onClick: () => Promise<void>
     style?: CSSProperties
     enabled?: boolean
@@ -122,7 +137,7 @@ export function SuccessFailureButton(props: {
         () => setSuccessAndtimer(true),
         () => setSuccessAndtimer(false)
     )
-    return <Button {...props} className={className} onClick={onClick}/>
+    return <Button {...props} className={className} onClick={onClick} />
 }
 
 export function AddButton(props: {
@@ -130,12 +145,12 @@ export function AddButton(props: {
     style?: CSSProperties
     onClick: () => void
 }) {
-    const style = Object.assign({color: 'var(--button-add-icon-color)'}, props.style)
+    const style = Object.assign({ color: 'var(--button-add-icon-color)' }, props.style)
     return <MdiButton
         icon={mdiPlusThick}
         style={style}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick} />
 }
 
 export function DeleteButton(props: {
@@ -144,21 +159,23 @@ export function DeleteButton(props: {
     smallButton?: boolean
 }) {
     return <MdiButton
-        style={{color: 'var(--button-remove-icon-color)'}}
+        style={{ color: 'var(--button-remove-icon-color)' }}
         buttonSize={props.smallButton ? "small" : "default"}
         icon={mdiDelete}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick} />
 }
 
 export function PlotButton(props: {
     tooltip: string
+    pipeline?: boolean
     onClick: () => void
 }) {
     return <MdiButton
-        icon={mdiChartBellCurveCumulative}
+        icon={props.pipeline ? mdiSitemapOutline : mdiChartBellCurveCumulative}
         tooltip={props.tooltip}
-        onClick={props.onClick}/>
+        onClick={props.onClick}
+        rotation={props.pipeline ? 270 : 0} />
 }
 
 export function UploadButton(props: {
@@ -170,16 +187,16 @@ export function UploadButton(props: {
     style?: CSSProperties
     smallButton?: boolean
 }): JSX.Element {
-    const style = Object.assign({verticalAlign: 'bottom'}, props.style)
+    const style = Object.assign({ verticalAlign: 'bottom' }, props.style)
     return (
         <label data-tip={props.tooltip}>
-            <input style={{display: 'none'}} type="file" onChange={props.onChange} multiple={props.multiple}/>
+            <input style={{ display: 'none' }} type="file" onChange={props.onChange} multiple={props.multiple} />
             <MdiButton
                 buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
                 tooltip={props.tooltip}
                 className={props.className}
-                style={style}/>
+                style={style} />
         </label>
     )
 }
@@ -190,18 +207,22 @@ export function MdiButton(props: {
     className?: string
     style?: CSSProperties
     enabled?: boolean
+    rotation?: number
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const {icon, tooltip, className, enabled, onClick, buttonSize} = props
-    const clickhandler = onClick === undefined || enabled === false ? () => {} : onClick
+    const { icon, tooltip, className, enabled, onClick, buttonSize } = props
+    const clickhandler = onClick === undefined || enabled === false ? () => { } : onClick
     let buttonClass = 'button button-with-icon'
     if (enabled === false) buttonClass += ' disabled-button'
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
     if (className !== undefined) buttonClass += ' ' + className
+    let rot = {}
+    if (props.rotation && props.rotation !== 0)
+        rot = { transform: "rotate(" + props.rotation + "deg)" }
     return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
-        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'}/>
+        <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
     </div>
 }
 
@@ -211,14 +232,14 @@ export function MdiIcon(props: {
     style?: CSSProperties
 }) {
     return <span data-tip={props.tooltip} style={props.style}>
-        <Icon path={props.icon} size={'15px'}/>
+        <Icon path={props.icon} size={'15px'} />
     </span>
 }
 
 export function CloseButton(props: {
     onClick: () => void
 }) {
-    return <div style={{textAlign: 'right', cursor: 'pointer'}} onClick={props.onClick}>✖</div>
+    return <div style={{ textAlign: 'right', cursor: 'pointer' }} onClick={props.onClick}>✖</div>
 }
 
 export function OptionLine(props: {
@@ -227,14 +248,14 @@ export function OptionLine(props: {
     children: ReactNode
     small?: boolean
 }) {
-    const settingStyle = props.small ? {width:'min-content'} : {}
+    const settingStyle = props.small ? { width: 'min-content' } : {}
     return <label className="setting" data-tip={props['data-tip']} style={settingStyle}>
         <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
 }
 
-export function IntOption(props:{
+export function IntOption(props: {
     value: number
     error?: string
     desc: string
@@ -251,9 +272,9 @@ export function IntOption(props:{
             <IntInput
                 {...props}
                 className={'setting-input' + (small ? ' small-setting-input' : '')}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -267,9 +288,10 @@ export function IntInput(props: {
     className?: string
     style?: CSSProperties
 }) {
-    const {min, max} = props
+    const { min, max } = props
     return <ParsedInput
         {...props}
+        immediate={true}
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
@@ -283,7 +305,7 @@ export function IntInput(props: {
     />
 }
 
-export function FloatOption(props:{
+export function FloatOption(props: {
     value: number
     error?: string
     desc: string
@@ -292,13 +314,13 @@ export function FloatOption(props:{
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-          <FloatInput
-              value={props.value}
-              data-tip={props["data-tip"]}
-              onChange={props.onChange}
-              className="setting-input"/>
+            <FloatInput
+                value={props.value}
+                data-tip={props["data-tip"]}
+                onChange={props.onChange}
+                className="setting-input" />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -312,6 +334,7 @@ export function FloatInput(props: {
 }) {
     return <ParsedInput
         value={props.value}
+        immediate={true}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
         asString={(float?: number) => float === undefined ? "" : float.toString()}
@@ -320,7 +343,7 @@ export function FloatInput(props: {
             return isNaN(parsedvalue) || rawValue.endsWith(".") ? undefined : parsedvalue
         }}
         className={props.className}
-        style={{...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined)}}
+        style={{ ...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined) }}
     />
 }
 
@@ -335,6 +358,7 @@ export function FloatListOption(props: {
         <OptionLine desc={props.desc} data-tip={props['data-tip']}>
             <ParsedInput
                 className="setting-input"
+                immediate={true}
                 value={props.value}
                 data-tip={props['data-tip']}
                 asString={(value: number[]) => value.join(", ")}
@@ -353,7 +377,7 @@ export function FloatListOption(props: {
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
             />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -365,29 +389,55 @@ type ParsedInputProps<TYPE> = {
     onChange: (value: TYPE) => void
     asString: (value: TYPE) => string
     parseValue: (rawValue: string) => TYPE | undefined
+    immediate: boolean
     withControls?: boolean
     min?: number
     max?: number
 }
 
-export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string }> {
+export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string, pending: boolean }> {
 
     constructor(props: ParsedInputProps<TYPE>) {
         super(props)
         this.updateValue = this.updateValue.bind(this)
-        this.state = { rawValue: props.asString(props.value) }
+        this.state = { rawValue: props.asString(props.value), pending: false }
     }
 
     componentDidUpdate(prevProps: ParsedInputProps<TYPE>) {
         if (prevProps.value !== this.props.value)
-            this.setState({rawValue: this.props.asString(this.props.value)})
+            this.setState({ rawValue: this.props.asString(this.props.value) })
     }
 
-    private updateValue(rawValue: string) {
-        this.setState({rawValue})
+    private updateValue(rawValue: string, perform_callback: boolean) {
+        this.setState({ rawValue: rawValue, pending: true })
         const parsed = this.props.parseValue(rawValue)
-        if (parsed !== undefined)
+        if (parsed !== undefined && (perform_callback || this.props.immediate)) {
             this.props.onChange(parsed)
+            this.setState({ pending: false })
+        }
+    }
+
+    handleSubmit(event: any) {
+        if (!this.props.immediate && event.key === 'Enter') {
+            event.preventDefault();
+            const parsed = this.props.parseValue(this.state.rawValue)
+            if (parsed !== undefined) {
+                this.props.onChange(parsed)
+                this.setState({ pending: false })
+            }
+        }
+    }
+
+    private getStyle(valid: boolean): CSSProperties | undefined {
+        let style = this.props.style
+        const pending = this.state.pending
+        if (!valid) {
+            style = { ...style, ...ERROR_BACKGROUND_STYLE }
+        }
+        if (pending) {
+            style = { ...style, ...PENDING_BACKGROUND_STYLE }
+        }
+        return style
     }
 
     render() {
@@ -401,18 +451,25 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             value={this.state.rawValue}
             data-tip={props["data-tip"]}
             className={props.className}
-            style={valid ? props.style : {...props.style, ...ERROR_BACKGROUND_STYLE}}
-            onChange={e => this.updateValue(e.target.value)}/>
+            style={this.getStyle(valid)}
+            onBlur={e => this.updateValue(e.target.value, true)}
+            onChange={e => this.updateValue(e.target.value, false)}
+            onKeyDown={e => this.handleSubmit(e)} />
     }
 
 }
 
-export const ERROR_BACKGROUND_STYLE: CSSProperties =
-    Object.freeze({backgroundColor: 'var(--error-field-background-color)'})
 
-export function ErrorMessage(props: {message?: string}) {
+
+export const ERROR_BACKGROUND_STYLE: CSSProperties =
+    Object.freeze({ backgroundColor: 'var(--error-field-background-color)' })
+
+export const PENDING_BACKGROUND_STYLE: CSSProperties =
+    Object.freeze({ fontStyle: 'italic' })
+
+export function ErrorMessage(props: { message?: string }) {
     return props.message ?
-        <div style={{color: 'var(--error-text-color)', whiteSpace: 'pre-wrap'}}>{props.message}</div>
+        <div style={{ color: 'var(--error-text-color)', whiteSpace: 'pre-wrap' }}>{props.message}</div>
         : null
 }
 
@@ -428,17 +485,17 @@ export function BoolOption(props: {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
             <div className={"setting-input" + (small ? " small-setting-input" : "")}
-                 data-tip={props["data-tip"]}
-                 style={{cursor: 'pointer'}}>
+                data-tip={props["data-tip"]}
+                style={{ cursor: 'pointer' }}>
                 <input
-                    style={{marginLeft: 0, marginTop: '8px', marginBottom: '8px'}}
+                    style={{ marginLeft: 0, marginTop: '8px', marginBottom: '8px' }}
                     type="checkbox"
                     checked={props.value}
                     data-tip={props["data-tip"]}
-                    onChange={(e) => props.onChange(e.target.checked)}/>
+                    onChange={(e) => props.onChange(e.target.checked)} />
             </div>
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -454,11 +511,12 @@ export function EnumOption<OPTION extends string>(props: {
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined}/>
+            <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
+
 
 /*
  options - list of options OR object with value to display text mapping
@@ -472,7 +530,7 @@ export function EnumInput<OPTION extends string>(props: {
     className?: string
     onChange: (value: OPTION) => void
 }) {
-    const {options, value} = props
+    const { options, value } = props
     const optionsMap = Array.isArray(options) ? toMap(options) : options
     if (!Object.keys(optionsMap).includes(value))
         optionsMap[value] = value
@@ -503,9 +561,9 @@ export function TextOption(props: {
                 value={props.value}
                 data-tip={props["data-tip"]}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={props.onChange}/>
+                onChange={props.onChange} />
         </OptionLine>
-        <ErrorMessage message={props.error}/>
+        <ErrorMessage message={props.error} />
     </>
 }
 
@@ -522,7 +580,7 @@ export function TextInput(props: {
         data-tip={props["data-tip"]}
         className={props.className}
         style={props.style}
-        onChange={e => props.onChange(e.target.value)}/>
+        onChange={e => props.onChange(e.target.value)} />
 }
 
 interface Action {
@@ -555,6 +613,8 @@ export interface ChartData {
     phase?: number[]
     impulse?: number[]
     time: number[]
+    groupdelay?: number[]
+    f_groupdelay?: number[]
 }
 
 export interface FilterOption {
@@ -568,11 +628,12 @@ export function ChartPopup(props: {
     data: ChartData
     onChange: (item: string) => void
     onClose: () => void
-}){
+}) {
+
     return <Popup open={props.open} onClose={props.onClose}>
-        <CloseButton onClick={props.onClose}/>
-        <h3 style={{textAlign: 'center'}}>{props.data.name}</h3>
-        <Chart onChange={props.onChange} data={props.data}/>
+        <CloseButton onClick={props.onClose} />
+        <h3 style={{ textAlign: 'center' }}>{props.data.name}</h3>
+        <Chart onChange={props.onChange} data={props.data} />
     </Popup>
 }
 
@@ -580,33 +641,72 @@ export function Chart(props: {
     data: ChartData
     onChange: (item: string) => void
 }) {
-    let data: any = {labels: [props.data.name], datasets: []}
+    const chartRef = useRef(null);
+    const downloadPlot = useCallback(() => {
+        const link = document.createElement('a');
+        link.download = props.data.name.replace(/\s/g, "_") + ".png"
+
+        if (chartRef.current !== null) {
+            let current = chartRef.current as any
+            link.href = current.toBase64Image();
+            link.click();
+        }
+    }, [props.data.name])
+
+    const resetView = useCallback(() => {
+        if (chartRef.current !== null) {
+            let current = chartRef.current as any
+            current.resetZoom();
+        }
+    }, [])
+
+
+
+    let data: any = { labels: [props.data.name], datasets: [] }
     function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
-        return xvect.map((x, idx) => ({x: scaling_x * x, y: scaling_y * yvect[idx]}))
+        return xvect.map((x, idx) => ({ x: scaling_x * x, y: scaling_y * yvect[idx] }))
     }
 
-    let x_time = false
-    let x_freq = false
-    let y_phase = false
-    let y_gain = false
-    let y_ampl = false
+    const downloadData = useCallback(() => {
+        let magdat = props.data.magnitude
+        let phasedat = props.data.phase
+        let delaydat = props.data.groupdelay
+
+        var table = props.data.f.map(function (f, i) {
+            let mag: number | null = null
+            if (magdat !== undefined)
+                mag = magdat[i]
+            let phase: number | null = null
+            if (phasedat !== undefined)
+                phase = phasedat[i]
+            let delay: number | null = null
+            if (delaydat !== undefined)
+                delay = delaydat[i]
+            return [f, mag, phase, delay];
+        });
+        let csvContent = "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n"
+            + table.map(row => row.join(",")).join("\n")
+        const link = document.createElement('a')
+        link.download = props.data.name.replace(/\s/g, "_") + ".csv"
+        link.href = encodeURI(csvContent);
+        link.click();
+    }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
 
     const styles = cssStyles()
-    const axesColor = styles.getPropertyValue('--axes-color')
-    const textColor = styles.getPropertyValue('--text-color')
     const gainColor = styles.getPropertyValue('--gain-color')
     const phaseColor = styles.getPropertyValue('--phase-color')
     const impulseColor = styles.getPropertyValue('--impulse-color')
+    const groupdelayColor = styles.getPropertyValue('--groupdelay-color')
     const magnitude = props.data.magnitude
     if (magnitude) {
         const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
-        x_freq = true
-        y_gain = true
         data.datasets.push(
             {
                 label: 'Gain',
                 fill: false,
                 borderColor: gainColor,
+                backgroundColor: gainColor,
+                pointBackgroundColor: gainColor,
                 pointRadius: 0,
                 showLine: true,
                 data: gainpoints,
@@ -618,13 +718,12 @@ export function Chart(props: {
     const phase = props.data.phase
     if (phase) {
         const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
-        x_freq = true
-        y_phase = true
         data.datasets.push(
             {
                 label: 'Phase',
                 fill: false,
                 borderColor: phaseColor,
+                backgroundColor: phaseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: phasepoints,
@@ -636,13 +735,12 @@ export function Chart(props: {
     const impulse = props.data.impulse
     if (impulse) {
         const impulsepoints = make_pointlist(props.data.time, impulse, 1000.0, 1.0)
-        x_time = true
-        y_ampl = true
         data.datasets.push(
             {
                 label: 'Impulse',
                 fill: false,
                 borderColor: impulseColor,
+                backgroundColor: impulseColor,
                 pointRadius: 0,
                 showLine: true,
                 data: impulsepoints,
@@ -651,31 +749,67 @@ export function Chart(props: {
             }
         )
     }
-
-    const options = {
-        scales: {
-            xAxes: [] as any[],
-            yAxes: [] as any[]
-        },
-        legend: {
-            labels: {
-                fontColor: textColor,
+    const groupdelay = props.data.groupdelay
+    const f_groupdelay = props.data.f_groupdelay
+    if (groupdelay && f_groupdelay) {
+        const groupdelaypoints = make_pointlist(f_groupdelay, groupdelay, 1.0, 1.0)
+        data.datasets.push(
+            {
+                label: 'Group delay',
+                fill: false,
+                borderColor: groupdelayColor,
+                backgroundColor: groupdelayColor,
+                pointRadius: 0,
+                showLine: true,
+                data: groupdelaypoints,
+                yAxisID: "delay",
+                xAxisID: "freq",
             }
-        },
+        )
     }
 
-    if (x_freq) {
-        options.scales.xAxes.push(
-            {
-                id: "freq",
+    // Workaround to prevent the chart from resetting the zoom on every update.
+    const options = useMemo(() => {
+
+        const styles = cssStyles()
+        const axesColor = styles.getPropertyValue('--axes-color')
+        const textColor = styles.getPropertyValue('--text-color')
+        const gainColor = styles.getPropertyValue('--gain-color')
+        const phaseColor = styles.getPropertyValue('--phase-color')
+        const impulseColor = styles.getPropertyValue('--impulse-color')
+        const groupdelayColor = styles.getPropertyValue('--groupdelay-color')
+
+        const zoomOptions = {
+            zoom: {
+                wheel: {
+                    enabled: true,
+                },
+                pinch: {
+                    enabled: true,
+                },
+                drag: {
+                    enabled: false,
+                },
+                mode: 'xy',
+                overScaleMode: 'xy',
+            },
+            pan: {
+                enabled: true,
+                mode: 'xy',
+                threshold: 3,
+                overScaleMode: 'xy',
+            }
+        };
+        const scales = {
+            'freq': {
                 type: 'logarithmic',
                 position: 'bottom',
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Frequency, Hz',
-                    fontColor: textColor
+                    text: 'Frequency, Hz',
+                    color: textColor
                 },
-                gridLines: {
+                grid: {
                     zeroLineColor: axesColor,
                     color: axesColor
                 },
@@ -683,106 +817,241 @@ export function Chart(props: {
                     min: 0,
                     max: 30000,
                     maxRotation: 0,
-                    fontColor: textColor,
-                    callback(value: number, index: number, values: any) {
-                        if (value === 10 || value === 100)
+                    minRotation: 0,
+                    color: textColor,
+                    callback(tickValue: number, index: number, values: any) {
+                        if (tickValue === 0) {
+                            return '0';
+                        }
+                        let value = -1;
+                        let range = values[values.length - 1].value / values[0].value;
+                        const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
+                        const first_digit = tickValue / rounded;
+                        const rest = tickValue % rounded;
+                        if (range > 10) {
+                            if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
+                                value = tickValue;
+                            }
+                        }
+                        else if (rest === 0) {
+                            value = tickValue;
+                        }
+                        if (value >= 1000000) {
+                            return (value / 1000000).toString() + "M";
+                        }
+                        else if (value >= 1000) {
+                            return (value / 1000).toString() + "k";
+                        }
+                        else if (value > 0) {
                             return value.toString()
-                        else if (value === 1000)
-                            return '1k'
-                        else if (value === 10000)
-                            return '10k'
-                        else
-                            return ''
+                        }
+                        return '';
                     }
                 },
-                afterBuildTicks: function (chartObj: any) {
-                    chartObj.ticks = [
-                        10, 20, 30, 40, 50, 60, 70, 80, 90,
-                        100, 200, 300, 400, 500, 600, 700, 800, 900,
-                        1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
-                        10000, 20000
-                    ]
-                }
-            }
-        )
-    }
-    if (x_time) {
-        options.scales.xAxes.push(
-            {
-                id: "time",
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
+            },
+            'time': {
                 type: 'linear',
                 position: 'top',
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Time, ms',
-                    fontColor: textColor
+                    text: 'Time, ms',
+                    color: textColor
                 },
                 ticks: {
-                    fontColor: textColor,
+                    color: textColor,
                 },
-                gridLines: {display: false},
-            }
-        )
-    }
-    if (y_gain) {
-        options.scales.yAxes.push(
-            {
-                id: "gain",
+                grid: { display: false },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.xAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
+            },
+            'gain': {
                 type: 'linear',
                 position: 'left',
                 ticks: {
-                    fontColor: gainColor
+                    color: gainColor,
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Gain, dB',
-                    fontColor: gainColor
+                    text: 'Gain, dB',
+                    color: gainColor
                 },
-                gridLines: {
+                grid: {
                     zeroLineColor: axesColor,
-                    color: axesColor
+                    color: axesColor,
+                    borderDash: [7, 3],
+                },
+                suggestedMin: -1,
+                suggestedMax: 1,
+                afterBuildTicks: function (scale: any) {
+                    var step = 1;
+                    let range = scale.max - scale.min;
+                    if (range > 150) {
+                        step = 50
+                    }
+                    else if (range > 60) {
+                        step = 20
+                    }
+                    else if (range > 30) {
+                        step = 10
+                    }
+                    else if (range > 20) {
+                        step = 5
+                    }
+                    else if (range > 10) {
+                        step = 2
+                    }
+                    let tick = Math.ceil(scale.min / step) * step;
+                    var ticks = [];
+                    while (tick <= scale.max) {
+                        ticks.push({ "value": tick });
+                        tick += step;
+                    }
+                    scale.ticks = ticks
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
                 },
             },
-        )
-    }
-    if (y_phase) {
-        options.scales.yAxes.push(
-            {
-                id: "phase",
+            'phase': {
+                type: 'linear',
+                position: 'right',
+                min: -180,
+                max: 180,
+                afterBuildTicks: function (scale: any) {
+                    var step = 1;
+                    let range = scale.max - scale.min;
+                    if (range > 180) {
+                        step = 45
+                    }
+                    else if (range > 45) {
+                        step = 15
+                    }
+                    else if (range > 15) {
+                        step = 5
+                    }
+                    let tick = Math.ceil(scale.min / step) * step;
+                    var ticks = [];
+                    while (tick <= scale.max) {
+                        ticks.push({ "value": tick });
+                        tick += step;
+                    }
+                    scale.ticks = ticks
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
+                ticks: {
+                    color: phaseColor,
+                },
+                title: {
+                    display: true,
+                    text: 'Phase, deg',
+                    color: phaseColor
+                },
+                grid: {
+                    display: true,
+                    zeroLineColor: axesColor,
+                    color: axesColor,
+                    borderDash: [3, 7],
+                }
+            },
+            'ampl': {
                 type: 'linear',
                 position: 'right',
                 ticks: {
-                    fontColor: phaseColor,
-                    suggestedMin: -180,
-                    suggestedMax: 180
+                    color: impulseColor
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Phase, deg',
-                    fontColor: phaseColor
+                    text: 'Amplitude',
+                    color: impulseColor
                 },
-                gridLines: {display: false}
+                grid: { display: false },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
             },
-        )
-    }
-    if (y_ampl) {
-        options.scales.yAxes.push(
-            {
-                id: "ampl",
+            'delay': {
                 type: 'linear',
                 position: 'right',
+                suggestedMin: -0.001,
+                suggestedMax: 0.001,
                 ticks: {
-                    fontColor: impulseColor
+                    color: groupdelayColor
                 },
-                scaleLabel: {
+                title: {
                     display: true,
-                    labelString: 'Amplitude',
-                    fontColor: impulseColor
+                    text: 'Group delay, ms',
+                    color: groupdelayColor
                 },
-                gridLines: {display: false}
+                grid: {
+                    display: true,
+                    zeroLineColor: axesColor,
+                    color: axesColor,
+                    borderDash: [1, 4],
+                },
+                beforeUpdate: function (scale: any) {
+                    if (scale.chart._metasets.some(function (e: any) { return (e.yAxisID === scale.id && !e.hidden); })) {
+                        scale.options.display = true
+                    }
+                    else {
+                        scale.options.display = false
+                    }
+                    return;
+                },
             }
-        )
-    }
+        }
+        const options: { [key: string]: any } = {
+            scales: scales,
+            plugins: {
+                zoom: zoomOptions,
+                legend: {
+                    labels: {
+                        color: textColor,
+                    }
+                },
+            },
+            animation: {
+                duration: 500
+            }
+        }
+        return options
+    }, [])
+
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
             return a.samplerate - b.samplerate
@@ -799,7 +1068,7 @@ export function Chart(props: {
         && (option.channels === undefined || option.channels === props.data.channels)
     )?.name
     return <>
-        <div style={{textAlign: 'center'}}>
+        <div style={{ textAlign: 'center' }}>
             {props.data.options.length > 0 && <select
                 value={selected}
                 data-tip="Select filter file"
@@ -808,7 +1077,20 @@ export function Chart(props: {
                 {sampleRateOptions}
             </select>}
         </div>
-        <Scatter data={data} options={options}/>
+        <Scatter data={data} options={options} ref={chartRef} />
+        <MdiButton
+            icon={mdiImage}
+            tooltip="Save plot as image"
+            onClick={downloadPlot} />
+        <MdiButton
+            icon={mdiTable}
+            tooltip="Save plot data as csv"
+            onClick={downloadData} />
+        <MdiButton
+            icon={mdiHome}
+            tooltip="Reset zoom and pan"
+            onClick={resetView} />
+        <ReactTooltip />
     </>
 }
 
@@ -819,18 +1101,18 @@ export function ListSelectPopup(props: {
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const {open, items, onSelect, onClose} = props
+    const { open, items, onSelect, onClose } = props
     const selectItem = (item: string) => { onSelect(item); onClose() }
-    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose}  contentStyle={{width: 'max-content'}}>
-        <CloseButton onClick={onClose}/>
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
+        <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{display: 'flex', flexDirection: 'column'}}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
             {items.map(item =>
                 <Button
                     key={item}
                     text={item}
-                    style={{justifyContent: 'flex-start'}}
-                    onClick={() => selectItem(item)}/>
+                    style={{ justifyContent: 'flex-start' }}
+                    onClick={() => selectItem(item)} />
             )}
         </div>
     </Popup>
