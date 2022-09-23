@@ -1,6 +1,7 @@
-from os.path import isfile
-
+from os.path import isfile, expanduser
 import yaml
+import threading
+import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
@@ -12,51 +13,69 @@ from .filemanagement import (
     replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
     make_absolute, replace_tokens_in_filter_config
 )
-from .filterdefaults import defaults_for_filter
+from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
-from .version import VERSION
 
 
 async def get_gui_index(request):
     raise web.HTTPFound("/gui/index.html")
 
+def _reconnect(cdsp, cache):
+    done = False
+    while not done:
+        try:
+            cdsp.connect()
+            cache["cdsp_version"] = version_string(cdsp.get_version())
+            done = True
+        except IOError:
+            time.sleep(1)
 
 async def get_status(request):
     cdsp = request.app["CAMILLA"]
-    cdsp_version = None
+    reconnect_thread = request.app["RECONNECT_THREAD"]
+    cache = request.app["STATUSCACHE"]
+    cachetime = request.app["CACHETIME"]
     try:
         state = cdsp.get_state()
         state_str = state.name
-        cdsp_version = cdsp.get_version()
-    except IOError:
         try:
-            cdsp.connect()
-            state = cdsp.get_state()
-            state_str = state.name
-            cdsp_version = cdsp.get_version()
+            cache.update({
+                "cdsp_status": state_str,
+                "capturesignalrms": cdsp.get_capture_signal_rms(),
+                "capturesignalpeak": cdsp.get_capture_signal_peak(),
+                "playbacksignalrms": cdsp.get_playback_signal_rms(),
+                "playbacksignalpeak": cdsp.get_playback_signal_peak()
+            })
+            now = time.time()
+            # These values don't change that fast, let's update them only once per second.
+            if now - cachetime > 1.0:
+                request.app["CACHETIME"] = now
+                cache.update({
+                    "capturerate": cdsp.get_capture_rate(),
+                    "rateadjust": cdsp.get_rate_adjust(),
+                    "bufferlevel": cdsp.get_buffer_level(),
+                    "clippedsamples": cdsp.get_clipped_samples(),
+                })
         except IOError:
-            state_str = "offline"
-    cdsp_version = cdsp.get_version()
-    if cdsp_version is None:
-        cdsp_version = ['x', 'x', 'x']
-    status = {
-        "cdsp_status": state_str,
-        "cdsp_version": version_string(cdsp_version),
-        "py_cdsp_version": version_string(cdsp.get_library_version()),
-        "backend_version": version_string(VERSION),
-    }
-    try:
-        status.update({
-            "capturesignalrms": cdsp.get_capture_signal_rms(),
-            "playbacksignalrms": cdsp.get_playback_signal_rms(),
-            "capturerate": cdsp.get_capture_rate(),
-            "rateadjust": cdsp.get_rate_adjust(),
-            "bufferlevel": cdsp.get_buffer_level(),
-            "clippedsamples": cdsp.get_clipped_samples(),
-        })
+            pass
     except IOError:
-        pass
-    return web.json_response(status)
+        if reconnect_thread is None or not reconnect_thread.is_alive():
+            cache.update({
+                "cdsp_status": "Offline",
+                "cdsp_version": "(offline)",
+                "capturesignalrms": [],
+                "capturesignalpeak": [],
+                "playbacksignalrms": [],
+                "playbacksignalpeak": [],
+                "capturerate": None,
+                "rateadjust": None,
+                "bufferlevel": None,
+                "clippedsamples": None,
+            })
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
+            reconnect_thread.start()
+            request.app["RECONNECT_THREAD"] = reconnect_thread
+    return web.json_response(cache)
 
 
 def version_string(version_array):
@@ -69,6 +88,8 @@ async def get_param(request):
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         result = cdsp.get_volume()
+    elif name == "mute":
+        result = cdsp.get_mute()
     elif name == "signalrange":
         result = cdsp.get_signal_range()
     elif name == "signalrangedb":
@@ -82,7 +103,7 @@ async def get_param(request):
     elif name == "configraw":
         result = cdsp.get_config_raw()
     else:
-        result = "ERROR"
+        raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result))
 
 
@@ -106,6 +127,13 @@ async def set_param(request):
     cdsp = request.app["CAMILLA"]
     if name == "volume":
         cdsp.set_volume(value)
+    elif name == "mute":
+        if value.lower() == "true":
+            cdsp.set_mute(True)
+        elif value.lower() == "false":
+            cdsp.set_mute(False)
+        else:
+            return web.Response(status=500, text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
         cdsp.set_update_interval(value)
     elif name == "configname":
@@ -121,32 +149,49 @@ async def eval_filter_values(request):
     config_dir = request.app["config_dir"]
     config = content["config"]
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
-    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
+    channels = content["channels"]
+    samplerate = content["samplerate"]
+    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
+    if "filename" in config["parameters"]:
+        filename = config["parameters"]["filename"]
+        options = filter_options(filter_file_names, filename)
+    else:
+        options = []
+    replace_tokens_in_filter_config(config, samplerate, channels)
     data = eval_filter(
         config,
-        name=content["name"],
-        samplerate=content["samplerate"],
-        npoints=300,
+        name=(content["name"]),
+        samplerate=samplerate,
+        npoints=1000,
     )
+    data["channels"] = channels
+    data["options"] = options
     return web.json_response(data)
 
 
 async def eval_filterstep_values(request):
-    # Plot a filter
+    # Plot a filter step
     content = await request.json()
     config = content["config"]
+    step_index = content["index"]
     config_dir = request.app["config_dir"]
+    samplerate = content["samplerate"]
+    channels = content["channels"]
+    config["devices"]["samplerate"] = samplerate
+    config["devices"]["capture"]["channels"] = channels
     plot_config = new_config_with_absolute_filter_paths(config, config_dir)
-    samplerate = plot_config["devices"]["samplerate"]
-    channels = plot_config["devices"]["capture"]["channels"]
+    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
+    options = pipeline_step_options(filter_file_names, config, step_index)
     for _, filt in plot_config["filters"].items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
     data = eval_filterstep(
         plot_config,
-        content["index"],
-        name="Filterstep {}".format(content["index"]),
+        step_index,
+        name="Filterstep {}".format(step_index),
         npoints=1000,
     )
+    data["channels"] = channels
+    data["options"] = options
     return web.json_response(data)
 
 
@@ -161,7 +206,6 @@ async def set_config(request):
     # Apply a new config to CamillaDSP
     json = await request.json()
     json_config = json["config"]
-    filename = json.get("filename", None)
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
@@ -176,10 +220,23 @@ async def set_config(request):
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors)
-    if filename:
-        save_config(filename, json_config, request)
     return web.Response(text="OK")
 
+
+async def get_default_config_file(request):
+    default_config = request.app["default_config"]
+    config_dir = request.app["config_dir"]
+    if default_config and isfile(default_config):
+        config = default_config
+    else:
+        return web.Response(status=404, text="No default config")
+    try:
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    return web.json_response(json_config)
 
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
@@ -312,6 +369,9 @@ async def download_configs_zip(request):
 async def get_gui_config(request):
     gui_config = get_gui_config_or_defaults()
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
+    gui_config["supported_capture_types"] = request.app["supported_capture_types"]
+    gui_config["supported_playback_types"] = request.app["supported_playback_types"]
+    gui_config["can_update_active_config"] = request.app["can_update_active_config"]
     return web.json_response(gui_config)
 
 
@@ -320,3 +380,19 @@ async def get_defaults_for_coeffs(request):
     absolute_path = make_absolute(path, request.app["config_dir"])
     defaults = defaults_for_filter(absolute_path)
     return web.json_response(defaults)
+
+
+async def get_log_file(request):
+    log_file_path = request.app["log_file"]
+    try:
+        with open(expanduser(log_file_path)) as log_file:
+            text = log_file.read()
+            return web.Response(body=text)
+    except OSError:
+        print("Unable to read logfile at " + log_file_path)
+    if log_file_path:
+        error_message = "Please configure CamillaDSP to log to: " + log_file_path
+    else:
+        error_message = "Please configure a valid 'log_file' path"
+    return web.Response(body=error_message)
+

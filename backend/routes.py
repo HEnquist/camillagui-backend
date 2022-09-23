@@ -8,6 +8,7 @@ from .views import (
     get_config,
     set_config,
     get_active_config_file,
+    get_default_config_file,
     set_active_config_name,
     config_to_yml,
     yml_to_json,
@@ -25,7 +26,8 @@ from .views import (
     get_config_file,
     save_config_file,
     get_defaults_for_coeffs,
-    get_status
+    get_status,
+    get_log_file
 )
 
 
@@ -39,6 +41,7 @@ def setup_routes(app):
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
+    app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
     app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)
     app.router.add_post("/api/ymltojson", yml_to_json)
@@ -55,6 +58,7 @@ def setup_routes(app):
     app.router.add_get("/api/guiconfig", get_gui_config)
     app.router.add_get("/api/getconfigfile", get_config_file)
     app.router.add_post("/api/saveconfigfile", save_config_file)
+    app.router.add_get("/api/logfile", get_log_file)
 
     app.router.add_get("/", get_gui_index)
 
