@@ -6,8 +6,10 @@ config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
 active_config: "~/camilladsp/active_config.yml"
+active_config_txt: "~/camilladsp/active_config.txt"
 log_file: "~/camilladsp/camilladsp.log"
-update_symlink: true
+update_config_symlink: false
+update_config_txt: false
 on_set_active_config: null
 on_get_active_config: null
 supported_capture_types: null

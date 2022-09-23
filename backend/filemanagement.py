@@ -2,7 +2,7 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath
+from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath, getmtime
 
 import yaml
 from aiohttp import web
@@ -42,8 +42,12 @@ def list_of_files_in_directory(folder):
     files_list = []
     for f in files:
         fname = os.path.basename(f)
-        files_list.append(fname)
-    return sorted(files_list, key=lambda x: x.lower())
+        filetime = getmtime(f)
+        files_list.append((fname, filetime))
+    sorted_files = sorted(files_list, key=lambda x: x[0].lower())
+    sorted_names = [file[0] for file in sorted_files]
+    sorted_times = [file[1] for file in sorted_files]
+    return (sorted_names, sorted_times)
 
 
 def delete_files(folder, files):
@@ -79,12 +83,18 @@ def get_yaml_as_json(request, path):
 
 def get_active_config(request):
     active_config = request.app["active_config"]
+    active_config_txt = request.app["active_config_txt"]
     on_get = request.app["on_get_active_config"]
     if not on_get:
         if islink(active_config) and isfile(active_config):
             target = os.readlink(active_config)
             _head, tail = split(target)
             return tail
+        elif isfile(active_config_txt):
+            with open(active_config_txt) as f:
+                target = f.read().strip()
+                _head, tail = split(target)
+                return tail
         else:
             return None
     else:
@@ -102,19 +112,25 @@ def get_active_config(request):
 
 def set_as_active_config(request, file):
     active_config = request.app["active_config"]
-    update = request.app["update_symlink"]
+    active_config_txt = request.app["active_config_txt"]
+    update_config_symlink = request.app["update_config_symlink"]
+    update_config_txt = request.app["update_config_txt"]
     on_set = request.app["on_set_active_config"]
-    if update:
-        if not active_config:
-            return
+    if update_config_symlink and active_config:
         try:
             if islink(active_config):
                 os.unlink(active_config)
             os.symlink(file, active_config)
         except Exception as e:
-            print(f"Failed to update symlink, error: {e}")
+            print(f"Failed to update symlink at {active_config}, error: {e}")
             if os.name == "nt":
-                print("Creating symlinks on Windows requires special privileges or admin rights.")
+                print("Creating symlinks on Windows requires special privileges or admin rights. Consider setting 'update_config_symlink: false' in camillagui.yml")
+    if update_config_txt and active_config_txt:
+        try:
+            with open(active_config_txt, "w") as f:
+                f.write(file)
+        except Exception as e:
+            print(f"Failed to update config name txt at {active_config_txt}, error: {e}")
     if on_set:
         try:
             cmd = on_set.format(f'"{file}"')

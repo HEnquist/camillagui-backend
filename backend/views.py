@@ -151,7 +151,7 @@ async def eval_filter_values(request):
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
     channels = content["channels"]
     samplerate = content["samplerate"]
-    filter_file_names = list_of_files_in_directory(request.app["coeff_dir"])
+    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
     if "filename" in config["parameters"]:
         filename = config["parameters"]["filename"]
         options = filter_options(filter_file_names, filename)
@@ -180,7 +180,7 @@ async def eval_filterstep_values(request):
     config["devices"]["samplerate"] = samplerate
     config["devices"]["capture"]["channels"] = channels
     plot_config = new_config_with_absolute_filter_paths(config, config_dir)
-    filter_file_names = list_of_files_in_directory(request.app["coeff_dir"])
+    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
     options = pipeline_step_options(filter_file_names, config, step_index)
     for _, filt in plot_config["filters"].items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
@@ -206,7 +206,6 @@ async def set_config(request):
     # Apply a new config to CamillaDSP
     json = await request.json()
     json_config = json["config"]
-    filename = json.get("filename", None)
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
@@ -221,10 +220,23 @@ async def set_config(request):
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors)
-    if filename:
-        save_config(filename, json_config, request)
     return web.Response(text="OK")
 
+
+async def get_default_config_file(request):
+    default_config = request.app["default_config"]
+    config_dir = request.app["config_dir"]
+    if default_config and isfile(default_config):
+        config = default_config
+    else:
+        return web.Response(status=404, text="No default config")
+    try:
+        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
+    except CamillaError as e:
+        return web.Response(status=500, text=str(e))
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    return web.json_response(json_config)
 
 async def get_active_config_file(request):
     active_config = request.app["active_config"]
@@ -359,6 +371,7 @@ async def get_gui_config(request):
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
+    gui_config["can_update_active_config"] = request.app["can_update_active_config"]
     return web.json_response(gui_config)
 
 
