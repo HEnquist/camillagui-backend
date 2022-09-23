@@ -39,12 +39,12 @@ For Homebrew, install Python with `brew install python`, after which you can ins
 ### CamillaDSP Python libraries
 You need both the CamillaDSP companion python libraries:
 - `pycamilladsp` version 1.0.0 from https://github.com/HEnquist/pycamilladsp
-- `pycamilladsp-plot` version 1.0.0 from https://github.com/HEnquist/pycamilladsp-plot
+- `pycamilladsp-plot` version 1.0.2 from https://github.com/HEnquist/pycamilladsp-plot
 
 To install the libraries, use `pip` to install directly from github:
 ```sh
 pip install git+https://github.com/HEnquist/pycamilladsp.git@v1.0.0
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v1.0.0
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v1.0.2
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
