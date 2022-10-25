@@ -55,7 +55,7 @@ export async function doUpload(
             body: formData
         })
         onSuccess(uploadedFiles)
-    } catch (e: any) {
+    } catch (e) {
         onError(e.message)
     }
 }
