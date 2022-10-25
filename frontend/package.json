@@ -1,10 +1,10 @@
 {
   "name": "camillagui",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "homepage": ".",
   "dependencies": {
-    "@babel/core": "^7.19.1",
+    "@babel/core": "^7.19.6",
     "@mdi/js": "^6.9.96",
     "@mdi/react": "^1.6.1",
     "@testing-library/jest-dom": "^5.16.5",
@@ -26,7 +26,7 @@
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
     "react-tabs": "^5.1.0",
-    "react-tooltip": "^4.2.21",
+    "react-tooltip": "^4.4.3",
     "reactjs-popup": "^2.0.5"
   },
   "scripts": {
@@ -54,14 +54,14 @@
     "@types/d3": "^7.4.0",
     "@types/jest": "^27.5.2",
     "@types/json8-patch": "^1.0.1",
-    "@types/lodash": "^4.14.185",
-    "@types/react": "^18.0.21",
-    "@types/react-dom": "^18.0.6",
+    "@types/lodash": "^4.14.186",
+    "@types/react": "^18.0.23",
+    "@types/react-dom": "^18.0.7",
     "@types/react-tabs": "^5.0.4",
     "ajv": "^6.12.6",
     "jest-watch-typeahead": "^0.6.5",
-    "source-map-loader": "^3.0.1",
+    "source-map-loader": "^3.0.2",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.8.3"
+    "typescript": "^4.8.4"
   }
 }
