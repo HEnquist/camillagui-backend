@@ -1106,7 +1106,7 @@ export function ListSelectPopup(props: {
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
         <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
             {items.map(item =>
                 <Button
                     key={item}

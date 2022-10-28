@@ -136,7 +136,7 @@ class PipelinePlot extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
-    if (this.state.width !== prevState.width || this.state.height !== prevState.height)
+    if (this.state.width !== prevState.width || this.state.height !== prevState.height || this.props.expand_filters !== prevProps.expand_filters)
       this.createPipelinePlot()
   }
 
