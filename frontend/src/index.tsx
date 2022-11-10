@@ -130,11 +130,19 @@ class CamillaConfig extends React.Component<
   }
 
   private async applyConfig(): Promise<void> {
+    this.applyConfigRequest(
+      this.state.currentConfigFile,
+      this.state.undoRedo.current()
+    )
+  }
+
+  private async applyConfigRequest(filename: string | undefined, config: Config): Promise<void> {
     const conf_req = await fetch("/api/setconfig", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        config: this.state.undoRedo.current()
+        filename: filename,
+        config: config
       }),
     })
     const message = await conf_req.text()
@@ -201,7 +209,7 @@ class CamillaConfig extends React.Component<
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)
-                this.applyConfig()
+                this.applyConfigRequest(filename, config)
               }}
               updateConfig={update => this.updateConfig(update, true)}
               disableCompactView={() => this.setCompactViewEnabled(false)}
@@ -311,7 +319,7 @@ class CamillaConfig extends React.Component<
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)
-                this.applyConfig()
+                this.applyConfigRequest(filename, config)
               }}
               updateConfig={update => this.updateConfig(update, true)}
           />
