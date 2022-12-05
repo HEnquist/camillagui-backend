@@ -485,6 +485,8 @@ const defaultParameters: {
     Fweighted441: { type: "Fweighted441", bits: 16 },
     Shibata441: { type: "Shibata441", bits: 16 },
     Shibata48: { type: "Shibata48", bits: 16 },
+    ShibataLow441: { type: "ShibataLow441", bits: 16 },
+    ShibataLow48: { type: "ShibataLow48", bits: 16 },
     None: { type: "None", bits: 16 },
   },
 }
