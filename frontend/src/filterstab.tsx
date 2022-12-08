@@ -479,7 +479,9 @@ const defaultParameters: {
     Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
   },
   Dither: {
-    Simple: { type: "Simple", bits: 16 },
+    None: { type: "None", bits: 16 },
+    Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
+    HighPass: { type: "HighPass", bits: 16 },
     Fweighted441: { type: "Fweighted441", bits: 16 },
     FweightedLong441: { type: "FweightedLong441", bits: 16 },
     FweightedShort441: { type: "FweightedShort441", bits: 16 },
@@ -498,10 +500,6 @@ const defaultParameters: {
     ShibataLow96: { type: "ShibataLow96", bits: 16 },
     Shibata192: { type: "Shibata192", bits: 16 },
     ShibataLow192: { type: "ShibataLow192", bits: 16 },
-    Gaussian: { type: "Gaussian", bits: 16, amplitude: 0.5 },
-    Triangular: { type: "Triangular", bits: 16, amplitude: 2.0 },
-    Uniform: { type: "Uniform", bits: 16, amplitude: 1.0 },
-    None: { type: "None", bits: 16 },
   },
 }
 
