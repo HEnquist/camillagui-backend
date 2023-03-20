@@ -10,6 +10,7 @@ import {
   ErrorMessage,
   FloatOption,
   IntInput,
+  OptionalIntOption,
   IntOption,
   TextOption
 } from "./utilities/ui-components"
@@ -141,7 +142,7 @@ function BufferOptions(props: {
         desc="chunksize"
         data-tip="Chunksize for the processing"
         onChange={chunksize => props.onChange(devices => devices.chunksize = chunksize)}/>
-    <IntOption
+    <OptionalIntOption
         value={props.devices.queuelimit}
         error={props.errors({path: ['queuelimit']})}
         desc="queuelimit"

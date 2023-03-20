@@ -148,6 +148,16 @@ textarea.logfileviewer {
   width: 5em;
 }
 
+.optional-setting-input {
+  display: table-cell;
+  width: 67%;
+  vertical-align: middle;
+}
+
+.small-optinal-setting-input {
+  width: 4em;
+}
+
 .box {
   box-sizing: border-box;
   width: 100%;

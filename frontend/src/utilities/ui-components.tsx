@@ -278,6 +278,29 @@ export function IntOption(props: {
     </>
 }
 
+export function OptionalIntOption(props: {
+    value: number|null
+    error?: string
+    desc: string
+    'data-tip': string
+    onChange: (value: number) => void
+    small?: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
+}) {
+    const small = props.small
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+            <OptionalIntInput
+                {...props}
+                className={'optional-setting-input' + (small ? ' small-otional-setting-input' : '')}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
+        </OptionLine>
+        <ErrorMessage message={props.error} />
+    </>
+}
+
 export function IntInput(props: {
     value: number
     'data-tip': string
@@ -295,6 +318,33 @@ export function IntInput(props: {
         asString={(int: number) => int.toString()}
         parseValue={(rawValue: string) => {
             const parsedvalue = parseInt(rawValue)
+            if (isNaN(parsedvalue)
+                || (min !== undefined && parsedvalue < min)
+                || (max !== undefined && parsedvalue > max))
+                return undefined
+            else
+                return parsedvalue
+        }}
+    />
+}
+
+export function OptionalIntInput(props: {
+    value: number | null
+    'data-tip': string
+    onChange: (value: number) => void
+    withControls?: boolean
+    min?: number
+    max?: number
+    className?: string
+    style?: CSSProperties
+}) {
+    const { min, max } = props
+    return <OptionalParsedInput
+        {...props}
+        immediate={true}
+        asString={(int: number | null) => int !== null ? int.toString(): ""}
+        parseValue={(rawValue: string | undefined) => {
+            const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN 
             if (isNaN(parsedvalue)
                 || (min !== undefined && parsedvalue < min)
                 || (max !== undefined && parsedvalue > max))
@@ -459,6 +509,93 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
 
 }
 
+type OptionalParsedInputProps<TYPE> = {
+    style?: CSSProperties
+    className?: string
+    value: TYPE | null
+    'data-tip': string
+    onChange: (value: TYPE) => void
+    asString: (value: TYPE | null) => string | undefined
+    parseValue: (rawValue: string | undefined) => TYPE | undefined
+    immediate: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
+}
+
+export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInputProps<TYPE>, { rawValue: string | undefined, default: boolean, pending: boolean }> {
+
+    constructor(props: OptionalParsedInputProps<TYPE>) {
+        super(props)
+        this.updateValue = this.updateValue.bind(this)
+        this.state = { rawValue: props.asString(props.value), pending: false, default: true }
+    }
+
+    componentDidUpdate(prevProps: OptionalParsedInputProps<TYPE>) {
+        if (prevProps.value !== this.props.value)
+            this.setState({ rawValue: this.props.asString(this.props.value) })
+    }
+
+    private updateValue(rawValue: string, perform_callback: boolean) {
+        this.setState({ rawValue: rawValue, pending: true })
+        const parsed = this.props.parseValue(rawValue)
+        if (parsed !== undefined && (perform_callback || this.props.immediate)) {
+            this.props.onChange(parsed)
+            this.setState({ pending: false })
+        }
+    }
+
+    private updateUseDefault(value: boolean, perform_callback: boolean) {
+        this.setState({ default: value, pending: true })
+        if (perform_callback || this.props.immediate) {
+            //this.props.onChange(1)
+            this.setState({ pending: false })
+        }
+    }
+
+    handleSubmit(event: any) {
+        if (!this.props.immediate && event.key === 'Enter') {
+            event.preventDefault();
+            const parsed = this.props.parseValue(this.state.rawValue)
+            if (parsed !== undefined) {
+                this.props.onChange(parsed)
+                this.setState({ pending: false })
+            }
+        }
+    }
+
+    private getStyle(valid: boolean): CSSProperties | undefined {
+        let style = this.props.style
+        const pending = this.state.pending
+        if (!valid) {
+            style = { ...style, ...ERROR_BACKGROUND_STYLE }
+        }
+        if (pending) {
+            style = { ...style, ...PENDING_BACKGROUND_STYLE }
+        }
+        return style
+    }
+
+    render() {
+        const props = this.props
+        const parsedValue = props.parseValue(this.state.rawValue)
+        const valid = parsedValue !== undefined
+        return <div><input
+            type={props.withControls ? "number" : "text"}
+            min={props.min}
+            max={props.max}
+            value={this.state.rawValue}
+            disabled={this.state.default}
+            data-tip={props["data-tip"]}
+            className={props.className}
+            style={this.getStyle(valid)}
+            onBlur={e => this.updateValue(e.target.value, true)}
+            onChange={e => this.updateValue(e.target.value, false)}
+            onKeyDown={e => this.handleSubmit(e)} />
+            <input type="checkbox" onChange={e => this.updateUseDefault(e.target.checked, false)}/>default</div>
+    }
+
+}
 
 
 export const ERROR_BACKGROUND_STYLE: CSSProperties =
