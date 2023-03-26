@@ -8,13 +8,14 @@ import {
   Box,
   EnumInput,
   EnumOption,
+  OptionalEnumOption,
   ErrorMessage,
-  FloatOption,
   OptionalFloatOption,
   IntInput,
   OptionalIntOption,
   IntOption,
-  TextOption
+  TextOption,
+  OptionalTextOption
 } from "./utilities/ui-components"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
@@ -275,14 +276,14 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'BlackHole 2ch', change_format: null },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, change_format: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false, loopback: false},
+    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
-    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
+    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null },
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
-      extra_samples: 0, skip_bytes: 0, read_bytes: 0 },
+      extra_samples: null, skip_bytes: null, read_bytes: null },
   }
   const {capture, onChange, errors, supported_capture_types} = props
   const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
@@ -306,7 +307,7 @@ function CaptureOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
-    {(capture.type !== 'Jack') &&
+    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio') &&
     <EnumOption
         value={capture.format}
         error={errors({path: ['format']})}
@@ -317,7 +318,28 @@ function CaptureOptions(props: {
             devices.capture.format = format
         )}/>
     }
-    {(capture.type === 'Alsa' || capture.type === 'CoreAudio' || capture.type === 'Pulse' || capture.type === 'Wasapi') &&
+    {(capture.type === 'CoreAudio') &&
+    <OptionalEnumOption
+        value={capture.format}
+        error={errors({path: ['format']})}
+        options={Formats}
+        desc="sampleformat"
+        data-tip="Sample format"
+        onChange={format => onChange(devices => // @ts-ignore
+            devices.capture.format = format
+        )}/>
+    }
+    {(capture.type === 'CoreAudio' || capture.type === 'Alsa' || capture.type === 'Wasapi') &&
+    <OptionalTextOption
+        value={capture.device}
+        error={errors({path: ['device']})}
+        desc="device"
+        data-tip="Name of device"
+        onChange={device => onChange(devices => // @ts-ignore
+            devices.capture.device = device
+        )}/>
+    }
+    {(capture.type === 'Pulse') &&
     <TextOption
         value={capture.device}
         error={errors({path: ['device']})}
@@ -328,7 +350,7 @@ function CaptureOptions(props: {
         )}/>
     }
     {(capture.type === 'Wasapi') && <>
-        <BoolOption
+        <OptionalBoolOption
             value={capture.exclusive}
             error={errors({path: ['exclusive']})}
             desc="exclusive"
@@ -336,7 +358,7 @@ function CaptureOptions(props: {
             onChange={exclusive => onChange(devices => // @ts-ignore
                 devices.capture.exclusive = exclusive
             )}/>
-        <BoolOption
+        <OptionalBoolOption
             value={capture.loopback}
             error={errors({path: ['loopback']})}
             desc="loopback"
@@ -367,7 +389,7 @@ function CaptureOptions(props: {
         )}/>
     }
     {(capture.type === 'File' || capture.type === 'Stdin') && <>
-      <IntOption
+      <OptionalIntOption
           value={capture.extra_samples}
           error={errors({path: ['extra_samples']})}
           desc="extra_samples"
@@ -375,7 +397,7 @@ function CaptureOptions(props: {
           onChange={extra_samples => onChange(devices => // @ts-ignore
               devices.capture.extra_samples = extra_samples
           )}/>
-      <IntOption
+      <OptionalIntOption
           value={capture.skip_bytes}
           error={errors({path: ['skip_bytes']})}
           desc="skip_bytes"
@@ -383,7 +405,7 @@ function CaptureOptions(props: {
           onChange={skip_bytes => onChange(devices => // @ts-ignore
               devices.capture.skip_bytes = skip_bytes
           )}/>
-      <IntOption
+      <OptionalIntOption
           value={capture.read_bytes}
           error={errors({path: ['read_bytes']})}
           desc="read_bytes"
@@ -406,10 +428,10 @@ function PlaybackOptions(props: {
   if (props.hide_playback_device)
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
-    Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0'},
-    CoreAudio: {type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', exclusive: false, change_format: false},
+    Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: null},
+    CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null, change_format: null},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
-    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false},
+    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
@@ -436,7 +458,7 @@ function PlaybackOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
-    {(playback.type !== 'Jack') &&
+    {(playback.type !== 'Jack' && playback.type !== 'CoreAudio') &&
     <EnumOption
         value={playback.format}
         error={errors({path: ['format']})}
@@ -447,7 +469,28 @@ function PlaybackOptions(props: {
           devices.playback.format = format
         )}/>
     }
-    {(playback.type === 'Alsa' || playback.type === 'CoreAudio' || playback.type === 'Pulse' || playback.type === 'Wasapi') &&
+    {(playback.type === 'CoreAudio') &&
+    <OptionalEnumOption
+        value={playback.format}
+        error={errors({path: ['format']})}
+        options={Formats}
+        desc="sampleformat"
+        data-tip="Sample format"
+        onChange={format => onChange(devices =>  // @ts-ignore
+          devices.playback.format = format
+        )}/>
+    }
+    {(playback.type === 'CoreAudio' || playback.type === 'Alsa' || playback.type === 'Wasapi') &&
+    <OptionalTextOption
+        value={playback.device}
+        error={errors({path: ['device']})}
+        desc="device"
+        data-tip="Name of device"
+        onChange={device => onChange(devices => // @ts-ignore
+            devices.playback.device = device
+        )}/>
+    }
+    {(playback.type === 'Pulse') &&
     <TextOption
         value={playback.device}
         error={errors({path: ['device']})}
@@ -458,7 +501,7 @@ function PlaybackOptions(props: {
         )}/>
     }
     {(playback.type === 'Wasapi' || playback.type === 'CoreAudio') &&
-    <BoolOption
+    <OptionalBoolOption
         value={playback.exclusive}
         error={errors({path: ['device']})}
         desc="exclusive"
@@ -468,7 +511,7 @@ function PlaybackOptions(props: {
         )}/>
     }
     {(playback.type === 'CoreAudio') &&
-    <BoolOption
+    <OptionalBoolOption
         value={playback.change_format}
         error={errors({path: ['device']})}
         desc="change_format"

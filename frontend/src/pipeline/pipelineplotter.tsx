@@ -247,7 +247,7 @@ class PipelinePlot extends React.Component<Props, State> {
 
   private static deviceText(device: CaptureDevice | PlaybackDevice): string {
     if ('device' in device)
-      return device.device
+      return device.device === null ? "default" : device.device
     else if ('filename' in device)
       return device.filename
     else

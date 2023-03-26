@@ -431,7 +431,7 @@ export function OptionalFloatInput(props: {
         onChange={props.onChange}
         asString={(float?: number|null) => (float === undefined || float === null) ? "" : float.toString()}
         parseValue={(rawValue: string | undefined) => {
-            if (rawValue == "")
+            if (rawValue === "")
                 return null
             const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN 
             if (isNaN(parsedvalue))
@@ -712,6 +712,48 @@ export function EnumOption<OPTION extends string>(props: {
 }
 
 
+function add_default_option<OPTION extends string>(options: OPTION[]): void {
+    options.unshift("default" as OPTION)
+}
+
+function null_to_default<OPTION extends string>(value: OPTION|null): OPTION {
+    if (value === null)
+        return "default" as OPTION
+    return value
+}
+
+function default_to_null<OPTION extends string>(value: OPTION): OPTION|null {
+    if (value === "default")
+        return null
+    return value
+}
+
+export function OptionalEnumOption<OPTION extends string>(props: {
+    value: OPTION|null
+    options: OPTION[]
+    error?: string
+    desc: string
+    'data-tip': string
+    className?: string
+    onChange: (value: OPTION|null) => void
+}) {
+    const className = 'setting-input' + (props.className ? ' ' + props.className : '')
+    add_default_option(props.options)
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <EnumInput
+                value={null_to_default(props.value)}
+                options={props.options}
+                desc={props.desc}
+                data-tip={props["data-tip"]}
+                onChange={(e) => props.onChange(default_to_null(e))}
+                className={className}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
+        </OptionLine>
+        <ErrorMessage message={props.error} />
+    </>
+}
+
 /*
  options - list of options OR object with value to display text mapping
  */
@@ -735,7 +777,7 @@ export function EnumInput<OPTION extends string>(props: {
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
-        className={props.className}
+        className={value === "default" ? props.className+"-default": props.className}
     >
         {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
     </select>
@@ -764,7 +806,7 @@ function bool_to_string(value: boolean|null): string {
     }
 }
 
-export function OptionalBoolInput<OPTION extends string>(props: {
+export function OptionalBoolInput(props: {
     value: boolean|null
     desc: string
     'data-tip': string
@@ -809,14 +851,38 @@ export function TextOption(props: {
     </>
 }
 
+export function OptionalTextOption(props: {
+    value: string|null
+    error?: string
+    desc: string
+    'data-tip': string
+    onChange: (value: string|null) => void
+}) {
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <TextInput
+                placeholder="default"
+                className="setting-input"
+                value={props.value === null ? "": props.value}
+                data-tip={props["data-tip"]}
+                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
+                onChange={e => e === "" ? props.onChange(null) : props.onChange(e)} 
+                />
+        </OptionLine>
+        <ErrorMessage message={props.error} />
+    </>
+}
+
 export function TextInput(props: {
     value: string
     'data-tip': string
     className?: string
     style?: CSSProperties
     onChange: (value: string) => void
+    placeholder?: string
 }) {
     return <input
+        placeholder={props.placeholder}
         type="text"
         value={props.value}
         data-tip={props["data-tip"]}

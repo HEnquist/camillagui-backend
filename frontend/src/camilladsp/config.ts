@@ -27,8 +27,8 @@ export function defaultConfig(): Config {
             stop_on_rate_change: null,
             rate_measure_interval: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
-            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
+            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
         },
         filters: {},
         mixers: {},
@@ -337,25 +337,26 @@ export const ResamplerTypes: ResamplerType[] = ["FastAsync", "BalancedAsync", "A
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format, device: string }
-    | { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean, loopback: boolean }
+    { type: 'Alsa', channels: number, format: Format, device: string|null }
+    | { type: 'Wasapi', channels: number, format: Format, device: string|null, exclusive: boolean|null, loopback: boolean|null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean|null }
+    | { type: 'CoreAudio', channels: number, format: Format|null, device: string|null, change_format: boolean|null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | {
         type: 'File', channels: number, format: Format, filename: '/path/to/file',
-        extra_samples: number, skip_bytes: number, read_bytes: number
+        extra_samples: number|null, skip_bytes: number|null, read_bytes: number|null
     }
     | {
         type: 'Stdin', channels: number, format: Format,
-        extra_samples: number, skip_bytes: number, read_bytes: number
+        extra_samples: number|null, skip_bytes: number|null, read_bytes: number|null
     }
 
 export type PlaybackDevice =
-    { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean }
+    { type: 'Wasapi', channels: number, format: Format, device: string|null, exclusive: boolean|null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa' | 'Pulse', channels: number, format: Format, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format, device: string, exclusive: boolean, change_format: boolean }
+    | { type: 'Alsa', channels: number, format: Format, device: string|null }
+    | { type: 'Pulse', channels: number, format: Format, device: string }
+    | { type: 'CoreAudio', channels: number, format: Format|null, device: string|null, exclusive: boolean|null, change_format: boolean|null }
     | { type: 'File', channels: number, format: Format, filename: string }
     | { type: 'Stdout', channels: number, format: Format }
 
