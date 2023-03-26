@@ -283,7 +283,7 @@ export function OptionalIntOption(props: {
     error?: string
     desc: string
     'data-tip': string
-    onChange: (value: number) => void
+    onChange: (value: number | null) => void
     small?: boolean
     withControls?: boolean
     min?: number
@@ -294,7 +294,7 @@ export function OptionalIntOption(props: {
         <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
             <OptionalIntInput
                 {...props}
-                className={'optional-setting-input' + (small ? ' small-otional-setting-input' : '')}
+                className={'setting-input' + (small ? ' small-setting-input' : '')}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
         <ErrorMessage message={props.error} />
@@ -331,7 +331,7 @@ export function IntInput(props: {
 export function OptionalIntInput(props: {
     value: number | null
     'data-tip': string
-    onChange: (value: number) => void
+    onChange: (value: number | null) => void
     withControls?: boolean
     min?: number
     max?: number
@@ -391,6 +391,53 @@ export function FloatInput(props: {
         parseValue={(rawValue: string) => {
             const parsedvalue = parseFloat(rawValue)
             return isNaN(parsedvalue) || rawValue.endsWith(".") ? undefined : parsedvalue
+        }}
+        className={props.className}
+        style={{ ...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined) }}
+    />
+}
+
+export function OptionalFloatOption(props: {
+    value: number|null
+    error?: string
+    desc: string
+    'data-tip': string
+    onChange: (value: number|null) => void
+}) {
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+            <OptionalFloatInput
+                value={props.value}
+                data-tip={props["data-tip"]}
+                onChange={props.onChange}
+                className="setting-input" />
+        </OptionLine>
+        <ErrorMessage message={props.error} />
+    </>
+}
+
+export function OptionalFloatInput(props: {
+    value: number|null
+    error?: boolean
+    'data-tip': string
+    onChange: (value: number|null) => void
+    className?: string
+    style?: CSSProperties
+}) {
+    return <OptionalParsedInput
+        value={props.value}
+        immediate={true}
+        data-tip={props["data-tip"]}
+        onChange={props.onChange}
+        asString={(float?: number|null) => (float === undefined || float === null) ? "" : float.toString()}
+        parseValue={(rawValue: string | undefined) => {
+            if (rawValue == "")
+                return null
+            const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN 
+            if (isNaN(parsedvalue))
+                return undefined
+            else
+                return parsedvalue
         }}
         className={props.className}
         style={{ ...props.style, ...(props.error ? ERROR_BACKGROUND_STYLE : undefined) }}
@@ -514,21 +561,21 @@ type OptionalParsedInputProps<TYPE> = {
     className?: string
     value: TYPE | null
     'data-tip': string
-    onChange: (value: TYPE) => void
+    onChange: (value: TYPE | null) => void
     asString: (value: TYPE | null) => string | undefined
-    parseValue: (rawValue: string | undefined) => TYPE | undefined
+    parseValue: (rawValue: string | undefined) => TYPE | null | undefined
     immediate: boolean
     withControls?: boolean
     min?: number
     max?: number
 }
 
-export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInputProps<TYPE>, { rawValue: string | undefined, default: boolean, pending: boolean }> {
+export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInputProps<TYPE>, { rawValue: string | undefined, pending: boolean }> {
 
     constructor(props: OptionalParsedInputProps<TYPE>) {
         super(props)
         this.updateValue = this.updateValue.bind(this)
-        this.state = { rawValue: props.asString(props.value), pending: false, default: true }
+        this.state = { rawValue: props.asString(props.value), pending: false }
     }
 
     componentDidUpdate(prevProps: OptionalParsedInputProps<TYPE>) {
@@ -538,17 +585,9 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
 
     private updateValue(rawValue: string, perform_callback: boolean) {
         this.setState({ rawValue: rawValue, pending: true })
-        const parsed = this.props.parseValue(rawValue)
+        const parsed = rawValue === "" ? null : this.props.parseValue(rawValue)
         if (parsed !== undefined && (perform_callback || this.props.immediate)) {
             this.props.onChange(parsed)
-            this.setState({ pending: false })
-        }
-    }
-
-    private updateUseDefault(value: boolean, perform_callback: boolean) {
-        this.setState({ default: value, pending: true })
-        if (perform_callback || this.props.immediate) {
-            //this.props.onChange(1)
             this.setState({ pending: false })
         }
     }
@@ -578,23 +617,24 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
 
     render() {
         const props = this.props
-        const parsedValue = props.parseValue(this.state.rawValue)
-        const valid = parsedValue !== undefined
-        return <div><input
+        let valid = true
+        if (this.state.rawValue) {
+            const parsedValue = props.parseValue(this.state.rawValue)
+            valid = parsedValue !== undefined
+        }
+        return <input
+            placeholder="default"
             type={props.withControls ? "number" : "text"}
             min={props.min}
             max={props.max}
             value={this.state.rawValue}
-            disabled={this.state.default}
             data-tip={props["data-tip"]}
             className={props.className}
             style={this.getStyle(valid)}
             onBlur={e => this.updateValue(e.target.value, true)}
             onChange={e => this.updateValue(e.target.value, false)}
             onKeyDown={e => this.handleSubmit(e)} />
-            <input type="checkbox" onChange={e => this.updateUseDefault(e.target.checked, false)}/>default</div>
     }
-
 }
 
 
@@ -631,6 +671,23 @@ export function BoolOption(props: {
                     data-tip={props["data-tip"]}
                     onChange={(e) => props.onChange(e.target.checked)} />
             </div>
+        </OptionLine>
+        <ErrorMessage message={props.error} />
+    </>
+}
+
+export function OptionalBoolOption(props: {
+    value: boolean|null
+    error?: string
+    desc: string
+    'data-tip': string
+    small?: boolean
+    onChange: (value: boolean|null) => void
+}) {
+    const small = props.small
+    return <>
+        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+            <OptionalBoolInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
         <ErrorMessage message={props.error} />
     </>
@@ -681,6 +738,54 @@ export function EnumInput<OPTION extends string>(props: {
         className={props.className}
     >
         {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
+    </select>
+}
+
+function string_to_bool(valuestr: string): boolean|null {
+    switch(valuestr) {
+        case "default":
+            return null
+        case "yes":
+            return true
+        case "no":
+            return false
+    }
+    return null
+}
+
+function bool_to_string(value: boolean|null): string {
+    switch(value) {
+        case null:
+            return "default"
+        case true:
+            return "yes"
+        case false:
+            return "no"
+    }
+}
+
+export function OptionalBoolInput<OPTION extends string>(props: {
+    value: boolean|null
+    desc: string
+    'data-tip': string
+    style?: CSSProperties
+    className?: string
+    onChange: (value: boolean|null) => void
+}) {
+    let valuestring = bool_to_string(props.value)
+
+    return <select
+        id={props.desc}
+        name={props.desc}
+        value={valuestring}
+        data-tip={props["data-tip"]}
+        onChange={e => props.onChange(string_to_bool(e.target.value))}
+        style={props.style}
+        className={valuestring === "default" ? props.className+"-default": props.className}
+    >
+        <option key="default">default</option>
+        <option key="yes">yes</option>
+        <option key="no">no</option>
     </select>
 }
 

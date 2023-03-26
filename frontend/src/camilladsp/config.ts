@@ -7,16 +7,16 @@ export function defaultConfig(): Config {
 
             //Buffers
             chunksize: 1024,
-            queuelimit: 4,
+            queuelimit: null,
 
             //Silence
-            silence_threshold: 0,
-            silence_timeout: 0,
+            silence_threshold: null,
+            silence_timeout: null,
 
             //Rate adjust
-            enable_rate_adjust: false,
-            adjust_period: 3,
-            target_level: 1024,
+            enable_rate_adjust: null,
+            adjust_period: null,
+            target_level: null,
 
             //Resampler
             enable_resampling: true,
@@ -24,8 +24,8 @@ export function defaultConfig(): Config {
             capture_samplerate: 44100,
 
             //Rate monitoring
-            stop_on_rate_change: false,
-            rate_measure_interval: 1.0,
+            stop_on_rate_change: null,
+            rate_measure_interval: null,
 
             capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
@@ -308,16 +308,16 @@ export interface Devices {
 
     //Buffers
     chunksize: number,
-    queuelimit: number,
+    queuelimit: number | null,
 
     //Silence
-    silence_threshold: number,
-    silence_timeout: number,
+    silence_threshold: number|null,
+    silence_timeout: number|null,
 
     //Rate adjust
-    enable_rate_adjust: boolean,
-    adjust_period: number,
-    target_level: number,
+    enable_rate_adjust: boolean|null,
+    adjust_period: number|null,
+    target_level: number|null,
 
     //Resampler
     enable_resampling: boolean,
@@ -325,8 +325,8 @@ export interface Devices {
     capture_samplerate: number,
 
     //Rate monitoring
-    stop_on_rate_change: boolean,
-    rate_measure_interval: number,
+    stop_on_rate_change: boolean|null,
+    rate_measure_interval: number|null,
 
     capture: CaptureDevice,
     playback: PlaybackDevice,
@@ -340,7 +340,7 @@ export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format, device: string }
     | { type: 'Wasapi', channels: number, format: Format, device: string, exclusive: boolean, loopback: boolean }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean }
+    | { type: 'CoreAudio', channels: number, format: Format, device: string, change_format: boolean|null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | {
         type: 'File', channels: number, format: Format, filename: '/path/to/file',

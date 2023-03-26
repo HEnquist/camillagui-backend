@@ -4,11 +4,13 @@ import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes}
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   BoolOption,
+  OptionalBoolOption,
   Box,
   EnumInput,
   EnumOption,
   ErrorMessage,
   FloatOption,
+  OptionalFloatOption,
   IntInput,
   OptionalIntOption,
   IntOption,
@@ -160,13 +162,13 @@ function SilenceOptions(props: {
   if (props.hide_silence)
     return null
   return <Box title="Silence">
-    <FloatOption
+    <OptionalFloatOption
         value={props.devices.silence_threshold}
         error={props.errors({path: ['silence_threshold']})}
         desc="silence_threshold"
         data-tip="Threshold for silence in dB"
         onChange={silenceThreshold => props.onChange(devices => devices.silence_threshold = silenceThreshold)}/>
-    <FloatOption
+    <OptionalFloatOption
         value={props.devices.silence_timeout}
         error={props.errors({path: ['silence_timeout']})}
         desc="silence_timeout"
@@ -184,19 +186,19 @@ function RateAdjustOptions(props: {
   if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"]))
     return null
   return <Box title="Rate adjust">
-    <BoolOption
+    <OptionalBoolOption
         value={props.devices.enable_rate_adjust}
         error={props.errors({path: ['enable_rate_adjust']})}
         desc="enable_rate_adjust"
         data-tip="Enable rate adjust"
         onChange={enableRateAdjust => props.onChange(devices => devices.enable_rate_adjust = enableRateAdjust)}/>
-    <IntOption
+    <OptionalIntOption
         value={props.devices.adjust_period}
         error={props.errors({path: ['adjust_period']})}
         desc="adjust_period"
         data-tip="Delay in seconds between rate adjustments"
         onChange={adjustPeriod => props.onChange(devices => devices.adjust_period = adjustPeriod)}/>
-    <IntOption
+    <OptionalIntOption
         value={props.devices.target_level}
         error={props.errors({path: ['target_level']})}
         desc="target_level"
@@ -248,13 +250,13 @@ function RateMonitoringOptions(props: {
     if (props.hide_rate_monitoring)
         return null
     return <Box title="Capture rate monitoring">
-        <FloatOption
+        <OptionalFloatOption
             value={props.devices.rate_measure_interval}
             error={props.errors({path: ['rate_measure_interval']})}
             desc="rate_measure_interval"
             data-tip="Interval for rate measurements, in seconds"
             onChange={rateMeasureInterval => props.onChange(devices => devices.rate_measure_interval = rateMeasureInterval)}/>
-        <BoolOption
+        <OptionalBoolOption
             value={props.devices.stop_on_rate_change}
             error={props.errors({path: ['stop_on_rate_change']})}
             desc="stop_on_rate_change"
@@ -274,7 +276,7 @@ function CaptureOptions(props: {
     return null
   const defaults: { [type: string]: CaptureDevice } = {
     Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: 'hw:0' },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'blablamac', change_format: false },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: 'FLOAT32LE', device: 'BlackHole 2ch', change_format: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: 'blablawin', exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
@@ -345,7 +347,7 @@ function CaptureOptions(props: {
         </>
     }
     {(capture.type === 'CoreAudio') &&
-    <BoolOption
+    <OptionalBoolOption
         value={capture.change_format}
         error={errors({path: ['device']})}
         desc="change_format"

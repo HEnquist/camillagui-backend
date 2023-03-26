@@ -21,6 +21,7 @@
     --error-field-background-color: var(--error-text-color);
     --success-text-color: #46c846;
     --neutral-text-color: #bbb;
+    --disabled-text-color: #777;
     --border-radius: 5px;
 
     /* Buttons */

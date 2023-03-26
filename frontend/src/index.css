@@ -144,6 +144,13 @@ textarea.logfileviewer {
   vertical-align: middle;
 }
 
+.setting-input-default {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+  color: var(--disabled-text-color);
+}
+
 .small-setting-input {
   width: 5em;
 }
@@ -364,3 +371,4 @@ div .popup-content {
   transform-origin: center;
   text-align: center;
 }
+
