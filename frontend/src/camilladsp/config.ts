@@ -349,6 +349,9 @@ export type CaptureDevice =
     | {
         type: 'Stdin', channels: number, format: Format,
         extra_samples: number|null, skip_bytes: number|null, read_bytes: number|null
+    } | {
+        type: 'Bluez', channels: number, format: Format,
+        service: string|null, dbus_path: string
     }
 
 export type PlaybackDevice =

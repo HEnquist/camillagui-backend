@@ -284,6 +284,7 @@ function CaptureOptions(props: {
     Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null },
     File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: null, skip_bytes: null, read_bytes: null },
+    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2}
   }
   const {capture, onChange, errors, supported_capture_types} = props
   const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
@@ -412,6 +413,25 @@ function CaptureOptions(props: {
           data-tip="Read up to this number of bytes"
           onChange={read_bytes => onChange(devices => // @ts-ignore
               devices.capture.read_bytes = read_bytes
+          )}/>
+    </>
+    }
+    {(capture.type === 'Bluez') && <>
+      <OptionalTextOption
+          value={capture.service}
+          error={errors({path: ['service']})}
+          desc="service"
+          data-tip="Name of d-bus service"
+          onChange={service => onChange(devices => // @ts-ignore
+              devices.capture.service = service
+          )}/>
+      <TextOption
+          value={capture.dbus_path}
+          error={errors({path: ['dbus_path']})}
+          desc="dbus_path"
+          data-tip="d-bus path to Bluez"
+          onChange={dbus_path => onChange(devices => // @ts-ignore
+              devices.capture.dbus_path = dbus_path
           )}/>
     </>
     }
