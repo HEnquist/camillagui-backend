@@ -9,6 +9,7 @@ import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArro
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
 
+// TODO support processors
 
 export function PipelinePopup(props: {
   config: Config,

@@ -20,6 +20,9 @@ import {
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
 
+// TODO add volume_ramp_time
+// TODO redo resampler config
+
 export function DevicesTab(props: {
   guiConfig: GuiConfig
   devices: Devices

@@ -40,6 +40,13 @@ import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import {isEqual} from "lodash"
 
+// TODO add optionals and description, conv parameters
+// TODO add general notch, tilt, graphic eq, volume/loudness parameters
+// TODO optionals
+// TODO add gain scale select
+// TODO limiter filter
+
+
 export class FiltersTab extends React.Component<
     {
       filters: Filters

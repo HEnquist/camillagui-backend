@@ -33,6 +33,7 @@ import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dr
 import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
 
+// TODO support processors
 
 export class PipelineTab extends React.Component<{
   config: Config

@@ -27,6 +27,11 @@ import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 
+
+// TODO add optionals
+// TODO add gain scale select
+// TODO add description
+
 export class MixersTab extends React.Component<{
   mixers: Mixers
   errors: ErrorsForPath
