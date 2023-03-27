@@ -144,6 +144,18 @@ textarea.logfileviewer {
   vertical-align: middle;
 }
 
+.textbox {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+}
+
+.textbox-large {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+}
+
 .setting-input-default {
   display: table-cell;
   width: 100%;

@@ -857,11 +857,12 @@ export function OptionalTextOption(props: {
     desc: string
     'data-tip': string
     onChange: (value: string|null) => void
+    placeholder?: string
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
             <TextInput
-                placeholder="default"
+                placeholder={props.placeholder === undefined ? "default" : props.placeholder}
                 className="setting-input"
                 value={props.value === null ? "": props.value}
                 data-tip={props["data-tip"]}
@@ -891,6 +892,24 @@ export function TextInput(props: {
         onChange={e => props.onChange(e.target.value)} />
 }
 
+export function MultilineTextInput(props: {
+    value: string
+    'data-tip': string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string) => void
+    placeholder?: string
+    rows: number
+}) {
+    return <textarea
+        placeholder={props.placeholder}
+        rows={props.rows}
+        value={props.value}
+        data-tip={props["data-tip"]}
+        className={props.className}
+        style={props.style}
+        onChange={e => props.onChange(e.target.value)}></textarea>
+}
 interface Action {
     (): void
 }

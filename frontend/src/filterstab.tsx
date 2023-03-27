@@ -32,6 +32,7 @@ import {
   IntOption,
   ListSelectPopup,
   MdiButton,
+  OptionalTextOption,
   ParsedInput,
   TextOption,
   UploadButton
@@ -510,6 +511,7 @@ class FilterParams extends React.Component<{
 }, unknown> {
   constructor(props: any) {
     super(props)
+    this.onDescChange = this.onDescChange.bind(this)
     this.onTypeChange = this.onTypeChange.bind(this)
     this.onSubtypeChange = this.onSubtypeChange.bind(this)
     this.renderFilterParams = this.renderFilterParams.bind(this)
@@ -520,6 +522,12 @@ class FilterParams extends React.Component<{
   }
 
   //private timer = delayedExecutor(1000)
+
+  private onDescChange(desc: string|null) {
+    this.props.updateFilter(filter => {
+      filter.description = desc
+    })
+  }
 
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
@@ -565,8 +573,14 @@ class FilterParams extends React.Component<{
       <ErrorMessage message={errors({path: ['parameters']})}/>
       {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
-      <Button text="..." onClick={() => this.props.setShowDefaults()}/>
+        <Button text="..." onClick={() => this.props.setShowDefaults()}/>
       }
+      <OptionalTextOption
+        placeholder="none"
+        value={filter.description}
+        desc="description"
+        data-tip="Filter description"
+        onChange={this.onDescChange}/>
     </div>
   }
 

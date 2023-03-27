@@ -33,6 +33,8 @@ export function defaultConfig(): Config {
         filters: {},
         mixers: {},
         pipeline: [],
+        title: null,
+        description: null
     }
 }
 
@@ -209,6 +211,7 @@ function newName(prefix: string, existingNames: string[]): string {
 export function defaultFilter() {
     return {
         type: "Biquad",
+        description: null,
         parameters: { type: "Lowpass", q: 0.5, freq: 1000 },
     }
 }
@@ -301,6 +304,8 @@ export interface Config {
     filters: Filters,
     mixers: Mixers,
     pipeline: Pipeline,
+    title: string|null,
+    description: string|null
 }
 
 export interface Devices {
@@ -371,6 +376,7 @@ export interface Filters {
 }
 export interface Filter {
     type: string
+    description: string|null
     parameters: { [name: string]: any }
 }
 

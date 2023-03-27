@@ -10,6 +10,7 @@ import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
+import { TitleTab } from "./titletab"
 import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
@@ -26,6 +27,7 @@ import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compac
 import {UndoRedo} from "./main/UndoRedo"
 
 // TODO add processors tab
+// TODO add config title and description
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -265,6 +267,7 @@ class CamillaConfig extends React.Component<
                 onClick={() => this.setState(prevState => ({undoRedo: prevState.undoRedo.redo()}))}
                 enabled={undoRedo.canRedo()}/>
           </Tab>
+          <Tab>Title</Tab>
           <Tab>Devices {errors({path: ['devices'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Filters {errors({path: ['filters'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
@@ -273,6 +276,12 @@ class CamillaConfig extends React.Component<
           <Tab>Shortcuts</Tab>
         </TabList>
         <TabPanel/>
+        <TabPanel>
+          <TitleTab
+              config={config}
+              updateConfig={this.updateConfig}
+          />
+        </TabPanel>
         <TabPanel>
           <DevicesTab
               devices={config.devices}
