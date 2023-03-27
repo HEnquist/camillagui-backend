@@ -262,6 +262,7 @@ export function renameMixer(config: Config, oldName: string, newName: string) {
 
 export function defaultMixer(): Mixer {
     return {
+        description: null,
         channels: { in: 2, out: 2 },
         mapping: [defaultMapping(2, [])]
     }
@@ -287,7 +288,8 @@ export function defaultFilterStep(config: Config): FilterStep {
     return {
         type: 'Filter',
         channel: 0,
-        names: filterNames.length === 1 ? [filterNames[0]] : ['']
+        names: filterNames.length === 1 ? [filterNames[0]] : [''],
+        description: null
     }
 }
 
@@ -295,7 +297,8 @@ export function defaultMixerStep(config: Config): MixerStep {
     const mixerNames = mixerNamesOf(config)
     return {
         type: 'Mixer',
-        name: mixerNames.length === 1 ? mixerNames[0] : ''
+        name: mixerNames.length === 1 ? mixerNames[0] : '',
+        description: null
     }
 }
 
@@ -385,6 +388,7 @@ export type Mixers = {
 }
 
 export interface Mixer {
+    description: string|null
     channels: {
         in: number
         out: number
@@ -407,8 +411,8 @@ export interface Source {
 
 export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep
-export interface MixerStep { type: 'Mixer', name: string }
-export interface FilterStep { type: 'Filter', channel: number, names: string[] }
+export interface MixerStep { type: 'Mixer', name: string, description: string|null }
+export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string|null }
 
 export function filterGain(config: Config, filterName: string): number | undefined {
     return config.filters[filterName]?.parameters?.gain

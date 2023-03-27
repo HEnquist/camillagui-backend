@@ -12,7 +12,8 @@ import {
   ErrorMessage,
   IntInput,
   MdiButton,
-  PlotButton
+  PlotButton,
+  OptionalTextOption
 } from "../utilities/ui-components"
 import {
   Config,
@@ -34,6 +35,7 @@ import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
 
 // TODO support processors
+// TODO add bypassed
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -214,6 +216,12 @@ function MixerStepView(props: {
       <div className="vertically-spaced-content">
         <ErrorMessage message={props.errors({path: []})}/>
         <ErrorMessage message={props.errors({path: ['type']})}/>
+        <OptionalTextOption
+          placeholder="none"
+          value={mixerStep.description}
+          desc="description"
+          data-tip="Pipeline step description"
+          onChange={desc => update(step => step.description = desc)}/>
         <EnumInput
             value={mixerStep.name}
             options={options}
@@ -281,6 +289,12 @@ function FilterStepView(props: {
         <ErrorMessage message={props.errors({path: ['channel']})}/>
         <ErrorMessage message={props.errors({path: []})}/>
         <div className="vertically-spaced-content">
+          <OptionalTextOption
+            placeholder="none"
+            value={filterStep.description}
+            desc="description"
+            data-tip="Pipeline step description"
+            onChange={desc => update(step => step.description = desc)}/>
           {filterStep.names.map((name, index) =>
               <FilterStepFilter
                   stepIndex={stepIndex}

@@ -22,11 +22,13 @@ test('removeFilter', () => {
     config.pipeline[0] = {
         type: 'Filter',
         channel: 0,
+        description: null,
         names: ['to be removed', 'filter1', 'to be removed', 'filter2', 'to be removed']
     }
     config.pipeline[1] = {
         type: 'Filter',
         channel: 1,
+        description: null,
         names: ['filter3', 'to be removed', 'filter4']
     }
     removeFilter(config, 'to be removed')
@@ -41,11 +43,13 @@ test('renameFilter', () => {
     config.pipeline[0] = {
         type: 'Filter',
         channel: 0,
+        description: null,
         names: ['to be renamed', 'filter1', 'to be renamed', 'filter2', 'to be renamed']
     }
     config.pipeline[1] = {
         type: 'Filter',
         channel: 1,
+        description: null,
         names: ['filter3', 'to be renamed', 'filter4']
     }
     renameFilter(config, 'to be renamed', 'renamed')
@@ -81,8 +85,8 @@ test('removeMixer', () => {
     const config = defaultConfig()
     config.mixers['to be removed'] = defaultMixer()
     config.mixers['Mixer1'] = defaultMixer()
-    config.pipeline[0] = {type: 'Mixer', name: 'to be removed'}
-    config.pipeline[1] = {type: 'Mixer', name: 'Mixer1'}
+    config.pipeline[0] = {type: 'Mixer', name: 'to be removed', description: null}
+    config.pipeline[1] = {type: 'Mixer', name: 'Mixer1', description: null}
     removeMixer(config, 'to be removed')
     expect(mixerNamesOf(config)).toEqual(['Mixer1'])
     expect(config.pipeline[0].name).toEqual('Mixer1')
@@ -91,9 +95,9 @@ test('removeMixer', () => {
 test('renameMixer', () => {
     const config = defaultConfig()
     config.mixers['to be renamed'] = defaultMixer()
-    config.pipeline[0] = {type: 'Mixer', name: 'Mixer1'}
-    config.pipeline[1] = {type: 'Mixer', name: 'to be renamed'}
-    config.pipeline[2] = {type: 'Mixer', name: 'Mixer2'}
+    config.pipeline[0] = {type: 'Mixer', name: 'Mixer1', description: null}
+    config.pipeline[1] = {type: 'Mixer', name: 'to be renamed', description: null}
+    config.pipeline[2] = {type: 'Mixer', name: 'Mixer2', description: null}
     renameMixer(config, 'to be renamed', 'renamed')
     expect(mixerNamesOf(config)).toEqual(['renamed'])
     expect(config.pipeline[0].name).toEqual('Mixer1')

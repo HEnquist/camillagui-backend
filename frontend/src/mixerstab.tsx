@@ -7,7 +7,8 @@ import {
   ErrorMessage,
   IntOption,
   MdiButton,
-  ParsedInput
+  ParsedInput,
+  OptionalTextOption
 } from "./utilities/ui-components"
 import {
   Config,
@@ -150,6 +151,12 @@ function MixerView(props: {
     </>
   }>
     <ErrorMessage message={errors({path: []})}/>
+    <OptionalTextOption
+        placeholder="none"
+        value={mixer.description}
+        desc="description"
+        data-tip="Mixer description"
+        onChange={desc => update(mixer => mixer.description = desc)}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
