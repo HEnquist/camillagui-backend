@@ -13,7 +13,10 @@ import {
   IntInput,
   MdiButton,
   PlotButton,
-  OptionalTextOption
+  OptionalTextOption,
+  OptionalTextInput,
+  OptionalBoolOption,
+  OptionLine
 } from "../utilities/ui-components"
 import {
   Config,
@@ -35,7 +38,6 @@ import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
 
 // TODO support processors
-// TODO add bypassed
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -210,18 +212,17 @@ function MixerStepView(props: {
     <Box title={
       <>
         <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order"/>
-        <label>{typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}</label>
+        {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}
+        <OptionalBoolOption
+            value={mixerStep.bypassed}
+            desc="bypassed"
+            data-tip="Bypass this pipeline step"
+            onChange={bp => update(step => step.bypassed = bp)}/>
       </>
     }>
       <div className="vertically-spaced-content">
         <ErrorMessage message={props.errors({path: []})}/>
         <ErrorMessage message={props.errors({path: ['type']})}/>
-        <OptionalTextOption
-          placeholder="none"
-          value={mixerStep.description}
-          desc="description"
-          data-tip="Pipeline step description"
-          onChange={desc => update(step => step.description = desc)}/>
         <EnumInput
             value={mixerStep.name}
             options={options}
@@ -231,6 +232,11 @@ function MixerStepView(props: {
             onChange={name => update(step => step.name = name)}/>
         <ErrorMessage message={nameError}/>
         <div className="horizontally-spaced-content">{controls}</div>
+        <OptionalTextInput
+            placeholder="description"
+            value={mixerStep.description}
+            data-tip="Pipeline step description"
+            onChange={desc => update(step => step.description = desc)}/>
       </div>
     </Box>
   </DndSortable>
@@ -270,8 +276,7 @@ function FilterStepView(props: {
   const title = <>
     <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order"/>
     {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
-    <label data-tip="Channel number to process">
-      channel
+    <OptionLine  desc="channel" data-tip="Channel number to process">
       <IntInput
           className="small-setting-input"
           style={{marginLeft: '5px'}}
@@ -280,7 +285,12 @@ function FilterStepView(props: {
           withControls={true}
           min={0}
           onChange={channel => update(step => step.channel = channel)}/>
-    </label>
+    </OptionLine>
+    <OptionalBoolOption
+            value={filterStep.bypassed}
+            desc="bypassed"
+            data-tip="Bypass this pipeline step"
+            onChange={bp => update(step => step.bypassed = bp)}/>
   </>
   return <DndSortable {...dndProps}>
     <Box title={title}>
@@ -289,12 +299,7 @@ function FilterStepView(props: {
         <ErrorMessage message={props.errors({path: ['channel']})}/>
         <ErrorMessage message={props.errors({path: []})}/>
         <div className="vertically-spaced-content">
-          <OptionalTextOption
-            placeholder="none"
-            value={filterStep.description}
-            desc="description"
-            data-tip="Pipeline step description"
-            onChange={desc => update(step => step.description = desc)}/>
+
           {filterStep.names.map((name, index) =>
               <FilterStepFilter
                   stepIndex={stepIndex}
@@ -327,6 +332,7 @@ function FilterStepView(props: {
                   }
               />
           )}
+
         </div>
         <ErrorMessage message={props.errors({path: ['names']})}/>
         <div className="horizontally-spaced-content">
@@ -334,6 +340,12 @@ function FilterStepView(props: {
           <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>
           <PlotButton tooltip="Plot response of this step" onClick={plot}/>
         </div>
+        
+          <OptionalTextInput
+            placeholder="description"
+            value={filterStep.description}
+            data-tip="Pipeline step description"
+            onChange={desc => update(step => step.description = desc)}/>
       </div>
     </Box>
   </DndSortable>

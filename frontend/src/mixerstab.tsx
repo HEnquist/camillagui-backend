@@ -8,7 +8,7 @@ import {
   IntOption,
   MdiButton,
   ParsedInput,
-  OptionalTextOption
+  OptionalTextInput
 } from "./utilities/ui-components"
 import {
   Config,
@@ -31,7 +31,6 @@ import {modifiedCopyOf, Update} from "./utilities/common"
 
 // TODO add optionals
 // TODO add gain scale select
-// TODO add description
 
 export class MixersTab extends React.Component<{
   mixers: Mixers
@@ -151,12 +150,6 @@ function MixerView(props: {
     </>
   }>
     <ErrorMessage message={errors({path: []})}/>
-    <OptionalTextOption
-        placeholder="none"
-        value={mixer.description}
-        desc="description"
-        data-tip="Mixer description"
-        onChange={desc => update(mixer => mixer.description = desc)}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
@@ -187,13 +180,20 @@ function MixerView(props: {
             update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
             remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
     )}
-    <div>
+    <div className="vertically-spaced-content">
+    <div style={{display: 'flex', justifyContent: 'left'}}>
       {mixer.mapping.length < mixer.channels.out &&
         <AddButton
             tooltip="Add a mapping"
             style={{marginTop: '10px'}}
             onClick={() => update(mixer => mixer.mapping.push(defaultMapping(mixer.channels.out, mixer.mapping)))}/>
       }
+      </div>
+      <OptionalTextInput
+        placeholder="description"
+        value={mixer.description}
+        data-tip="Mixer description"
+        onChange={desc => update(mixer => mixer.description = desc)}/>
     </div>
   </Box>
 }

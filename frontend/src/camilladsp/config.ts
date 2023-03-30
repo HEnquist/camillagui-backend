@@ -289,7 +289,8 @@ export function defaultFilterStep(config: Config): FilterStep {
         type: 'Filter',
         channel: 0,
         names: filterNames.length === 1 ? [filterNames[0]] : [''],
-        description: null
+        description: null,
+        bypassed: null
     }
 }
 
@@ -298,7 +299,8 @@ export function defaultMixerStep(config: Config): MixerStep {
     return {
         type: 'Mixer',
         name: mixerNames.length === 1 ? mixerNames[0] : '',
-        description: null
+        description: null,
+        bypassed: null
     }
 }
 
@@ -411,8 +413,8 @@ export interface Source {
 
 export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep
-export interface MixerStep { type: 'Mixer', name: string, description: string|null }
-export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string|null }
+export interface MixerStep { type: 'Mixer', name: string, description: string|null, bypassed: boolean|null }
+export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string|null, bypassed: boolean|null }
 
 export function filterGain(config: Config, filterName: string): number | undefined {
     return config.filters[filterName]?.parameters?.gain

@@ -861,17 +861,35 @@ export function OptionalTextOption(props: {
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <TextInput
+            <OptionalTextInput
                 placeholder={props.placeholder === undefined ? "default" : props.placeholder}
                 className="setting-input"
-                value={props.value === null ? "": props.value}
+                value={props.value}
                 data-tip={props["data-tip"]}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={e => e === "" ? props.onChange(null) : props.onChange(e)} 
+                onChange={props.onChange} 
                 />
         </OptionLine>
         <ErrorMessage message={props.error} />
     </>
+}
+
+export function OptionalTextInput(props: {
+    value: string|null
+    'data-tip': string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string|null) => void
+    placeholder?: string
+}) {
+    return <input
+        placeholder={props.placeholder}
+        type="text"
+        value={props.value === null ? "": props.value}
+        data-tip={props["data-tip"]}
+        className={props.className}
+        style={props.style}
+        onChange={e => e.target.value === "" ? props.onChange(null) : props.onChange(e.target.value)} />
 }
 
 export function TextInput(props: {

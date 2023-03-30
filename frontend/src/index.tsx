@@ -27,7 +27,6 @@ import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compac
 import {UndoRedo} from "./main/UndoRedo"
 
 // TODO add processors tab
-// TODO add config title and description
 
 class CamillaConfig extends React.Component<
   unknown,
