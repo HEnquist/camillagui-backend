@@ -280,7 +280,7 @@ export function defaultMapping(outChannels: number, mappings: Mapping[]): Mappin
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {
     const newChannel = sources.length < inChannels ? sources.length : 0
-    return { channel: newChannel, gain: 0, inverted: false, mute: false, gain_scale: 'dB'}
+    return { channel: newChannel, gain: 0, inverted: false, mute: false, scale: 'dB'}
 }
 
 export function defaultFilterStep(config: Config): FilterStep {
@@ -410,7 +410,7 @@ export interface Mapping {
 export interface Source {
     channel: number
     gain: number|null
-    gain_scale: GainScale|null
+    scale: GainScale|null
     inverted: boolean|null
     mute: boolean|null
 }

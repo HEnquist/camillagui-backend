@@ -10,7 +10,7 @@ export function TitleTab(props: {
     config: Config,
     updateConfig: (update: Update<Config>) => void
   }) {
-    return <div className="tabpanel">
+    return <div className="tabpanel" style={{width: '700px'}}>
       <Title
           config={props.config}
           onChange={props.updateConfig}/>

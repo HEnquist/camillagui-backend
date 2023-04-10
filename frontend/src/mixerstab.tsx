@@ -287,12 +287,12 @@ function SourceView(props: {
       </div>
       <div style={{flexGrow: 1}}>
         <OptionalEnumOption
-            value= {source.gain_scale}
-            error={errors({path: ['gain_scale']})}
+            value= {source.scale}
+            error={errors({path: ['scale']})}
             options={GainScales}
             desc="scale"
             data-tip="Scale for gain"
-            onChange={scale => update(source => source.gain_scale = scale )}/>
+            onChange={scale => update(source => source.scale = scale )}/>
       </div>
       <MdiButton
           icon={mdiPlusMinusVariant}

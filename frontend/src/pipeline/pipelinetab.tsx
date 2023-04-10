@@ -108,7 +108,7 @@ export class PipelineTab extends React.Component<{
     const errors = this.props.errors
     const pipeline = this.props.config.pipeline
     return <DndContainer>
-      <div className="tabpanel">
+      <div className="tabpanel" style={{width: '700px'}}>
         <ErrorMessage message={errors({path: []})}/>
         <div className="pipeline-channel">
           Capture: {this.props.config.devices.capture.channels} channels in
