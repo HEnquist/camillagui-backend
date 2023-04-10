@@ -280,7 +280,7 @@ export function defaultMapping(outChannels: number, mappings: Mapping[]): Mappin
 
 export function defaultSource(inChannels: number, sources: Source[]): Source {
     const newChannel = sources.length < inChannels ? sources.length : 0
-    return { channel: newChannel, gain: 0, inverted: false, mute: false }
+    return { channel: newChannel, gain: 0, inverted: false, mute: false, gain_scale: 'dB'}
 }
 
 export function defaultFilterStep(config: Config): FilterStep {
@@ -376,6 +376,9 @@ export type PlaybackDevice =
 export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
 export const Formats: Format[] = ['S16LE', 'S24LE', 'S24LE3', 'S32LE', 'FLOAT32LE', 'FLOAT64LE']
 
+export type GainScale = 'linear' | 'dB'
+export const GainScales: GainScale[] = ['linear', 'dB' ]
+
 export interface Filters {
     [name: string]: Filter
 }
@@ -401,14 +404,15 @@ export interface Mixer {
 export interface Mapping {
     dest: number
     sources: Source[]
-    mute: boolean
+    mute: boolean|null
 }
 
 export interface Source {
     channel: number
-    gain: number
-    inverted: boolean
-    mute: boolean
+    gain: number|null
+    gain_scale: GainScale|null
+    inverted: boolean|null
+    mute: boolean|null
 }
 
 export type Pipeline = PipelineStep[]

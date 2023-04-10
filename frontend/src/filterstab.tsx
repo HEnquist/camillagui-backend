@@ -474,7 +474,7 @@ const defaultParameters: {
     Default: { delay: 0.0, unit: "ms", subsample: false },
   },
   Gain: {
-    Default: { gain: 0.0, inverted: false, mute: false },
+    Default: { gain: 0.0, gain_scale: 'dB', inverted: false, mute: false },
   },
   Volume: {
     Default: { ramp_time: 200 },
@@ -822,6 +822,12 @@ class FilterParams extends React.Component<{
       type: "floatlist",
       desc: "values",
       tooltip: "Comma separated list of filter coefficients",
+    },
+    gain_scale: {
+      type: "enum",
+      desc: "scale",
+      options: ["dB", "linear"],
+      tooltip: "Scale for gain",
     },
   }
 

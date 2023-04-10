@@ -6,9 +6,11 @@ import {
   DeleteButton,
   ErrorMessage,
   IntOption,
+  FloatOption,
   MdiButton,
   ParsedInput,
-  OptionalTextInput
+  OptionalTextInput,
+  OptionalEnumOption
 } from "./utilities/ui-components"
 import {
   Config,
@@ -22,7 +24,8 @@ import {
   newMixerName,
   removeMixer,
   renameMixer,
-  Source
+  Source,
+  GainScales
 } from "./camilladsp/config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
@@ -96,7 +99,7 @@ export class MixersTab extends React.Component<{
   render() {
     const {mixers, errors, updateConfig} = this.props
     return (
-        <div className="tabpanel">
+        <div className="tabpanel" style={{width: '700px'}}>
           <ErrorMessage message={errors({path: []})}/>
           {this.mixerNames()
               .map(name =>
@@ -276,12 +279,20 @@ function SourceView(props: {
             onChange={channel => update(source => source.channel = channel)}/>
       </div>
       <div style={{flexGrow: 1}}>
-        <IntOption
-            value={source.gain}
+        <FloatOption
+            value={source.gain ? source.gain : 0.0}
             desc="gain"
             data-tip="Gain in dB for this source channel"
-            small={true}
             onChange={gain => update(source => source.gain = gain)}/>
+      </div>
+      <div style={{flexGrow: 1}}>
+        <OptionalEnumOption
+            value= {source.gain_scale}
+            error={errors({path: ['gain_scale']})}
+            options={GainScales}
+            desc="scale"
+            data-tip="Scale for gain"
+            onChange={scale => update(source => source.gain_scale = scale )}/>
       </div>
       <MdiButton
           icon={mdiPlusMinusVariant}
