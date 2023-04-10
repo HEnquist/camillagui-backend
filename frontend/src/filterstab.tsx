@@ -494,6 +494,9 @@ const defaultParameters: {
     Shibata48: { type: "Shibata48", bits: 16 },
     None: { type: "None", bits: 16 },
   },
+  Limiter: {
+    Default: { soft_clip: false, clip_limit: 0.0 }
+  }
 }
 
 const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
@@ -727,6 +730,7 @@ class FilterParams extends React.Component<{
       desc: "channel",
       tooltip: "Index of channel to use, starting from 0",
     },
+    clip_limit: { type: "float", desc: "clip_limit", tooltip: "Clip limit in dB" },
     delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
     filename: {
       type: "text",
@@ -807,6 +811,7 @@ class FilterParams extends React.Component<{
       desc: "slope",
       tooltip: "Filter slope in dB per octave",
     },
+    soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
     subsample: { 
       type: "bool", 
       desc: "subsample", 
