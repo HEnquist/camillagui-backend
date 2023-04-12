@@ -32,6 +32,7 @@ export function defaultConfig(): Config {
         },
         filters: {},
         mixers: {},
+        processors: {},
         pipeline: [],
         title: null,
         description: null
@@ -39,7 +40,7 @@ export function defaultConfig(): Config {
 }
 
 
-
+// TODO rename to FilterSortKeys
 export const SortKeys = [
     "Name",
     "Type",
@@ -47,6 +48,11 @@ export const SortKeys = [
     "Frequency",
     "Q-value",
     "Gain",
+]
+
+export const ProcessorSortKeys = [
+    "Name",
+    "Type",
 ]
 
 function compare_named_vs_unnamed(a: any, b: any): number {
@@ -75,6 +81,7 @@ function compare_values(a: number, b: number, reverse: boolean): number {
     return 0
 }
 
+// TODO rename to filter specific
 export function sortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
     let names = Object.keys(filters)
     let filters_as_list = names.map(n => ({ name: n, def: filters[n] }));
@@ -182,6 +189,46 @@ export function sortedAlphabeticallyOnKey(filters: Filters, key: string, reverse
     return names_sorted
 }
 
+
+// TODO rename to filter specific
+export function processorsSortedAlphabeticallyOnKey(processors: Processors, key: string, reverse: boolean): string[] {
+    let names = Object.keys(processors)
+    let processors_as_list = names.map(n => ({ name: n, def: processors[n] }));
+    let rev = reverse ? -1: 1
+    switch (key) {
+        case "Name":
+            processors_as_list.sort((a, b) => {
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
+                }
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break;
+
+        case "Type":
+            processors_as_list.sort((a, b) => {
+                let unnamed_res = compare_named_vs_unnamed(a, b)
+                if (unnamed_res !== 0) {
+                    return unnamed_res
+                }
+                let a_val = a["def"]["type"]
+                let b_val = b["def"]["type"]
+                if (a_val !== b_val) {
+                    return rev*a_val.localeCompare(b_val)
+                }
+                return rev*a["name"].localeCompare(b["name"])
+            })
+            break;
+        //#array.sort((a, b) => a.localeCompare(b))
+    }
+    let names_sorted = processors_as_list.map(n => n["name"]);
+    //if (reverse) {
+    //    names_sorted.reverse()
+    //}
+    return names_sorted
+}
+
 export function sortedFilterNamesOf(configOrFilters: Config | Filters, sortKey: string, reverse: boolean): string[] {
     const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
     return sortedAlphabeticallyOnKey(filters, sortKey, reverse)
@@ -233,6 +280,44 @@ export function renameFilter(config: Config, oldName: string, newName: string) {
             for (let i = 0; i < step.names.length; i++)
                 if (step.names[i] === oldName)
                     step.names[i] = newName
+}
+
+export function processorNamesOf(configOrProcessors: Config | Processors): string[] {
+    const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
+    return sortedAlphabetically(Object.keys(processors))
+}
+
+export function sortedProcessorNamesOf(configOrProcessors: Config | Processors, sortKey: string, reverse: boolean): string[] {
+    const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
+    return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
+}
+
+export function newProcessorName(processors: Processors): string {
+    return newName('Unnamed Processor ', processorNamesOf(processors))
+}
+
+export function defaultProcessor() {
+    return {
+        type: "Compressor",
+        description: null,
+        parameters: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, factor: 5.0, makeup_gain: 15.0, soft_clip: false, enable_clip: false, clip_limit: 0.0 },
+    }
+}
+
+export function removeProcessor(config: Config, name: string) {
+    delete config.processors[name]
+    const pipeline = config.pipeline
+    config.pipeline = pipeline.filter(step => step.type !== 'Processor' || step.name !== name)
+}
+
+export function renameProcessor(config: Config, oldName: string, newName: string) {
+    if (processorNamesOf(config).includes(newName))
+        throw new Error(`Processor '${newName}' already exists`)
+    config.processors[newName] = config.processors[oldName]
+    delete config.processors[oldName]
+    for (let step of config.pipeline)
+        if (step.type === 'Processor' && step.name === oldName)
+            step.name = newName
 }
 
 export function mixerNamesOf(configOrMixers: Config | Mixers): string[] {
@@ -308,6 +393,7 @@ export interface Config {
     devices: Devices,
     filters: Filters,
     mixers: Mixers,
+    processors: Processors,
     pipeline: Pipeline,
     title: string|null,
     description: string|null
@@ -388,6 +474,15 @@ export interface Filter {
     parameters: { [name: string]: any }
 }
 
+export interface Processors {
+    [name: string]: Processor
+}
+export interface Processor {
+    type: string
+    description: string|null
+    parameters: { [name: string]: any }
+}
+
 export type Mixers = {
     [name: string]: Mixer
 }
@@ -416,8 +511,9 @@ export interface Source {
 }
 
 export type Pipeline = PipelineStep[]
-export type PipelineStep = MixerStep | FilterStep
+export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep { type: 'Mixer', name: string, description: string|null, bypassed: boolean|null }
+export interface ProcessorStep { type: 'Processor', name: string, description: string|null, bypassed: boolean|null }
 export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string|null, bypassed: boolean|null }
 
 export function filterGain(config: Config, filterName: string): number | undefined {

@@ -9,6 +9,7 @@ import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
+import { ProcessorsTab } from "./processorstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
 import { TitleTab } from "./titletab"
 import {Shortcuts} from "./shortcuts"
@@ -270,6 +271,7 @@ class CamillaConfig extends React.Component<
           <Tab>Devices {errors({path: ['devices'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Filters {errors({path: ['filters'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Processors {errors({path: ['processors'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
           <Tab>Shortcuts</Tab>
@@ -302,6 +304,13 @@ class CamillaConfig extends React.Component<
         <TabPanel>
           <MixersTab
               mixers={config.mixers}
+              updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'mixers')}
+          />
+        </TabPanel>
+        <TabPanel>
+          <ProcessorsTab
+              processors={config.processors}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'mixers')}
           />

@@ -72,7 +72,7 @@ export class PipelineTab extends React.Component<{
   removeStep = (index: number) =>
       this.updatePipeline(pipeline => pipeline.splice(index, 1))
 
-  setStepType = (index: number, type: 'Filter' | 'Mixer') =>
+  setStepType = (index: number, type: 'Filter' | 'Mixer' | 'Processor') =>
       this.updatePipeline(pipeline => {
         if (type === 'Mixer')
           pipeline[index] = defaultMixerStep(this.props.config)
