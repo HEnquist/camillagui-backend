@@ -192,6 +192,10 @@ function isConvolutionFileFilter(filter: Filter): boolean {
   return filter.type === 'Conv' && (filter.parameters.type === 'Raw' || filter.parameters.type === 'Wav')
 }
 
+function isGraphicEqualizer(filter: Filter): boolean {
+  return filter.type === 'BiquadCombo' && filter.parameters.type === 'GraphicEqualizer'
+}
+
 interface FilterDefaults {
   type?: string
   format?: string
@@ -237,6 +241,9 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.toggleExpand = this.toggleExpand.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
+    this.addBand = this.addBand.bind(this)
+    this.removeBand = this.removeBand.bind(this)
+    this.adjustBand = this.adjustBand.bind(this)
     this.state = {
       filterFilePopupOpen: false,
       showFilterPlot: false,
@@ -327,6 +334,37 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.plotFilter(current?.samplerate, current?.channels)
   }
 
+  private eqBandFrequency(fmin: number, fmax: number, nbr_bands: number, band: number) {
+    let f_min_log = Math.log(fmin) / Math.log(2)
+    let f_max_log = Math.log(fmax) / Math.log(2)
+    let bw = (f_max_log - f_min_log) / nbr_bands
+    let freq_log = f_min_log + (band + 0.5) * bw
+    let freq = Math.pow(2.0, freq_log)
+    if (freq < 1000) {
+      return Math.round(freq)
+    }
+    return Math.round(freq/1000)+ 'k'
+  }
+
+  private addBand() {
+    this.props.updateFilter(filter => {
+      filter.parameters.gains.push(0.0)
+    })
+  }
+
+  private removeBand() {
+    this.props.updateFilter(filter => {
+      filter.parameters.gains.pop()
+    })
+  }
+
+  private adjustBand(band: number, value: string) {
+    const val = parseFloat(value)
+    this.props.updateFilter(filter => {
+      filter.parameters.gains[band] = val
+    })
+  }
+
   private plotFilter(samplerate?: number, channels?: number) {
     fetch("/api/evalfilter", {
       method: "POST",
@@ -393,6 +431,26 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             showDefaults={this.state.showDefaults}
             setShowDefaults={() => this.setState({showDefaults: true})}/>
       </div>
+
+        {isGraphicEqualizer(filter) &&
+          <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+          {filter.parameters.gains.map((gain: number, index: number, gains: [number]) =>
+            <div style={{display: 'flex', flexDirection: 'column'}}>
+              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+                {gain.toFixed(1)}
+              </div>
+              <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
+              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+                {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
+              </div>
+            </div>
+          )}
+          <div style={{display: 'flex', flexDirection: 'column'}}>
+            <AddButton tooltip="Add one band" onClick={this.addBand}/>
+            <DeleteButton tooltip="Remove one band" onClick={this.removeBand}/>
+          </div>
+        </div>
+        }
       <ListSelectPopup
           key="filter select popup"
           open={this.state.filterFilePopupOpen}
@@ -464,6 +522,7 @@ const defaultParameters: {
     ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
     LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
     LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
+    GraphicEqualizer: { type: "GraphicEqualizer", freq_min: 20.0, freq_max: 20000.0, gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
   },
   Conv: {
     Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
@@ -496,7 +555,7 @@ const defaultParameters: {
   },
   Limiter: {
     Default: { soft_clip: false, clip_limit: 0.0 }
-  }
+  },
 }
 
 const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
@@ -752,6 +811,16 @@ class FilterParams extends React.Component<{
       type: "float",
       desc: "freq_act",
       tooltip: "Frequency of actual system",
+    },
+    freq_max: {
+      type: "float",
+      desc: "freq_max",
+      tooltip: "Upper frequency limit",
+    },
+    freq_min: {
+      type: "float",
+      desc: "freq_min",
+      tooltip: "Lower frequency limit",
     },
     freq_target: {
       type: "float",

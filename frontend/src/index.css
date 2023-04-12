@@ -384,3 +384,8 @@ div .popup-content {
   text-align: center;
 }
 
+.eqslider {
+  appearance: slider-vertical;
+  width: 40px;
+  height: 200px !important;
+}
