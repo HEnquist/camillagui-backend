@@ -170,43 +170,41 @@ interface ProcessorViewProps {
     remove: () => void
 }
 
-interface ProcessorViewState {
-    showDefaults: boolean
-}
+interface ProcessorViewState {}
 
 class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewState> {
 
     constructor(props: any) {
         super(props)
         this.updateDefaults = this.updateDefaults.bind(this)
-        this.addBand = this.addBand.bind(this)
-        this.removeBand = this.removeBand.bind(this)
-        this.adjustBand = this.adjustBand.bind(this)
-        this.state = {
-            showDefaults: false,
-        }
+        this.toggleMonitor = this.toggleMonitor.bind(this)
+        this.toggleProcess = this.toggleProcess.bind(this)
+        this.state = {}
     }
 
     private updateDefaults(filename: string, updateProcessor: boolean = false) {
         const processor = this.props.processor
     }
 
-    private addBand() {
+    private toggleMonitor(idx: number) {
         this.props.updateProcessor(processor => {
-            processor.parameters.gains.push(0.0)
+            if (!processor.parameters.monitor_channels.includes(idx)) {
+                processor.parameters.monitor_channels.push(idx)
+            }
+            else {
+                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n !== idx)
+            }
         })
     }
 
-    private removeBand() {
+    private toggleProcess(band: number) {
         this.props.updateProcessor(processor => {
-            processor.parameters.gains.pop()
-        })
-    }
-
-    private adjustBand(band: number, value: string) {
-        const val = parseFloat(value)
-        this.props.updateProcessor(processor => {
-            processor.parameters.gains[band] = val
+            if (!processor.parameters.process_channels.includes(band)) {
+                processor.parameters.process_channels.push(band)
+            }
+            else {
+                processor.parameters.process_channels = processor.parameters.process_channels.filter((idx: number) => idx !== band)
+            }
         })
     }
 
@@ -234,27 +232,27 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
                 <ProcessorParams
                     processor={this.props.processor}
                     errors={this.props.errors}
-                    updateProcessor={this.props.updateProcessor}
-                    showDefaults={this.state.showDefaults}
-                    setShowDefaults={() => this.setState({ showDefaults: true })} />
+                    updateProcessor={this.props.updateProcessor} />
             </div>
 
-            {!isCompressor(processor) &&
+            {isCompressor(processor) &&
                 <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-                    {processor.parameters.gains.map((gain: number, index: number, gains: [number]) =>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <br></br>
+                        <div>monitor</div>
+                        <div>process</div>
+                    </div>
+                    {[...Array(processor.parameters.channels)].map((n, idx) =>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-                                {gain.toFixed(1)}
+                                {idx}
                             </div>
-                            <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
+                            <input type="checkbox" checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
+                            <input type="checkbox" checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
                             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
                             </div>
                         </div>
                     )}
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <AddButton tooltip="Add one band" onClick={this.addBand} />
-                        <DeleteButton tooltip="Remove one band" onClick={this.removeBand} />
-                    </div>
                 </div>
             }
         </Box>
@@ -277,8 +275,6 @@ class ProcessorParams extends React.Component<{
     processor: Processor
     errors: ErrorsForPath
     updateProcessor: (update: Update<Processor>) => void
-    setShowDefaults: () => void
-    showDefaults: boolean
 }, unknown> {
     constructor(props: any) {
         super(props)
