@@ -5,7 +5,7 @@ import React, { useCallback, useState } from "react"
 import "../index.css"
 import {CloseButton, cssStyles} from "../utilities/ui-components"
 import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
-import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand, mdiPlayProtectedContent } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
 
@@ -340,6 +340,58 @@ class PipelinePlot extends React.Component<Props, State> {
         stages.push(mixerchannels)
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
+      } else if (step.type === "Processor") {
+          total_length += 1
+          const procname = step.name
+          const procconf = conf["processors"][procname]
+          const procchannels: Block[][] = []
+          this.appendFrame(
+            labels,
+            boxes,
+            procname,
+            spacing_h * total_length,
+            0,
+            1.5,
+            spacing_v * active_channels
+          )
+          for (let m = 0; m < active_channels; m++) {
+            procchannels.push([])
+            let label = m.toString()
+            if (procconf.type == "Compressor") {
+              const is_m = procconf.parameters.monitor_channels.includes(m)
+              const is_p = procconf.parameters.process_channels.includes(m)
+              if (is_m && is_p) {
+                label = label + ": M+P"
+              }
+              else if (is_m) {
+                label = label + ": M"
+              }
+              else if (is_p) {
+                label = label + ": P"
+              }
+              else {
+                label = label + ": pass"
+              }
+            }
+            const io_points = this.appendBlock(
+              labels,
+              boxes,
+              label,
+              total_length * spacing_h,
+              spacing_v * (-active_channels / 2 + 0.5 + m),
+              1
+            )
+            procchannels[m].push(io_points)
+          }
+          for (let m = 0; m < active_channels; m++) {
+              const srclen = stages[stages.length - 1][m].length
+              const src_p = stages[stages.length - 1][m][srclen - 1].output
+              const dest_p = procchannels[m][0].input
+              this.appendLink(links, labels, src_p, dest_p)
+          }
+          stages.push(procchannels)
+          stage_start = total_length
+          max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
         const ch_nbr = step.channel
         if (expand_filters) {
