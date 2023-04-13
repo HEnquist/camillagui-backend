@@ -241,9 +241,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.toggleExpand = this.toggleExpand.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
-    this.addBand = this.addBand.bind(this)
-    this.removeBand = this.removeBand.bind(this)
-    this.adjustBand = this.adjustBand.bind(this)
+
     this.state = {
       filterFilePopupOpen: false,
       showFilterPlot: false,
@@ -334,36 +332,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.plotFilter(current?.samplerate, current?.channels)
   }
 
-  private eqBandFrequency(fmin: number, fmax: number, nbr_bands: number, band: number) {
-    let f_min_log = Math.log(fmin) / Math.log(2)
-    let f_max_log = Math.log(fmax) / Math.log(2)
-    let bw = (f_max_log - f_min_log) / nbr_bands
-    let freq_log = f_min_log + (band + 0.5) * bw
-    let freq = Math.pow(2.0, freq_log)
-    if (freq < 1000) {
-      return Math.round(freq)
-    }
-    return Math.round(freq/1000)+ 'k'
-  }
 
-  private addBand() {
-    this.props.updateFilter(filter => {
-      filter.parameters.gains.push(0.0)
-    })
-  }
-
-  private removeBand() {
-    this.props.updateFilter(filter => {
-      filter.parameters.gains.pop()
-    })
-  }
-
-  private adjustBand(band: number, value: string) {
-    const val = parseFloat(value)
-    this.props.updateFilter(filter => {
-      filter.parameters.gains[band] = val
-    })
-  }
 
   private plotFilter(samplerate?: number, channels?: number) {
     fetch("/api/evalfilter", {
@@ -432,25 +401,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             setShowDefaults={() => this.setState({showDefaults: true})}/>
       </div>
 
-        {isGraphicEqualizer(filter) &&
-          <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
-          {filter.parameters.gains.map((gain: number, index: number, gains: [number]) =>
-            <div style={{display: 'flex', flexDirection: 'column'}}>
-              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
-                {gain.toFixed(1)}
-              </div>
-              <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
-              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
-                {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
-              </div>
-            </div>
-          )}
-          <div style={{display: 'flex', flexDirection: 'column'}}>
-            <AddButton tooltip="Add one band" onClick={this.addBand}/>
-            <DeleteButton tooltip="Remove one band" onClick={this.removeBand}/>
-          </div>
-        </div>
-        }
+
       <ListSelectPopup
           key="filter select popup"
           open={this.state.filterFilePopupOpen}
@@ -580,6 +531,9 @@ class FilterParams extends React.Component<{
     this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this)
     this.filenameField = this.filenameField.bind(this)
     this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
+    this.addBand = this.addBand.bind(this)
+    this.removeBand = this.removeBand.bind(this)
+    this.adjustBand = this.adjustBand.bind(this)
   }
 
   //private timer = delayedExecutor(1000)
@@ -607,6 +561,37 @@ class FilterParams extends React.Component<{
             filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
         }
     )
+  }
+
+  private eqBandFrequency(fmin: number, fmax: number, nbr_bands: number, band: number) {
+    let f_min_log = Math.log(fmin) / Math.log(2)
+    let f_max_log = Math.log(fmax) / Math.log(2)
+    let bw = (f_max_log - f_min_log) / nbr_bands
+    let freq_log = f_min_log + (band + 0.5) * bw
+    let freq = Math.pow(2.0, freq_log)
+    if (freq < 1000) {
+      return Math.round(freq)
+    }
+    return Math.round(freq/1000)+ 'k'
+  }
+
+  private addBand() {
+    this.props.updateFilter(filter => {
+      filter.parameters.gains.push(0.0)
+    })
+  }
+
+  private removeBand() {
+    this.props.updateFilter(filter => {
+      filter.parameters.gains.pop()
+    })
+  }
+
+  private adjustBand(band: number, value: string) {
+    const val = parseFloat(value)
+    this.props.updateFilter(filter => {
+      filter.parameters.gains[band] = val
+    })
   }
 
   render() {
@@ -642,6 +627,25 @@ class FilterParams extends React.Component<{
         desc="description"
         data-tip="Filter description"
         onChange={this.onDescChange}/>
+      {isGraphicEqualizer(filter) &&
+          <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+          {filter.parameters.gains.map((gain: number, index: number, gains: [number]) =>
+            <div style={{display: 'flex', flexDirection: 'column'}}>
+              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+                {gain.toFixed(1)}
+              </div>
+              <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
+              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+                {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
+              </div>
+            </div>
+          )}
+          <div style={{display: 'flex', flexDirection: 'column'}}>
+            <AddButton tooltip="Add one band" onClick={this.addBand}/>
+            <DeleteButton tooltip="Remove one band" onClick={this.removeBand}/>
+          </div>
+        </div>
+        }
     </div>
   }
 
