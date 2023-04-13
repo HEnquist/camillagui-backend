@@ -10,7 +10,7 @@ import {
     removeProcessor,
     renameProcessor,
     sortedProcessorNamesOf,
-    SortKeys,
+    ProcessorSortKeys,
 } from "./camilladsp/config"
 import {
     AddButton,
@@ -121,7 +121,7 @@ export class ProcessorsTab extends React.Component<
             <div className="horizontally-spaced-content" style={{ width: '700px' }}>
                 <EnumOption
                     value={this.state.sortBy}
-                    options={SortKeys}
+                    options={ProcessorSortKeys}
                     desc="Sort processors by"
                     data-tip="Property used to sort processors"
                     onChange={this.changeSortBy} />
@@ -232,9 +232,20 @@ class ProcessorParams extends React.Component<{
         this.renderProcessorParams = this.renderProcessorParams.bind(this)
         this.toggleMonitor = this.toggleMonitor.bind(this)
         this.toggleProcess = this.toggleProcess.bind(this)
+        this.onParamChange = this.onParamChange.bind(this)
     }
 
     //private timer = delayedExecutor(1000)
+
+    private onParamChange(parameter: string, value: any) {
+        this.props.updateProcessor(processor => {
+            processor.parameters[parameter] = value
+            if (isCompressor(processor) && parameter === "channels") {
+                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n < value)
+                processor.parameters.process_channels = processor.parameters.process_channels.filter((n: number) => n < value)
+            }
+        })
+    }
 
     private onDescChange(desc: string | null) {
         this.props.updateProcessor(processor => {
@@ -272,8 +283,6 @@ class ProcessorParams extends React.Component<{
             }
         })
     }
-
-    // TODO remove monitor and process channels when decreasing nbr of channels
 
     render() {
         const { processor, errors } = this.props
@@ -321,6 +330,8 @@ class ProcessorParams extends React.Component<{
         return Object.keys(parameters).map(parameter => {
             if (parameter === 'type') // 'type' is already rendered by parent component
                 return null
+            if (parameter === 'monitor_channels' || parameter === 'process_channels') // handled separately
+                return null
             const info = this.parameterInfos[parameter]
             if (info === undefined) {
                 console.log(`Rendering for processor parameter '${parameter}' is not implemented`)
@@ -332,8 +343,7 @@ class ProcessorParams extends React.Component<{
                 error: errors({ path: [parameter] }),
                 desc: info.desc,
                 'data-tip': info.tooltip,
-                //onChange: (value: any) => this.timer(() => this.props.updateProcessor(processor => processor.parameters[parameter] = value))
-                onChange: (value: any) => this.props.updateProcessor(processor => processor.parameters[parameter] = value)
+                onChange: (value: any) => this.onParamChange(parameter, value)
             }
             if (info.type === 'text')
                 return <TextOption {...commonProps} />
@@ -367,6 +377,11 @@ class ProcessorParams extends React.Component<{
                 tooltip: "Number of channels",
             },
             clip_limit: { type: "float", desc: "clip_limit", tooltip: "Clip limit in dB" },
+            factor: {
+                type: "float",
+                desc: "factor",
+                tooltip: "Compression factor",
+            },
             release: {
                 type: "float",
                 desc: "release",

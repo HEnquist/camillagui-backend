@@ -27,8 +27,6 @@ import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
 
-// TODO add processors tab
-
 class CamillaConfig extends React.Component<
   unknown,
   {

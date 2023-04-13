@@ -11,7 +11,7 @@ import {
   removeFilter,
   renameFilter,
   sortedFilterNamesOf,
-  SortKeys,
+  FilterSortKeys,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -41,10 +41,9 @@ import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import {isEqual} from "lodash"
 
-// TODO add optionals and description, conv parameters
-// TODO add general notch, tilt, graphic eq, volume/loudness parameters
-// TODO add gain scale select
-// TODO limiter filter
+// TODO update conv parameters
+// TODO optional bool in general notch
+// TODO update volume/loudness parameters
 
 
 export class FiltersTab extends React.Component<
@@ -153,7 +152,7 @@ export class FiltersTab extends React.Component<
       <div className="horizontally-spaced-content" style={{width: '700px'}}>
       <EnumOption
             value={this.state.sortBy}
-            options={SortKeys}
+            options={FilterSortKeys}
             desc="Sort filters by"
             data-tip="Property used to sort filters"
             onChange={this.changeSortBy}/>
@@ -462,6 +461,7 @@ const defaultParameters: {
     HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
     Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
     Notch: { type: "Notch", freq: 1000, q: 1.5 },
+    GeneralNotch: { type: "GeneralNotch", freq_z: 1000, freq_p: 1000, q_p: 1.0, normalize_at_dc: false },
     Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
     Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
     AllpassFO: { type: "AllpassFO", freq: 1000 },
@@ -473,6 +473,7 @@ const defaultParameters: {
     ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
     LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
     LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
+    Tilt: { type: "Tilt", gain: 0.0 },
     GraphicEqualizer: { type: "GraphicEqualizer", freq_min: 20.0, freq_max: 20000.0, gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
   },
   Conv: {
@@ -832,11 +833,13 @@ class FilterParams extends React.Component<{
       desc: "freq_min",
       tooltip: "Lower frequency limit",
     },
+    freq_p: { type: "float", desc: "freq_p", tooltip: "Pole frequency" },
     freq_target: {
       type: "float",
       desc: "freq_target",
       tooltip: "Target frequency",
     },
+    freq_z: { type: "float", desc: "freq_z", tooltip: "Zero frequency" },
     gain: { type: "float", desc: "gain", tooltip: "Gain in dB" },
     high_boost: {
       type: "float",
@@ -855,6 +858,11 @@ class FilterParams extends React.Component<{
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
     mute: { type: "bool", desc: "mute", tooltip: "Mute" },
+    normalize_at_dc: { 
+      type: "bool", 
+      desc: "normalize_at_dc", 
+      tooltip: "Normalize at low frequencies" 
+    },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     q: { type: "float", desc: "Q", tooltip: "Q-value" },
     q_act: {
@@ -862,6 +870,7 @@ class FilterParams extends React.Component<{
       desc: "Q actual",
       tooltip: "Q-value of actual system",
     },
+    q_p: { type: "float", desc: "Q pole", tooltip: "Pole Q-value" },
     q_target: { type: "float", desc: "Q target", tooltip: "Target Q-value" },
     ramp_time: {
       type: "float",

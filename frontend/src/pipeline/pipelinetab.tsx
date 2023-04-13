@@ -13,7 +13,6 @@ import {
   IntInput,
   MdiButton,
   PlotButton,
-  OptionalTextOption,
   OptionalTextInput,
   OptionalBoolOption,
   OptionLine
@@ -40,8 +39,6 @@ import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
 import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"
 import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
-
-// TODO support processors
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -269,7 +266,6 @@ function ProcessorStepView(props: {
 }) {
   const {stepIndex, typeSelect, processors, processorStep, updatePipeline, controls} = props
   const update = (update: Update<ProcessorStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as ProcessorStep))
-  const processor = processors[processorStep.name]
   const options = [''].concat(processorNamesOf(processors))
   const nameError = props.errors({path: ['name']})
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
