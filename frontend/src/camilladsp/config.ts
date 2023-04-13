@@ -389,6 +389,16 @@ export function defaultMixerStep(config: Config): MixerStep {
     }
 }
 
+export function defaultProcessorStep(config: Config): ProcessorStep {
+    const processorNames = processorNamesOf(config)
+    return {
+        type: 'Processor',
+        name: processorNames.length === 1 ? processorNames[0] : '',
+        description: null,
+        bypassed: null
+    }
+}
+
 export interface Config {
     devices: Devices,
     filters: Filters,

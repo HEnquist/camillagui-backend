@@ -22,12 +22,16 @@ import {
   Config,
   defaultFilterStep,
   defaultMixerStep,
+  defaultProcessorStep,
   filterNamesOf,
   Filters,
   FilterStep,
   mixerNamesOf,
+  processorNamesOf,
   Mixers,
   MixerStep,
+  Processors,
+  ProcessorStep,
   Pipeline,
   PipelineStep
 } from "../camilladsp/config"
@@ -78,6 +82,8 @@ export class PipelineTab extends React.Component<{
           pipeline[index] = defaultMixerStep(this.props.config)
         else if (type === 'Filter')
           pipeline[index] = defaultFilterStep(this.props.config)
+        else if (type === 'Processor')
+          pipeline[index] = defaultProcessorStep(this.props.config)
       })
 
   plotFilterStep = (index: number, samplerate?: number, channels?: number) => {
@@ -117,7 +123,7 @@ export class PipelineTab extends React.Component<{
               const stepErrors = errorsForSubpath(errors, index)
               const typeSelect = <EnumInput
                   value={step.type}
-                  options={['Mixer', 'Filter']}
+                  options={['Mixer', 'Filter', 'Processor']}
                   desc="type"
                   data-tip="Step type, Mixer or Filter"
                   onChange={type => this.setStepType(index, type)}/>
@@ -152,6 +158,16 @@ export class PipelineTab extends React.Component<{
                     typeSelect={typeSelect}
                     mixerStep={step}
                     mixers={this.props.config.mixers}
+                    updatePipeline={this.updatePipeline}
+                    errors={stepErrors}
+                    controls={controls}/>
+              if (step.type === 'Processor')
+                return <ProcessorStepView
+                    key={index}
+                    stepIndex={index}
+                    typeSelect={typeSelect}
+                    processorStep={step}
+                    processors={this.props.config.processors}
                     updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>
@@ -235,6 +251,55 @@ function MixerStepView(props: {
         <OptionalTextInput
             placeholder="description"
             value={mixerStep.description}
+            data-tip="Pipeline step description"
+            onChange={desc => update(step => step.description = desc)}/>
+      </div>
+    </Box>
+  </DndSortable>
+}
+
+function ProcessorStepView(props: {
+  stepIndex: number
+  typeSelect: ReactNode
+  processorStep: ProcessorStep
+  processors: Processors
+  updatePipeline: (update: Update<Pipeline>) => void
+  errors: ErrorsForPath
+  controls: ReactNode
+}) {
+  const {stepIndex, typeSelect, processors, processorStep, updatePipeline, controls} = props
+  const update = (update: Update<ProcessorStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as ProcessorStep))
+  const processor = processors[processorStep.name]
+  const options = [''].concat(processorNamesOf(processors))
+  const nameError = props.errors({path: ['name']})
+  const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
+  return <DndSortable {...dndProps}>
+    <Box title={
+      <>
+        <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order"/>
+        {typeSelect}
+        <OptionalBoolOption
+            value={processorStep.bypassed}
+            desc="bypassed"
+            data-tip="Bypass this pipeline step"
+            onChange={bp => update(step => step.bypassed = bp)}/>
+      </>
+    }>
+      <div className="vertically-spaced-content">
+        <ErrorMessage message={props.errors({path: []})}/>
+        <ErrorMessage message={props.errors({path: ['type']})}/>
+        <EnumInput
+            value={processorStep.name}
+            options={options}
+            desc="name"
+            data-tip="Processor name"
+            style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
+            onChange={name => update(step => step.name = name)}/>
+        <ErrorMessage message={nameError}/>
+        <div className="horizontally-spaced-content">{controls}</div>
+        <OptionalTextInput
+            placeholder="description"
+            value={processorStep.description}
             data-tip="Pipeline step description"
             onChange={desc => update(step => step.description = desc)}/>
       </div>
