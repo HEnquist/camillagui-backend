@@ -569,10 +569,16 @@ class FilterParams extends React.Component<{
     let bw = (f_max_log - f_min_log) / nbr_bands
     let freq_log = f_min_log + (band + 0.5) * bw
     let freq = Math.pow(2.0, freq_log)
-    if (freq < 1000) {
-      return Math.round(freq)
+    if (freq < 10) {
+      return freq.toFixed(1)
     }
-    return Math.round(freq/1000)+ 'k'
+    if (freq < 1000) {
+      return freq.toFixed(0)
+    }
+    if (freq < 10000) {
+      return (freq/1000).toFixed(1)+ 'k'
+    }
+    return (freq/1000).toFixed(0)+ 'k'
   }
 
   private addBand() {
