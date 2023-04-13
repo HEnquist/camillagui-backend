@@ -1,7 +1,6 @@
 import React from "react"
 import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
-import { mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowCollapse, mdiArrowExpand } from '@mdi/js'
 import {
     Config,
     defaultProcessor,
@@ -23,14 +22,12 @@ import {
     FloatListOption,
     FloatOption,
     IntOption,
-    MdiButton,
     OptionalTextOption,
     ParsedInput,
     TextOption,
 } from "./utilities/ui-components"
 import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
-import { isEqual } from "lodash"
 
 export class ProcessorsTab extends React.Component<
     {
@@ -176,36 +173,7 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
 
     constructor(props: any) {
         super(props)
-        this.updateDefaults = this.updateDefaults.bind(this)
-        this.toggleMonitor = this.toggleMonitor.bind(this)
-        this.toggleProcess = this.toggleProcess.bind(this)
         this.state = {}
-    }
-
-    private updateDefaults(filename: string, updateProcessor: boolean = false) {
-        const processor = this.props.processor
-    }
-
-    private toggleMonitor(idx: number) {
-        this.props.updateProcessor(processor => {
-            if (!processor.parameters.monitor_channels.includes(idx)) {
-                processor.parameters.monitor_channels.push(idx)
-            }
-            else {
-                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n !== idx)
-            }
-        })
-    }
-
-    private toggleProcess(band: number) {
-        this.props.updateProcessor(processor => {
-            if (!processor.parameters.process_channels.includes(band)) {
-                processor.parameters.process_channels.push(band)
-            }
-            else {
-                processor.parameters.process_channels = processor.parameters.process_channels.filter((idx: number) => idx !== band)
-            }
-        })
     }
 
     render() {
@@ -230,31 +198,12 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
                     <DeleteButton tooltip={"Delete this processor"} onClick={this.props.remove} />
                 </div>
                 <ProcessorParams
-                    processor={this.props.processor}
+                    processor={processor}
                     errors={this.props.errors}
                     updateProcessor={this.props.updateProcessor} />
             </div>
 
-            {isCompressor(processor) &&
-                <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <br></br>
-                        <div>monitor</div>
-                        <div>process</div>
-                    </div>
-                    {[...Array(processor.parameters.channels)].map((n, idx) =>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-                                {idx}
-                            </div>
-                            <input type="checkbox" checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
-                            <input type="checkbox" checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
-                            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            }
+
         </Box>
     }
 }
@@ -281,6 +230,8 @@ class ProcessorParams extends React.Component<{
         this.onDescChange = this.onDescChange.bind(this)
         this.onTypeChange = this.onTypeChange.bind(this)
         this.renderProcessorParams = this.renderProcessorParams.bind(this)
+        this.toggleMonitor = this.toggleMonitor.bind(this)
+        this.toggleProcess = this.toggleProcess.bind(this)
     }
 
     //private timer = delayedExecutor(1000)
@@ -300,9 +251,32 @@ class ProcessorParams extends React.Component<{
         })
     }
 
+    private toggleMonitor(idx: number) {
+        this.props.updateProcessor(processor => {
+            if (!processor.parameters.monitor_channels.includes(idx)) {
+                processor.parameters.monitor_channels.push(idx)
+            }
+            else {
+                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n !== idx)
+            }
+        })
+    }
+
+    private toggleProcess(band: number) {
+        this.props.updateProcessor(processor => {
+            if (!processor.parameters.process_channels.includes(band)) {
+                processor.parameters.process_channels.push(band)
+            }
+            else {
+                processor.parameters.process_channels = processor.parameters.process_channels.filter((idx: number) => idx !== band)
+            }
+        })
+    }
+
+    // TODO remove monitor and process channels when decreasing nbr of channels
+
     render() {
         const { processor, errors } = this.props
-        const defaults = defaultParameters[processor.type]
         return <div style={{ width: '100%', textAlign: 'right' }}>
             <ErrorMessage message={errors({ path: [] })} />
             <EnumOption
@@ -320,6 +294,26 @@ class ProcessorParams extends React.Component<{
                 desc="description"
                 data-tip="Processor description"
                 onChange={this.onDescChange} />
+            {isCompressor(processor) &&
+                <label className="setting">
+                <span className="setting-label">
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <br></br>
+                        <div data-tip="Channels to monitor">monitor_channels</div>
+                        <div data-tip="Channels to process">process_channels</div>
+                    </div>
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'row' }}>
+                {[...Array(processor.parameters.channels)].map((n, idx) =>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>{idx}</div>
+                            <input type="checkbox" data-tip={"Enable monitoring for channel " + idx} checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
+                            <input type="checkbox" data-tip={"Enable processing for channel " + idx} checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
+                        </div>
+                    )}
+                </div>
+                </label>
+            }
         </div>
     }
 
