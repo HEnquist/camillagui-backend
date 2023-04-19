@@ -428,6 +428,10 @@ export interface Devices {
 export type ResamplerType = 'FastAsync' | 'BalancedAsync' | 'AccurateAsync' | 'Synchronous'
 export const ResamplerTypes: ResamplerType[] = ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"]
 
+export type Fader = 'Main' | 'Aux1' | 'Aux2' | 'Aux3' | 'Aux4'
+export const LoudnessFaders: Fader[] = ['Main', 'Aux1', 'Aux2', 'Aux3', 'Aux4']
+export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
+
 
 export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format, device: string | null }

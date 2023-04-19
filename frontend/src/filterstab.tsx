@@ -12,6 +12,8 @@ import {
   renameFilter,
   sortedFilterNamesOf,
   FilterSortKeys,
+  VolumeFaders,
+  LoudnessFaders,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -488,10 +490,10 @@ const defaultParameters: {
     Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
   },
   Volume: {
-    Default: { ramp_time: 200 },
+    Default: { ramp_time: 200, fader: "Aux1" },
   },
   Loudness: {
-    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, ramp_time: 200 },
+    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, ramp_time: 200, fader: "Main" },
   },
   DiffEq: {
     Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
@@ -688,6 +690,7 @@ class FilterParams extends React.Component<{
               this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
               filter.parameters[option] = this.defaultParameterValues[option]
             })}/>
+      
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')
@@ -698,8 +701,14 @@ class FilterParams extends React.Component<{
         return <BoolOption {...commonProps}/>
       if (info.type === 'floatlist')
         return <FloatListOption {...commonProps}/>
-      if (info.type === 'enum')
-        return <EnumOption {...commonProps} options={info.options}/>
+      if (info.type === 'enum') {
+        let options = info.options
+        console.log(this.props)
+        if (parameter === "fader" && this.props.filter.type === "Volume") {
+          options = VolumeFaders
+        }
+        return <EnumOption {...commonProps} options={options}/>
+      }
       return null
     })
   }
@@ -810,6 +819,12 @@ class FilterParams extends React.Component<{
            <br/>$samplerate$ will be replaced with the current samplerate
            <br/>$channels$ will be replaced with the number of channels of the capture device
           `,
+    },
+    fader: {
+      type: "enum",
+      desc: "fader",
+      options: LoudnessFaders,
+      tooltip: "Fader to react to",
     },
     format: {
       type: "enum",
