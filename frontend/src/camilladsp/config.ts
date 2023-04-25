@@ -286,7 +286,7 @@ export function defaultProcessor() {
     return {
         type: "Compressor",
         description: null,
-        parameters: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, factor: 5.0, makeup_gain: 15.0, soft_clip: false, enable_clip: false, clip_limit: 0.0 },
+        parameters: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, factor: 5.0, makeup_gain: 15.0, clip_limit: null, soft_clip: false },
     }
 }
 

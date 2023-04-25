@@ -403,6 +403,7 @@ export function OptionalFloatOption(props: {
     desc: string
     'data-tip': string
     onChange: (value: number|null) => void
+    placeholder?: string
 }) {
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
@@ -410,6 +411,7 @@ export function OptionalFloatOption(props: {
                 value={props.value}
                 data-tip={props["data-tip"]}
                 onChange={props.onChange}
+                placeholder={props.placeholder}
                 className="setting-input" />
         </OptionLine>
         <ErrorMessage message={props.error} />
@@ -423,12 +425,14 @@ export function OptionalFloatInput(props: {
     onChange: (value: number|null) => void
     className?: string
     style?: CSSProperties
+    placeholder?: string
 }) {
     return <OptionalParsedInput
         value={props.value}
         immediate={true}
         data-tip={props["data-tip"]}
         onChange={props.onChange}
+        placeholder={props.placeholder}
         asString={(float?: number|null) => (float === undefined || float === null) ? "" : float.toString()}
         parseValue={(rawValue: string | undefined) => {
             if (rawValue === "")
@@ -490,6 +494,7 @@ type ParsedInputProps<TYPE> = {
     withControls?: boolean
     min?: number
     max?: number
+    placeholder?: string
 }
 
 export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, { rawValue: string, pending: boolean }> {
@@ -546,6 +551,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             min={props.min}
             max={props.max}
             value={this.state.rawValue}
+            placeholder={props.placeholder}
             data-tip={props["data-tip"]}
             className={props.className}
             style={this.getStyle(valid)}
@@ -568,6 +574,7 @@ type OptionalParsedInputProps<TYPE> = {
     withControls?: boolean
     min?: number
     max?: number
+    placeholder?: string
 }
 
 export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInputProps<TYPE>, { rawValue: string | undefined, pending: boolean }> {
@@ -617,13 +624,14 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
 
     render() {
         const props = this.props
+        const placeholder = this.props.placeholder ? this.props.placeholder : "default"
         let valid = true
         if (this.state.rawValue) {
             const parsedValue = props.parseValue(this.state.rawValue)
             valid = parsedValue !== undefined
         }
         return <input
-            placeholder="default"
+            placeholder={placeholder}
             type={props.withControls ? "number" : "text"}
             min={props.min}
             max={props.max}

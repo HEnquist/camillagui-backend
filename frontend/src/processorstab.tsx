@@ -21,6 +21,7 @@ import {
     ErrorMessage,
     FloatListOption,
     FloatOption,
+    OptionalFloatOption,
     IntOption,
     OptionalTextOption,
     ParsedInput,
@@ -28,6 +29,7 @@ import {
 } from "./utilities/ui-components"
 import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
+import { getByPlaceholderText } from "@testing-library/react"
 
 export class ProcessorsTab extends React.Component<
     {
@@ -355,15 +357,18 @@ class ProcessorParams extends React.Component<{
                 return <BoolOption {...commonProps} />
             if (info.type === 'floatlist')
                 return <FloatListOption {...commonProps} />
+            if (info.type === 'optional_float')
+                return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
             return null
         })
     }
 
     parameterInfos: {
         [type: string]: {
-            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool'
+            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_float'
             desc: string
             tooltip: string
+            placeholder?: string
         }
     } = {
             attack: {
@@ -376,7 +381,7 @@ class ProcessorParams extends React.Component<{
                 desc: "channels",
                 tooltip: "Number of channels",
             },
-            clip_limit: { type: "float", desc: "clip_limit", tooltip: "Clip limit in dB" },
+            clip_limit: { type: "optional_float", desc: "clip_limit", tooltip: "Clip limit in dB", placeholder: "none" },
             factor: {
                 type: "float",
                 desc: "factor",
@@ -397,7 +402,6 @@ class ProcessorParams extends React.Component<{
                 desc: "makeup_gain",
                 tooltip: "Makeup gain in dB",
             },
-            enable_clip: { type: "bool", desc: "enable_clip", tooltip: "Enable clipping" },
             soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
         }
 }
