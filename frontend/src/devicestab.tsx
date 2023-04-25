@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.css"
-import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, ResamplerTypes} from "./camilladsp/config"
+import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   BoolOption,
@@ -83,7 +83,7 @@ function Samplerate(props: {
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
-  if (props.hide_capture_samplerate && !props.devices.enable_resampling)
+  if (props.hide_capture_samplerate && props.devices.resampler !== null)
     return null
   return <SamplerateOption
       samplerate={props.devices.samplerate}
@@ -211,6 +211,17 @@ function RateAdjustOptions(props: {
   </Box>
 }
 
+function changeResamplerType(newType: ResamplerType | null): Resampler | null {
+  if (newType === null) {
+    return null
+  }
+  return defaultResampler(newType) 
+}
+
+function changeResamplerProfile(profile: AsyncSincProfile): Resampler {
+  return defaultSincResampler(profile) 
+}
+
 function ResamplingOptions(props: {
   hide_capture_samplerate: boolean
   devices: Devices
@@ -220,20 +231,80 @@ function ResamplingOptions(props: {
 }) {
   const {devices, errors} = props
   return <Box title="Resampling">
-    <BoolOption
-        value={devices.enable_resampling}
-        error={errors({path: ['enable_resampling']})}
-        desc="enable_resampling"
-        data-tip="Enable rasampling"
-        onChange={enableResampling => props.onChange(devices => devices.enable_resampling = enableResampling)}/>
-    <EnumOption
-        value={devices.resampler_type}
-        error={errors({path: ['resampler_type']})}
+    <OptionalEnumOption
+        value={devices.resampler? devices.resampler.type : null}
+        error={errors({path: ['resampler.type']})}
         options={ResamplerTypes}
         desc="resampler_type"
         data-tip="Resampler type"
-        onChange={resampler => props.onChange(devices => devices.resampler_type = resampler)}/>
-    {!props.hide_capture_samplerate &&
+        placeholder="none"
+        onChange={resamplerType => props.onChange(devices => devices.resampler = changeResamplerType(resamplerType))}/>
+    {devices.resampler && devices.resampler.type === 'AsyncSinc' &&
+    <EnumOption
+        // @ts-ignore
+        value={devices.resampler.hasOwnProperty("profile") ? devices.resampler.profile : "Free"}
+        error={errors({path: ['resampler.type']})}
+        options={AsyncSincProfiles}
+        desc="profile"
+        data-tip="AsyncSinc resampler profile"
+        onChange={profile => props.onChange(devices => devices.resampler = changeResamplerProfile(profile))}/>
+    }
+    {devices.resampler && devices.resampler.type === 'AsyncSinc' && !devices.resampler.hasOwnProperty("profile") &&
+    <>
+      <EnumOption
+        // @ts-ignore
+        value={devices.resampler.interpolation}
+        error={errors({path: ['interpolation']})}
+        options={AsyncSincInterpolations}
+        desc="interpolation"
+        data-tip="Interpolation order"
+        // @ts-ignore
+        onChange={interp => props.onChange(devices => devices.resampler.interpolation = interp)}/>
+      <IntOption
+        // @ts-ignore
+        value={devices.resampler.sinc_len}
+        error={errors({path: ['sinc_len']})}
+        desc="sinc_len"
+        data-tip="Length of sinc interpolation filter"
+        // @ts-ignore
+        onChange={len => props.onChange(devices => devices.resampler.sinc_len = len)}/>
+      <IntOption
+        // @ts-ignore
+        value={devices.resampler.oversampling_factor}
+        error={errors({path: ['oversampling_factor']})}
+        desc="oversampling_factor"
+        data-tip="Oversampling factor"
+        // @ts-ignore
+        onChange={factor => props.onChange(devices => devices.resampler.oversampling_factor = factor)}/>
+      <OptionalFloatOption
+        // @ts-ignore
+        value={devices.resampler.f_cutoff}
+        error={errors({path: ['f_cutoff']})}
+        desc="f_cutoff"
+        data-tip="Relative cutoff frequency of interpolation filter"
+        // @ts-ignore
+        onChange={cutoff => props.onChange(devices => devices.resampler.f_cutoff = cutoff)}/>
+      <EnumOption
+        // @ts-ignore
+        value={devices.resampler.window}
+        error={errors({path: ['window']})}
+        options={AsyncSincWindows}
+        desc="window"
+        data-tip="Window function for interpolation filter"
+        // @ts-ignore
+        onChange={window => props.onChange(devices => devices.resampler.window = window)}/>
+    </>}
+    {devices.resampler && devices.resampler.type === 'AsyncPoly' &&
+    <EnumOption
+      // @ts-ignore
+      value={devices.resampler.interpolation}
+      error={errors({path: ['interpolation']})}
+      options={AsyncPolyInterpolations}
+      desc="interpolation"
+      data-tip="Interpolation order"
+      // @ts-ignore
+      onChange={interp => props.onChange(devices => devices.resampler.interpolation = interp)}/> }
+    {!props.hide_capture_samplerate && devices.resampler !== null &&
     <SamplerateOption
         samplerate={devices.capture_samplerate}
         error={errors({path: ['capture_samplerate']})}

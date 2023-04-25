@@ -712,18 +712,18 @@ export function EnumOption<OPTION extends string>(props: {
 }
 
 
-function add_default_option<OPTION extends string>(options: OPTION[]): void {
-    options.unshift("default" as OPTION)
+function add_default_option<OPTION extends string>(options: OPTION[], defaultValue: string): void {
+    options.unshift(defaultValue as OPTION)
 }
 
-function null_to_default<OPTION extends string>(value: OPTION|null): OPTION {
+function null_to_default<OPTION extends string>(value: OPTION|null, defaultValue: string): OPTION {
     if (value === null)
-        return "default" as OPTION
+        return defaultValue as OPTION
     return value
 }
 
-function default_to_null<OPTION extends string>(value: OPTION): OPTION|null {
-    if (value === "default")
+function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION|null {
+    if (value === defaultValue)
         return null
     return value
 }
@@ -735,18 +735,20 @@ export function OptionalEnumOption<OPTION extends string>(props: {
     desc: string
     'data-tip': string
     className?: string
+    placeholder?: string
     onChange: (value: OPTION|null) => void
 }) {
+    const defaultValue = props.placeholder ? props.placeholder : "default"
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
-    add_default_option(props.options)
+    add_default_option(props.options, defaultValue)
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
             <EnumInput
-                value={null_to_default(props.value)}
+                value={null_to_default(props.value, defaultValue)}
                 options={props.options}
                 desc={props.desc}
                 data-tip={props["data-tip"]}
-                onChange={(e) => props.onChange(default_to_null(e))}
+                onChange={(e) => props.onChange(default_to_null(e, defaultValue))}
                 className={className}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>

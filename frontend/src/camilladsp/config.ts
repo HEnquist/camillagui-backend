@@ -19,8 +19,7 @@ export function defaultConfig(): Config {
             target_level: null,
 
             //Resampler
-            enable_resampling: true,
-            resampler_type: 'FastAsync',
+            resampler: {type: 'AsyncSinc', profile: 'Balanced'},
             capture_samplerate: 44100,
 
             //Rate monitoring
@@ -413,8 +412,7 @@ export interface Devices {
     target_level: number | null,
 
     //Resampler
-    enable_resampling: boolean,
-    resampler_type: ResamplerType,
+    resampler: Resampler | null,
     capture_samplerate: number,
 
     //Rate monitoring
@@ -425,8 +423,57 @@ export interface Devices {
     playback: PlaybackDevice,
 }
 
-export type ResamplerType = 'FastAsync' | 'BalancedAsync' | 'AccurateAsync' | 'Synchronous'
-export const ResamplerTypes: ResamplerType[] = ["FastAsync", "BalancedAsync", "AccurateAsync", "Synchronous"]
+export type ResamplerType = 'AsyncSinc' | 'AsyncPoly' | 'Synchronous'
+export const ResamplerTypes: ResamplerType[] = ["AsyncSinc", "AsyncPoly", "Synchronous"]
+export type AsyncSincProfile = 'VeryFast' | 'Fast' | 'Balanced' | 'Accurate' | 'Free'
+export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]
+export type AsyncSincInterpolation = 'Nearest' | 'Linear' | 'Quadratic' | 'Cubic'
+export const AsyncSincInterpolations: AsyncSincInterpolation[] = ['Nearest', 'Linear', 'Quadratic', 'Cubic']
+export type AsyncPolyInterpolation = 'Linear' | 'Cubic' | 'Quintic' | 'Septic'
+export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = ['Linear', 'Cubic', 'Quintic', 'Septic']
+export type AsyncSincWindow = 'Blackman' | 'Blackman2' | 'BlackmanHarris' | 'BlackmanHarris2' | 'Hann' | 'Hann2'
+export const AsyncSincWindows = ['Blackman', 'Blackman2', 'BlackmanHarris', 'BlackmanHarris2', 'Hann', 'Hann2']
+
+
+export type Resampler =
+    { type: 'AsyncSinc', profile: AsyncSincProfile }
+    | { type: 'AsyncSinc', sinc_len: number, oversampling_factor: number, interpolation: AsyncSincInterpolation, window: AsyncSincWindow, f_cutoff: number | null }
+    | { type: 'AsyncPoly', interpolation: AsyncPolyInterpolation }
+    | { type: 'Synchronous' }
+
+export function defaultResampler(type: ResamplerType): Resampler {
+    if (type === "AsyncSinc") {
+        return {
+            type: "AsyncSinc",
+            profile: "Balanced",
+        }
+    } else if (type === "AsyncPoly") {
+        return {
+            type: "AsyncPoly",
+            interpolation: "Cubic",
+        }
+    }
+    return {
+        type: "Synchronous",
+    }
+}
+
+export function defaultSincResampler(profile: AsyncSincProfile): Resampler {
+    if (profile === "Free") {
+        return {
+            type: "AsyncSinc",
+            sinc_len: 128,
+            oversampling_factor: 256,
+            interpolation: "Quadratic",
+            window: "BlackmanHarris2",
+            f_cutoff: null
+        }
+    }
+    return {
+        type: "AsyncSinc",
+        profile: profile,
+    }
+}
 
 export type Fader = 'Main' | 'Aux1' | 'Aux2' | 'Aux3' | 'Aux4'
 export const LoudnessFaders: Fader[] = ['Main', 'Aux1', 'Aux2', 'Aux3', 'Aux4']
