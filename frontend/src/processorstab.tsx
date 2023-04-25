@@ -29,7 +29,6 @@ import {
 } from "./utilities/ui-components"
 import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
-import { getByPlaceholderText } from "@testing-library/react"
 
 export class ProcessorsTab extends React.Component<
     {
