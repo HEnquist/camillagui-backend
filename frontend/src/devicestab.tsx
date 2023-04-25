@@ -3,7 +3,6 @@ import "./index.css"
 import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
-  BoolOption,
   OptionalBoolOption,
   Box,
   EnumInput,
