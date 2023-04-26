@@ -720,17 +720,17 @@ export function EnumOption<OPTION extends string>(props: {
 }
 
 
-function add_default_option<OPTION extends string>(options: OPTION[], defaultValue: string): void {
+export function add_default_option<OPTION extends string>(options: OPTION[], defaultValue: string): void {
     options.unshift(defaultValue as OPTION)
 }
 
-function null_to_default<OPTION extends string>(value: OPTION|null, defaultValue: string): OPTION {
+export function null_to_default<OPTION extends string>(value: OPTION|null, defaultValue: string): OPTION {
     if (value === null)
         return defaultValue as OPTION
     return value
 }
 
-function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION|null {
+export function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION|null {
     if (value === defaultValue)
         return null
     return value

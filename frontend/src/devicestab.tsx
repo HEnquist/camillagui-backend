@@ -3,6 +3,9 @@ import "./index.css"
 import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
+  add_default_option,
+  default_to_null,
+  null_to_default,
   OptionalBoolOption,
   Box,
   EnumInput,
@@ -11,6 +14,7 @@ import {
   ErrorMessage,
   OptionalFloatOption,
   IntInput,
+  OptionalIntInput,
   OptionalIntOption,
   IntOption,
   TextOption,
@@ -135,6 +139,55 @@ function SamplerateOption(props: {
   </div>
 }
 
+function OptionalSamplerateOption(props: {
+  samplerate: number | null
+  error?: string
+  desc: string
+  'data-tip': string
+  onChange: (samplerate: number|null) => void
+  extraPadding?: boolean
+}) {
+  const defaultSampleRates = [44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000, 705600, 768000]
+  function isNonDefaultSamplerate(samplerate: number | null): boolean {
+    return samplerate !== null && !defaultSampleRates.includes(samplerate)
+  }
+  const other = 'Other'
+  const samplerate = props.samplerate
+  const padding = props.extraPadding ? '0 12px' : '0'
+  var value: null | string 
+  if (samplerate !== null) {
+    value = isNonDefaultSamplerate(samplerate) ? other : samplerate.toString()
+  } else {
+    value = samplerate
+  }
+  const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
+  add_default_option(options, "default")
+  return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
+    <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
+    <EnumInput
+        value={null_to_default(value, "default")}
+        options={options}
+        desc={props.desc}
+        data-tip={props["data-tip"]}
+        style={{width: isNonDefaultSamplerate(samplerate) ? '40%' : '100%'}}
+        className="setting-input"
+        onChange={(value: string) => {
+          const parsed = default_to_null(value, "default") ? parseInt(value) : null
+          const newSamplerate = parsed !== null && isNaN(parsed) ? 0 : parsed
+          props.onChange(newSamplerate)
+        }}/>
+    {isNonDefaultSamplerate(samplerate) &&
+    <OptionalIntInput
+        value={samplerate}
+        data-tip={props["data-tip"]}
+        className="setting-input"
+        style={{width: '60%'}}
+        onChange={(samplerate: number | null) => props.onChange(samplerate)}/>
+    }
+    <ErrorMessage message={props.error}/>
+  </div>
+}
+
 function BufferOptions(props: {
   devices: Devices,
   errors: ErrorsForPath
@@ -229,6 +282,7 @@ function ResamplingOptions(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   const {devices, errors} = props
+  console.log(devices.resampler)
   return <Box title="Resampling">
     <OptionalEnumOption
         value={devices.resampler? devices.resampler.type : null}
@@ -304,7 +358,7 @@ function ResamplingOptions(props: {
       // @ts-ignore
       onChange={interp => props.onChange(devices => devices.resampler.interpolation = interp)}/> }
     {!props.hide_capture_samplerate && devices.resampler !== null &&
-    <SamplerateOption
+    <OptionalSamplerateOption
         samplerate={devices.capture_samplerate}
         error={errors({path: ['capture_samplerate']})}
         desc="capture_samplerate"

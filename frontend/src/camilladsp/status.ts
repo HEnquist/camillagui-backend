@@ -14,6 +14,7 @@ export interface Status extends Versions, VuMeterStatus {
   rateadjust: number | ''
   bufferlevel: number | ''
   clippedsamples: number | ''
+  processingload: number | ''
 }
 
 export function defaultStatus(): Status {
@@ -27,6 +28,7 @@ export function defaultStatus(): Status {
     rateadjust: '',
     bufferlevel: '',
     clippedsamples: '',
+    processingload: '',
     cdsp_version: '',
     py_cdsp_version: '',
     backend_version: '',

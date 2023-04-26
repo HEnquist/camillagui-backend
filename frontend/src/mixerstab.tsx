@@ -63,6 +63,9 @@ export class MixersTab extends React.Component<{
               newState.mixerKeys[newMixer] = 1 + Math.max(0, ...Object.values(oldState.mixerKeys))
           )
       )
+      if (config.mixers === null) {
+        config.mixers = {}
+      }
       config.mixers[newMixer] = defaultMixer()
     })
   }

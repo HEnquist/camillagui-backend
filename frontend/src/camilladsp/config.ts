@@ -215,18 +215,24 @@ export function processorsSortedAlphabeticallyOnKey(processors: Processors, key:
     return names_sorted
 }
 
-export function sortedFilterNamesOf(configOrFilters: Config | Filters, sortKey: string, reverse: boolean): string[] {
+export function sortedFilterNamesOf(configOrFilters: Config | Filters | null, sortKey: string, reverse: boolean): string[] {
+    if (configOrFilters === null) {
+        return []
+    }
     const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
     return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
 }
 
-export function filterNamesOf(configOrFilters: Config | Filters): string[] {
+export function filterNamesOf(configOrFilters: Config | Filters | null): string[] {
+    if (configOrFilters === null) {
+        return []
+    }
     const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
     return sortedAlphabetically(Object.keys(filters))
 }
 
 function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
-    return maybeConfig.devices !== undefined
+    return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
 }
 
 export function newFilterName(filters: Filters): string {
@@ -268,12 +274,18 @@ export function renameFilter(config: Config, oldName: string, newName: string) {
                     step.names[i] = newName
 }
 
-export function processorNamesOf(configOrProcessors: Config | Processors): string[] {
+export function processorNamesOf(configOrProcessors: Config | Processors | null): string[] {
+    if (configOrProcessors === null) {
+        return []
+    }
     const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
     return sortedAlphabetically(Object.keys(processors))
 }
 
-export function sortedProcessorNamesOf(configOrProcessors: Config | Processors, sortKey: string, reverse: boolean): string[] {
+export function sortedProcessorNamesOf(configOrProcessors: Config | Processors | null, sortKey: string, reverse: boolean): string[] {
+    if (configOrProcessors === null) {
+        return []
+    }
     const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
     return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
 }
@@ -306,7 +318,10 @@ export function renameProcessor(config: Config, oldName: string, newName: string
             step.name = newName
 }
 
-export function mixerNamesOf(configOrMixers: Config | Mixers): string[] {
+export function mixerNamesOf(configOrMixers: Config | Mixers | null): string[] {
+    if (configOrMixers === null) {
+        return []
+    }
     const mixers: Mixers = isConfig(configOrMixers) ? configOrMixers.mixers : configOrMixers
     return sortedAlphabetically(Object.keys(mixers))
 }
@@ -413,7 +428,7 @@ export interface Devices {
 
     //Resampler
     resampler: Resampler | null,
-    capture_samplerate: number,
+    capture_samplerate: number | null,
 
     //Rate monitoring
     stop_on_rate_change: boolean | null,

@@ -84,6 +84,9 @@ export class ProcessorsTab extends React.Component<
                     newState.processorKeys[newProcessor] = 1 + Math.max(0, ...Object.values(oldState.processorKeys))
                 )
             )
+            if (config.processors === null) {
+                config.processors = {}
+            }
             config.processors[newProcessor] = defaultProcessor()
         })
     }

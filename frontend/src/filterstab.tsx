@@ -34,7 +34,10 @@ import {
   IntOption,
   ListSelectPopup,
   MdiButton,
+  OptionalBoolOption,
   OptionalTextOption,
+  OptionalFloatOption,
+  OptionalIntOption,
   ParsedInput,
   TextOption,
   UploadButton
@@ -107,6 +110,9 @@ export class FiltersTab extends React.Component<
               newState.filterKeys[newFilter] = 1 + Math.max(0, ...Object.values(oldState.filterKeys))
           )
       )
+      if (config.filters === null) {
+        config.filters = {}
+      }
       config.filters[newFilter] = defaultFilter()
     })
   }
@@ -711,8 +717,14 @@ class FilterParams extends React.Component<{
         return <IntOption {...commonProps}/>
       if (info.type === 'float')
         return <FloatOption {...commonProps}/>
+      if (info.type === 'optional_int')
+        return <OptionalIntOption {...commonProps}/>
+      if (info.type === 'optional_float')
+        return <OptionalFloatOption {...commonProps}/>
       if (info.type === "bool")
         return <BoolOption {...commonProps}/>
+      if (info.type === "optional_bool")
+        return <OptionalBoolOption {...commonProps}/>
       if (info.type === 'floatlist')
         return <FloatListOption {...commonProps}/>
       if (info.type === 'enum') {
@@ -762,7 +774,7 @@ class FilterParams extends React.Component<{
 
   parameterInfos: {
     [type: string]: {
-      type: 'text' | 'int' | 'float' | 'floatlist' | 'bool'
+      type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_bool' |'optional_int' | 'optional_float'
       desc: string
       tooltip: string
     } | {
@@ -875,7 +887,7 @@ class FilterParams extends React.Component<{
       desc: "high_boost",
       tooltip: "Volume boost for high frequencies when volume is at reference_level - 20dB",
     },
-    inverted: { type: "bool", desc: "inverted", tooltip: "Invert signal" },
+    inverted: { type: "optional_bool", desc: "inverted", tooltip: "Invert signal" },
     length: {
       type: "int",
       desc: "length",
@@ -886,7 +898,7 @@ class FilterParams extends React.Component<{
       desc: "low_boost",
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
-    mute: { type: "bool", desc: "mute", tooltip: "Mute" },
+    mute: { type: "optional_bool", desc: "mute", tooltip: "Mute" },
     normalize_at_dc: { 
       type: "bool", 
       desc: "normalize_at_dc", 
@@ -907,7 +919,7 @@ class FilterParams extends React.Component<{
       tooltip: "Volume change ramp time in ms",
     },
     read_bytes_lines: {
-      type: "int",
+      type: "optional_int",
       desc: "read_bytes_lines",
       tooltip: "Read up to this number of bytes or lines",
     },
@@ -919,7 +931,7 @@ class FilterParams extends React.Component<{
           "Above reference_level only gain is applied.",
     },
     skip_bytes_lines: {
-      type: "int",
+      type: "optional_int",
       desc: "skip_bytes_lines",
       tooltip: "Number of bytes or lines to skip at beginning of file",
     },
