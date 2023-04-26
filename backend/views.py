@@ -44,7 +44,8 @@ async def get_status(request):
                 "capturesignalrms": cdsp.get_capture_signal_rms(),
                 "capturesignalpeak": cdsp.get_capture_signal_peak(),
                 "playbacksignalrms": cdsp.get_playback_signal_rms(),
-                "playbacksignalpeak": cdsp.get_playback_signal_peak()
+                "playbacksignalpeak": cdsp.get_playback_signal_peak(),
+                "processingload": cdsp.get_processing_load()
             })
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
@@ -55,6 +56,7 @@ async def get_status(request):
                     "rateadjust": cdsp.get_rate_adjust(),
                     "bufferlevel": cdsp.get_buffer_level(),
                     "clippedsamples": cdsp.get_clipped_samples(),
+                    "processingload": cdsp.get_processing_load()
                 })
         except IOError:
             pass
@@ -71,6 +73,7 @@ async def get_status(request):
                 "rateadjust": None,
                 "bufferlevel": None,
                 "clippedsamples": None,
+                "processingload": None
             })
             reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
             reconnect_thread.start()
@@ -102,6 +105,8 @@ async def get_param(request):
         result = cdsp.get_config_name()
     elif name == "configraw":
         result = cdsp.get_config_raw()
+    elif name == "processingload":
+        result = cdsp.get_processing_load()
     else:
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result))
@@ -311,6 +316,8 @@ async def validate_config(request):
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
+    # TODO remove
+    print(errors)
     if len(errors) > 0:
         return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
