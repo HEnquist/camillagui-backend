@@ -25,7 +25,7 @@ def _reconnect(cdsp, cache):
     while not done:
         try:
             cdsp.connect()
-            cache["cdsp_version"] = version_string(cdsp.get_version())
+            cache["cdsp_version"] = version_string(cdsp.versions.camilladsp())
             done = True
         except IOError:
             time.sleep(1)
@@ -36,29 +36,29 @@ async def get_status(request):
     cache = request.app["STATUSCACHE"]
     cachetime = request.app["CACHETIME"]
     try:
-        state = cdsp.get_state()
+        state = cdsp.general.state()
         state_str = state.name
         try:
             cache.update({
                 "cdsp_status": state_str,
-                "capturesignalrms": cdsp.get_capture_signal_rms(),
-                "capturesignalpeak": cdsp.get_capture_signal_peak(),
-                "playbacksignalrms": cdsp.get_playback_signal_rms(),
-                "playbacksignalpeak": cdsp.get_playback_signal_peak(),
-                "processingload": cdsp.get_processing_load()
+                "capturesignalrms": cdsp.levels.capture_rms_since_last(),
+                "capturesignalpeak": cdsp.levels.capture_peak_since_last(),
+                "playbacksignalrms": cdsp.levels.playback_rms_since_last(),
+                "playbacksignalpeak": cdsp.levels.playback_peak_since_last(),
             })
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
             if now - cachetime > 1.0:
                 request.app["CACHETIME"] = now
                 cache.update({
-                    "capturerate": cdsp.get_capture_rate(),
-                    "rateadjust": cdsp.get_rate_adjust(),
-                    "bufferlevel": cdsp.get_buffer_level(),
-                    "clippedsamples": cdsp.get_clipped_samples(),
-                    "processingload": cdsp.get_processing_load()
+                    "capturerate": cdsp.rate.capture(),
+                    "rateadjust": cdsp.status.rate_adjust(),
+                    "bufferlevel": cdsp.status.buffer_level(),
+                    "clippedsamples": cdsp.status.clipped_samples(),
+                    "processingload": cdsp.status.processing_load()
                 })
-        except IOError:
+        except IOError as e:
+            print(e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
@@ -90,23 +90,23 @@ async def get_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        result = cdsp.get_volume()
+        result = cdsp.volume.main()
     elif name == "mute":
-        result = cdsp.get_mute()
+        result = cdsp.mute.main()
     elif name == "signalrange":
-        result = cdsp.get_signal_range()
+        result = cdsp.levels.range()
     elif name == "signalrangedb":
-        result = cdsp.get_signal_range_dB()
+        result = cdsp.levels.range_db()
     elif name == "capturerateraw":
-        result = cdsp.get_capture_rate_raw()
+        result = cdsp.rate.rate_raw()
     elif name == "updateinterval":
-        result = cdsp.get_update_interval()
+        result = cdsp.settings.update_interval()
     elif name == "configname":
-        result = cdsp.get_config_name()
+        result = cdsp.config.file_path()
     elif name == "configraw":
-        result = cdsp.get_config_raw()
+        result = cdsp.config.active_raw()
     elif name == "processingload":
-        result = cdsp.get_processing_load()
+        result = cdsp.status.processing_load()
     else:
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result))
@@ -117,9 +117,9 @@ async def get_list_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "capturesignalpeak":
-        result = cdsp.get_capture_signal_peak()
+        result = cdsp.levels.capture_peak()
     elif name == "playbacksignalpeak":
-        result = cdsp.get_playback_signal_peak()
+        result = cdsp.levels.playback_peak()
     else:
         result = "[]"
     return web.json_response(result)
@@ -131,20 +131,20 @@ async def set_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        cdsp.set_volume(value)
+        cdsp.volume.set_main(value)
     elif name == "mute":
         if value.lower() == "true":
-            cdsp.set_mute(True)
+            cdsp.mute.set_main(True)
         elif value.lower() == "false":
-            cdsp.set_mute(False)
+            cdsp.mute.set_main(False)
         else:
             return web.Response(status=500, text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
-        cdsp.set_update_interval(value)
+        cdsp.settings.set_update_interval(value)
     elif name == "configname":
-        cdsp.set_config_name(value)
+        cdsp.config.set_file_path(value)
     elif name == "configraw":
-        cdsp.set_config_raw(value)
+        cdsp.config.set_active_raw(value)
     return web.Response(text="OK")
 
 
@@ -203,7 +203,7 @@ async def eval_filterstep_values(request):
 async def get_config(request):
     # Get running config
     cdsp = request.app["CAMILLA"]
-    config = cdsp.get_config()
+    config = cdsp.config.active()
     return web.json_response(config)
 
 
@@ -217,7 +217,7 @@ async def set_config(request):
     json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
     if cdsp.is_connected():
         try:
-            cdsp.set_config(json_config_with_absolute_filter_paths)
+            cdsp.config.set_active(json_config_with_absolute_filter_paths)
         except CamillaError as e:
             return web.Response(status=500, text=str(e))
     else: 

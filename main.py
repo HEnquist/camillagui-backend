@@ -1,7 +1,7 @@
 from aiohttp import web
 import logging
 import sys
-from camilladsp import CamillaConnection
+from camilladsp import CamillaClient
 from camilladsp_plot.validate_config import CamillaValidator
 
 from backend.version import VERSION
@@ -35,11 +35,11 @@ app["can_update_active_config"] = config["can_update_active_config"]
 setup_routes(app)
 setup_static_routes(app)
 
-app["CAMILLA"] = CamillaConnection(config["camilla_host"], config["camilla_port"])
+app["CAMILLA"] = CamillaClient(config["camilla_host"], config["camilla_port"])
 app["RECONNECT_THREAD"] = None
 app["STATUSCACHE"] = {
     "backend_version": version_string(VERSION),
-    "py_cdsp_version": version_string(app["CAMILLA"].get_library_version())
+    "py_cdsp_version": version_string(app["CAMILLA"].versions.library())
     }
 app["CACHETIME"] = 0
 camillavalidator = CamillaValidator()
