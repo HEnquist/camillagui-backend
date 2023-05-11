@@ -38,13 +38,14 @@ async def get_status(request):
     try:
         state = cdsp.general.state()
         state_str = state.name
+        cache.update({"cdsp_status": state_str})
         try:
+            levels = cdsp.levels.levels_since_last()
             cache.update({
-                "cdsp_status": state_str,
-                "capturesignalrms": cdsp.levels.capture_rms_since_last(),
-                "capturesignalpeak": cdsp.levels.capture_peak_since_last(),
-                "playbacksignalrms": cdsp.levels.playback_rms_since_last(),
-                "playbacksignalpeak": cdsp.levels.playback_peak_since_last(),
+                "capturesignalrms": levels["capture_rms"],
+                "capturesignalpeak": levels["capture_peak"],
+                "playbacksignalrms": levels["playback_rms"],
+                "playbacksignalpeak": levels["playback_peak"],
             })
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
@@ -58,7 +59,7 @@ async def get_status(request):
                     "processingload": cdsp.status.processing_load()
                 })
         except IOError as e:
-            print(e)
+            print("TODO safe to remove this try-except? error:", e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
@@ -316,8 +317,6 @@ async def validate_config(request):
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
-    # TODO remove
-    print(errors)
     if len(errors) > 0:
         return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
