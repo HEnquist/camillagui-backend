@@ -9,6 +9,9 @@ from aiohttp import web
 
 
 def file_in_folder(folder, filename):
+    """
+    Safely join a folder and filename.
+    """
     if '/' in filename or '\\' in filename:
         raise IOError("Filename may not contain any slashes/backslashes")
     return os.path.abspath(os.path.join(folder, filename))
@@ -20,6 +23,9 @@ def path_of_configfile(request, config_name):
 
 
 async def store_files(folder, request):
+    """
+    Write a set of files (raw data) to disk.
+    """
     data = await request.post()
     i = 0
     while True:
@@ -36,6 +42,9 @@ async def store_files(folder, request):
 
 
 def list_of_files_in_directory(folder):
+    """
+    Return a list of files (name and modification date) in a folder.
+    """
     files = [file_in_folder(folder, file)
              for file in os.listdir(folder)
              if os.path.isfile(file_in_folder(folder, file))]
@@ -51,12 +60,18 @@ def list_of_files_in_directory(folder):
 
 
 def delete_files(folder, files):
+    """
+    Delete a list of files from a folder.
+    """
     for file in files:
         path = file_in_folder(folder, file)
         os.remove(path)
 
 
 async def zip_response(request, zip_file, file_name):
+    """
+    Send a response with a binary file (zip).
+    """
     response = web.StreamResponse()
     response.headers.add("Content-Disposition", "attachment; filename=" + file_name)
     await response.prepare(request)
@@ -66,6 +81,9 @@ async def zip_response(request, zip_file, file_name):
 
 
 def zip_of_files(folder, files):
+    """
+    Compress a list of files to a zip.
+    """
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         for file_name in files:
@@ -76,12 +94,18 @@ def zip_of_files(folder, files):
 
 
 def get_yaml_as_json(request, path):
+    """
+    Read a yaml file, return the validated content as json.
+    """
     validator = request.app["VALIDATOR"]
     validator.validate_file(path)
     return validator.get_config()
 
 
 def get_active_config(request):
+    """
+    Get the active config filename.
+    """
     active_config = request.app["active_config"]
     active_config_txt = request.app["active_config_txt"]
     on_get = request.app["on_get_active_config"]
@@ -111,6 +135,9 @@ def get_active_config(request):
 
 
 def set_as_active_config(request, file):
+    """
+    Persistlently set the given config file as the active config.
+    """
     active_config = request.app["active_config"]
     active_config_txt = request.app["active_config_txt"]
     update_config_symlink = request.app["update_config_symlink"]
@@ -141,6 +168,9 @@ def set_as_active_config(request, file):
 
 
 def save_config(config_name, json_config, request):
+    """
+    Write a given config object to a yaml file.
+    """
     config_file = path_of_configfile(request, config_name)
     yaml_config = yaml.dump(json_config).encode('utf-8')
     with open(config_file, "wb") as f:
@@ -148,47 +178,71 @@ def save_config(config_name, json_config, request):
 
 
 def coeff_dir_relative_to_config_dir(request):
+    """
+    Get the relative path of the coeff_dir with respect to config_dir.
+    """
     relative_coeff_dir = relpath(request.app["coeff_dir"], start=request.app["config_dir"])
     coeff_dir_with_folder_separator_at_end = join(relative_coeff_dir, '')
     return coeff_dir_with_folder_separator_at_end
 
 
 def new_config_with_absolute_filter_paths(json_config, config_dir):
-    def conversion(path): return make_absolute(path, config_dir)
+    """
+    Convert paths to coefficient files in a config from relative to absolute.
+    """
+    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
     return new_config_with_paths_converted(json_config, conversion)
 
 
 def new_config_with_relative_filter_paths(json_config, config_dir):
-    def conversion(path): return make_relative(path, config_dir)
+    """
+    Convert paths to coefficient files in a config from absolute to relative.
+    """
+    conversion = lambda path, config_dir=config_dir: make_relative(path, config_dir)
     return new_config_with_paths_converted(json_config, conversion)
 
 
 def new_config_with_paths_converted(json_config, conversion):
+    """
+    Apply a path conversion to all filter coefficient paths of a config.
+    """
     config = deepcopy(json_config)
     filters = config["filters"]
-    for filterName in filters:
-        filt = filters[filterName]
+    for filter_name in filters:
+        filt = filters[filter_name]
         convert_filter_path(filt, conversion)
     return config
 
 
-def convert_filter_path(json_filter, conversion):
-    ftype = json_filter["type"]
-    parameters = json_filter["parameters"]
+def convert_filter_path(filter_as_dict, conversion):
+    """
+    Apply a path conversion to a filter coefficient path.
+    """
+    ftype = filter_as_dict["type"]
+    parameters = filter_as_dict["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
         parameters["filename"] = conversion(parameters["filename"])
 
 
-def replace_relative_filter_path_with_absolute_paths(json_filter, config_dir):
-    def conversion(path): return make_absolute(path, config_dir)
-    convert_filter_path(json_filter, conversion)
+def replace_relative_filter_path_with_absolute_paths(filter_as_dict, config_dir):
+    """
+    Convert paths to coefficient files in a config from absolute to relative.
+    """
+    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
+    convert_filter_path(filter_as_dict, conversion)
 
 
 def make_absolute(path, base_dir):
+    """
+    Make a relative path absolute.
+    """
     return path if isabs(path) else normpath(join(base_dir, path))
 
 
 def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
+    """
+    Replace tokens in coefficient file paths.
+    """
     ftype = filterconfig["type"]
     parameters = filterconfig["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
@@ -198,8 +252,14 @@ def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
 
 
 def make_relative(path, base_dir):
+    """
+    Make a path relative to a base directory.
+    """
     return relpath(path, start=base_dir) if isabs(path) else path
 
 
 def is_path_in_folder(path, folder):
+    """
+    Check if a file is in a given directory.
+    """
     return folder == commonpath([path, folder])

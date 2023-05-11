@@ -32,6 +32,10 @@ BACKEND_CONFIG_DEFAULTS = {
 
 
 def _load_yaml(path):
+    """
+    Load a yaml file into a dict.
+    Logs the error and returns None if the file can't be read.
+    """
     try:
         with open(path) as f:
             config = yaml.safe_load(f)
@@ -46,6 +50,10 @@ def _load_yaml(path):
 
 
 def get_config(path):
+    """
+    Get backend config.
+    Exits if the config can't be read.
+    """
     config = _load_yaml(path)
     if config is None:
         sys.exit()
@@ -69,6 +77,9 @@ def get_config(path):
 
 
 def can_update_active_config(config):
+    """
+    Check if the backend is able to persist the active config filename.
+    """
     symlink_supported = False
     txt_supported = False
     external_supported = False
@@ -101,6 +112,11 @@ def can_update_active_config(config):
 
 
 def is_file_writable(path):
+    """
+    Check if a filename can be written to.
+    If the file doesn't already exist it checks if it's possible
+    to create a file in the parent directory.
+    """
     exists = os.path.isfile(path)
     if exists:
         return _is_writable(path)
@@ -110,6 +126,9 @@ def is_file_writable(path):
 
 
 def _is_writable(path):
+    """
+    Helper to check write permission on a symlink, file or dir.
+    """
     if os.access in os.supports_follow_symlinks:
         return os.access(path, os.W_OK, follow_symlinks=False)
     else:
@@ -117,6 +136,9 @@ def _is_writable(path):
 
 
 def absolute_path_or_none_if_empty(path):
+    """
+    Make a path absolute, of return None if the given path is empty.
+    """
     if path:
         return os.path.abspath(os.path.expanduser(path))
     else:
@@ -124,6 +146,10 @@ def absolute_path_or_none_if_empty(path):
 
 
 def get_gui_config_or_defaults():
+    """
+    Get the gui config from file if it exists,
+    if not return the defaults.
+    """
     config = _load_yaml(GUI_CONFIG_PATH)
     if config is not None:
         for key, value in GUI_CONFIG_DEFAULTS.items():

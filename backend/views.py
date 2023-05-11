@@ -16,8 +16,24 @@ from .filemanagement import (
 from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
 
+OFFLINE_CACHE = {
+    "cdsp_status": "Offline",
+    "cdsp_version": "(offline)",
+    "capturesignalrms": [],
+    "capturesignalpeak": [],
+    "playbacksignalrms": [],
+    "playbacksignalpeak": [],
+    "capturerate": None,
+    "rateadjust": None,
+    "bufferlevel": None,
+    "clippedsamples": None,
+    "processingload": None
+}
 
 async def get_gui_index(request):
+    """
+    Serve the static gui files.
+    """
     raise web.HTTPFound("/gui/index.html")
 
 def _reconnect(cdsp, cache):
@@ -31,6 +47,11 @@ def _reconnect(cdsp, cache):
             time.sleep(1)
 
 async def get_status(request):
+    """
+    Get the state and singnal levels etc.
+    If this fails it spawns a thread that tries to reconnect
+    to the camilladsp process.
+    """
     cdsp = request.app["CAMILLA"]
     reconnect_thread = request.app["RECONNECT_THREAD"]
     cache = request.app["STATUSCACHE"]
@@ -38,7 +59,7 @@ async def get_status(request):
     try:
         state = cdsp.general.state()
         state_str = state.name
-        cache.update({"cdsp_status": state_str})
+        cache["cdsp_status"] = state_str
         try:
             levels = cdsp.levels.levels_since_last()
             cache.update({
@@ -63,19 +84,7 @@ async def get_status(request):
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
-            cache.update({
-                "cdsp_status": "Offline",
-                "cdsp_version": "(offline)",
-                "capturesignalrms": [],
-                "capturesignalpeak": [],
-                "playbacksignalrms": [],
-                "playbacksignalpeak": [],
-                "capturerate": None,
-                "rateadjust": None,
-                "bufferlevel": None,
-                "clippedsamples": None,
-                "processingload": None
-            })
+            cache.update(OFFLINE_CACHE)
             reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
             reconnect_thread.start()
             request.app["RECONNECT_THREAD"] = reconnect_thread
@@ -83,11 +92,16 @@ async def get_status(request):
 
 
 def version_string(version_array):
-    return str(version_array[0]) + "." + str(version_array[1]) + "." + str(version_array[2])
+    """
+    Build a version string from a list of parts.
+    """
+    return f"{version_array[0]}.{version_array[1]}.{version_array[2]}"
 
 
 async def get_param(request):
-    # Get a parameter value
+    """
+    Combined getter for several parameters.
+    """
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
@@ -114,7 +128,9 @@ async def get_param(request):
 
 
 async def get_list_param(request):
-    # Get a parameter value as a list
+    """
+    Combined getter for several parameters where the values are lists.
+    """
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "capturesignalpeak":
@@ -127,7 +143,9 @@ async def get_list_param(request):
 
 
 async def set_param(request):
-    # Set a parameter
+    """
+    Combined setter for various parameters
+    """
     value = await request.text()
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
@@ -150,7 +168,9 @@ async def set_param(request):
 
 
 async def eval_filter_values(request):
-    # Plot a filter
+    """
+    Evaluate a filter. Returns values for plotting.
+    """
     content = await request.json()
     config_dir = request.app["config_dir"]
     config = content["config"]
@@ -176,7 +196,9 @@ async def eval_filter_values(request):
 
 
 async def eval_filterstep_values(request):
-    # Plot a filter step
+    """
+    Evaluate a filter step consisting of one or several filters. Returns values for plotting.
+    """
     content = await request.json()
     config = content["config"]
     step_index = content["index"]
@@ -202,14 +224,18 @@ async def eval_filterstep_values(request):
 
 
 async def get_config(request):
-    # Get running config
+    """
+    Get running config.
+    """
     cdsp = request.app["CAMILLA"]
     config = cdsp.config.active()
     return web.json_response(config)
 
 
 async def set_config(request):
-    # Apply a new config to CamillaDSP
+    """
+    Apply a new config to CamillaDSP.
+    """
     json = await request.json()
     json_config = json["config"]
     config_dir = request.app["config_dir"]
@@ -230,6 +256,9 @@ async def set_config(request):
 
 
 async def get_default_config_file(request):
+    """
+    Fetch the default config from file.
+    """
     default_config = request.app["default_config"]
     config_dir = request.app["config_dir"]
     if default_config and isfile(default_config):
@@ -245,6 +274,9 @@ async def get_default_config_file(request):
     return web.json_response(json_config)
 
 async def get_active_config_file(request):
+    """
+    Get the active config. If no config is active, return the default config.
+    """
     active_config = request.app["active_config"]
     default_config = request.app["default_config"]
     config_dir = request.app["config_dir"]
@@ -269,6 +301,9 @@ async def get_active_config_file(request):
 
 
 async def set_active_config_name(request):
+    """
+    Persístently set the given config file name as the active config.
+    """
     json = await request.json()
     config_name = json["name"]
     config_file = path_of_configfile(request, config_name)
@@ -277,6 +312,9 @@ async def set_active_config_name(request):
 
 
 async def get_config_file(request):
+    """
+    Read and return a config file. Takes a filname and tries to load the file from config_dir.
+    """
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
@@ -288,20 +326,27 @@ async def get_config_file(request):
 
 
 async def save_config_file(request):
+    """
+    Save a config to a given filename.
+    """
     json = await request.json()
     save_config(json["filename"], json["config"], request)
     return web.Response(text="OK")
 
 
 async def config_to_yml(request):
-    # Convert a json config to yml string (for saving to disk etc)
+    """
+    Convert a json config to yml string (for saving to disk etc).
+    """
     content = await request.json()
     conf_yml = yaml.dump(content)
     return web.Response(text=conf_yml)
 
 
 async def yml_to_json(request):
-    # Parse a yml string and return as json
+    """
+    Parse a yml string and return as json.
+    """
     config_ymlstr = await request.text()
     validator = request.app["VALIDATOR"]
     validator.validate_yamlstring(config_ymlstr)
@@ -310,7 +355,9 @@ async def yml_to_json(request):
 
 
 async def validate_config(request):
-    # Validate a config, returned completed config
+    """
+    Validate a config, returned completed config.
+    """
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
@@ -323,28 +370,43 @@ async def validate_config(request):
 
 
 async def store_coeffs(request):
+    """
+    Store a FIR coefficients file to coeff_dir.
+    """
     folder = request.app["coeff_dir"]
     return await store_files(folder, request)
 
 
 async def store_configs(request):
+    """
+    Store a config file to config_dir.
+    """
     folder = request.app["config_dir"]
     return await store_files(folder, request)
 
 
 async def get_stored_coeffs(request):
+    """
+    Fetch a list of coefficient files in coeff_dir.
+    """
     coeff_dir = request.app["coeff_dir"]
     coeffs = list_of_files_in_directory(coeff_dir)
     return web.json_response(coeffs)
 
 
 async def get_stored_configs(request):
+    """
+    Fetch a list of config files in config_dir.
+    """
     config_dir = request.app["config_dir"]
     configs = list_of_files_in_directory(config_dir)
     return web.json_response(configs)
 
 
 async def delete_coeffs(request):
+    """
+    Delete one or several coefficient files from coeff_dir.
+    """
     coeff_dir = request.app["coeff_dir"]
     files = await request.json()
     delete_files(coeff_dir, files)
@@ -352,6 +414,9 @@ async def delete_coeffs(request):
 
 
 async def delete_configs(request):
+    """
+    Delete one or several config files from config_dir.
+    """
     config_dir = request.app["config_dir"]
     files = await request.json()
     delete_files(config_dir, files)
@@ -359,6 +424,9 @@ async def delete_configs(request):
 
 
 async def download_coeffs_zip(request):
+    """
+    Fetch one or several coeffcient files in a zip file.
+    """
     coeff_dir = request.app["coeff_dir"]
     files = await request.json()
     zip_file = zip_of_files(coeff_dir, files)
@@ -366,6 +434,9 @@ async def download_coeffs_zip(request):
 
 
 async def download_configs_zip(request):
+    """
+    Fetch one or several config files in a zip file.
+    """
     config_dir = request.app["config_dir"]
     files = await request.json()
     zip_file = zip_of_files(config_dir, files)
@@ -373,6 +444,9 @@ async def download_configs_zip(request):
 
 
 async def get_gui_config(request):
+    """
+    Get the gui configuration.
+    """
     gui_config = get_gui_config_or_defaults()
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
@@ -382,6 +456,9 @@ async def get_gui_config(request):
 
 
 async def get_defaults_for_coeffs(request):
+    """
+    Fetch reasonable settings for a coefficient file, based on file ending.
+    """
     path = request.query["file"]
     absolute_path = make_absolute(path, request.app["config_dir"])
     defaults = defaults_for_filter(absolute_path)
@@ -389,6 +466,9 @@ async def get_defaults_for_coeffs(request):
 
 
 async def get_log_file(request):
+    """
+    Read and return the log file from the camilladsp process.
+    """
     log_file_path = request.app["log_file"]
     try:
         with open(expanduser(log_file_path)) as log_file:
