@@ -1,10 +1,11 @@
-from os.path import isfile, expanduser
+from os.path import isfile, expanduser, join
 import yaml
 import threading
 import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
+import logging
 
 from .filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
@@ -277,24 +278,26 @@ async def get_active_config_file(request):
     """
     Get the active config. If no config is active, return the default config.
     """
-    active_config = request.app["active_config"]
-    default_config = request.app["default_config"]
+    active_config_path = get_active_config(request)
+    logging.debug(active_config_path)
+    default_config_path = request.app["default_config"]
     config_dir = request.app["config_dir"]
-    if active_config and isfile(active_config):
-        config = active_config
-    elif default_config and isfile(default_config):
-        config = default_config
+    if active_config_path and isfile(join(config_dir, active_config_path)):
+        config = join(config_dir, active_config_path)
+    elif default_config_path and isfile(default_config_path):
+        config = default_config_path
     else:
         return web.Response(status=404, text="No active or default config")
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
+        logging.error(e)
         return web.Response(status=500, text=str(e))
     except Exception as e:
+        logging.error(e)
         return web.Response(status=500, text=str(e))
-    active_config_name = get_active_config(request)
-    if active_config_name:
-        json = {"configFileName": active_config_name, "config": json_config}
+    if active_config_path:
+        json = {"configFileName": active_config_path, "config": json_config}
     else:
         json = {"config": json_config}
     return web.json_response(json)
@@ -365,6 +368,7 @@ async def validate_config(request):
     validator.validate_config(config_with_absolute_filter_paths)
     errors = validator.get_errors()
     if len(errors) > 0:
+        logging.debug(errors)
         return web.json_response(status=500, data=errors)
     return web.Response(text="OK")
 
@@ -452,6 +456,7 @@ async def get_gui_config(request):
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     gui_config["can_update_active_config"] = request.app["can_update_active_config"]
+    logging.debug(f"GUI config: {str(gui_config)}")
     return web.json_response(gui_config)
 
 
@@ -475,7 +480,7 @@ async def get_log_file(request):
             text = log_file.read()
             return web.Response(body=text)
     except OSError:
-        print("Unable to read logfile at " + log_file_path)
+        logging.error("Unable to read logfile at " + log_file_path)
     if log_file_path:
         error_message = "Please configure CamillaDSP to log to: " + log_file_path
     else:

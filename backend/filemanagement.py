@@ -2,11 +2,20 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath, getmtime
+from os.path import isfile, islink, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
+import logging
 
 import yaml
+from yaml.scanner import ScannerError
 from aiohttp import web
 
+from camilladsp import CamillaError
+
+DEFAULT_STATEFILE = {
+    "config_path": None,
+    "mute": [False, False, False, False, False],
+    "volume": [0.0, 0.0, 0.0, 0.0, 0.0],
+}
 
 def file_in_folder(folder, filename):
     """
@@ -106,66 +115,132 @@ def get_active_config(request):
     """
     Get the active config filename.
     """
-    active_config = request.app["active_config"]
-    active_config_txt = request.app["active_config_txt"]
+    statefile_path = request.app["statefile_path"]
+    config_dir = request.app["config_dir"]
+    cdsp = request.app["CAMILLA"]
+    try:
+        _state = cdsp.general.state()
+        online = True
+    except (CamillaError, IOError):
+        online = False
     on_get = request.app["on_get_active_config"]
     if not on_get:
-        if islink(active_config) and isfile(active_config):
-            target = os.readlink(active_config)
-            _head, tail = split(target)
-            return tail
-        elif isfile(active_config_txt):
-            with open(active_config_txt) as f:
-                target = f.read().strip()
-                _head, tail = split(target)
-                return tail
+        if online:
+            dsp_statefile_path = cdsp.general.state_file_path()
+            if dsp_statefile_path:
+                fpath = cdsp.config.file_path()
+                filename = _verify_path_in_config_dir(fpath, config_dir)
+                logging.debug(filename)
+                return filename
+            else:
+                logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
+                return None
+        elif statefile_path:
+            confpath = _read_statefile_config_path(statefile_path)
+            return _verify_path_in_config_dir(confpath, config_dir)
         else:
-            return None
+            logging.error("The backend config has no state file and is unable to persistently store config file path")
     else:
         try:
-            print(f"Running command: {on_get}")
+            logging.debug(f"Running command: {on_get}")
             stream = os.popen(on_get)
             result = stream.read().strip()
-            _head, tail = split(result)
-            print(f"Command result: {result}, filename: {tail}")
-            return tail
+            logging.debug(f"Command result: {result}")
+            fname = _verify_path_in_config_dir(result, config_dir)
+            return fname
         except Exception as e:
-            print(f"Failed to run on_get_active_config command, error: {e}")
+            logging.error(f"Failed to run on_get_active_config command, error: {e}")
             return None
 
 
-def set_as_active_config(request, file):
+def set_as_active_config(request, filepath):
     """
-    Persistlently set the given config file as the active config.
+    Persistlently set the given config file path as the active config.
     """
-    active_config = request.app["active_config"]
-    active_config_txt = request.app["active_config_txt"]
-    update_config_symlink = request.app["update_config_symlink"]
-    update_config_txt = request.app["update_config_txt"]
     on_set = request.app["on_set_active_config"]
-    if update_config_symlink and active_config:
-        try:
-            if islink(active_config):
-                os.unlink(active_config)
-            os.symlink(file, active_config)
-        except Exception as e:
-            print(f"Failed to update symlink at {active_config}, error: {e}")
-            if os.name == "nt":
-                print("Creating symlinks on Windows requires special privileges or admin rights. Consider setting 'update_config_symlink: false' in camillagui.yml")
-    if update_config_txt and active_config_txt:
-        try:
-            with open(active_config_txt, "w") as f:
-                f.write(file)
-        except Exception as e:
-            print(f"Failed to update config name txt at {active_config_txt}, error: {e}")
+    statefile_path = request.app["statefile_path"]
+    cdsp = request.app["CAMILLA"]
+    try:
+        _state = cdsp.general.state()
+        online = True
+    except (CamillaError, IOError):
+        online = False
+    if not online:
+        if statefile_path:
+            try:
+                logging.debug(f"Update config file path in statefile to '{filepath}'")
+                _update_statefile_config_path(statefile_path, filepath)
+            except Exception as e:
+                logging.error(f"Failed to update statefile at {statefile_path}, error: {e}")
+        else:
+            logging.error("The backend config has no state file and is unable to persistently store config file path")
+    else:
+        dsp_statefile_path = cdsp.general.state_file_path()
+        if dsp_statefile_path:
+            logging.debug(f"Send set config file path command with '{filepath}'")
+            cdsp.config.set_file_path(filepath)
+        else:
+            logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
     if on_set:
         try:
-            cmd = on_set.format(f'"{file}"')
-            print(f"Running command: {cmd}")
+            cmd = on_set.format(f'"{filepath}"')
+            logging.debug(f"Running command: {cmd}")
             os.system(cmd)
         except Exception as e:
-            print(f"Failed to run on_set_active_config command, error: {e}")
+            logging.error(f"Failed to run on_set_active_config command, error: {e}")
 
+def _verify_path_in_config_dir(path, config_dir):
+    """
+    Verify that a given path points to a file in config_dir.
+    Returns the filename without the rest of the path.
+    """
+    if path is None:
+        logging.warning("The config file path is None")
+        return None
+    canonical = realpath(path)
+    if is_path_in_folder(canonical, config_dir):
+        _head, tail = split(canonical)
+        return tail
+    logging.error(f"The config file path '{path}' is not in the config dir '{config_dir}'")
+    return None
+
+
+def _update_statefile_config_path(statefile_path, new_config_path):
+    """
+    Read a statefile if possible, update the config filename, and write the result"
+    """
+    try:
+        with open(statefile_path) as f:
+            state = yaml.safe_load(f)
+    except ScannerError as e:
+        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
+        logging.error(f"Details: {e}")
+        state = deepcopy(DEFAULT_STATEFILE)
+    except OSError as e:
+        logging.error(f"Statefile could not be opened: {statefile_path}")
+        logging.error(f"Details: {e}")
+        state = deepcopy(DEFAULT_STATEFILE)
+    state["config_path"] = new_config_path
+    yaml_state = yaml.dump(state).encode('utf-8')
+    with open(statefile_path, "wb") as f:
+        f.write(yaml_state)
+
+
+def _read_statefile_config_path(statefile_path):
+    """
+    Read a statefile if possible, and get the config_path"
+    """
+    try:
+        with open(statefile_path) as f:
+            state = yaml.safe_load(f)
+            return state["config_path"]
+    except ScannerError as e:
+        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
+        logging.error(f"Details: {e}")
+    except OSError as e:
+        logging.error(f"Statefile could not be opened: {statefile_path}")
+        logging.error(f"Details: {e}")
+    return None
 
 def save_config(config_name, json_config, request):
     """
@@ -208,9 +283,10 @@ def new_config_with_paths_converted(json_config, conversion):
     """
     config = deepcopy(json_config)
     filters = config["filters"]
-    for filter_name in filters:
-        filt = filters[filter_name]
-        convert_filter_path(filt, conversion)
+    if filters is not None:
+        for filter_name in filters:
+            filt = filters[filter_name]
+            convert_filter_path(filt, conversion)
     return config
 
 

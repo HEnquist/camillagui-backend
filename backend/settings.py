@@ -5,6 +5,8 @@ import sys
 import yaml
 from yaml.scanner import ScannerError
 
+import logging
+
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
 CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
 GUI_CONFIG_PATH = BASEPATH / 'config' / 'gui-config.yml'
@@ -21,8 +23,7 @@ GUI_CONFIG_DEFAULTS = {
 
 # Default values for the optional settings.
 BACKEND_CONFIG_DEFAULTS = {
-    "update_config_symlink": False,
-    "update_config_txt": False,
+    "statefile_path": None,
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
@@ -41,11 +42,11 @@ def _load_yaml(path):
             config = yaml.safe_load(f)
             return config
     except ScannerError as e:
-        print(f"ERROR! Invalid yaml syntax in config file: {path}")
-        print(f"Details: {e}")
+        logging.error(f"Invalid yaml syntax in config file: {path}")
+        logging.error(f"Details: {e}")
     except OSError as e:
-        print(f"ERROR! Config file could not be opened: {path}")
-        print(f"Details: {e}")
+        logging.error(f"Config file could not be opened: {path}")
+        logging.error(f"Details: {e}")
     return None
 
 
@@ -63,15 +64,13 @@ def get_config(path):
         os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(
         config["default_config"])
-    config["active_config"] = absolute_path_or_none_if_empty(
-        config["active_config"])
-    config["active_config_txt"] = absolute_path_or_none_if_empty(
-        config["active_config_txt"])
+    config["statefile_path"] = absolute_path_or_none_if_empty(
+        config["statefile_path"])
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
-    print("Backend configuration:")
-    print(yaml.dump(config))
+    logging.debug("Backend configuration:")
+    logging.debug(yaml.dump(config))
     config["can_update_active_config"] = can_update_active_config(config)
     return config
 
@@ -80,35 +79,19 @@ def can_update_active_config(config):
     """
     Check if the backend is able to persist the active config filename.
     """
-    symlink_supported = False
-    txt_supported = False
+    statefile_supported = False
     external_supported = False
-    if config["update_config_symlink"]:
-        conffile = config["active_config"]
-        is_file = os.path.isfile(conffile)
-        if is_file:
-            is_link = os.path.islink(conffile)
-        else:
-            # The file or link doesnt exist, we can create it as a link
-            is_link = True
-        if not is_link:
-            print(f"The file {conffile} already exists and is not a symlink.")
-        is_writable = is_file_writable(conffile)
-        if not is_writable:
-            print(f"The file {conffile} is not writable.")
-        if is_writable and is_link:
-            symlink_supported = True
-    if config["update_config_txt"]:
-        conffile = config["active_config_txt"]
-        is_writable = is_file_writable(conffile)
+    if config["statefile_path"]:
+        statefile = config["statefile_path"]
+        is_writable = is_file_writable(statefile)
         if is_writable:
-            txt_supported = True
+            statefile_supported = True
         else:
-            print(f"The file {conffile} is not writable.")
+            logging.error(f"The statefile {statefile} is not writable.")
     if config["on_set_active_config"] and config["on_get_active_config"]:
-        print("Both 'on_set_active_config' and 'on_get_active_config' options are set")
+        logging.debug("Both 'on_set_active_config' and 'on_get_active_config' options are set")
         external_supported = True
-    return symlink_supported or txt_supported or external_supported
+    return statefile_supported or external_supported
 
 
 def is_file_writable(path):
@@ -157,7 +140,7 @@ def get_gui_config_or_defaults():
                 config[key] = value
         return config
     else:
-        print("Unable to read gui config file, using defaults")
+        logging.warning("Unable to read gui config file, using defaults")
         return GUI_CONFIG_DEFAULTS
 
 
