@@ -385,7 +385,19 @@ div .popup-content {
 }
 
 .eqslider {
-  appearance: slider-vertical;
-  width: 40px;
-  height: 200px !important;
+  width: 200px;
+  height: 30px;
+  transform: rotate(-90deg);
+  transform-origin: left;
+  position: absolute;
+  left: 50%;
+  bottom: -5%;
+}
+
+.eqslider-wrapper {
+  display: inline-block;
+  width: 30px;
+  height: 200px;
+  position: relative;
+  padding: 5px 5px;
 }

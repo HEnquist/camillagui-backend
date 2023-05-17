@@ -663,7 +663,9 @@ class FilterParams extends React.Component<{
               <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
                 {gain.toFixed(1)}
               </div>
-              <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
+              <div className="eqslider-wrapper">
+                <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} />
+              </div>
               <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
                 {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
               </div>
