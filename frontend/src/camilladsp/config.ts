@@ -499,7 +499,7 @@ export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format, device: string | null }
     | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, change_format: boolean | null }
+    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | {
         type: 'File', channels: number, format: Format, filename: '/path/to/file',
@@ -518,7 +518,7 @@ export type PlaybackDevice =
     | { type: 'Jack', channels: number, device: string }
     | { type: 'Alsa', channels: number, format: Format, device: string | null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null, change_format: boolean | null }
+    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
     | { type: 'File', channels: number, format: Format, filename: string }
     | { type: 'Stdout', channels: number, format: Format }
 

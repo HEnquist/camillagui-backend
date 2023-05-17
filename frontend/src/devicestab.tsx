@@ -316,7 +316,7 @@ function ResamplingOptions(props: {
       <IntOption
         // @ts-ignore
         value={devices.resampler.sinc_len}
-        error={errors({path: ['sinc_len']})}
+        error={errors({path: ['resampler', 'sinc_len']})}
         desc="sinc_len"
         data-tip="Length of sinc interpolation filter"
         // @ts-ignore
@@ -324,7 +324,7 @@ function ResamplingOptions(props: {
       <IntOption
         // @ts-ignore
         value={devices.resampler.oversampling_factor}
-        error={errors({path: ['oversampling_factor']})}
+        error={errors({path: ['resampler', 'oversampling_factor']})}
         desc="oversampling_factor"
         data-tip="Oversampling factor"
         // @ts-ignore
@@ -404,7 +404,7 @@ function CaptureOptions(props: {
     return null
   const defaults: { [type: string]: CaptureDevice } = {
     Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, change_format: null },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
@@ -496,16 +496,6 @@ function CaptureOptions(props: {
             )}/>
         </>
     }
-    {(capture.type === 'CoreAudio') &&
-    <OptionalBoolOption
-        value={capture.change_format}
-        error={errors({path: ['device']})}
-        desc="change_format"
-        data-tip="Change format of the device"
-        onChange={change_format => onChange(devices => // @ts-ignore
-            devices.capture.change_format = change_format
-        )}/>
-    }
     {capture.type === 'File' &&
     <TextOption
         value={capture.filename}
@@ -576,7 +566,7 @@ function PlaybackOptions(props: {
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: null},
-    CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null, change_format: null},
+    CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
@@ -655,16 +645,6 @@ function PlaybackOptions(props: {
         data-tip="Use exclusive mode"
         onChange={exclusive => onChange(devices => // @ts-ignore
             devices.playback.exclusive = exclusive
-        )}/>
-    }
-    {(playback.type === 'CoreAudio') &&
-    <OptionalBoolOption
-        value={playback.change_format}
-        error={errors({path: ['device']})}
-        desc="change_format"
-        data-tip="Change format of the device"
-        onChange={change_format => onChange(devices => // @ts-ignore
-            devices.playback.change_format = change_format
         )}/>
     }
     {playback.type === 'File' &&
