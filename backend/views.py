@@ -6,6 +6,7 @@ from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
 import logging
+import traceback
 
 from .filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
@@ -269,8 +270,11 @@ async def get_default_config_file(request):
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
+        logging.error(f"Failed to get default config file, error: {e}")
         return web.Response(status=500, text=str(e))
     except Exception as e:
+        logging.error("Failed to get default config file")
+        traceback.print_exc()
         return web.Response(status=500, text=str(e))
     return web.json_response(json_config)
 
@@ -291,10 +295,11 @@ async def get_active_config_file(request):
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
-        logging.error(e)
+        logging.error(f"Failed to get active config from CamillaDSP, error: {e}")
         return web.Response(status=500, text=str(e))
     except Exception as e:
-        logging.error(e)
+        logging.error(f"Failed to get active config")
+        traceback.print_exc()
         return web.Response(status=500, text=str(e))
     if active_config_path:
         json = {"configFileName": active_config_path, "config": json_config}
@@ -366,6 +371,7 @@ async def validate_config(request):
     config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
+    #print(yaml.dump(config_with_absolute_filter_paths, indent=2))
     errors = validator.get_errors()
     if len(errors) > 0:
         logging.debug(errors)

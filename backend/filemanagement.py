@@ -4,6 +4,7 @@ import zipfile
 from copy import deepcopy
 from os.path import isfile, islink, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
 import logging
+import traceback
 
 import yaml
 from yaml.scanner import ScannerError
@@ -149,7 +150,8 @@ def get_active_config(request):
             fname = _verify_path_in_config_dir(result, config_dir)
             return fname
         except Exception as e:
-            logging.error(f"Failed to run on_get_active_config command, error: {e}")
+            logging.error(f"Failed to run on_get_active_config command")
+            traceback.print_exc()
             return None
 
 
@@ -171,7 +173,8 @@ def set_as_active_config(request, filepath):
                 logging.debug(f"Update config file path in statefile to '{filepath}'")
                 _update_statefile_config_path(statefile_path, filepath)
             except Exception as e:
-                logging.error(f"Failed to update statefile at {statefile_path}, error: {e}")
+                logging.error(f"Failed to update statefile at {statefile_path}")
+                traceback.print_exc()
         else:
             logging.error("The backend config has no state file and is unable to persistently store config file path")
     else:
@@ -187,7 +190,8 @@ def set_as_active_config(request, filepath):
             logging.debug(f"Running command: {cmd}")
             os.system(cmd)
         except Exception as e:
-            logging.error(f"Failed to run on_set_active_config command, error: {e}")
+            logging.error(f"Failed to run on_set_active_config command")
+            traceback.print_exc()
 
 def _verify_path_in_config_dir(path, config_dir):
     """
