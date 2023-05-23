@@ -159,7 +159,7 @@ async def set_param(request):
         elif value.lower() == "false":
             cdsp.mute.set_main(False)
         else:
-            return web.Response(status=500, text=f"Invalid boolean value {value}")
+            raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
         cdsp.settings.set_update_interval(value)
     elif name == "configname":
@@ -248,7 +248,7 @@ async def set_config(request):
         try:
             cdsp.config.set_active(json_config_with_absolute_filter_paths)
         except CamillaError as e:
-            return web.Response(status=500, text=str(e))
+            raise web.HTTPInternalServerError(text=str(e))
     else: 
         validator.validate_config(json_config_with_absolute_filter_paths)
         errors = validator.get_errors()
@@ -266,16 +266,16 @@ async def get_default_config_file(request):
     if default_config and isfile(default_config):
         config = default_config
     else:
-        return web.Response(status=404, text="No default config")
+        raise web.HTTPNotFound(text="No default config")
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         logging.error(f"Failed to get default config file, error: {e}")
-        return web.Response(status=500, text=str(e))
+        raise web.HTTPInternalServerError(text=str(e))
     except Exception as e:
         logging.error("Failed to get default config file")
         traceback.print_exc()
-        return web.Response(status=500, text=str(e))
+        raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(json_config)
 
 async def get_active_config_file(request):
@@ -291,16 +291,16 @@ async def get_active_config_file(request):
     elif default_config_path and isfile(default_config_path):
         config = default_config_path
     else:
-        return web.Response(status=404, text="No active or default config")
+        raise web.HTTPNotFound(text="No active or default config")
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         logging.error(f"Failed to get active config from CamillaDSP, error: {e}")
-        return web.Response(status=500, text=str(e))
+        raise web.HTTPInternalServerError(text=str(e))
     except Exception as e:
         logging.error(f"Failed to get active config")
         traceback.print_exc()
-        return web.Response(status=500, text=str(e))
+        raise web.HTTPInternalServerError(text=str(e))
     if active_config_path:
         json = {"configFileName": active_config_path, "config": json_config}
     else:
@@ -329,7 +329,7 @@ async def get_config_file(request):
     try:
         json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config_file), config_dir)
     except CamillaError as e:
-        return web.Response(status=500, text=str(e))
+        raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(json_config)
 
 
@@ -375,7 +375,7 @@ async def validate_config(request):
     errors = validator.get_errors()
     if len(errors) > 0:
         logging.debug(errors)
-        return web.json_response(status=500, data=errors)
+        return web.json_response(status=406, data=errors)
     return web.Response(text="OK")
 
 

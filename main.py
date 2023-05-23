@@ -21,10 +21,10 @@ if len(sys.argv) > 1:
 logging.getLogger("aiohttp").setLevel(logging.WARNING)
 logging.getLogger("root").setLevel(level)
 
-logging.info("info")
-logging.debug("debug")
-logging.warning("warning")
-logging.error("error")
+#logging.info("info")
+#logging.debug("debug")
+#logging.warning("warning")
+#logging.error("error")
 
 app = web.Application(client_max_size=1024 ** 3)  # set max upload file size to 1GB
 app["config_dir"] = config["config_dir"]

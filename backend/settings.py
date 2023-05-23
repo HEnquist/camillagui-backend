@@ -18,6 +18,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_capture_device": False,
     "hide_playback_device": False,
     "apply_config_automatically": False,
+    "save_config_automatically": False,
     "status_update_interval": 100,
 }
 
