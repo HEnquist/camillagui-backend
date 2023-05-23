@@ -98,10 +98,10 @@ export class SidePanel extends React.Component<
       <div className="two-column-grid" style={{gridTemplateColumns: 'max-content auto'}}>
         <div className="alignRight">State:</div>
         <div>{status.cdsp_status}</div>
-        <div className="alignRight">Capture samplerate:</div>
+        <div className="alignRight">Capt. samplerate:</div>
         <div>{status.capturerate}</div>
         <div className="alignRight">Rate adjust:</div>
-        <div>{status.rateadjust}</div>
+        <div>{status.rateadjust ? status.rateadjust.toFixed(4) : ''}</div>
         <div className="alignRight">Clipped samples:</div>
         <div>{status.clippedsamples}</div>
         <div className="alignRight">Buffer level:</div>

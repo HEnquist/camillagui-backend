@@ -318,10 +318,10 @@ class ProcessorParams extends React.Component<{
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'row' }}>
                 {[...Array(processor.parameters.channels)].map((n, idx) =>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>{idx}</div>
-                            <input type="checkbox" data-tip={"Enable monitoring for channel " + idx} checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
-                            <input type="checkbox" data-tip={"Enable processing for channel " + idx} checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
+                        <div key={"col"+idx} style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div key={"label"+idx} style={{ display: 'flex', justifyContent: 'center' }}>{idx}</div>
+                            <input type="checkbox" key={"monitor"+idx} data-tip={"Enable monitoring for channel " + idx} checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
+                            <input type="checkbox" key={"process"+idx} data-tip={"Enable processing for channel " + idx} checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
                         </div>
                     )}
                 </div>

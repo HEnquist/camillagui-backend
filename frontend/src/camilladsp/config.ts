@@ -26,6 +26,8 @@ export function defaultConfig(): Config {
             stop_on_rate_change: null,
             rate_measure_interval: null,
 
+            volume_ramp_time: null,
+
             capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
         },
@@ -228,6 +230,9 @@ export function filterNamesOf(configOrFilters: Config | Filters | null): string[
         return []
     }
     const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+    if (filters === null) {
+        return []
+    }
     return sortedAlphabetically(Object.keys(filters))
 }
 
@@ -433,6 +438,9 @@ export interface Devices {
     //Rate monitoring
     stop_on_rate_change: boolean | null,
     rate_measure_interval: number | null,
+
+    //Volume control settings
+    volume_ramp_time: number | null,
 
     capture: CaptureDevice,
     playback: PlaybackDevice,

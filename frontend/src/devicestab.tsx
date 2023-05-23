@@ -64,6 +64,10 @@ export function DevicesTab(props: {
         devices={devices}
         errors={errors}
         onChange={updateDevices}/>
+    <VolumeOptions
+        devices={devices}
+        errors={errors}
+        onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
         supported_capture_types={guiConfig.supported_capture_types}
@@ -390,6 +394,22 @@ function RateMonitoringOptions(props: {
             desc="stop_on_rate_change"
             data-tip="Stop processing when a sample rate change is detected"
             onChange={stopOnRateChange => props.onChange(devices => devices.stop_on_rate_change = stopOnRateChange)}/>
+    </Box>
+  }
+
+  function VolumeOptions(props: {
+    devices: Devices
+    errors: ErrorsForPath
+    error?: string
+    onChange: (update: Update<Devices>) => void
+  }) {
+    return <Box title="Volume control settings">
+        <OptionalFloatOption
+            value={props.devices.volume_ramp_time}
+            error={props.errors({path: ['volume_ramp_time']})}
+            desc="volume_ramp_time"
+            data-tip="Ramp time for main volume control, in milliseconds"
+            onChange={volumeRampTime => props.onChange(devices => devices.volume_ramp_time = volumeRampTime)}/>
     </Box>
   }
 
