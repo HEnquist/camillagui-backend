@@ -265,23 +265,23 @@ def coeff_dir_relative_to_config_dir(request):
     return coeff_dir_with_folder_separator_at_end
 
 
-def new_config_with_absolute_filter_paths(json_config, config_dir):
+def make_config_filter_paths_absolute(json_config, config_dir):
     """
     Convert paths to coefficient files in a config from relative to absolute.
     """
     conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
-    return new_config_with_paths_converted(json_config, conversion)
+    return convert_config_filter_paths(json_config, conversion)
 
 
-def new_config_with_relative_filter_paths(json_config, config_dir):
+def make_config_filter_paths_relative(json_config, config_dir):
     """
     Convert paths to coefficient files in a config from absolute to relative.
     """
     conversion = lambda path, config_dir=config_dir: make_relative(path, config_dir)
-    return new_config_with_paths_converted(json_config, conversion)
+    return convert_config_filter_paths(json_config, conversion)
 
 
-def new_config_with_paths_converted(json_config, conversion):
+def convert_config_filter_paths(json_config, conversion):
     """
     Apply a path conversion to all filter coefficient paths of a config.
     """
@@ -301,7 +301,10 @@ def convert_filter_path(filter_as_dict, conversion):
     ftype = filter_as_dict["type"]
     parameters = filter_as_dict["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
-        parameters["filename"] = conversion(parameters["filename"])
+        filename = parameters["filename"]
+        if filename:
+            filename = conversion(filename)
+        parameters["filename"] = filename
 
 
 def replace_relative_filter_path_with_absolute_paths(filter_as_dict, config_dir):

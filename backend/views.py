@@ -11,8 +11,8 @@ import traceback
 from .filemanagement import (
     path_of_configfile, store_files, list_of_files_in_directory, delete_files,
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
-    new_config_with_absolute_filter_paths, coeff_dir_relative_to_config_dir,
-    replace_relative_filter_path_with_absolute_paths, new_config_with_relative_filter_paths,
+    make_config_filter_paths_absolute, coeff_dir_relative_to_config_dir,
+    replace_relative_filter_path_with_absolute_paths, make_config_filter_paths_relative,
     make_absolute, replace_tokens_in_filter_config
 )
 from .filters import defaults_for_filter, filter_options, pipeline_step_options
@@ -186,16 +186,20 @@ async def eval_filter_values(request):
     else:
         options = []
     replace_tokens_in_filter_config(config, samplerate, channels)
-    data = eval_filter(
-        config,
-        name=(content["name"]),
-        samplerate=samplerate,
-        npoints=1000,
-    )
-    data["channels"] = channels
-    data["options"] = options
-    return web.json_response(data)
-
+    try:
+        data = eval_filter(
+            config,
+            name=(content["name"]),
+            samplerate=samplerate,
+            npoints=1000,
+        )
+        data["channels"] = channels
+        data["options"] = options
+        return web.json_response(data)
+    except FileNotFoundError:
+        raise web.HTTPNotFound("Filter coefficient file not found")
+    except Exception as e:
+        raise web.HTTPBadRequest(str(e))
 
 async def eval_filterstep_values(request):
     """
@@ -209,21 +213,25 @@ async def eval_filterstep_values(request):
     channels = content["channels"]
     config["devices"]["samplerate"] = samplerate
     config["devices"]["capture"]["channels"] = channels
-    plot_config = new_config_with_absolute_filter_paths(config, config_dir)
+    plot_config = make_config_filter_paths_absolute(config, config_dir)
     filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
     options = pipeline_step_options(filter_file_names, config, step_index)
     for _, filt in plot_config["filters"].items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
-    data = eval_filterstep(
-        plot_config,
-        step_index,
-        name="Filterstep {}".format(step_index),
-        npoints=1000,
-    )
-    data["channels"] = channels
-    data["options"] = options
-    return web.json_response(data)
-
+    try:
+        data = eval_filterstep(
+            plot_config,
+            step_index,
+            name="Filterstep {}".format(step_index),
+            npoints=1000,
+        )
+        data["channels"] = channels
+        data["options"] = options
+        return web.json_response(data)
+    except FileNotFoundError:
+        raise web.HTTPNotFound("Filter coefficient file not found")
+    except Exception as e:
+        raise web.HTTPBadRequest(str(e))
 
 async def get_config(request):
     """
@@ -243,7 +251,7 @@ async def set_config(request):
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
-    json_config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(json_config, config_dir)
+    json_config_with_absolute_filter_paths = make_config_filter_paths_absolute(json_config, config_dir)
     if cdsp.is_connected():
         try:
             cdsp.config.set_active(json_config_with_absolute_filter_paths)
@@ -268,7 +276,7 @@ async def get_default_config_file(request):
     else:
         raise web.HTTPNotFound(text="No default config")
     try:
-        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
+        json_config = make_config_filter_paths_relative(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         logging.error(f"Failed to get default config file, error: {e}")
         raise web.HTTPInternalServerError(text=str(e))
@@ -293,7 +301,7 @@ async def get_active_config_file(request):
     else:
         raise web.HTTPNotFound(text="No active or default config")
     try:
-        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config), config_dir)
+        json_config = make_config_filter_paths_relative(get_yaml_as_json(request, config), config_dir)
     except CamillaError as e:
         logging.error(f"Failed to get active config from CamillaDSP, error: {e}")
         raise web.HTTPInternalServerError(text=str(e))
@@ -327,7 +335,7 @@ async def get_config_file(request):
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
     try:
-        json_config = new_config_with_relative_filter_paths(get_yaml_as_json(request, config_file), config_dir)
+        json_config = make_config_filter_paths_relative(get_yaml_as_json(request, config_file), config_dir)
     except CamillaError as e:
         raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(json_config)
@@ -368,7 +376,7 @@ async def validate_config(request):
     """
     config_dir = request.app["config_dir"]
     config = await request.json()
-    config_with_absolute_filter_paths = new_config_with_absolute_filter_paths(config, config_dir)
+    config_with_absolute_filter_paths = make_config_filter_paths_absolute(config, config_dir)
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
     #print(yaml.dump(config_with_absolute_filter_paths, indent=2))
