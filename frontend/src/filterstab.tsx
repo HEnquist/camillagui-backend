@@ -164,7 +164,7 @@ export class FiltersTab extends React.Component<
             desc="Sort filters by"
             data-tip="Property used to sort filters"
             onChange={this.changeSortBy}/>
-      <BoolOption 
+      <BoolOption
             value={this.state.sortReverse}
             desc="Reverse order"
             data-tip="Reverse display order"
@@ -487,7 +487,8 @@ const defaultParameters: {
   Conv: {
     Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
     Wav: { type: "Wav", filename: "", channel: 0 },
-    Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0], length: 0 },
+    Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0] },
+    Dummy: { type: "Dummy", length: 1024 }
   },
   Delay: {
     Default: { delay: 0.0, unit: "ms", subsample: false },
@@ -499,7 +500,7 @@ const defaultParameters: {
     Default: { ramp_time: 200, fader: "Aux1" },
   },
   Loudness: {
-    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, ramp_time: 200, fader: "Main" },
+    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },
   },
   DiffEq: {
     Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
@@ -712,7 +713,7 @@ class FilterParams extends React.Component<{
               this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
               filter.parameters[option] = this.defaultParameterValues[option]
             })}/>
-      
+
       if (info.type === 'text')
         return <TextOption {...commonProps}/>
       if (info.type === 'int')
@@ -805,6 +806,11 @@ class FilterParams extends React.Component<{
       type: "float",
       desc: "amplitude",
       tooltip: "Dither amplitude relative to target LSB",
+    },
+    attenuate_mid: {
+      type: "bool",
+      desc: "attenuate_mid",
+      tooltip: "Attenuate midband instead of boosting extremes, avoids clipping when used with external volume control"
     },
     b0: {
       type: "float",
@@ -901,10 +907,10 @@ class FilterParams extends React.Component<{
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
     mute: { type: "optional_bool", desc: "mute", tooltip: "Mute" },
-    normalize_at_dc: { 
-      type: "bool", 
-      desc: "normalize_at_dc", 
-      tooltip: "Normalize at low frequencies" 
+    normalize_at_dc: {
+      type: "bool",
+      desc: "normalize_at_dc",
+      tooltip: "Normalize at low frequencies"
     },
     order: { type: "int", desc: "order", tooltip: "Filter order" },
     q: { type: "float", desc: "Q", tooltip: "Q-value" },
@@ -943,10 +949,10 @@ class FilterParams extends React.Component<{
       tooltip: "Filter slope in dB per octave",
     },
     soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
-    subsample: { 
-      type: "bool", 
-      desc: "subsample", 
-      tooltip: "Use subsample precision for delays" 
+    subsample: {
+      type: "bool",
+      desc: "subsample",
+      tooltip: "Use subsample precision for delays"
     },
     unit: {
       type: "enum",
