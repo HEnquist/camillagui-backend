@@ -1472,3 +1472,27 @@ export function ListSelectPopup(props: {
         </div>
     </Popup>
 }
+
+export function TupleListSelectPopup(props: {
+    open: boolean
+    header?: ReactNode
+    items: [string, string][]
+    onSelect: (value: string) => void
+    onClose: () => void
+}) {
+    const { open, items, onSelect, onClose } = props
+    const selectItem = (item: string) => { onSelect(item); onClose() }
+    return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
+        <CloseButton onClick={onClose} />
+        {props.header}
+        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
+            {items.map(item =>
+                <Button
+                    key={item[1]}
+                    text={item[1]}
+                    style={{ justifyContent: 'flex-start' }}
+                    onClick={() => selectItem(item[0])} />
+            )}
+        </div>
+    </Popup>
+}

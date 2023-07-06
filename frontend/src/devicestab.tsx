@@ -1,4 +1,5 @@
 import React from "react"
+import {useState} from "react"
 import "./index.css"
 import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
@@ -18,8 +19,12 @@ import {
   OptionalIntOption,
   IntOption,
   TextOption,
-  OptionalTextOption
+  OptionalTextOption,
+  TupleListSelectPopup,
+  MdiButton,
 } from "./utilities/ui-components"
+import {mdiFileSearch} from '@mdi/js'
+
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
 
@@ -420,6 +425,8 @@ function CaptureOptions(props: {
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
+  const [popupState, setPopupState] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState([]);
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
@@ -433,12 +440,33 @@ function CaptureOptions(props: {
       extra_samples: null, skip_bytes: null, read_bytes: null },
     Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2}
   }
+
   const {capture, onChange, errors, supported_capture_types} = props
   const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
   const captureTypes = supported_capture_types ?
       defaultCaptureTypes.filter(type => supported_capture_types.includes(type))
       : defaultCaptureTypes
   return <Box title="Capture device">
+    <MdiButton
+        icon={mdiFileSearch}
+        tooltip="Pick a capture device"
+        onClick={() => {
+          fetch("/api/capturedevices/" + capture.type)
+            .then((devices) => devices.json()
+              .then((names) => (setAvailableDevices(names))))
+          setPopupState(true)
+        }}
+    />
+    <TupleListSelectPopup
+          key="capture select popup"
+          open={popupState}
+          header="available devices"
+          items={availableDevices}
+          onClose={() => setPopupState(false)}
+          onSelect={device => onChange(devices => // @ts-ignore
+              devices.capture.device = device
+          )}
+      />
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={capture.type}
