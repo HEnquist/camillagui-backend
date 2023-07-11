@@ -63,6 +63,10 @@ textarea.logfileviewer {
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
+.react-tabs__tab--selected:after { /* Removes the white bar below selected tab headers */
+  visibility: hidden;
+}
+
 .react-tabs__tab-list {
   border-bottom: var(--box-border);
 }
