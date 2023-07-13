@@ -20,7 +20,7 @@ import {
   IntOption,
   TextOption,
   OptionalTextOption,
-  TupleListSelectPopup,
+  KeyValueSelectPopup,
   MdiButton,
 } from "./utilities/ui-components"
 import {mdiFileSearch} from '@mdi/js'
@@ -457,7 +457,7 @@ function CaptureOptions(props: {
           setPopupState(true)
         }}
     />
-    <TupleListSelectPopup
+    <KeyValueSelectPopup
           key="capture select popup"
           open={popupState}
           header="available devices"

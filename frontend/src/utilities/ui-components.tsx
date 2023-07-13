@@ -1473,7 +1473,7 @@ export function ListSelectPopup(props: {
     </Popup>
 }
 
-export function TupleListSelectPopup(props: {
+export function KeyValueSelectPopup(props: {
     open: boolean
     header?: ReactNode
     items: [string, string][]
@@ -1489,7 +1489,7 @@ export function TupleListSelectPopup(props: {
             {items.map(item =>
                 <Button
                     key={item[1]}
-                    text={item[1]}
+                    text={ item[0] === item[1] ? item[1] : item[0] + ": " + item[1] }
                     style={{ justifyContent: 'flex-start' }}
                     onClick={() => selectItem(item[0])} />
             )}
