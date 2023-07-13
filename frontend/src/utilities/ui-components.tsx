@@ -868,17 +868,32 @@ export function OptionalTextOption(props: {
     'data-tip': string
     onChange: (value: string|null) => void
     placeholder?: string
+    buttonIcon?: string
+    buttonTooltip?: string
+    onButtonClick?: () => void
 }) {
+    let button
+    if (props.buttonIcon !== undefined && props.onButtonClick !== undefined) {
+        button = <MdiButton
+            icon={props.buttonIcon}
+            tooltip={props.buttonTooltip === undefined ? "": props.buttonTooltip}
+            onClick={props.onButtonClick}
+            buttonSize="tiny"
+            />
+    }
     return <>
         <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
-            <OptionalTextInput
-                placeholder={props.placeholder === undefined ? "default" : props.placeholder}
-                className="setting-input"
-                value={props.value}
-                data-tip={props["data-tip"]}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={props.onChange} 
+            <div className="setting-input">
+                <OptionalTextInput
+                    placeholder={props.placeholder === undefined ? "default" : props.placeholder}
+                    className="setting-input"
+                    value={props.value}
+                    data-tip={props["data-tip"]}
+                    style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
+                    onChange={props.onChange} 
                 />
+                {button}
+            </div>
         </OptionLine>
         <ErrorMessage message={props.error} />
     </>

@@ -139,7 +139,7 @@ textarea.logfileviewer {
 }
 
 .setting-input {
-  display: table-cell;
+  display: flex;
   width: 100%;
   vertical-align: middle;
 }

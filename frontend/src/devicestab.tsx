@@ -447,20 +447,10 @@ function CaptureOptions(props: {
       defaultCaptureTypes.filter(type => supported_capture_types.includes(type))
       : defaultCaptureTypes
   return <Box title="Capture device">
-    <MdiButton
-        icon={mdiFileSearch}
-        tooltip="Pick a capture device"
-        onClick={() => {
-          fetch("/api/capturedevices/" + capture.type)
-            .then((devices) => devices.json()
-              .then((names) => (setAvailableDevices(names))))
-          setPopupState(true)
-        }}
-    />
     <KeyValueSelectPopup
           key="capture select popup"
           open={popupState}
-          header="available devices"
+          header="Available capture devices:"
           items={availableDevices}
           onClose={() => setPopupState(false)}
           onSelect={device => onChange(devices => // @ts-ignore
@@ -503,7 +493,8 @@ function CaptureOptions(props: {
         data-tip="Sample format"
         onChange={format => onChange(devices => // @ts-ignore
             devices.capture.format = format
-        )}/>
+        )}
+        />
     }
     {(capture.type === 'CoreAudio' || capture.type === 'Alsa' || capture.type === 'Wasapi') &&
     <OptionalTextOption
@@ -513,7 +504,16 @@ function CaptureOptions(props: {
         data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.capture.device = device
-        )}/>
+        )}
+        buttonIcon={mdiFileSearch}
+        buttonTooltip="Pick a capture device"
+        onButtonClick={() => {
+          fetch("/api/capturedevices/" + capture.type)
+            .then((devices) => devices.json()
+              .then((names) => (setAvailableDevices(names))))
+          setPopupState(true)
+        }}
+        />
     }
     {(capture.type === 'Pulse') &&
     <TextOption
@@ -610,6 +610,8 @@ function PlaybackOptions(props: {
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
+  const [popupState, setPopupState] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState([]);
   if (props.hide_playback_device)
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
@@ -627,6 +629,16 @@ function PlaybackOptions(props: {
       defaultPlaybackTypes.filter(type => supported_playback_types.includes(type))
       : defaultPlaybackTypes
   return <Box title="Playback device">
+    <KeyValueSelectPopup
+      key="playback select popup"
+      open={popupState}
+      header="Available playback devices:"
+      items={availableDevices}
+      onClose={() => setPopupState(false)}
+      onSelect={device => onChange(devices => // @ts-ignore
+        devices.playback.device = device
+      )}
+      />
     <ErrorMessage message={errors({path: []})}/>
     <EnumOption
         value={props.playback.type}
@@ -673,7 +685,16 @@ function PlaybackOptions(props: {
         data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.playback.device = device
-        )}/>
+        )}
+        buttonIcon={mdiFileSearch}
+        buttonTooltip="Pick a capture device"
+        onButtonClick={() => {
+          fetch("/api/playbackdevices/" + playback.type)
+            .then((devices) => devices.json()
+              .then((names) => (setAvailableDevices(names))))
+          setPopupState(true)
+        }}
+        />
     }
     {(playback.type === 'Pulse') &&
     <TextOption
