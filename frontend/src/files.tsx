@@ -4,8 +4,8 @@ import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from
 import { GuiConfig } from "./guiconfig"
 import {
   mdiAlertCircle,
-  mdiAlphaABox,
-  mdiAlphaABoxOutline,
+  mdiStar,
+  mdiStarOutline,
   mdiCheck,
   mdiContentSave,
   mdiDelete,
@@ -429,7 +429,7 @@ function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?:
 
   return <MdiButton
       enabled={enabled}
-      icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
+      icon={active ? mdiStar : mdiStarOutline}
       tooltip={tooltip}
       className={active ? "highlighted-button" : ""}
       onClick={onClick}/>
