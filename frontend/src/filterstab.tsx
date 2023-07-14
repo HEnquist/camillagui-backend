@@ -5,6 +5,7 @@ import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, m
 import {
   Config,
   defaultFilter,
+  DefaultFilterParameters,
   Filter,
   Filters,
   newFilterName,
@@ -263,12 +264,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
 
   private timer = delayedExecutor(500)
 
-  private uploadCoeffs(e: React.ChangeEvent<HTMLInputElement>) {
-    doUpload('coeff', e,
-        filesnames => {
+  private uploadCoeffs(files: FileList) {
+    doUpload('coeff', files,
+        fileNames => {
           this.setState({uploadState: {success: true}})
           const {updateAvailableCoeffFiles} = this.props
-          this.pickFilterFile(filesnames[0])
+          this.pickFilterFile(fileNames[0])
           updateAvailableCoeffFiles()
         },
         message => this.setState({uploadState: {success: false, message: message}})
@@ -299,7 +300,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter(filter => {
       const subtype = defaults.type ? defaults.type : filter.parameters.type
-      const guiDefaults = defaultParameters[filter.type][subtype]
+      const guiDefaults = DefaultFilterParameters[filter.type][subtype]
       const channel = filter.parameters.channel
       filter.parameters = {
         ...guiDefaults,
@@ -418,7 +419,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
                   icon={uploadIcon.icon}
                   className={uploadIcon.className}
                   tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
-                  onChange={this.uploadCoeffs}
+                  upload={this.uploadCoeffs}
                   multiple={true}/>
               <div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>
             </>
@@ -449,88 +450,6 @@ function coeffFilePath(coeffDir: string, filename: string) {
 
 function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
   return filter => filter.parameters.filename = coeffFilePath(coeffDir, filename)
-}
-
-const defaultParameters: {
-  [type: string]: {
-    [subtype: string]: {
-      [parameter: string]: string | number | number[] | boolean
-    }
-  }
-} = {
-  Biquad: {
-    Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
-    Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
-    Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
-    Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
-    LowpassFO: { type: "LowpassFO", freq: 1000 },
-    HighpassFO: { type: "HighpassFO", freq: 1000 },
-    LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
-    HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
-    Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
-    Notch: { type: "Notch", freq: 1000, q: 1.5 },
-    GeneralNotch: { type: "GeneralNotch", freq_z: 1000, freq_p: 1000, q_p: 1.0, normalize_at_dc: false },
-    Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
-    Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
-    AllpassFO: { type: "AllpassFO", freq: 1000 },
-    LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
-    Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
-  },
-  BiquadCombo: {
-    ButterworthLowpass: { type: "ButterworthLowpass", order: 2, freq: 1000 },
-    ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
-    LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
-    LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
-    Tilt: { type: "Tilt", gain: 0.0 },
-    GraphicEqualizer: { type: "GraphicEqualizer", freq_min: 20.0, freq_max: 20000.0, gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
-  },
-  Conv: {
-    Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
-    Wav: { type: "Wav", filename: "", channel: 0 },
-    Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0] },
-    Dummy: { type: "Dummy", length: 1024 }
-  },
-  Delay: {
-    Default: { delay: 0.0, unit: "ms", subsample: false },
-  },
-  Gain: {
-    Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
-  },
-  Volume: {
-    Default: { ramp_time: 200, fader: "Aux1" },
-  },
-  Loudness: {
-    Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },
-  },
-  DiffEq: {
-    Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
-  },
-  Dither: {
-    None: { type: "None", bits: 16 },
-    Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
-    HighPass: { type: "HighPass", bits: 16 },
-    Fweighted441: { type: "Fweighted441", bits: 16 },
-    FweightedLong441: { type: "FweightedLong441", bits: 16 },
-    FweightedShort441: { type: "FweightedShort441", bits: 16 },
-    Gesemann441: { type: "Gesemann441", bits: 16 },
-    Gesemann48: { type: "Gesemann48", bits: 16 },
-    Lipshitz441: { type: "Lipshitz441", bits: 16 },
-    LipshitzLong441: { type: "LipshitzLong441", bits: 16 },
-    Shibata441: { type: "Shibata441", bits: 16 },
-    ShibataHigh441: { type: "ShibataHigh441", bits: 16 },
-    ShibataLow441: { type: "ShibataLow441", bits: 16 },
-    Shibata48: { type: "Shibata48", bits: 16 },
-    ShibataLow48: { type: "ShibataLow48", bits: 16 },
-    Shibata882: { type: "Shibata882", bits: 16 },
-    ShibataLow882: { type: "ShibataLow882", bits: 16 },
-    Shibata96: { type: "Shibata96", bits: 16 },
-    ShibataLow96: { type: "ShibataLow96", bits: 16 },
-    Shibata192: { type: "Shibata192", bits: 16 },
-    ShibataLow192: { type: "ShibataLow192", bits: 16 },
-  },
-  Limiter: {
-    Default: { soft_clip: false, clip_limit: 0.0 }
-  },
 }
 
 const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
@@ -571,7 +490,7 @@ class FilterParams extends React.Component<{
   private onTypeChange(type: string) {
     this.props.updateFilter(filter => {
       filter.type = type
-      const subtypeDefaults = defaultParameters[type]
+      const subtypeDefaults = DefaultFilterParameters[type]
       const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0]
       filter.parameters = cloneDeep(subtypeDefaults[firstSubtypeOrDefault])
     })
@@ -580,7 +499,7 @@ class FilterParams extends React.Component<{
   private onSubtypeChange(subtype: string) {
     this.props.updateFilter(filter => {
           const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
-          filter.parameters = cloneDeep(defaultParameters[filter.type][subtype])
+          filter.parameters = cloneDeep(DefaultFilterParameters[filter.type][subtype])
           if (oldFilename && isConvolutionFileFilter(filter))
             filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
         }
@@ -626,14 +545,14 @@ class FilterParams extends React.Component<{
 
   render() {
     const {filter, errors} = this.props
-    const defaults = defaultParameters[filter.type]
+    const defaults = DefaultFilterParameters[filter.type]
     const subtypeOptions = defaults ? Object.keys(defaults) : []
     return <div style={{width: '100%', textAlign: 'right'}}>
       <ErrorMessage message={errors({path: []})}/>
       <EnumOption
           value={filter.type}
           error={errors({path: ['type']})}
-          options={Object.keys(defaultParameters)}
+          options={Object.keys(DefaultFilterParameters)}
           desc="type"
           data-tip="Filter type"
           onChange={this.onTypeChange}/>

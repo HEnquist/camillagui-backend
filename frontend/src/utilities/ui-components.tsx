@@ -10,9 +10,17 @@ import {
     LineElement,
     Tooltip,
     Legend,
-} from 'chart.js';
-import zoomPlugin from 'chartjs-plugin-zoom';
-import { mdiChartBellCurveCumulative, mdiDelete, mdiImage, mdiPlusThick, mdiTable, mdiSitemapOutline, mdiHome } from "@mdi/js"
+} from 'chart.js'
+import zoomPlugin from 'chartjs-plugin-zoom'
+import {
+    mdiChartBellCurveCumulative,
+    mdiDelete,
+    mdiImage,
+    mdiPlusThick,
+    mdiTable,
+    mdiSitemapOutline,
+    mdiHome,
+} from "@mdi/js"
 import ReactTooltip from "react-tooltip"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
@@ -36,19 +44,17 @@ export function download(filename: string, blob: any) {
 
 export async function doUpload(
     type: 'config' | 'coeff',
-    event: ChangeEvent<HTMLInputElement>,
+    files: FileList,
     onSuccess: (filesnames: string[]) => void,
     onError: (message: string) => void
 ) {
     const formData = new FormData()
-    const files = event.target.files as FileList
     const uploadedFiles: string[] = []
     for (let index = 0; index < files.length; index++) {
         const file = files[index]
         uploadedFiles.push(file.name)
         formData.append("file" + index, file, file.name)
     }
-    event.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     try {
         await fetch(`/api/upload${type}s`, {
             method: "POST",
@@ -180,21 +186,32 @@ export function PlotButton(props: {
 
 export function UploadButton(props: {
     icon: string
+    text?: string
     tooltip: string
-    onChange: (event: ChangeEvent<HTMLInputElement>) => void
+    htmlTooltip?: boolean
+    upload: (files: FileList) => void
     multiple?: boolean
     className?: string
     style?: CSSProperties
     smallButton?: boolean
 }): JSX.Element {
     const style = Object.assign({ verticalAlign: 'bottom' }, props.style)
+    const upload = (e: ChangeEvent<HTMLInputElement>) => {
+        props.upload(e.target.files!)
+        e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
+    };
     return (
         <label data-tip={props.tooltip}>
-            <input style={{ display: 'none' }} type="file" onChange={props.onChange} multiple={props.multiple} />
+            <input style={{display: 'none'}}
+                   type="file"
+                   onChange={upload}
+                   multiple={props.multiple} />
             <MdiButton
                 buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
+                text={props.text}
                 tooltip={props.tooltip}
+                htmlTooltip={props.htmlTooltip}
                 className={props.className}
                 style={style} />
         </label>
@@ -203,7 +220,9 @@ export function UploadButton(props: {
 
 export function MdiButton(props: {
     icon: string
+    text?: string
     tooltip: string
+    htmlTooltip?: boolean
     className?: string
     style?: CSSProperties
     enabled?: boolean
@@ -211,9 +230,9 @@ export function MdiButton(props: {
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const { icon, tooltip, className, enabled, onClick, buttonSize } = props
+    const { icon, tooltip, htmlTooltip, text, className, enabled, onClick, buttonSize } = props
     const clickhandler = onClick === undefined || enabled === false ? () => { } : onClick
-    let buttonClass = 'button button-with-icon'
+    let buttonClass = 'button ' + (text ? 'button-with-text-and-icon' : 'button-with-icon')
     if (enabled === false) buttonClass += ' disabled-button'
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
@@ -221,8 +240,9 @@ export function MdiButton(props: {
     let rot = {}
     if (props.rotation && props.rotation !== 0)
         rot = { transform: "rotate(" + props.rotation + "deg)" }
-    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
+    return <div onClick={clickhandler} data-tip={tooltip} data-html={htmlTooltip} className={buttonClass} style={props.style}>
         <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
+        {text}
     </div>
 }
 

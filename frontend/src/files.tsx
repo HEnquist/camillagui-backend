@@ -1,16 +1,16 @@
-import React, {ChangeEvent, Component} from "react"
+import React, {Component} from "react"
 import {Set} from "immutable"
 import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
-import { GuiConfig } from "./guiconfig"
+import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
-  mdiStar,
-  mdiStarOutline,
   mdiCheck,
   mdiContentSave,
   mdiDelete,
   mdiDownload,
   mdiRefresh,
+  mdiStar,
+  mdiStarOutline,
   mdiUpload
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
@@ -155,10 +155,10 @@ class FileTable extends Component<
     download(this.type + 's.zip', zipFile)
   }
 
-  private upload(event: ChangeEvent<HTMLInputElement>) {
+  private upload(files: FileList) {
     doUpload(
         this.type,
-        event,
+        files,
         () => {
           this.setState({
             fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
@@ -216,6 +216,7 @@ class FileTable extends Component<
   private async saveConfig(name: string) {
     const { config, setCurrentConfig } = this.props
     try {
+      console.log(JSON.stringify(config?.filters, null, 2))
       const response = await fetch(`/api/saveconfigfile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", },
@@ -394,7 +395,7 @@ function DeleteFilesButton(props: { selectedFiles: Set<string>, delete: () => {}
 
 function UploadFilesButton(props: {
   fileStatus: FileStatus | null,
-  upload: (e: ChangeEvent<HTMLInputElement>) => void
+  upload: (files: FileList) => void
 }) {
   const fileStatus = props.fileStatus
   let uploadIcon: { icon: string, className?: string } =
@@ -407,7 +408,7 @@ function UploadFilesButton(props: {
   return <UploadButton
       icon={uploadIcon.icon}
       tooltip={'Upload files'}
-      onChange={props.upload}
+      upload={props.upload}
       className={uploadIcon.className}
       multiple={true}/>
 }

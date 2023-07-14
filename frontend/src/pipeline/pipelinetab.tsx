@@ -12,33 +12,37 @@ import {
   ErrorMessage,
   IntInput,
   MdiButton,
-  PlotButton,
-  OptionalTextInput,
   OptionalBoolOption,
-  OptionLine
+  OptionalTextInput,
+  OptionLine,
+  PlotButton,
+  UploadButton
 } from "../utilities/ui-components"
 import {
   Config,
   defaultFilterStep,
   defaultMixerStep,
   defaultProcessorStep,
+  EMPTY,
   filterNamesOf,
   Filters,
   FilterStep,
   mixerNamesOf,
-  processorNamesOf,
   Mixers,
   MixerStep,
-  Processors,
-  ProcessorStep,
   Pipeline,
-  PipelineStep
+  PipelineStep,
+  processorNamesOf,
+  Processors,
+  ProcessorStep
 } from "../camilladsp/config"
-import {mdiArrowDownBold, mdiArrowUpBold} from "@mdi/js"
+import {mdiArrowDownBold, mdiArrowUpBold, mdiFileUploadOutline} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "../utilities/errors"
 import {DndContainer, DndSortable, DragHandle, useDndSort} from "../utilities/dragndrop"
 import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
+import {importCdspYamlFilters, importEqApoFilters} from "./filterimport"
+import {renderToString} from "react-dom/server"
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -145,6 +149,7 @@ export class PipelineTab extends React.Component<{
                     filterStep={step}
                     filters={this.props.config.filters}
                     updatePipeline={this.updatePipeline}
+                    updateConfig={this.props.updateConfig}
                     plot={() => this.plotFilterStep(index)}
                     errors={stepErrors}
                     controls={controls}/>
@@ -218,7 +223,7 @@ function MixerStepView(props: {
   const update = (update: Update<MixerStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as MixerStep))
   const mixer = mixers[mixerStep.name]
   const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
-  const options = [''].concat(mixerNamesOf(mixers))
+  const options = [EMPTY].concat(mixerNamesOf(mixers))
   const nameError = props.errors({path: ['name']})
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   return <DndSortable {...dndProps}>
@@ -266,7 +271,7 @@ function ProcessorStepView(props: {
 }) {
   const {stepIndex, typeSelect, processors, processorStep, updatePipeline, controls} = props
   const update = (update: Update<ProcessorStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as ProcessorStep))
-  const options = [''].concat(processorNamesOf(processors))
+  const options = [EMPTY].concat(processorNamesOf(processors))
   const nameError = props.errors({path: ['name']})
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   return <DndSortable {...dndProps}>
@@ -309,12 +314,13 @@ function FilterStepView(props: {
   filterStep: FilterStep
   filters: Filters
   updatePipeline: (update: Update<Pipeline>) => void
+  updateConfig: (update: Update<Config>) => void
   plot: () => void
   errors: ErrorsForPath
   controls: ReactNode
 }) {
-  const {stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls} = props
-  const options = [''].concat(filterNamesOf(filters))
+  const {stepIndex, typeSelect, filterStep, filters, updatePipeline, updateConfig, plot, controls} = props
+  const options = [EMPTY].concat(filterNamesOf(filters))
   const update = (update: Update<FilterStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as FilterStep))
   const addFilter = () => update(step => step.names.push(options[0]))
   const moveFilterUp = (index: number) => update(step => moveItemUp(step.names, index))
@@ -399,9 +405,11 @@ function FilterStepView(props: {
         <div className="horizontally-spaced-content">
           {controls}
           <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>
+          <ImportCdspYamlFiltersButton import={(files) => importCdspYamlFilters(files, updateConfig, update)}/>
+          <ImportEqApoFiltersButton import={(files) => importEqApoFilters(files, updateConfig, update)}/>
           <PlotButton tooltip="Plot response of this step" onClick={plot}/>
         </div>
-        
+
           <OptionalTextInput
             placeholder="description"
             value={filterStep.description}
@@ -410,6 +418,60 @@ function FilterStepView(props: {
       </div>
     </Box>
   </DndSortable>
+}
+
+export function ImportCdspYamlFiltersButton(props: {
+  import: (files: FileList) => void
+}) {
+  const tooltipWithHtml = renderToString(<>
+    Import filters from CamillaDSP Yaml filter file.<br/>
+    If filters with the same name are present in this config, they will be overwritten.<br/>
+    Only missing filters will be added to this step.<br/>
+    <br/>
+    Example file:<br/>
+    <br/>
+    Filter1:<br/>
+    &nbsp;&nbsp;type: Gain<br/>
+    &nbsp;&nbsp;parameters:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;gain: -6<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;scale: dB<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;inverted: false<br/>
+    Filter2:<br/>
+    &nbsp;&nbsp;type: Delay<br/>
+    &nbsp;&nbsp;parameters:<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;delay: 0<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;subsample: false<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;unit: ms<br/>
+  </>)
+  return <UploadButton
+      icon={mdiFileUploadOutline}
+      text={"CDSP"}
+      htmlTooltip={true}
+      tooltip={tooltipWithHtml}
+      upload={props.import} />
+}
+
+export function ImportEqApoFiltersButton(props: {
+  import: (files: FileList) => void
+}) {
+  const tooltipWithHtml = renderToString(<>
+    Import filters from EqualizerAPO filter file.<br/>
+    Only Preamp(Gain), LSC(Lowshelf), PK(Peaking) and HSC(Highshelf) filters will be imported.<br/>
+    This should be sufficient for EqAPO filters generated by REW and AutoEQ.<br/>
+    If filters with the same name are present in this config, they will be overwritten.<br/>
+    Only missing filters will be added to this step.<br/>
+    <br/>
+    Example file:<br/>
+    <br/>
+    Filter  1: ON  PK       Fc   50.00 Hz  Gain  -5.00 dB  Q 5.00<br/>
+    Filter  2: ON  PK       Fc   100.00 Hz  Gain  10.00 dB  Q 1.00<br/>
+  </>)
+  return <UploadButton
+      icon={mdiFileUploadOutline}
+      text={"EqAPO"}
+      htmlTooltip={true}
+      tooltip={tooltipWithHtml}
+      upload={props.import} />
 }
 
 function FilterStepFilter(props: {

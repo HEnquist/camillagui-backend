@@ -252,11 +252,93 @@ function newName(prefix: string, existingNames: string[]): string {
             return prefix + i.toString()
 }
 
+export const DefaultFilterParameters: {
+    [type: string]: {
+        [subtype: string]: {
+            [parameter: string]: string | number | number[] | boolean
+        }
+    }
+} = {
+    Biquad: {
+        Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
+        Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
+        Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
+        Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
+        LowpassFO: { type: "LowpassFO", freq: 1000 },
+        HighpassFO: { type: "HighpassFO", freq: 1000 },
+        LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
+        HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
+        Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
+        Notch: { type: "Notch", freq: 1000, q: 1.5 },
+        GeneralNotch: { type: "GeneralNotch", freq_z: 1000, freq_p: 1000, q_p: 1.0, normalize_at_dc: false },
+        Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
+        Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
+        AllpassFO: { type: "AllpassFO", freq: 1000 },
+        LinkwitzTransform: { type: "LinkwitzTransform", q_act: 1.5, q_target: 0.5, freq_act: 50, freq_target: 25 },
+        Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
+    },
+    BiquadCombo: {
+        ButterworthLowpass: { type: "ButterworthLowpass", order: 2, freq: 1000 },
+        ButterworthHighpass: { type: "ButterworthHighpass", order: 2, freq: 1000 },
+        LinkwitzRileyLowpass: { type: "LinkwitzRileyLowpass", order: 2, freq: 1000 },
+        LinkwitzRileyHighpass: { type: "LinkwitzRileyHighpass", order: 2, freq: 1000 },
+        Tilt: { type: "Tilt", gain: 0.0 },
+        GraphicEqualizer: { type: "GraphicEqualizer", freq_min: 20.0, freq_max: 20000.0, gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+    },
+    Conv: {
+        Raw: { type: "Raw", filename: "", format: "TEXT", skip_bytes_lines: 0, read_bytes_lines: 0 },
+        Wav: { type: "Wav", filename: "", channel: 0 },
+        Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0] },
+        Dummy: { type: "Dummy", length: 1024 }
+    },
+    Delay: {
+        Default: { delay: 0.0, unit: "ms", subsample: false },
+    },
+    Gain: {
+        Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
+    },
+    Volume: {
+        Default: { ramp_time: 200, fader: "Aux1" },
+    },
+    Loudness: {
+        Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },
+    },
+    DiffEq: {
+        Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
+    },
+    Dither: {
+        None: { type: "None", bits: 16 },
+        Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
+        HighPass: { type: "HighPass", bits: 16 },
+        Fweighted441: { type: "Fweighted441", bits: 16 },
+        FweightedLong441: { type: "FweightedLong441", bits: 16 },
+        FweightedShort441: { type: "FweightedShort441", bits: 16 },
+        Gesemann441: { type: "Gesemann441", bits: 16 },
+        Gesemann48: { type: "Gesemann48", bits: 16 },
+        Lipshitz441: { type: "Lipshitz441", bits: 16 },
+        LipshitzLong441: { type: "LipshitzLong441", bits: 16 },
+        Shibata441: { type: "Shibata441", bits: 16 },
+        ShibataHigh441: { type: "ShibataHigh441", bits: 16 },
+        ShibataLow441: { type: "ShibataLow441", bits: 16 },
+        Shibata48: { type: "Shibata48", bits: 16 },
+        ShibataLow48: { type: "ShibataLow48", bits: 16 },
+        Shibata882: { type: "Shibata882", bits: 16 },
+        ShibataLow882: { type: "ShibataLow882", bits: 16 },
+        Shibata96: { type: "Shibata96", bits: 16 },
+        ShibataLow96: { type: "ShibataLow96", bits: 16 },
+        Shibata192: { type: "Shibata192", bits: 16 },
+        ShibataLow192: { type: "ShibataLow192", bits: 16 },
+    },
+    Limiter: {
+        Default: { soft_clip: false, clip_limit: 0.0 }
+    },
+}
+
 export function defaultFilter() {
     return {
         type: "Biquad",
         description: null,
-        parameters: { type: "Lowpass", q: 0.5, freq: 1000 },
+        parameters: DefaultFilterParameters.Biquad.Lowpass,
     }
 }
 
@@ -374,12 +456,15 @@ export function defaultSource(inChannels: number, sources: Source[]): Source {
     return { channel: newChannel, gain: 0, inverted: false, mute: false, scale: 'dB' }
 }
 
+/** Name for empty filter/mixer/processor slot */
+export const EMPTY = ''
+
 export function defaultFilterStep(config: Config): FilterStep {
     const filterNames = filterNamesOf(config)
     return {
         type: 'Filter',
         channel: 0,
-        names: filterNames.length === 1 ? [filterNames[0]] : [''],
+        names: filterNames.length === 1 ? [filterNames[0]] : [EMPTY],
         description: null,
         bypassed: null
     }
@@ -389,7 +474,7 @@ export function defaultMixerStep(config: Config): MixerStep {
     const mixerNames = mixerNamesOf(config)
     return {
         type: 'Mixer',
-        name: mixerNames.length === 1 ? mixerNames[0] : '',
+        name: mixerNames.length === 1 ? mixerNames[0] : EMPTY,
         description: null,
         bypassed: null
     }
@@ -399,7 +484,7 @@ export function defaultProcessorStep(config: Config): ProcessorStep {
     const processorNames = processorNamesOf(config)
     return {
         type: 'Processor',
-        name: processorNames.length === 1 ? processorNames[0] : '',
+        name: processorNames.length === 1 ? processorNames[0] : EMPTY,
         description: null,
         bypassed: null
     }
