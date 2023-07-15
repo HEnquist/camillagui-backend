@@ -1,5 +1,5 @@
 import React from "react"
-import {useState} from "react"
+import {useState, useEffect} from "react"
 import "./index.css"
 import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
@@ -38,6 +38,19 @@ export function DevicesTab(props: {
 }) {
   const updateDevices = (update: Update<Devices>) => props.updateConfig(config => update(config.devices))
   const {guiConfig, devices, errors} = props
+  const [availableBackends, setAvailableBackends] = useState([
+    guiConfig.supported_playback_types,
+    guiConfig.supported_capture_types
+  ])
+  useEffect(() => {
+    fetch("/api/backends")
+      .then((resp) => resp.json()
+        .then((backends) => {
+          setAvailableBackends(backends)
+        }
+      )
+    )
+  }, []);
   return <div className="tabpanel">
     <ErrorMessage message={errors({path: []})}/>
     <Samplerate
@@ -74,13 +87,13 @@ export function DevicesTab(props: {
         onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
-        supported_capture_types={guiConfig.supported_capture_types}
+        supported_capture_types={availableBackends[1] as CaptureType[]}
         capture={devices.capture}
         errors={errorsForSubpath(errors, 'capture')}
         onChange={updateDevices}/>
     <PlaybackOptions
         hide_playback_device={guiConfig.hide_playback_device}
-        supported_playback_types={guiConfig.supported_playback_types}
+        supported_playback_types={availableBackends[0] as PlaybackType[]}
         playback={devices.playback}
         errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
@@ -445,6 +458,10 @@ function CaptureOptions(props: {
   const captureTypes = supported_capture_types ?
       defaultCaptureTypes.filter(type => supported_capture_types.includes(type))
       : defaultCaptureTypes
+  if (!captureTypes.includes(props.capture.type)) {
+    // The selected type isn't available, change to one that is
+    props.onChange(devices => devices.capture= defaults[captureTypes[0]])
+  }
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
@@ -627,6 +644,10 @@ function PlaybackOptions(props: {
   const playbackDeviceTypes = supported_playback_types ?
       defaultPlaybackTypes.filter(type => supported_playback_types.includes(type))
       : defaultPlaybackTypes
+  if (!playbackDeviceTypes.includes(props.playback.type)) {
+    // The selected type isn't available, change to one that is
+    props.onChange(devices => devices.playback = defaults[playbackDeviceTypes[0]])
+  }
   return <Box title="Playback device">
     <KeyValueSelectPopup
       key="playback select popup"
