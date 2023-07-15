@@ -27,7 +27,10 @@ from .views import (
     save_config_file,
     get_defaults_for_coeffs,
     get_status,
-    get_log_file
+    get_log_file,
+    get_capture_devices,
+    get_playback_devices,
+    get_backends
 )
 
 
@@ -59,6 +62,9 @@ def setup_routes(app):
     app.router.add_get("/api/getconfigfile", get_config_file)
     app.router.add_post("/api/saveconfigfile", save_config_file)
     app.router.add_get("/api/logfile", get_log_file)
+    app.router.add_get("/api/capturedevices/{backend}", get_capture_devices)
+    app.router.add_get("/api/playbackdevices/{backend}", get_playback_devices)
+    app.router.add_get("/api/backends", get_backends)
 
     app.router.add_get("/", get_gui_index)
 

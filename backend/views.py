@@ -501,3 +501,30 @@ async def get_log_file(request):
         error_message = "Please configure a valid 'log_file' path"
     return web.Response(body=error_message)
 
+
+async def get_capture_devices(request):
+    """
+    Get a list of available capture devices for a backend.
+    """
+    backend = request.match_info["backend"]
+    cdsp = request.app["CAMILLA"]
+    devs = cdsp.general.list_capture_devices(backend)
+    return web.json_response(devs)
+
+
+async def get_playback_devices(request):
+    """
+    Get a list of available playback devices for a backend.
+    """
+    backend = request.match_info["backend"]
+    cdsp = request.app["CAMILLA"]
+    devs = cdsp.general.list_playback_devices(backend)
+    return web.json_response(devs)
+
+async def get_backends(request):
+    """
+    Get lists of available playback and capture backends.
+    """
+    cdsp = request.app["CAMILLA"]
+    backends = cdsp.general.supported_device_types()
+    return web.json_response(backends)
