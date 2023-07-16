@@ -660,7 +660,7 @@ class FilterParams extends React.Component<{
       {isGraphicEqualizer(filter) &&
           <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
           {filter.parameters.gains.map((gain: number, index: number, gains: [number]) =>
-            <div style={{display: 'flex', flexDirection: 'column'}}>
+            <div key={"eqslider" + index} style={{display: 'flex', flexDirection: 'column'}}>
               <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
                 {gain.toFixed(1)}
               </div>

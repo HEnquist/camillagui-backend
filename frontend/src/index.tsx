@@ -78,9 +78,14 @@ class CamillaConfig extends React.Component<
   }
 
   private async loadCurrentConfig() {
-    const json = await loadActiveConfig()
-    this.setCurrentConfig(json.configFileName, json.config)
-    this.setState({message: 'OK'})
+    try {
+      const json = await loadActiveConfig()
+      this.setCurrentConfig(json.configFileName, json.config)
+      this.setState({message: 'OK'})
+    }
+    catch(err) {
+      console.log("Failed getting active config:", err)
+    }
   }
 
   private async fetchConfig() {

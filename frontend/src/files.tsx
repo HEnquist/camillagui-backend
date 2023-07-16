@@ -354,7 +354,12 @@ export function loadDefaultConfigJson(): Promise<Response> {
 
 export function loadActiveConfig(): Promise<{configFileName: string, config: Config}> {
   return fetch("/api/getactiveconfigfile")
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw Error(response.statusText);
+        }
+        return response.json()
+      })
 }
 
 function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
