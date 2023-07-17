@@ -128,11 +128,13 @@ test('maxChannelCount', () => {
         { type: 'Mixer', name: 'mixer1', description: null, bypassed: null },
         { type: 'Processor', name: '', description: null, bypassed: null },
         { type: 'Filter', channel: 0, names: [], description: null, bypassed: null },
-        { type: 'Mixer', name: 'mixer2', description: null, bypassed: null }
+        { type: 'Mixer', name: 'mixer2', description: null, bypassed: null },
+        { type: 'Mixer', name: '', description: null, bypassed: null }
     ]
     expect(maxChannelCount(config, 0)).toBe(1)
     expect(maxChannelCount(config, 1)).toBe(2)
     expect(maxChannelCount(config, 2)).toBe(2)
     expect(maxChannelCount(config, 3)).toBe(2)
     expect(maxChannelCount(config, 4)).toBe(3)
+    expect(maxChannelCount(config, 5)).toBe(3)
 })

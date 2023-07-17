@@ -674,10 +674,14 @@ export interface ProcessorStep { type: 'Processor', name: string, description: s
 export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string | null, bypassed: boolean | null }
 
 export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
-    const lastMixerStepBeforeIndex = List(config.pipeline)
-        .findLast((step, index) => step.type === 'Mixer' && index < pipelineStepIndex) as MixerStep | undefined
-    if (lastMixerStepBeforeIndex) {
-        const mixer = config.mixers[lastMixerStepBeforeIndex.name]
+    const lastValidMixerStepBeforeIndex = List(config.pipeline)
+        .findLast((step, index) =>
+            step.type === 'Mixer'
+            && step.name !== ''
+            && index < pipelineStepIndex
+        ) as MixerStep | undefined
+    if (lastValidMixerStepBeforeIndex) {
+        const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
         return mixer.channels.out
     } else
         return config.devices.capture.channels

@@ -53,7 +53,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{alignItems: 'center'}}>
                     {props.title}
                 </div>
             </legend>
@@ -244,9 +244,11 @@ export function OptionLine(props: {
     'data-tip': string
     children: ReactNode
     small?: boolean
+    style?: CSSProperties
 }) {
     const settingStyle = props.small ? { width: 'min-content' } : {}
-    return <label className="setting" data-tip={props['data-tip']} style={settingStyle}>
+    const combinedStyle = Object.assign(settingStyle, props.style)
+    return <label className="setting" data-tip={props['data-tip']} style={combinedStyle}>
         <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
@@ -262,16 +264,17 @@ export function IntOption(props: {
     withControls?: boolean
     min?: number
     max?: number
+    style?: CSSProperties
 }) {
-    const small = props.small
+    const {error, desc, small, style} = props
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <OptionLine desc={desc} data-tip={props["data-tip"]} small={small} style={style}>
             <IntInput
                 {...props}
                 className={'setting-input' + (small ? ' small-setting-input' : '')}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
+                style={error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
-        <ErrorMessage message={props.error} />
+        <ErrorMessage message={error} />
     </>
 }
 

@@ -4,15 +4,15 @@ import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
   Box,
+  Button,
   DeleteButton,
   EnumInput,
   ERROR_BACKGROUND_STYLE,
   ErrorMessage,
-  IntInput,
+  IntOption,
   MdiButton,
   OptionalBoolOption,
   OptionalTextInput,
-  OptionLine,
   PlotButton,
   UploadButton
 } from "../utilities/ui-components"
@@ -43,6 +43,7 @@ import {Update} from "../utilities/common"
 import {importCdspYamlFilters, importEqApoFilters} from "./filterimport"
 import {renderToString} from "react-dom/server"
 import {ChartData, ChartPopup} from "../utilities/chart"
+import {Range} from "immutable"
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -126,7 +127,8 @@ export class PipelineTab extends React.Component<{
                   value={step.type}
                   options={['Mixer', 'Filter', 'Processor']}
                   desc="type"
-                  data-tip="Step type, Mixer or Filter"
+                  data-tip="Step type"
+                  style={{marginRight: '15px'}}
                   onChange={type => this.setStepType(index, type)}/>
               const controls = <>
                 <DeleteButton tooltip="Delete this step" onClick={() => this.removeStep(index)}/>
@@ -223,7 +225,9 @@ function MixerStepView(props: {
   const {stepIndex, typeSelect, mixers, mixerStep, updatePipeline, controls} = props
   const update = (update: Update<MixerStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as MixerStep))
   const mixer = mixers[mixerStep.name]
-  const channelInfo = mixer ? <>{mixer.channels.in}&nbsp;in,&nbsp;{mixer.channels.out}&nbsp;out&nbsp;&nbsp;&nbsp;&nbsp;</> : null
+  const channelInfo = mixer ?
+      <span style={{marginRight: '15px'}}>{mixer.channels.in}&nbsp;in,&nbsp;{mixer.channels.out}&nbsp;out</span>
+      : null
   const options = [EMPTY].concat(mixerNamesOf(mixers))
   const nameError = props.errors({path: ['name']})
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
@@ -231,7 +235,8 @@ function MixerStepView(props: {
     <Box title={
       <>
         <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order"/>
-        {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{channelInfo}
+        {typeSelect}
+        {channelInfo}
         <OptionalBoolOption
             value={mixerStep.bypassed}
             desc="bypassed"
@@ -346,18 +351,11 @@ function FilterStepView(props: {
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   const title = <>
     <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order"/>
-    {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;
-    <OptionLine  desc="channel" data-tip="Channel number to process">
-      <IntInput
-          className="small-setting-input"
-          style={{marginLeft: '5px'}}
-          value={filterStep.channel}
-          data-tip="Channel number to process"
-          withControls={true}
-          min={0}
-          max={maxChannelCount-1}
-          onChange={channel => update(step => step.channel = channel)}/>
-    </OptionLine>
+    {typeSelect}
+    <ChannelSelection
+        channel={filterStep.channel}
+        maxChannelCount={maxChannelCount}
+        setChannel={channel => update(step => step.channel = channel)}/>
     <OptionalBoolOption
             value={filterStep.bypassed}
             desc="bypassed"
@@ -422,6 +420,77 @@ function FilterStepView(props: {
       </div>
     </Box>
   </DndSortable>
+}
+
+function ChannelSelection(props: {
+  channel: number
+  maxChannelCount: number
+  setChannel: (channel: number) => void
+}) {
+  const simpleUiLimit = 10 //with maxChannelCount below the limit, a more intuitive UI is shown
+  return props.maxChannelCount > simpleUiLimit ?
+      <TextBasedChannelSelection {...props}/>
+      : <ButtonBasedChannelSelection {...props}/>
+}
+
+function TextBasedChannelSelection(props: {
+  channel: number
+  maxChannelCount: number
+  setChannel: (channel: number) => void
+}) {
+  const {channel, maxChannelCount, setChannel} = props
+  return <IntOption
+      desc="channel"
+      data-tip="Channel number to process"
+      small={true}
+      value={channel}
+      withControls={true}
+      min={0}
+      max={maxChannelCount - 1}
+      onChange={setChannel}
+      style={{marginRight: '15px'}}/>
+}
+
+function ButtonBasedChannelSelection(props: {
+  channel: number
+  maxChannelCount: number
+  setChannel: (channel: number) => void
+}) {
+  const {channel, maxChannelCount, setChannel} = props
+  const channeltoHigh = channel >= maxChannelCount
+  return <div style={{marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline'}}>
+    <span style={{marginRight: '5px'}}>channel</span>
+    {Range(0, props.maxChannelCount).map(index =>
+        <ChannelButton channel={index} selected={index === channel} onClick={() => setChannel(index)}/>
+    )}
+    {channeltoHigh &&
+      <ChannelButton
+        channel={channel}
+        onClick={() => {
+        }}
+        selected={false}
+        erroneousChannel={channeltoHigh}/>
+    }
+  </div>
+}
+
+function ChannelButton(props: {
+  channel: number
+  selected: boolean
+  onClick: () => void
+  erroneousChannel?: boolean
+}) {
+  const {channel, selected, onClick, erroneousChannel} = props
+  return <Button
+      text={channel.toString()}
+      onClick={onClick}
+      className={'setting-button' + (selected ? ' highlighted-button' : '')}
+      style={{
+        height: '28px',
+        marginRight: '5px',
+        backgroundColor: erroneousChannel ? 'var(--error-field-background-color)' : undefined
+      }}
+  />
 }
 
 export function ImportCdspYamlFiltersButton(props: {
