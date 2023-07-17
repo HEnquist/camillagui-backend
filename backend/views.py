@@ -359,7 +359,7 @@ async def config_to_yml(request):
     return web.Response(text=conf_yml)
 
 
-async def yml_to_json(request):
+async def yml_config_to_json_config(request):
     """
     Parse a yml string and return as json.
     """
@@ -368,6 +368,15 @@ async def yml_to_json(request):
     validator.validate_yamlstring(config_ymlstr)
     config = validator.get_config()
     return web.json_response(config)
+
+
+async def yml_to_json(request):
+    """
+    Parse a yml string and return as json.
+    """
+    yml = await request.text()
+    loaded = yaml.safe_load(yml)
+    return web.json_response(loaded)
 
 
 async def validate_config(request):
