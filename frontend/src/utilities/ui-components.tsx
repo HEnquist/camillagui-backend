@@ -1523,7 +1523,7 @@ export function KeyValueSelectPopup(props: {
         <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
             {items.map(item =>
                 <Button
-                    key={item[1]}
+                    key={item[0]}
                     text={ item[0] === item[1] ? item[1] : item[0] + ": " + item[1] }
                     style={{ justifyContent: 'flex-start' }}
                     onClick={() => selectItem(item[0])} />
