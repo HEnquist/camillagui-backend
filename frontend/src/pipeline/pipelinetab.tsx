@@ -222,7 +222,7 @@ function MixerStepView(props: {
   const {stepIndex, typeSelect, mixers, mixerStep, updatePipeline, controls} = props
   const update = (update: Update<MixerStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as MixerStep))
   const mixer = mixers[mixerStep.name]
-  const title = mixer ? `${mixer.channels.in} in, ${mixer.channels.out} out` : ''
+  const channelInfo = mixer ? <>{mixer.channels.in}&nbsp;in,&nbsp;{mixer.channels.out}&nbsp;out&nbsp;&nbsp;&nbsp;&nbsp;</> : null
   const options = [EMPTY].concat(mixerNamesOf(mixers))
   const nameError = props.errors({path: ['name']})
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
@@ -230,7 +230,7 @@ function MixerStepView(props: {
     <Box title={
       <>
         <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order"/>
-        {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{title}
+        {typeSelect}&nbsp;&nbsp;&nbsp;&nbsp;{channelInfo}
         <OptionalBoolOption
             value={mixerStep.bypassed}
             desc="bypassed"
