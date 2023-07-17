@@ -4,10 +4,10 @@ import {mdiHome, mdiImage, mdiTable} from "@mdi/js"
 import ReactTooltip from "react-tooltip"
 import {CloseButton, cssStyles, MdiButton} from "./ui-components"
 import Popup from "reactjs-popup"
-import {Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, PointElement, Tooltip} from "chart.js";
-import zoomPlugin from "chartjs-plugin-zoom";
+import {Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, PointElement, Tooltip} from "chart.js"
+import zoomPlugin from "chartjs-plugin-zoom"
 
-ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin);
+ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
 
 export function ChartPopup(props: {
   open: boolean
@@ -46,22 +46,22 @@ export function Chart(props: {
   data: ChartData
   onChange: (item: string) => void
 }) {
-  const chartRef = useRef(null);
+  const chartRef = useRef(null)
   const downloadPlot = useCallback(() => {
-    const link = document.createElement('a');
+    const link = document.createElement('a')
     link.download = props.data.name.replace(/\s/g, "_") + ".png"
 
     if (chartRef.current !== null) {
       let current = chartRef.current as any
-      link.href = current.toBase64Image();
-      link.click();
+      link.href = current.toBase64Image()
+      link.click()
     }
   }, [props.data.name])
 
   const resetView = useCallback(() => {
     if (chartRef.current !== null) {
       let current = chartRef.current as any
-      current.resetZoom();
+      current.resetZoom()
     }
   }, [])
 
@@ -77,7 +77,7 @@ export function Chart(props: {
     let phasedat = props.data.phase
     let delaydat = props.data.groupdelay
 
-    var table = props.data.f.map(function (f, i) {
+    const table = props.data.f.map((f, i) => {
       let mag: number | null = null
       if (magdat !== undefined)
         mag = magdat[i]
@@ -87,14 +87,14 @@ export function Chart(props: {
       let delay: number | null = null
       if (delaydat !== undefined)
         delay = delaydat[i]
-      return [f, mag, phase, delay];
-    });
+      return [f, mag, phase, delay]
+    })
     let csvContent = "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n"
         + table.map(row => row.join(",")).join("\n")
     const link = document.createElement('a')
     link.download = props.data.name.replace(/\s/g, "_") + ".csv"
-    link.href = encodeURI(csvContent);
-    link.click();
+    link.href = encodeURI(csvContent)
+    link.click()
   }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
 
   const styles = cssStyles()
@@ -204,7 +204,8 @@ export function Chart(props: {
         threshold: 3,
         overScaleMode: 'xy',
       }
-    };
+    }
+
     const scales = {
       'freq': {
         type: 'logarithmic',
@@ -226,39 +227,33 @@ export function Chart(props: {
           color: textColor,
           callback(tickValue: number, index: number, values: any) {
             if (tickValue === 0) {
-              return '0';
+              return '0'
             }
-            let value = -1;
-            let range = values[values.length - 1].value / values[0].value;
-            const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)));
-            const first_digit = tickValue / rounded;
-            const rest = tickValue % rounded;
+            let value = -1
+            const range = values[values.length - 1].value / values[0].value
+            const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)))
+            const first_digit = tickValue / rounded
+            const rest = tickValue % rounded
             if (range > 10) {
               if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
-                value = tickValue;
+                value = tickValue
               }
             } else if (rest === 0) {
-              value = tickValue;
+              value = tickValue
             }
             if (value >= 1000000) {
-              return (value / 1000000).toString() + "M";
+              return (value / 1000000).toString() + "M"
             } else if (value >= 1000) {
-              return (value / 1000).toString() + "k";
+              return (value / 1000).toString() + "k"
             } else if (value > 0) {
               return value.toString()
             }
-            return '';
+            return ''
           }
         },
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.xAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.xAxisID === scale.id && !e.hidden))
+          return
         },
       },
       'time': {
@@ -274,14 +269,8 @@ export function Chart(props: {
         },
         grid: {display: false},
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.xAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.xAxisID === scale.id && !e.hidden))
+          return
         },
       },
       'gain': {
@@ -303,8 +292,8 @@ export function Chart(props: {
         suggestedMin: -1,
         suggestedMax: 1,
         afterBuildTicks: function (scale: any) {
-          var step = 1;
-          let range = scale.max - scale.min;
+          let step = 1
+          let range = scale.max - scale.min
           if (range > 150) {
             step = 50
           } else if (range > 60) {
@@ -316,23 +305,17 @@ export function Chart(props: {
           } else if (range > 10) {
             step = 2
           }
-          let tick = Math.ceil(scale.min / step) * step;
-          var ticks = [];
+          let tick = Math.ceil(scale.min / step) * step
+          const ticks = []
           while (tick <= scale.max) {
-            ticks.push({"value": tick});
-            tick += step;
+            ticks.push({"value": tick})
+            tick += step
           }
           scale.ticks = ticks
         },
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.yAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.yAxisID === scale.id && !e.hidden))
+          return
         },
       },
       'phase': {
@@ -341,8 +324,8 @@ export function Chart(props: {
         min: -180,
         max: 180,
         afterBuildTicks: function (scale: any) {
-          var step = 1;
-          let range = scale.max - scale.min;
+          let step = 1
+          let range = scale.max - scale.min
           if (range > 180) {
             step = 45
           } else if (range > 45) {
@@ -350,23 +333,17 @@ export function Chart(props: {
           } else if (range > 15) {
             step = 5
           }
-          let tick = Math.ceil(scale.min / step) * step;
-          var ticks = [];
+          let tick = Math.ceil(scale.min / step) * step
+          const ticks = []
           while (tick <= scale.max) {
-            ticks.push({"value": tick});
-            tick += step;
+            ticks.push({"value": tick})
+            tick += step
           }
           scale.ticks = ticks
         },
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.yAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.yAxisID === scale.id && !e.hidden))
+          return
         },
         ticks: {
           color: phaseColor,
@@ -396,14 +373,8 @@ export function Chart(props: {
         },
         grid: {display: false},
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.yAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.yAxisID === scale.id && !e.hidden))
+          return
         },
       },
       'delay': {
@@ -426,14 +397,8 @@ export function Chart(props: {
           borderDash: [1, 4],
         },
         beforeUpdate: function (scale: any) {
-          if (scale.chart._metasets.some(function (e: any) {
-            return (e.yAxisID === scale.id && !e.hidden);
-          })) {
-            scale.options.display = true
-          } else {
-            scale.options.display = false
-          }
-          return;
+          scale.options.display = scale.chart._metasets.some((e: any) => (e.yAxisID === scale.id && !e.hidden))
+          return
         },
       }
     }
