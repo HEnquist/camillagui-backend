@@ -4,8 +4,6 @@ import {PipelinePopup} from './pipelineplotter'
 import {
   AddButton,
   Box,
-  ChartData,
-  ChartPopup,
   DeleteButton,
   EnumInput,
   ERROR_BACKGROUND_STYLE,
@@ -43,6 +41,7 @@ import {moveItem, moveItemDown, moveItemUp} from "../utilities/arrays"
 import {Update} from "../utilities/common"
 import {importCdspYamlFilters, importEqApoFilters} from "./filterimport"
 import {renderToString} from "react-dom/server"
+import {ChartData, ChartPopup} from "../utilities/chart"
 
 export class PipelineTab extends React.Component<{
   config: Config

@@ -21,8 +21,6 @@ import {
   BoolOption,
   Box,
   Button,
-  Chart,
-  ChartData,
   delayedExecutor,
   DeleteButton,
   doUpload,
@@ -46,6 +44,7 @@ import {
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import {isEqual} from "lodash"
+import {Chart, ChartData} from "./utilities/chart"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
