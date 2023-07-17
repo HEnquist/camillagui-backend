@@ -5,7 +5,7 @@ import {
     sortedFilterNamesOf, mixerNamesOf,
     newFilterName,
     removeFilter, removeMixer,
-    renameFilter, renameMixer
+    renameFilter, renameMixer, maxChannelCount
 } from "./config"
 
 test('newFilterName ', () => {
@@ -114,4 +114,25 @@ test('renameMixer throws on name collision', () => {
     config.mixers['to be renamed'] = defaultMixer()
     config.mixers['collision'] = defaultMixer()
     expect(() => renameMixer(config, 'to be renamed', 'collision')).toThrow("Mixer 'collision' already exists")
+})
+
+test('maxChannelCount', () => {
+    const config = defaultConfig()
+    config.devices.capture.channels = 1
+    config.devices.playback.channels = 9999
+    config.mixers.mixer1 = defaultMixer()
+    config.mixers.mixer1.channels.out = 2
+    config.mixers.mixer2 = defaultMixer()
+    config.mixers.mixer2.channels.out = 3
+    config.pipeline = [
+        { type: 'Mixer', name: 'mixer1', description: null, bypassed: null },
+        { type: 'Processor', name: '', description: null, bypassed: null },
+        { type: 'Filter', channel: 0, names: [], description: null, bypassed: null },
+        { type: 'Mixer', name: 'mixer2', description: null, bypassed: null }
+    ]
+    expect(maxChannelCount(config, 0)).toBe(1)
+    expect(maxChannelCount(config, 1)).toBe(2)
+    expect(maxChannelCount(config, 2)).toBe(2)
+    expect(maxChannelCount(config, 3)).toBe(2)
+    expect(maxChannelCount(config, 4)).toBe(3)
 })

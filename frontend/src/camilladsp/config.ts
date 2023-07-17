@@ -1,4 +1,5 @@
 import { sortedAlphabetically } from "../utilities/arrays"
+import {List} from "immutable"
 
 export function defaultConfig(): Config {
     return {
@@ -671,6 +672,16 @@ export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep { type: 'Mixer', name: string, description: string | null, bypassed: boolean | null }
 export interface ProcessorStep { type: 'Processor', name: string, description: string | null, bypassed: boolean | null }
 export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string | null, bypassed: boolean | null }
+
+export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
+    const lastMixerStepBeforeIndex = List(config.pipeline)
+        .findLast((step, index) => step.type === 'Mixer' && index < pipelineStepIndex) as MixerStep | undefined
+    if (lastMixerStepBeforeIndex) {
+        const mixer = config.mixers[lastMixerStepBeforeIndex.name]
+        return mixer.channels.out
+    } else
+        return config.devices.capture.channels
+}
 
 export function filterGain(config: Config, filterName: string): number | undefined {
     return config.filters[filterName]?.parameters?.gain

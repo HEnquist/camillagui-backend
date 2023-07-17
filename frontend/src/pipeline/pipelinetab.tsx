@@ -25,6 +25,7 @@ import {
   filterNamesOf,
   Filters,
   FilterStep,
+  maxChannelCount,
   mixerNamesOf,
   Mixers,
   MixerStep,
@@ -111,13 +112,13 @@ export class PipelineTab extends React.Component<{
       this.updatePipeline(pipeline => moveItemDown(pipeline, index))
 
   render() {
-    const errors = this.props.errors
-    const pipeline = this.props.config.pipeline
+    const {config, errors} = this.props
+    const pipeline = config.pipeline
     return <DndContainer>
       <div className="tabpanel" style={{width: '700px'}}>
         <ErrorMessage message={errors({path: []})}/>
         <div className="pipeline-channel">
-          Capture: {this.props.config.devices.capture.channels} channels in
+          Capture: {config.devices.capture.channels} channels in
         </div>
         {pipeline.map((step: PipelineStep, index: number) => {
               const stepErrors = errorsForSubpath(errors, index)
@@ -144,9 +145,10 @@ export class PipelineTab extends React.Component<{
                 return <FilterStepView
                     key={index}
                     stepIndex={index}
+                    maxChannelCount={maxChannelCount(config, index)}
                     typeSelect={typeSelect}
                     filterStep={step}
-                    filters={this.props.config.filters}
+                    filters={config.filters}
                     updatePipeline={this.updatePipeline}
                     updateConfig={this.props.updateConfig}
                     plot={() => this.plotFilterStep(index)}
@@ -158,7 +160,7 @@ export class PipelineTab extends React.Component<{
                     stepIndex={index}
                     typeSelect={typeSelect}
                     mixerStep={step}
-                    mixers={this.props.config.mixers}
+                    mixers={config.mixers}
                     updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>
@@ -168,7 +170,7 @@ export class PipelineTab extends React.Component<{
                     stepIndex={index}
                     typeSelect={typeSelect}
                     processorStep={step}
-                    processors={this.props.config.processors}
+                    processors={config.processors}
                     updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>
@@ -181,12 +183,12 @@ export class PipelineTab extends React.Component<{
           <PlotButton tooltip="Plot the pipeline" pipeline={true} onClick={() => this.setState({plotPipeline: true})}/>
         </div>
         <div className="pipeline-channel">
-          Playback: {this.props.config.devices.playback.channels} channels out
+          Playback: {config.devices.playback.channels} channels out
         </div>
         <PipelinePopup
             key={this.state.plotPipeline as any}
             open={this.state.plotPipeline}
-            config={this.props.config}
+            config={config}
             onClose={() => this.setState({plotPipeline: false})}/>
         {this.state.plotFilterStep && <ChartPopup
             key={this.state.plotFilterStep as any}
@@ -309,6 +311,7 @@ function ProcessorStepView(props: {
 
 function FilterStepView(props: {
   stepIndex: number
+  maxChannelCount: number
   typeSelect: ReactNode
   filterStep: FilterStep
   filters: Filters
@@ -318,7 +321,9 @@ function FilterStepView(props: {
   errors: ErrorsForPath
   controls: ReactNode
 }) {
-  const {stepIndex, typeSelect, filterStep, filters, updatePipeline, updateConfig, plot, controls} = props
+  const {
+    stepIndex, typeSelect, filterStep, filters, updatePipeline, updateConfig, plot, controls, maxChannelCount
+  } = props
   const options = [EMPTY].concat(filterNamesOf(filters))
   const update = (update: Update<FilterStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as FilterStep))
   const addFilter = () => update(step => step.names.push(options[0]))
@@ -350,6 +355,7 @@ function FilterStepView(props: {
           data-tip="Channel number to process"
           withControls={true}
           min={0}
+          max={maxChannelCount-1}
           onChange={channel => update(step => step.channel = channel)}/>
     </OptionLine>
     <OptionalBoolOption
