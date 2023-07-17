@@ -35,11 +35,11 @@ async function yamlFiltersAsJsonFilters(fileContent: Promise<string>): Promise<F
 }
 
 function addFiltersToConfig(filters: Filters, updateConfig: (update: Update<Config>) => void, updateFilterStep: (update: Update<FilterStep>) => void) {
-  updateConfig((config) => Object.assign(config.filters, filters))
-  updateFilterStep((step) => {
+  updateConfig(config => Object.assign(config.filters, filters))
+  updateFilterStep(step => {
     const filterNames = Object.keys(filters)
-    const newFilterNames = filterNames.filter((name) => !step.names.includes(name))
-    step.names = step.names.filter((n) => n !== EMPTY).concat(newFilterNames)
+    const newFilterNames = filterNames.filter(name => !step.names.includes(name))
+    step.names = step.names.filter(n => n !== EMPTY).concat(newFilterNames)
   })
 }
 
@@ -55,9 +55,9 @@ export async function importEqApoFilters(
 
 export function eqApoFiltersToJson(filtersAsText: string): Filters {
   const lines = filtersAsText.split("\n")
-  const individualFilters = lines.map((line) => eqApoFilterToJson(line))
+  const individualFilters = lines.map(line => eqApoFilterToJson(line))
   const filters = {}
-  individualFilters.forEach((filter) => Object.assign(filters, filter))
+  individualFilters.forEach(filter => Object.assign(filters, filter))
   return filters
 }
 

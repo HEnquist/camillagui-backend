@@ -176,7 +176,7 @@ export function UploadButton(props: {
     const upload = (e: ChangeEvent<HTMLInputElement>) => {
         props.upload(e.target.files!)
         e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
-    };
+    }
     return (
         <label data-tip={props.tooltip}>
             <input style={{display: 'none'}}
@@ -518,7 +518,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
 
     handleSubmit(event: any) {
         if (!this.props.immediate && event.key === 'Enter') {
-            event.preventDefault();
+            event.preventDefault()
             const parsed = this.props.parseValue(this.state.rawValue)
             if (parsed !== undefined) {
                 this.props.onChange(parsed)
@@ -598,7 +598,7 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
 
     handleSubmit(event: any) {
         if (!this.props.immediate && event.key === 'Enter') {
-            event.preventDefault();
+            event.preventDefault()
             const parsed = this.props.parseValue(this.state.rawValue)
             if (parsed !== undefined) {
                 this.props.onChange(parsed)

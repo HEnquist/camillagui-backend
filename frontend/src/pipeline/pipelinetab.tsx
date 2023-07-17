@@ -404,16 +404,15 @@ function FilterStepView(props: {
         <div className="horizontally-spaced-content">
           {controls}
           <AddButton tooltip="Add a filter to the list" onClick={addFilter}/>
-          <ImportCdspYamlFiltersButton import={(files) => importCdspYamlFilters(files, updateConfig, update)}/>
-          <ImportEqApoFiltersButton import={(files) => importEqApoFilters(files, updateConfig, update)}/>
+          <ImportCdspYamlFiltersButton import={files => importCdspYamlFilters(files, updateConfig, update)}/>
+          <ImportEqApoFiltersButton import={files => importEqApoFilters(files, updateConfig, update)}/>
           <PlotButton tooltip="Plot response of this step" onClick={plot}/>
         </div>
-
-          <OptionalTextInput
-            placeholder="description"
-            value={filterStep.description}
-            data-tip="Pipeline step description"
-            onChange={desc => update(step => step.description = desc)}/>
+        <OptionalTextInput
+          placeholder="description"
+          value={filterStep.description}
+          data-tip="Pipeline step description"
+          onChange={desc => update(step => step.description = desc)}/>
       </div>
     </Box>
   </DndSortable>
