@@ -586,7 +586,6 @@ class PipelinePlot extends React.Component<Props, State> {
   }
 
   render() {
-    console.log(this.state.height, this.state.width)
     return <div style={{ width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto' }}>
       <svg
         ref={node => this.node = node}

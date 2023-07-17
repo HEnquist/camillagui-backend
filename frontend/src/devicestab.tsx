@@ -321,7 +321,6 @@ function ResamplingOptions(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   const {devices, errors} = props
-  console.log(devices.resampler)
   return <Box title="Resampling">
     <OptionalEnumOption
         value={devices.resampler? devices.resampler.type : null}

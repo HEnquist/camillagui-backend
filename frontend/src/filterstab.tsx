@@ -650,7 +650,6 @@ class FilterParams extends React.Component<{
         return <FloatListOption {...commonProps}/>
       if (info.type === 'enum') {
         let options = info.options
-        console.log(this.props)
         if (parameter === "fader" && this.props.filter.type === "Volume") {
           options = VolumeFaders
         }

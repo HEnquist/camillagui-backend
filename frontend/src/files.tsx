@@ -216,7 +216,6 @@ class FileTable extends Component<
   private async saveConfig(name: string) {
     const { config, setCurrentConfig } = this.props
     try {
-      console.log(JSON.stringify(config?.filters, null, 2))
       const response = await fetch(`/api/saveconfigfile`, {
         method: "POST",
         headers: { "Content-Type": "application/json", },
@@ -542,7 +541,6 @@ class NewConfig extends Component<
         return
       }
       const jsonConfig = await response.json()
-      console.log(jsonConfig)
       this.props.setCurrentConfig!(undefined, jsonConfig as Config)
     } catch(e) {
       console.log(e)
