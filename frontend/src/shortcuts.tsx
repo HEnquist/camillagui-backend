@@ -95,7 +95,7 @@ export function QuickConfigSwitch(props:{
                     .then(response => response.json())
                     .then(json => setConfig(configFile, json as Config))
               }}
-              className={configFile === currentConfigName ? "highlighted-button" : ''}/>
+              highlighted={configFile === currentConfigName}/>
       )}
     </div>
   </Box>

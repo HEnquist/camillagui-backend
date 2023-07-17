@@ -85,13 +85,16 @@ export function Button(props: {
     style?: CSSProperties
     className?: string
     enabled?: boolean
+    highlighted?: boolean | null
 }) {
-    const enabled = props.enabled || props.enabled === undefined
-    const disabledStyle = enabled ? "" : "disabled-button"
-    const additionalClasses = props.className || ""
+    const enabled = props.enabled !== false
+    let classNames = 'button button-with-text'
+    if (!enabled) classNames += ' disabled-button'
+    if (props.highlighted === true) classNames += ' highlighted-button'
+    if (props.className) classNames += ' ' + props.className
     return <div
         data-tip={props["data-tip"]}
-        className={`button button-with-text ${disabledStyle} ${additionalClasses}`}
+        className={classNames}
         style={props.style}
         onClick={enabled ? props.onClick : () => { }}>
         {props.text}
@@ -195,6 +198,9 @@ export function UploadButton(props: {
     )
 }
 
+/**
+ * Can display an icon from https://materialdesignicons.com/
+ */
 export function MdiButton(props: {
     icon: string
     text?: string
@@ -203,16 +209,18 @@ export function MdiButton(props: {
     className?: string
     style?: CSSProperties
     enabled?: boolean
+    highlighted?: boolean | null
     rotation?: number
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const { icon, tooltip, htmlTooltip, text, className, enabled, onClick, buttonSize } = props
+    const { icon, tooltip, htmlTooltip, text, className, enabled, highlighted, onClick, buttonSize } = props
     const clickhandler = onClick === undefined || enabled === false ? () => { } : onClick
     let buttonClass = 'button ' + (text ? 'button-with-text-and-icon' : 'button-with-icon')
     if (enabled === false) buttonClass += ' disabled-button'
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
+    if (highlighted === true) buttonClass += ' highlighted-button'
     if (className !== undefined) buttonClass += ' ' + className
     let rot = {}
     if (props.rotation && props.rotation !== 0)
@@ -223,6 +231,9 @@ export function MdiButton(props: {
     </div>
 }
 
+/**
+ * Can display an icon from https://materialdesignicons.com/
+ */
 export function MdiIcon(props: {
     icon: string
     tooltip: string

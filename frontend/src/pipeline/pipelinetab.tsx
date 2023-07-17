@@ -484,7 +484,8 @@ function ChannelButton(props: {
   return <Button
       text={channel.toString()}
       onClick={onClick}
-      className={'setting-button' + (selected ? ' highlighted-button' : '')}
+      highlighted={selected}
+      className='setting-button'
       style={{
         height: '28px',
         marginRight: '5px',
