@@ -1,28 +1,45 @@
-import React from "react"
-import {useState, useEffect} from "react"
+import React, {useEffect, useState} from "react"
 import "./index.css"
-import {CaptureDevice, Config, Devices, Formats, PlaybackDevice, Resampler, ResamplerType, ResamplerTypes, AsyncSincInterpolations, defaultResampler, defaultSincResampler, AsyncSincProfile, AsyncSincProfiles, AsyncSincWindows, AsyncPolyInterpolations} from "./camilladsp/config"
+import {
+  AsyncPolyInterpolations,
+  AsyncSincInterpolations,
+  AsyncSincProfile,
+  AsyncSincProfiles,
+  AsyncSincWindows,
+  CaptureDevice,
+  Config,
+  defaultResampler,
+  defaultSincResampler,
+  Devices,
+  Formats,
+  PlaybackDevice,
+  Resampler,
+  ResamplerType,
+  ResamplerTypes
+} from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   add_default_option,
-  default_to_null,
-  null_to_default,
-  OptionalBoolOption,
   Box,
+  default_to_null,
   EnumInput,
   EnumOption,
-  OptionalEnumOption,
   ErrorMessage,
-  OptionalFloatOption,
   IntInput,
+  IntOption,
+  KeyValueSelectPopup,
+  MdiButton,
+  null_to_default,
+  OptionalBoolOption,
+  OptionalEnumOption,
+  OptionalFloatOption,
   OptionalIntInput,
   OptionalIntOption,
-  IntOption,
-  TextOption,
+  OptionalTextInput,
   OptionalTextOption,
-  KeyValueSelectPopup,
+  TextOption,
 } from "./utilities/ui-components"
-import {mdiFileSearch} from '@mdi/js'
+import {mdiMagnify} from '@mdi/js'
 
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
@@ -513,23 +530,19 @@ function CaptureOptions(props: {
         />
     }
     {(capture.type === 'CoreAudio' || capture.type === 'Alsa' || capture.type === 'Wasapi') &&
-    <OptionalTextOption
+    <DeviceOption
         value={capture.device}
         error={errors({path: ['device']})}
         desc="device"
-        data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.capture.device = device
         )}
-        buttonIcon={mdiFileSearch}
-        buttonTooltip="Pick a capture device"
         onButtonClick={() => {
           fetch("/api/capturedevices/" + capture.type)
-            .then((devices) => devices.json()
-              .then((names) => (setAvailableDevices(names))))
+            .then(devices => devices.json())
+            .then(names => setAvailableDevices(names))
           setPopupState(true)
-        }}
-        />
+        }} />
     }
     {(capture.type === 'Pulse') &&
     <TextOption
@@ -698,23 +711,19 @@ function PlaybackOptions(props: {
         )}/>
     }
     {(playback.type === 'CoreAudio' || playback.type === 'Alsa' || playback.type === 'Wasapi') &&
-    <OptionalTextOption
+      <DeviceOption
         value={playback.device}
-        error={errors({path: ['device']})}
         desc="device"
-        data-tip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.playback.device = device
         )}
-        buttonIcon={mdiFileSearch}
-        buttonTooltip="Pick a capture device"
+        error={errors({path: ['device']})}
         onButtonClick={() => {
           fetch("/api/playbackdevices/" + playback.type)
-            .then((devices) => devices.json()
-              .then((names) => (setAvailableDevices(names))))
+            .then(devices => devices.json())
+            .then(names => setAvailableDevices(names))
           setPopupState(true)
-        }}
-        />
+        }} />
     }
     {(playback.type === 'Pulse') &&
     <TextOption
@@ -748,3 +757,31 @@ function PlaybackOptions(props: {
     }
   </Box>
 }
+
+function DeviceOption(props: {
+  value: string | null
+  error?: string
+  desc: string
+  onChange: (device: string | null) => void
+  onButtonClick: () => void
+}) {
+  return <div className="setting" data-tip="Name of device">
+    <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
+    <OptionalTextInput
+        value={props.value}
+        data-tip="Name of device"
+        className="setting-input"
+        style={{width: '87%'}}
+        onChange={props.onChange}/>
+    <MdiButton
+        icon={mdiMagnify}
+        tooltip="Pick a device"
+        onClick={props.onButtonClick}
+        className='setting-button'
+        style={{width: '13%'}}
+        buttonSize="small"
+    />
+    <ErrorMessage message={props.error}/>
+  </div>
+}
+

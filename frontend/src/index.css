@@ -143,8 +143,12 @@ textarea.logfileviewer {
 }
 
 .setting-input {
-  display: flex;
+  display: table-cell;
   width: 100%;
+  vertical-align: middle;
+}
+
+.setting-button {
   vertical-align: middle;
 }
 
