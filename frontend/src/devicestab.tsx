@@ -192,12 +192,13 @@ function OptionalSamplerateOption(props: {
   const other = 'Other'
   const samplerate = props.samplerate
   const padding = props.extraPadding ? '0 12px' : '0'
-  var value: null | string 
-  if (samplerate !== null) {
-    value = isNonDefaultSamplerate(samplerate) ? other : samplerate.toString()
-  } else {
-    value = samplerate
-  }
+  let value: null | string
+  if (samplerate === null)
+    value = null
+  else if (isNonDefaultSamplerate(samplerate))
+    value = other
+  else
+    value = samplerate.toString()
   const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
   add_default_option(options, "default")
   return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
@@ -454,8 +455,8 @@ function CaptureOptions(props: {
   errors: ErrorsForPath
   onChange: (update: Update<Devices>) => void
 }) {
-  const [popupState, setPopupState] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState([]);
+  const [popupState, setPopupState] = useState(false)
+  const [availableDevices, setAvailableDevices] = useState([])
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
