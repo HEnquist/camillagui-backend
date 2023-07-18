@@ -461,7 +461,7 @@ function ButtonBasedChannelSelection(props: {
   return <div style={{marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline'}}>
     <span style={{marginRight: '5px'}}>channel</span>
     {Range(0, props.maxChannelCount).map(index =>
-        <ChannelButton channel={index} selected={index === channel} onClick={() => setChannel(index)}/>
+        <ChannelButton key={index} channel={index} selected={index === channel} onClick={() => setChannel(index)}/>
     )}
     {channeltoHigh &&
       <ChannelButton
