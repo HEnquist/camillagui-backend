@@ -498,24 +498,9 @@ export function ImportCdspYamlFiltersButton(props: {
   import: (files: FileList) => void
 }) {
   const tooltipWithHtml = renderToString(<>
-    Import filters from CamillaDSP Yaml filter file.<br/>
+    Import all filters from CamillaDSP config file into this filter step.<br/>
     If filters with the same name are present in this config, they will be overwritten.<br/>
     Only missing filters will be added to this step.<br/>
-    <br/>
-    Example file:<br/>
-    <br/>
-    Filter1:<br/>
-    &nbsp;&nbsp;type: Gain<br/>
-    &nbsp;&nbsp;parameters:<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;gain: -6<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;scale: dB<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;inverted: false<br/>
-    Filter2:<br/>
-    &nbsp;&nbsp;type: Delay<br/>
-    &nbsp;&nbsp;parameters:<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;delay: 0<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;subsample: false<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;unit: ms<br/>
   </>)
   return <UploadButton
       icon={mdiFileUploadOutline}

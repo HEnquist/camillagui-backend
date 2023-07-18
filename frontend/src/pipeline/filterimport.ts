@@ -29,7 +29,8 @@ async function yamlFiltersAsJsonFilters(fileContent: Promise<string>): Promise<F
   const response = await fetch("/api/ymltojson", {method: "POST", body: text})
   if (response.ok) {
     const text = await response.text()
-    return JSON.parse(text)
+    const jsonConfig = JSON.parse(text) as Config
+    return jsonConfig.filters
   }
   throw new Error("Could extract filters from file")
 }
