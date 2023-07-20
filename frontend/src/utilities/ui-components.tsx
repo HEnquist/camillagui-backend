@@ -166,9 +166,7 @@ export function PlotButton(props: {
 
 export function UploadButton(props: {
     icon: string
-    text?: string
     tooltip: string
-    htmlTooltip?: boolean
     upload: (files: FileList) => void
     multiple?: boolean
     className?: string
@@ -189,9 +187,7 @@ export function UploadButton(props: {
             <MdiButton
                 buttonSize={props.smallButton ? "small" : "default"}
                 icon={props.icon}
-                text={props.text}
                 tooltip={props.tooltip}
-                htmlTooltip={props.htmlTooltip}
                 className={props.className}
                 style={style} />
         </label>
@@ -203,9 +199,7 @@ export function UploadButton(props: {
  */
 export function MdiButton(props: {
     icon: string
-    text?: string
     tooltip: string
-    htmlTooltip?: boolean
     className?: string
     style?: CSSProperties
     enabled?: boolean
@@ -214,9 +208,9 @@ export function MdiButton(props: {
     buttonSize?: "default" | "small" | "tiny"
     onClick?: () => void
 }) {
-    const { icon, tooltip, htmlTooltip, text, className, enabled, highlighted, onClick, buttonSize } = props
+    const { icon, tooltip, className, enabled, highlighted, onClick, buttonSize } = props
     const clickhandler = onClick === undefined || enabled === false ? () => { } : onClick
-    let buttonClass = 'button ' + (text ? 'button-with-text-and-icon' : 'button-with-icon')
+    let buttonClass = 'button button-with-icon'
     if (enabled === false) buttonClass += ' disabled-button'
     if (buttonSize === "small") buttonClass += ' smallbutton'
     else if (buttonSize === "tiny") buttonClass += ' tinybutton'
@@ -225,9 +219,8 @@ export function MdiButton(props: {
     let rot = {}
     if (props.rotation && props.rotation !== 0)
         rot = { transform: "rotate(" + props.rotation + "deg)" }
-    return <div onClick={clickhandler} data-tip={tooltip} data-html={htmlTooltip} className={buttonClass} style={props.style}>
+    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
         <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
-        {text}
     </div>
 }
 

@@ -209,7 +209,7 @@ class CamillaConfig extends React.Component<
 
   render() {
     return <div className="configapp">
-      <ReactTooltip className="tooltip" html={true}/>
+      <ReactTooltip multiline={true}/>
       {this.state.compactView ?
           <CompactView
               currentConfigName={this.state.currentConfigFile}
