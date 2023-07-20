@@ -457,19 +457,19 @@ function ButtonBasedChannelSelection(props: {
   setChannel: (channel: number) => void
 }) {
   const {channel, maxChannelCount, setChannel} = props
-  const channeltoHigh = channel >= maxChannelCount
+  const channelNumberTooHigh = channel >= maxChannelCount
   return <div style={{marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline'}}>
     <span style={{marginRight: '5px'}}>channel</span>
     {Range(0, props.maxChannelCount).map(index =>
         <ChannelButton key={index} channel={index} selected={index === channel} onClick={() => setChannel(index)}/>
     )}
-    {channeltoHigh &&
+    {channelNumberTooHigh &&
       <ChannelButton
         channel={channel}
         onClick={() => {
         }}
         selected={false}
-        erroneousChannel={channeltoHigh}/>
+        erroneousChannel={channelNumberTooHigh}/>
     }
   </div>
 }
