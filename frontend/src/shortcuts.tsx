@@ -4,7 +4,7 @@ import {mdiHelpCircleOutline} from "@mdi/js"
 import {Config, filterParameter, setFilterParameter} from "./camilladsp/config"
 import {Update} from "./utilities/common"
 import {useEffect, useState} from "react"
-import {loadConfigJson, loadFiles} from "./files"
+import {loadConfigJson, loadFiles} from "./filestab"
 
 
 export function Shortcuts(props: {

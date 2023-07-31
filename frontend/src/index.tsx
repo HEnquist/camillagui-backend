@@ -26,6 +26,7 @@ import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
+import {Importtab} from "./importtab";
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -209,7 +210,7 @@ class CamillaConfig extends React.Component<
 
   render() {
     return <div className="configapp">
-      <ReactTooltip className="tooltip" html={true}/>
+      <ReactTooltip multiline={true}/>
       {this.state.compactView ?
           <CompactView
               currentConfigName={this.state.currentConfigFile}
@@ -277,6 +278,7 @@ class CamillaConfig extends React.Component<
           <Tab>Processors {errors({path: ['processors'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
+          <Tab>Import</Tab>
           <Tab>Shortcuts</Tab>
         </TabList>
         <TabPanel/>
@@ -334,6 +336,9 @@ class CamillaConfig extends React.Component<
               saveNotify={this.saveNotify}
               guiConfig={this.state.guiConfig}
           />
+        </TabPanel>
+        <TabPanel>
+          <Importtab/>
         </TabPanel>
         <TabPanel>
           <Shortcuts
