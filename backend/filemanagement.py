@@ -2,7 +2,7 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
+from os.path import isfile, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
 import logging
 import traceback
 
@@ -57,16 +57,24 @@ def list_of_files_in_directory(folder):
     """
     files = [file_in_folder(folder, file)
              for file in os.listdir(folder)
-             if os.path.isfile(file_in_folder(folder, file))]
-    files_list = []
-    for f in files:
-        fname = os.path.basename(f)
-        filetime = getmtime(f)
-        files_list.append((fname, filetime))
-    sorted_files = sorted(files_list, key=lambda x: x[0].lower())
-    sorted_names = [file[0] for file in sorted_files]
-    sorted_times = [file[1] for file in sorted_files]
-    return (sorted_names, sorted_times)
+             if isfile(file_in_folder(folder, file))]
+    files_list = map(
+        lambda file: {
+            "name": (os.path.basename(file)),
+            "lastModified": (getmtime(file))
+        },
+        files
+    )
+    sorted_files = sorted(files_list, key=lambda x: x["name"].lower())
+    return sorted_files
+
+
+def list_of_filenames_in_directory(folder):
+    return map(
+        lambda file: file["name"],
+        list_of_files_in_directory(folder)
+    )
+
 
 
 def delete_files(folder, files):

@@ -13,7 +13,7 @@ from .filemanagement import (
     zip_response, zip_of_files, get_yaml_as_json, set_as_active_config, get_active_config, save_config,
     make_config_filter_paths_absolute, coeff_dir_relative_to_config_dir,
     replace_relative_filter_path_with_absolute_paths, make_config_filter_paths_relative,
-    make_absolute, replace_tokens_in_filter_config
+    make_absolute, replace_tokens_in_filter_config, list_of_filenames_in_directory
 )
 from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
@@ -186,7 +186,7 @@ async def eval_filter_values(request):
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
     channels = content["channels"]
     samplerate = content["samplerate"]
-    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
+    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     if "filename" in config["parameters"]:
         filename = config["parameters"]["filename"]
         options = filter_options(filter_file_names, filename)
@@ -221,7 +221,7 @@ async def eval_filterstep_values(request):
     config["devices"]["samplerate"] = samplerate
     config["devices"]["capture"]["channels"] = channels
     plot_config = make_config_filter_paths_absolute(config, config_dir)
-    filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
+    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     options = pipeline_step_options(filter_file_names, config, step_index)
     for _, filt in plot_config.get("filters", {}).items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
