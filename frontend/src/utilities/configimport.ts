@@ -1,6 +1,8 @@
-import {Config, EMPTY, Filters, FilterStep} from "../camilladsp/config"
-import {Update} from "../utilities/common"
+import {Config, Filters} from "../camilladsp/config"
+import {Update} from "./common"
 
+
+//TODO adapt this for the importtab
 export async function importCdspYamlFilters(
     files: FileList,
     updateConfig: (update: Update<Config>) => void

@@ -57,8 +57,8 @@ function FileList(props: {
   })
   return <div className="wide-tabpanel">
     <div className="horizontally-spaced-content">
-      <UploadButton text="Import CamillaDSP Config" upload={() => {}}/>
-      <UploadButton text="Import Equalizer APO Config" upload={() => {}}/>
+      <UploadButton text="Import CamillaDSP Config" upload={files => {files[0]}}/>
+      <UploadButton text="Import Equalizer APO Config" upload={files => {}}/>
       <UploadButton text="Import REW Config" upload={() => {}}/>
     </div>
     <p>

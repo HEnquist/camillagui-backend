@@ -1,6 +1,6 @@
 import React, {Component} from "react"
 import {Set} from "immutable"
-import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
+import {Box, Button, CheckBox, MdiButton, UploadButton} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -15,7 +15,15 @@ import {
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
 import ReactTooltip from "react-tooltip"
-import {CFile, fileNamesOf, loadActiveConfig, loadConfigJson, loadDefaultConfigJson, loadFiles} from "./utilities/files"
+import {
+  CFile,
+  doUpload, download,
+  fileNamesOf,
+  loadActiveConfig,
+  loadConfigJson,
+  loadDefaultConfigJson,
+  loadFiles
+} from "./utilities/files"
 
 export function Files(props: {
   guiConfig: GuiConfig

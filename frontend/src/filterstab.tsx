@@ -23,7 +23,6 @@ import {
   Button,
   delayedExecutor,
   DeleteButton,
-  doUpload,
   EnumInput,
   EnumOption,
   ErrorMessage,
@@ -45,7 +44,7 @@ import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
-import {loadFilenames} from "./utilities/files"
+import {doUpload, loadFilenames} from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch

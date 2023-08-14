@@ -53,3 +53,61 @@ export function loadActiveConfig(): Promise<{ configFileName: string, config: Co
         return response.json()
       })
 }
+
+export function download(filename: string, blob: any) {
+  let a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.hidden = true
+  document.body.appendChild(a)
+  a.innerHTML = "abcdefg"
+  a.click()
+}
+
+export async function doUpload(
+    type: 'config' | 'coeff',
+    files: FileList,
+    onSuccess: (filesnames: string[]) => void,
+    onError: (message: string) => void
+) {
+  const formData = new FormData()
+  const uploadedFiles: string[] = []
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index]
+    uploadedFiles.push(file.name)
+    formData.append("file" + index, file, file.name)
+  }
+  try {
+    await fetch(`/api/upload${type}s`, {
+      method: "POST",
+      body: formData
+    })
+    onSuccess(uploadedFiles)
+  } catch (e) {
+    onError(e.message)
+  }
+}
+
+export async function convertConfig(
+    type: 'config' | 'coeff',
+    files: FileList,
+    onSuccess: (filesnames: string[]) => void,
+    onError: (message: string) => void
+) {
+  const formData = new FormData()
+  const uploadedFiles: string[] = []
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index]
+    uploadedFiles.push(file.name)
+    formData.append("file" + index, file, file.name)
+  }
+  try {
+    await fetch(`/api/upload${type}s`, {
+      method: "POST",
+      body: formData
+    })
+    onSuccess(uploadedFiles)
+  } catch (e) {
+    onError(e.message)
+  }
+}
