@@ -16,7 +16,7 @@ import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
 import ReactTooltip from "react-tooltip"
-import {Files, loadActiveConfig} from "./files"
+import {Files} from "./filestab"
 import {Config, defaultConfig} from "./camilladsp/config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
 import {delayedExecutor, MdiButton, MdiIcon} from "./utilities/ui-components"
@@ -26,7 +26,8 @@ import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
-import {Importtab} from "./importtab";
+import {ImportTab} from "./importtab"
+import {loadActiveConfig} from "./utilities/files"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -228,12 +229,11 @@ class CamillaConfig extends React.Component<
   }
 
   private NormalContent() {
-    const errors = this.state.errors
-    const undoRedo = this.state.undoRedo
+    const {errors, undoRedo, currentConfigFile} = this.state
     const config = undoRedo.current()
     return <>
       <SidePanel
-          currentConfigFile={this.state.currentConfigFile}
+          currentConfigFile={currentConfigFile}
           config={config}
           guiConfig={this.state.guiConfig}
           applyConfig={this.applyConfig}
@@ -329,7 +329,7 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <Files
-              currentConfigFile={this.state.currentConfigFile}
+              currentConfigFile={currentConfigFile}
               config={config}
               setCurrentConfig={this.setCurrentConfig}
               setCurrentConfigFileName={this.setCurrentConfigFileName}
@@ -338,11 +338,11 @@ class CamillaConfig extends React.Component<
           />
         </TabPanel>
         <TabPanel>
-          <Importtab/>
+          <ImportTab config={config} updateConfig={this.updateConfig}/>
         </TabPanel>
         <TabPanel>
           <Shortcuts
-              currentConfigName={this.state.currentConfigFile}
+              currentConfigName={currentConfigFile}
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)

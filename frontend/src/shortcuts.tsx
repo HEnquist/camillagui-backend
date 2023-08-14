@@ -1,10 +1,10 @@
 import * as React from "react"
+import {useEffect, useState} from "react"
 import {Box, Button, MdiIcon} from "./utilities/ui-components"
 import {mdiHelpCircleOutline} from "@mdi/js"
 import {Config, filterParameter, setFilterParameter} from "./camilladsp/config"
 import {Update} from "./utilities/common"
-import {useEffect, useState} from "react"
-import {loadConfigJson, loadFiles} from "./filestab"
+import {loadConfigJson, loadFilenames} from "./utilities/files"
 
 
 export function Shortcuts(props: {
@@ -82,7 +82,7 @@ export function QuickConfigSwitch(props:{
   const {currentConfigName, setConfig} = props
   const [configFiles, setConfigFiles] = useState<string[]>([])
   useEffect(() => {
-    loadFiles("config").then(files => setConfigFiles(files[0]))
+    loadFilenames("config").then(files => setConfigFiles(files))
   }, [])
   return <Box title="Quick Config Switch">
     <div className="quick-config-switch">
@@ -92,8 +92,7 @@ export function QuickConfigSwitch(props:{
               text={configFile}
               onClick={() => {
                 loadConfigJson(configFile)
-                    .then(response => response.json())
-                    .then(json => setConfig(configFile, json as Config))
+                    .then(config => setConfig(configFile, config))
               }}
               highlighted={configFile === currentConfigName}/>
       )}

@@ -164,9 +164,9 @@ export function PlotButton(props: {
         rotation={props.pipeline ? 270 : 0} />
 }
 
-export function UploadButton(props: {
-    icon: string
-    tooltip: string
+export function UploadButton(
+    props: ({ icon: string, tooltip: string } | { text: string })
+& {
     upload: (files: FileList) => void
     multiple?: boolean
     className?: string
@@ -179,17 +179,22 @@ export function UploadButton(props: {
         e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     }
     return (
-        <label data-tip={props.tooltip}>
+        <label data-tip={"tooltip" in props ? props.tooltip : ""}>
             <input style={{display: 'none'}}
                    type="file"
                    onChange={upload}
                    multiple={props.multiple} />
-            <MdiButton
-                buttonSize={props.smallButton ? "small" : "default"}
-                icon={props.icon}
-                tooltip={props.tooltip}
-                className={props.className}
-                style={style} />
+            {"icon" in props && "tooltip" in props &&
+                <MdiButton
+                    buttonSize={props.smallButton ? "small" : "default"}
+                    icon={props.icon}
+                    tooltip={props.tooltip}
+                    className={props.className}
+                    style={style}/>
+            }
+            {"text" in props &&
+                <Button text={props.text} onClick={() => {}}/>
+            }
         </label>
     )
 }
