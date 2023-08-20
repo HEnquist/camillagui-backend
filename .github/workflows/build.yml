@@ -6,18 +6,18 @@ jobs:
   build_fe:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: HEnquist/camillagui
-        ref: v1.0.1
+        ref: v2.0.0-alpha1
     - name: Build and publish
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v3
       with:
         node-version: '16'
     - run: npm install
     - run: npm run build
     - name: Upload build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: build
         path: build
@@ -26,15 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_fe
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v2.3.2
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10' 
     - name: Run python tests
       run: python3 -m unittest discover -p "*_test.py"
     - name: Download frontend
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
     - name: Upload all
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: camillagui-backend
         path: |

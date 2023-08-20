@@ -45,8 +45,8 @@ You need both the CamillaDSP companion python libraries:
 
 To install the libraries, use `pip` to install directly from github:
 ```sh
-pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0
+pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0-alpha1
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0-alpha1
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
