@@ -50,7 +50,7 @@ export function CheckBox(props: {
             checkbox.checked = false
             checkbox.indeterminate = true
         }
-    }, [checked])
+    }, [checked, checkbox])
     return <label data-tip={tooltip} className='checkbox-area' style={style}>
         <input
             type="checkbox"
