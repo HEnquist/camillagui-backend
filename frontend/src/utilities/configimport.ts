@@ -1,14 +1,24 @@
-import {Config, Filters} from "../camilladsp/config"
-import {Update} from "./common"
+import {Devices, Filters, Mixers, Pipeline, Processors} from "../camilladsp/config"
 
 
-//TODO adapt this for the importtab
-export async function importCdspYamlFilters(
-    files: FileList,
-    updateConfig: (update: Update<Config>) => void
-) {
-  const filters = await yamlFiltersAsJsonFilters(fileContent(files))
-  addFiltersToConfig(filters, updateConfig)
+export interface ImportedConfig {
+  devices?: Devices
+  filters?: Filters
+  mixers?: Mixers
+  processors?: Processors
+  pipeline?: Pipeline
+  title: string | null
+  description: string | null
+}
+
+export async function importedYamlConfigAsJson(files: FileList): Promise<ImportedConfig> {
+  const content = await fileContent(files)
+  const response = await fetch("/api/ymltojson", {method: "POST", body: content})
+  if (response.ok) {
+    const text = await response.text()
+    return JSON.parse(text) as ImportedConfig
+  }
+  throw new Error("Could extract filters from file")
 }
 
 function fileContent(files: FileList): Promise<string> {
@@ -25,17 +35,12 @@ function fileContent(files: FileList): Promise<string> {
   })
 }
 
-async function yamlFiltersAsJsonFilters(fileContent: Promise<string>): Promise<Filters> {
-  const text = await fileContent
-  const response = await fetch("/api/ymltojson", {method: "POST", body: text})
+export async function importedEqApoConfigAsJson(files: FileList): Promise<ImportedConfig> {
+  const content = await fileContent(files)
+  const response = await fetch("/api/eqapotojson", {method: "POST", body: content})
   if (response.ok) {
     const text = await response.text()
-    const jsonConfig = JSON.parse(text) as Config
-    return jsonConfig.filters
+    return JSON.parse(text) as ImportedConfig
   }
   throw new Error("Could extract filters from file")
-}
-
-function addFiltersToConfig(filters: Filters, updateConfig: (update: Update<Config>) => void) {
-  updateConfig(config => Object.assign(config.filters, filters))
 }

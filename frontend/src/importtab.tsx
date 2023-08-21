@@ -1,19 +1,10 @@
 import React, {useEffect, useState} from "react"
 import {Button, UploadButton} from "./utilities/ui-components"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
-import {Config, Devices, Filters, Mixers, Pipeline, Processors} from "./camilladsp/config"
+import {Config} from "./camilladsp/config"
 import {merge} from "lodash"
 import {Update} from "./utilities/common"
-
-interface ImportConfig {
-  devices?: Devices
-  filters?: Filters
-  mixers?: Mixers
-  processors?: Processors
-  pipeline?: Pipeline
-  title: string | null
-  description: string | null
-}
+import {ImportedConfig, importedEqApoConfigAsJson, importedYamlConfigAsJson} from "./utilities/configimport"
 
 export class ImportTab extends React.Component<
     {
@@ -21,7 +12,7 @@ export class ImportTab extends React.Component<
       updateConfig: (update: Update<Config>) => void
     },
     {
-      importConfig?: ImportConfig
+      importConfig?: ImportedConfig
     }
 > {
   constructor(props: any) {
@@ -30,7 +21,7 @@ export class ImportTab extends React.Component<
     this.state = {}
   }
 
-  private setImportConfig(config: ImportConfig) {
+  private setImportConfig(config: ImportedConfig) {
     this.setState({importConfig: config})
   }
 
@@ -49,25 +40,31 @@ export class ImportTab extends React.Component<
 }
 
 function FileList(props: {
-  setImportConfig: (config: Config) => void
+  setImportConfig: (config: ImportedConfig) => void
 }) {
+  const {setImportConfig} = props
   const [fileList, setFileList] = useState<string[]>([])
   useEffect(() => {
     loadFilenames('config').then(files => setFileList(files))
   })
+  function loadLocalCdspConfig(files: FileList): void {
+    importedYamlConfigAsJson(files).then(setImportConfig)
+  }
+  function loadLocalEqApoConfig(files: FileList): void {
+    importedEqApoConfigAsJson(files).then(setImportConfig)
+  }
+  function loadJsonConfigWithName(name: string): void {
+    loadConfigJson(name).then(setImportConfig)
+  }
   return <div className="wide-tabpanel">
     <div className="horizontally-spaced-content">
-      <UploadButton text="Import CamillaDSP Config" upload={files => {files[0]}}/>
-      <UploadButton text="Import Equalizer APO Config" upload={files => {}}/>
-      <UploadButton text="Import REW Config" upload={() => {}}/>
+      <UploadButton text="Import CamillaDSP Config" upload={loadLocalCdspConfig}/>
+      <UploadButton text="Import Equalizer APO Config" upload={loadLocalEqApoConfig}/>
     </div>
     <p>
       {fileList.map(file =>
           <>
-            <Button style={{marginBottom:'5px'}} key={file} text={file} onClick={() => {
-              loadConfigJson(file)
-                  .then(config => props.setImportConfig(config))
-            }}/>
+            <Button style={{marginBottom:'5px'}} key={file} text={file} onClick={() => loadJsonConfigWithName(file)}/>
             <br/>
           </>
       )}
@@ -76,8 +73,8 @@ function FileList(props: {
 }
 
 function ConfigItemSelection(props: {
-  config: ImportConfig
-  import: (importConfig: ImportConfig) => void
+  config: ImportedConfig
+  import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
   return <>
