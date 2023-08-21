@@ -1,4 +1,4 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
+import React, {ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline,} from "@mdi/js"
@@ -28,18 +28,36 @@ export function Box(props: {
 }
 
 export function CheckBox(props: {
-    tooltip: string,
-    checked: boolean,
-    onChange: (checked: boolean) => void,
+    text?: string
+    tooltip: string
+    checked: boolean | "partially"
+    onChange: (checked: boolean) => void
     style?: CSSProperties
 }) {
     const { tooltip, checked, onChange, style } = props
+    const checkboxRef = useRef<HTMLInputElement>(null)
+    const checkbox = checkboxRef.current
+    useEffect(() => {
+        if (!checkbox)
+            return
+        if (checked === true) {
+            checkbox.checked = true
+            checkbox.indeterminate = false
+        } else if (checked === false) {
+            checkbox.checked = false
+            checkbox.indeterminate = false
+        } else if (checked === "partially") {
+            checkbox.checked = false
+            checkbox.indeterminate = true
+        }
+    }, [checked])
     return <label data-tip={tooltip} className='checkbox-area' style={style}>
         <input
             type="checkbox"
             data-tip={tooltip}
-            checked={checked}
+            ref={checkboxRef}
             onChange={(e) => onChange(e.target.checked)} />
+        {props.text && <span className="unselectable">{props.text}</span>}
     </label>
 }
 

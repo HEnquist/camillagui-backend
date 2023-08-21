@@ -71,6 +71,13 @@ textarea.logfileviewer {
   border-bottom: var(--box-border);
 }
 
+.unselectable {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 .checkbox-area {
   cursor: pointer;
   display: inline-block;

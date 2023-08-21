@@ -338,7 +338,7 @@ class CamillaConfig extends React.Component<
           />
         </TabPanel>
         <TabPanel>
-          <ImportTab config={config} updateConfig={this.updateConfig}/>
+          <ImportTab updateConfig={this.updateConfig}/>
         </TabPanel>
         <TabPanel>
           <Shortcuts
