@@ -17,6 +17,7 @@ from .filemanagement import (
 )
 from .filters import defaults_for_filter, filter_options, pipeline_step_options
 from .settings import get_gui_config_or_defaults
+from .convolver_config_import import ConvolverConfig
 
 OFFLINE_CACHE = {
     "cdsp_status": "Offline",
@@ -368,7 +369,7 @@ async def config_to_yml(request):
 
 async def yml_config_to_json_config(request):
     """
-    Parse a yml string and return as json.
+    Parse a yml config string and return as json.
     """
     config_ymlstr = await request.text()
     validator = request.app["VALIDATOR"]
@@ -380,9 +381,19 @@ async def yml_config_to_json_config(request):
 async def yml_to_json(request):
     """
     Parse a yml string and return as json.
+    This could also be just a partial config.
     """
     yml = await request.text()
     loaded = yaml.safe_load(yml)
+    return web.json_response(loaded)
+
+
+async def convolver_to_json(request):
+    """
+    Parse a Convolver config string and return as json.
+    """
+    config = await request.text()
+    loaded = ConvolverConfig(config).as_json()
     return web.json_response(loaded)
 
 
@@ -536,6 +547,7 @@ async def get_playback_devices(request):
     cdsp = request.app["CAMILLA"]
     devs = cdsp.general.list_playback_devices(backend)
     return web.json_response(devs)
+
 
 async def get_backends(request):
     """

@@ -1,9 +1,8 @@
-import unittest
+from unittest import TestCase
+from filters import filter_options, pipeline_step_options
 
-from backend.filters import filter_options, pipeline_step_options
 
-
-class FiltersTest(unittest.TestCase):
+class FiltersTest(TestCase):
 
     def test_filter_options_with_samplerate(self):
         self.assertEqual(
@@ -173,7 +172,3 @@ class FiltersTest(unittest.TestCase):
                 {"name": "48000 Hz - 8 Channels", "samplerate": 48000, "channels": 8}
             ]
         )
-
-
-if __name__ == '__main__':
-    unittest.main()

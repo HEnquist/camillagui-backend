@@ -48,7 +48,7 @@ jobs:
       with:
         python-version: '3.12'
     - name: Run python tests
-      run: python3 -m unittest discover -p "*_test.py"
+      run: cd backend ; python3 -m unittest discover -p "*_test.py"
 
     - name: Install template render dependencies
       run: |

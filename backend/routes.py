@@ -12,6 +12,7 @@ from .views import (
     set_active_config_name,
     config_to_yml,
     yml_to_json,
+    convolver_to_json,
     yml_config_to_json_config,
     validate_config,
     get_gui_index,
@@ -50,6 +51,7 @@ def setup_routes(app):
     app.router.add_post("/api/configtoyml", config_to_yml)
     app.router.add_post("/api/ymlconfigtojsonconfig", yml_config_to_json_config)
     app.router.add_post("/api/ymltojson", yml_to_json)
+    app.router.add_post("/api/convolvertojson", convolver_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
