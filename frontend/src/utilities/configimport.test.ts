@@ -274,3 +274,61 @@ describe('isSecondLevelElementImported', () => {
   })
 
 })
+
+describe('used items from pipeline are automatically imported', () => {
+
+  test('importing the whole pipeline automatically imports all used items', () => {
+    const config = {
+      filters: { filter: 1 },
+      mixers: { mixer: 2 },
+      processors: { processor: 3 },
+      pipeline: [
+        { type: 'Mixer', name: 'mixer' },
+        { type: 'Processor', name: 'processor' },
+        { type: 'Filter', channel: 1, names: ['filter'] }
+      ]
+    }
+    const i = new Import(config).toggleTopLevelElement('pipeline', 'import')
+        .configToImport()
+    expect(i).toEqual(config)
+  })
+
+  test('importing a pipeline step automatically imports all used items', () => {
+    const config = {
+      filters: { filter: 1 },
+      mixers: { mixer: 2 },
+      processors: { processor: 3 },
+      pipeline: [
+        { type: 'Mixer', name: 'mixer' },
+        { type: 'Processor', name: 'processor' },
+        { type: 'Filter', channel: 1, names: ['filter'] }
+      ]
+    }
+    const i = new Import(config)
+        .toggleSecondLevelElement('pipeline', '0', 'import')
+        .configToImport()
+    expect(i).toEqual(config)
+  })
+
+  test('only items not used in pipeline steps are editable', () => {
+    const config = {
+      filters: { filter: 1, unusedFilter: 2 },
+      mixers: { mixer: 3, unusedMixer: 4 },
+      processors: { processor: 5, unusedProcessor: 6 },
+      pipeline: [
+        { type: 'Mixer', name: 'mixer' },
+        { type: 'Processor', name: 'processor' },
+        { type: 'Filter', channel: 1, names: ['filter'] }
+      ]
+    }
+    const i = new Import(config)
+        .toggleSecondLevelElement('pipeline', '0', 'import')
+    expect(i.isSecondLevelElementEditable('filters', 'unusedFilter')).toBe(true)
+    expect(i.isSecondLevelElementEditable('mixers', 'unusedMixer')).toBe(true)
+    expect(i.isSecondLevelElementEditable('processors', 'unusedProcessor')).toBe(true)
+    expect(i.isSecondLevelElementEditable('filters', 'filter')).toBe(false)
+    expect(i.isSecondLevelElementEditable('mixers', 'mixer')).toBe(false)
+    expect(i.isSecondLevelElementEditable('compressors', 'compressor')).toBe(false)
+  })
+
+})

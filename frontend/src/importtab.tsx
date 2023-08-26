@@ -13,7 +13,7 @@ import {
   topLevelComparator
 } from "./utilities/configimport"
 import {mdiInformation} from "@mdi/js"
-import {bottomMargin} from "./utilities/styles";
+import {bottomMargin} from "./utilities/styles"
 
 export class ImportTab extends React.Component<
     {
@@ -136,7 +136,6 @@ function ConfigItemSelection(props: {
                                 checked={configImport.isSecondLevelElementImported(parentKey, key)}
                                 onChange={checked =>
                                     setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
-                                      //TODO select pipeline and then deselecting one item is still broken
                                 }
                       />
                       {valueAppended(subValue)}

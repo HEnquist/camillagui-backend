@@ -39,9 +39,11 @@ export class Import {
 
   toggleTopLevelElement(name: string, action: 'import' | 'remove'): Import {
     const toImport = cloneDeep(this.toImport)
-    if (action === 'import')
+    if (action === 'import') {
       toImport[name] = cloneDeep(this.config[name])
-    else
+      // if (name === 'pipeline')
+        //TODO auto import filters, mixers and processors
+    } else
       delete toImport[name]
     return new Import(this.config, toImport)
   }
@@ -84,6 +86,10 @@ export class Import {
       return isEqual(this.config[parent][name], this.toImport[parent][name])
     else
       return false
+  }
+
+  isSecondLevelElementEditable(parent: string, name: string): boolean {
+    return true //TODO should not be editable, if filter, mixer or processor, which is used in an imported pipeline step
   }
 }
 
