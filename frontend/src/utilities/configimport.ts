@@ -1,5 +1,5 @@
 import {Config, Devices} from "../camilladsp/config"
-import {cloneDeep, isArray, isEqual, isObject, pullAt} from "lodash"
+import {cloneDeep, isArray, isEqual, isObject} from "lodash"
 
 /**
  * Like {@link Config}, except all properties are optional and all properties in {@link Config#devices} are optional.
@@ -16,11 +16,25 @@ export function topLevelComparator(element1: string, element2: string): number {
 export class Import {
 
   private readonly config: any
-  toImport: any
+  /**
+   * Contains the elements of {@link config} that are marked for import.
+   * Top level arrays (like pipeline) contain nulls for elements, which are not imported.
+   */
+  private readonly toImport: any
 
   constructor(config: any, toImport: any = {}) {
     this.config = config
     this.toImport = toImport
+  }
+
+  configToImport(): any {
+    const config = cloneDeep(this.toImport)
+    for (const property in config) {
+      const value = config[property]
+      if (isArray(value))
+        config[property] = value.filter(item => item !== null)
+    }
+    return config
   }
 
   toggleTopLevelElement(name: string, action: 'import' | 'remove'): Import {
@@ -40,36 +54,36 @@ export class Import {
     else
       return false
   }
-  
+
   toggleSecondLevelElement(parent: string, name: string, action: 'import' | 'remove'): Import {
     const toImport = cloneDeep(this.toImport)
     if (action === 'import') {
       if (!(parent in toImport)) {
         if (isArray(this.config[parent]))
-          toImport[parent] = []
+          toImport[parent] = new Array(this.config[parent].leading).fill(null)
         else if (isObject(this.config[parent]))
           toImport[parent] = {}
       }
       toImport[parent][name] = cloneDeep(this.config[parent][name])
     } else {
-      if (isArray(toImport[parent]))
-        pullAt(toImport[parent], parseInt(name, 10))
-      else if (isObject(toImport[parent]))
+      if (isArray(toImport[parent])) {
+        toImport[parent][name] = null
+        if (toImport[parent].every((item: any) => item === null))
+          delete toImport[parent]
+      } else if (isObject(toImport[parent])) {
         delete toImport[parent][name]
-      if (isEqual(toImport[parent], {}) || isEqual(toImport[parent], []))
-        delete toImport[parent]
+        if (isEqual(toImport[parent], {}))
+          delete toImport[parent]
+      }
     }
-    console.log(this.toImport, undefined, 2)
     return new Import(this.config, toImport)
   }
 
   isSecondLevelElementImported(parent: string, name: string): boolean {
-    if (!(parent in this.toImport))
-      return false
-    if (isArray(this.toImport[parent])) {
-      return new Set(this.toImport[parent]).has(this.config[parent][name])
-    } else
+    if (parent in this.toImport)
       return isEqual(this.config[parent][name], this.toImport[parent][name])
+    else
+      return false
   }
 }
 

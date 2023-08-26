@@ -38,7 +38,3 @@ test('withoutEmptyProperties', () => {
     },
   })
 })
-
-test('lodash krams', () => {
-  expect(isArray("asdf")).toBe(false)
-})

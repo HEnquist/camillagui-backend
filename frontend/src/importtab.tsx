@@ -97,7 +97,7 @@ function ConfigItemSelection(props: {
 }) {
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
-  const importConfig = configImport.toImport
+  const importConfig = configImport.configToImport()
   function isWholeConfigImported(): boolean | "partially" {
     if (isEqual(config, importConfig))
       return true
@@ -117,36 +117,37 @@ function ConfigItemSelection(props: {
   </>
   const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
   return <>
-    <pre>{JSON.stringify(config, null, 2)}</pre>
     <div style={bottomMargin}>Select what to import</div>
-    {importConfigCheckBox}
-    {topLevelConfigElements.map(parentKey => {
-          const subElement = config[parentKey]
-          return <ImportTopLevelElementCheckBox
-              key={parentKey}
-              element={parentKey}
-              config={config}
-              configImport={configImport}
-              setConfigImport={setConfigImport}>
-            {isComplexObject(subElement)
-                && Object.entries(subElement).map(([key, subValue]) => {
-                  return <div key={key} style={{marginLeft: margin(2)}}>
-                    <CheckBox text={key}
-                              tooltip={key}
-                              checked={configImport.isSecondLevelElementImported(parentKey, key)}
-                              onChange={checked =>
-                                  setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
-                                    //TODO select pipeline and then deselecting one item is still broken
-                              }
-                    />
-                    {valueAppended(subValue)}
-                    <br/>
-                  </div>
-            })
-            }
-          </ImportTopLevelElementCheckBox>
-        }
-    )}
+    <div style={bottomMargin}>
+      {importConfigCheckBox}
+      {topLevelConfigElements.map(parentKey => {
+            const subElement = config[parentKey]
+            return <ImportTopLevelElementCheckBox
+                key={parentKey}
+                element={parentKey}
+                config={config}
+                configImport={configImport}
+                setConfigImport={setConfigImport}>
+              {isComplexObject(subElement)
+                  && Object.entries(subElement).map(([key, subValue]) => {
+                    return <div key={key} style={{marginLeft: margin(2)}}>
+                      <CheckBox text={key}
+                                tooltip={key}
+                                checked={configImport.isSecondLevelElementImported(parentKey, key)}
+                                onChange={checked =>
+                                    setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
+                                      //TODO select pipeline and then deselecting one item is still broken
+                                }
+                      />
+                      {valueAppended(subValue)}
+                      <br/>
+                    </div>
+              })
+              }
+            </ImportTopLevelElementCheckBox>
+          }
+      )}
+    </div>
     <div className="horizontally-spaced-content">
       <Button text="Import" enabled={willAnythingBeImported} onClick={() => props.import(importConfig)}/>
       <Button text="Cancel" onClick={props.cancel}/>
