@@ -31,10 +31,12 @@ export function CheckBox(props: {
     text?: string
     tooltip: string
     checked: boolean | "partially"
+    editable?: boolean
     onChange: (checked: boolean) => void
     style?: CSSProperties
 }) {
     const { tooltip, checked, onChange, style } = props
+    const editable = props.editable !== false
     const checkboxRef = useRef<HTMLInputElement>(null)
     const checkbox = checkboxRef.current
     useEffect(() => {
@@ -55,6 +57,7 @@ export function CheckBox(props: {
         <input
             type="checkbox"
             data-tip={tooltip}
+            disabled={!editable}
             ref={checkboxRef}
             onChange={(e) => onChange(e.target.checked)} />
         {props.text && <span className="unselectable">{props.text}</span>}

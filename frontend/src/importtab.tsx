@@ -133,6 +133,7 @@ function ConfigItemSelection(props: {
                     return <div key={key} style={{marginLeft: margin(2)}}>
                       <CheckBox text={key}
                                 tooltip={key}
+                                editable={configImport.isSecondLevelElementEditable(parentKey, key)}
                                 checked={configImport.isSecondLevelElementImported(parentKey, key)}
                                 onChange={checked =>
                                     setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
