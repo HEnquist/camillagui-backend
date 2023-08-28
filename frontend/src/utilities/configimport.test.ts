@@ -3,41 +3,41 @@ import {Import} from "./configimport"
 describe('toggleTopLevelElement', () => {
 
   test('import primitive', () => {
-    const toImport = new Import({a: 0}).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import({a: 0}).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport).toEqual({a: 0})
   })
 
   test('import primitive into non-empty object', () => {
-    const toImport = new Import({a: 0}, {b: 1}).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import({a: 0}, {b: 1}).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport).toEqual({a: 0, b: 1})
   })
 
   test('import object', () => {
-    const toImport = new Import({a: {b: {}}}).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import({a: {b: {}}}).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport).toEqual({a: {b: {}}})
   })
 
   test('imported objects are cloned deep', () => {
     const original = {a: {b: {}}}
-    const toImport = new Import(original).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import(original).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport.a).not.toBe(original.a)
     expect(toImport.a.b).not.toBe(original.a.b)
   })
 
   test('import array', () => {
-    const toImport = new Import({a: [{}]}).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import({a: [{}]}).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport).toEqual({a: [{}]})
   })
 
   test('imported arrays are cloned deep', () => {
     const original = {a: [{}]}
-    const toImport = new Import(original).toggleTopLevelElement('a', 'import').configToImport()
+    const toImport = new Import(original).toggleTopLevelElement('a', 'import').configToImport
     expect(toImport.a).not.toBe(original.a)
     expect(toImport.a[0]).not.toBe(original.a[0])
   })
 
   test('remove element', () => {
-    const toImport = new Import({a: 0}).toggleTopLevelElement('a', 'remove').configToImport()
+    const toImport = new Import({a: 0}).toggleTopLevelElement('a', 'remove').configToImport
     expect(toImport).toEqual({})
   })
 })
@@ -64,7 +64,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {a: {b: 0}},
         {a: {}}
-    ).toggleSecondLevelElement('a', 'b', 'import').configToImport()
+    ).toggleSecondLevelElement('a', 'b', 'import').configToImport
     expect(toImport).toEqual(
         {a: {b: 0}}
     )
@@ -74,7 +74,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {a: [0]},
         {a: []}
-    ).toggleSecondLevelElement('a', '0', 'import').configToImport()
+    ).toggleSecondLevelElement('a', '0', 'import').configToImport
     expect(toImport).toEqual(
         {a: [0]}
     )
@@ -85,7 +85,7 @@ describe('toggleSecondLevelElement', () => {
         new Import(
             {a: {b: {}}},
             {a: {}}
-        ).toggleSecondLevelElement('a', 'b', 'import').configToImport()
+        ).toggleSecondLevelElement('a', 'b', 'import').configToImport
     expect(toImport).toEqual(
         {a: {b: {}}}
     )
@@ -94,7 +94,7 @@ describe('toggleSecondLevelElement', () => {
   test('import object and create missing parent', () => {
     const toImport = new Import(
         {a: {b: {}}}
-    ).toggleSecondLevelElement('a', 'b', 'import').configToImport()
+    ).toggleSecondLevelElement('a', 'b', 'import').configToImport
     expect(toImport).toEqual(
         {a: {b: {}}}
     )
@@ -102,7 +102,7 @@ describe('toggleSecondLevelElement', () => {
 
   test('imported objects are cloned deep', () => {
     const original = {a: {b: {}}}
-    const toImport = new Import(original).toggleSecondLevelElement('a', 'b', 'import').configToImport()
+    const toImport = new Import(original).toggleSecondLevelElement('a', 'b', 'import').configToImport
     expect(toImport.a.b).not.toBe(original.a.b)
   })
 
@@ -110,7 +110,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {a: [{}]},
         {a: []}
-    ).toggleSecondLevelElement('a', '0', 'import').configToImport()
+    ).toggleSecondLevelElement('a', '0', 'import').configToImport
     expect(toImport).toEqual(
         {a: [{}]}
     )
@@ -119,7 +119,7 @@ describe('toggleSecondLevelElement', () => {
   test('import array with duplicates - first duplicate is imported', () => {
     const toImport = new Import(
         {a: ['b', 'b']}
-    ).toggleSecondLevelElement('a', '0', 'import').configToImport()
+    ).toggleSecondLevelElement('a', '0', 'import').configToImport
     expect(toImport).toEqual(
         {a: ['b']}
     )
@@ -128,7 +128,7 @@ describe('toggleSecondLevelElement', () => {
   test('import array with duplicates - second duplicate is imported', () => {
     const toImport = new Import(
         {a: ['b', 'b']}
-    ).toggleSecondLevelElement('a', '1', 'import').configToImport()
+    ).toggleSecondLevelElement('a', '1', 'import').configToImport
     expect(toImport).toEqual(
         {a: ['b']}
     )
@@ -138,7 +138,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {a: [{}]},
         {a: [{}]}
-    ).toggleSecondLevelElement('a', '0', 'import').configToImport()
+    ).toggleSecondLevelElement('a', '0', 'import').configToImport
     expect(toImport).toEqual(
         {a: [{}]}
     )
@@ -146,7 +146,7 @@ describe('toggleSecondLevelElement', () => {
 
   test('imported arrays are cloned deep', () => {
     const original = {a: [{}]}
-    const toImport = new Import(original).toggleSecondLevelElement('a', '0', 'import').configToImport()
+    const toImport = new Import(original).toggleSecondLevelElement('a', '0', 'import').configToImport
     expect(toImport.a[0]).not.toBe(original.a[0])
   })
 
@@ -154,7 +154,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {},
         {a: {b: 0, c: 1}}
-    ).toggleSecondLevelElement('a', 'c', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', 'c', 'remove').configToImport
     expect(toImport).toEqual(
         {a: {b: 0}}
     )
@@ -164,7 +164,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {},
         {a: {b: 0}}
-    ).toggleSecondLevelElement('a', 'b', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', 'b', 'remove').configToImport
     expect(toImport).toEqual(
         {}
     )
@@ -174,7 +174,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {},
         {a: ['b','c']}
-    ).toggleSecondLevelElement('a', '1', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', '1', 'remove').configToImport
     expect(toImport).toEqual(
         {a: ['b']}
     )
@@ -184,7 +184,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {},
         {a: ['b','b']}
-    ).toggleSecondLevelElement('a', '1', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', '1', 'remove').configToImport
     expect(toImport).toEqual(
         {a: ['b']}
     )
@@ -194,7 +194,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {},
         {a: [0,1]}
-    ).toggleSecondLevelElement('a', '1', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', '1', 'remove').configToImport
     expect(toImport).toEqual(
         {a: [0]}
     )
@@ -204,7 +204,7 @@ describe('toggleSecondLevelElement', () => {
     const toImport = new Import(
         {a: [0]},
         {a: [0]}
-    ).toggleSecondLevelElement('a', '0', 'remove').configToImport()
+    ).toggleSecondLevelElement('a', '0', 'remove').configToImport
     expect(toImport).toEqual(
         {}
     )
@@ -291,7 +291,7 @@ describe('used items from pipeline are automatically imported', () => {
     const i = new Import(config)
         .toggleTopLevelElement('pipeline', 'import');
     const c = i
-        .configToImport()
+        .configToImport
     expect(c).toEqual(config)
     expect(i.isSecondLevelElementEditable('filters', 'filter'))
     expect(i.isSecondLevelElementEditable('mixers', 'mixer'))
@@ -299,7 +299,7 @@ describe('used items from pipeline are automatically imported', () => {
   })
 
 
-  test('importing only one pipeline step only one item', () => {
+  test('importing only one pipeline step imports only one item', () => {
     const config = {
       mixers: {mixer1: 1, mixer2: 2},
       pipeline: [
@@ -308,7 +308,7 @@ describe('used items from pipeline are automatically imported', () => {
       ]
     }
     const i = new Import(config).toggleSecondLevelElement('pipeline', '0', 'import')
-    const c = i.configToImport()
+    const c = i.configToImport
     expect(c).toEqual(
         {
           mixers: {mixer1: 1},
@@ -319,6 +319,7 @@ describe('used items from pipeline are automatically imported', () => {
     )
     expect(i.isSecondLevelElementEditable('mixers', 'mixer1')).toBe(false)
     expect(i.isSecondLevelElementEditable('mixers', 'mixer2')).toBe(true)
+    expect(i.isTopLevelElementImported('mixers')).toBe('partially')
   })
 
   test('only items not used in pipeline steps are editable', () => {

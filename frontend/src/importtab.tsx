@@ -99,7 +99,7 @@ function ConfigItemSelection(props: {
   useEffect(() => { ReactTooltip.rebuild() })
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
-  const importConfig = configImport.configToImport()
+  const importConfig = configImport.configToImport
   function isWholeConfigImported(): boolean | "partially" {
     if (isEqual(config, importConfig))
       return true

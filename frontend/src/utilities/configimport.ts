@@ -21,13 +21,15 @@ export class Import {
    * Top level arrays (like pipeline) contain nulls for elements, which are not imported.
    */
   private readonly toImport: any
+  readonly configToImport: any
 
   constructor(config: any, toImport: any = {}) {
     this.config = config
     this.toImport = toImport
+    this.configToImport = this.createConfigToImport()
   }
 
-  configToImport(): any {
+  createConfigToImport(): any {
     const config = cloneDeep(this.toImport)
     for (const property in config) {
       const value = config[property]
@@ -59,7 +61,7 @@ export class Import {
   isTopLevelElementImported(name: string): boolean | 'partially' {
     if (isEqual(this.config[name], this.toImport[name]))
       return true
-    else if (name in this.toImport)
+    else if (name in this.configToImport)
       return 'partially'
     else
       return false
