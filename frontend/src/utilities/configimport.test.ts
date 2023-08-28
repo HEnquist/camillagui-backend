@@ -277,22 +277,6 @@ describe('isSecondLevelElementImported', () => {
 
 describe('used items from pipeline are automatically imported', () => {
 
-  test('importing the whole pipeline automatically imports all used items', () => {
-    const config = {
-      filters: { filter: 1 },
-      mixers: { mixer: 2 },
-      processors: { processor: 3 },
-      pipeline: [
-        { type: 'Mixer', name: 'mixer' },
-        { type: 'Processor', name: 'processor' },
-        { type: 'Filter', channel: 1, names: ['filter'] }
-      ]
-    }
-    const i = new Import(config).toggleTopLevelElement('pipeline', 'import')
-        .configToImport()
-    expect(i).toEqual(config)
-  })
-
   test('importing a pipeline step automatically imports all used items', () => {
     const config = {
       filters: { filter: 1 },
@@ -305,9 +289,36 @@ describe('used items from pipeline are automatically imported', () => {
       ]
     }
     const i = new Import(config)
-        .toggleSecondLevelElement('pipeline', '0', 'import')
+        .toggleTopLevelElement('pipeline', 'import');
+    const c = i
         .configToImport()
-    expect(i).toEqual(config)
+    expect(c).toEqual(config)
+    expect(i.isSecondLevelElementEditable('filters', 'filter'))
+    expect(i.isSecondLevelElementEditable('mixers', 'mixer'))
+    expect(i.isSecondLevelElementEditable('processors', 'processor'))
+  })
+
+
+  test('importing only one pipeline step only one item', () => {
+    const config = {
+      mixers: {mixer1: 1, mixer2: 2},
+      pipeline: [
+        {type: 'Mixer', name: 'mixer1'},
+        {type: 'Mixer', name: 'mixer2'},
+      ]
+    }
+    const i = new Import(config).toggleSecondLevelElement('pipeline', '0', 'import')
+    const c = i.configToImport()
+    expect(c).toEqual(
+        {
+          mixers: {mixer1: 1},
+          pipeline: [
+            {type: 'Mixer', name: 'mixer1'}
+          ]
+        }
+    )
+    expect(i.isSecondLevelElementEditable('mixers', 'mixer1')).toBe(false)
+    expect(i.isSecondLevelElementEditable('mixers', 'mixer2')).toBe(true)
   })
 
   test('only items not used in pipeline steps are editable', () => {
@@ -318,17 +329,17 @@ describe('used items from pipeline are automatically imported', () => {
       pipeline: [
         { type: 'Mixer', name: 'mixer' },
         { type: 'Processor', name: 'processor' },
-        { type: 'Filter', channel: 1, names: ['filter'] }
+        { type: 'Filter', channel: 1, names: ['filter'] },
       ]
     }
     const i = new Import(config)
-        .toggleSecondLevelElement('pipeline', '0', 'import')
+        .toggleTopLevelElement('pipeline', 'import')
     expect(i.isSecondLevelElementEditable('filters', 'unusedFilter')).toBe(true)
     expect(i.isSecondLevelElementEditable('mixers', 'unusedMixer')).toBe(true)
     expect(i.isSecondLevelElementEditable('processors', 'unusedProcessor')).toBe(true)
     expect(i.isSecondLevelElementEditable('filters', 'filter')).toBe(false)
     expect(i.isSecondLevelElementEditable('mixers', 'mixer')).toBe(false)
-    expect(i.isSecondLevelElementEditable('compressors', 'compressor')).toBe(false)
+    expect(i.isSecondLevelElementEditable('processors', 'processor')).toBe(false)
   })
 
 })

@@ -1,4 +1,4 @@
-import {Config, Devices} from "../camilladsp/config"
+import {Config, Devices, Pipeline, PipelineStep} from "../camilladsp/config"
 import {cloneDeep, isArray, isEqual, isObject} from "lodash"
 
 /**
@@ -34,16 +34,24 @@ export class Import {
       if (isArray(value))
         config[property] = value.filter(item => item !== null)
     }
+    if ('pipeline' in config) {
+      const pipeline = config['pipeline'] as Pipeline
+      for (const step of pipeline) {
+        switch (step.type) {
+          case "Mixer": this.importElement(config, 'mixers', step.name); break
+          case "Processor": this.importElement(config, 'processors', step.name); break
+          case "Filter": step.names.forEach(name => this.importElement(config, 'filters', name)); break
+        }
+      }
+    }
     return config
   }
 
   toggleTopLevelElement(name: string, action: 'import' | 'remove'): Import {
     const toImport = cloneDeep(this.toImport)
-    if (action === 'import') {
+    if (action === 'import')
       toImport[name] = cloneDeep(this.config[name])
-      // if (name === 'pipeline')
-        //TODO auto import filters, mixers and processors
-    } else
+    else
       delete toImport[name]
     return new Import(this.config, toImport)
   }
@@ -59,37 +67,57 @@ export class Import {
 
   toggleSecondLevelElement(parent: string, name: string, action: 'import' | 'remove'): Import {
     const toImport = cloneDeep(this.toImport)
-    if (action === 'import') {
-      if (!(parent in toImport)) {
-        if (isArray(this.config[parent]))
-          toImport[parent] = new Array(this.config[parent].leading).fill(null)
-        else if (isObject(this.config[parent]))
-          toImport[parent] = {}
-      }
-      toImport[parent][name] = cloneDeep(this.config[parent][name])
-    } else {
-      if (isArray(toImport[parent])) {
-        toImport[parent][name] = null
-        if (toImport[parent].every((item: any) => item === null))
-          delete toImport[parent]
-      } else if (isObject(toImport[parent])) {
-        delete toImport[parent][name]
-        if (isEqual(toImport[parent], {}))
-          delete toImport[parent]
-      }
-    }
+    if (action === 'import')
+      this.importElement(toImport, parent, name)
+    else
+      this.removeElement(toImport, parent, name)
     return new Import(this.config, toImport)
+  }
+
+  private importElement(target: any, parent: string, name: string) {
+    if (!(parent in target)) {
+      if (isArray(this.config[parent]))
+        target[parent] = new Array(this.config[parent].length).fill(null)
+      else if (isObject(this.config[parent]))
+        target[parent] = {}
+    }
+    target[parent][name] = cloneDeep(this.config[parent][name])
+  }
+
+  private removeElement(target: any, parent: string, name: string) {
+    if (isArray(target[parent])) {
+      //keep null instead of element, so it can be mapped to the corresponding element in the original config
+      target[parent][name] = null
+      if (target[parent].every((item: any) => item === null))
+        delete target[parent]
+    } else if (isObject(target[parent])) {
+      delete target[parent][name]
+      if (isEqual(target[parent], {}))
+        delete target[parent]
+    }
   }
 
   isSecondLevelElementImported(parent: string, name: string): boolean {
     if (parent in this.toImport)
       return isEqual(this.config[parent][name], this.toImport[parent][name])
     else
-      return false
+      return !this.isSecondLevelElementEditable(parent, name)
   }
 
   isSecondLevelElementEditable(parent: string, name: string): boolean {
-    return true //TODO should not be editable, if filter, mixer or processor, which is used in an imported pipeline step
+    if (!('pipeline' in this.toImport) || !['filters', 'mixers', 'processors'].includes(parent))
+      return true
+    const pipelineToImport = this.toImport['pipeline'] as Array<PipelineStep | null>
+    return !pipelineToImport.some(step => {
+      if (step === null)
+        return false
+      switch (parent) {
+        case 'mixers': return step.type === 'Mixer' && step.name === name
+        case 'processors': return step.type === 'Processor' && step.name === name
+        case 'filters': return step.type === 'Filter' && step.names.includes(name)
+        default: throw new Error(`Unknown pipeline step type: ${step.type}`)
+      }
+    })
   }
 }
 
