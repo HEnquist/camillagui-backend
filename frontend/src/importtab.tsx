@@ -2,7 +2,7 @@ import React, {ReactNode, useEffect, useState} from "react"
 import {Button, CheckBox, MdiIcon, UploadButton} from "./utilities/ui-components"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {isObject, merge} from "lodash"
+import {isObject} from "lodash"
 import {asFormattedText, isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
 import {
   Import,
@@ -10,6 +10,7 @@ import {
   importedConvolverConfigAsJson,
   importedEqApoConfigAsJson,
   importedYamlConfigAsJson,
+  mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator
 } from "./utilities/configimport"
 import {mdiAlert, mdiInformation} from "@mdi/js"
@@ -48,7 +49,7 @@ export class ImportTab extends React.Component<
             configName={importConfig.name}
             config={importConfig.config}
             import={configToImport => {
-              updateConfig(config => merge(config, configToImport))
+              updateConfig(config => mergeTopLevelObjectsAndAppendTopLevelArrays(config, configToImport))
               this.setState({importDoneFromFile: importConfig?.name, importConfig: undefined})
             }}
             cancel={() => this.setState({importDoneFromFile: undefined, importConfig: undefined})}

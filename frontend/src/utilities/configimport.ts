@@ -1,5 +1,6 @@
 import {Config, Devices, Pipeline, PipelineStep} from "../camilladsp/config"
 import {cloneDeep, isArray, isEqual, isObject} from "lodash"
+import {isComplexObject} from "./common"
 
 /**
  * Like {@link Config}, except all properties are optional and all properties in {@link Config#devices} are optional.
@@ -134,6 +135,19 @@ export class Import {
       }
     })
   }
+}
+
+export function mergeTopLevelObjectsAndAppendTopLevelArrays(object: any, toImport: any) {
+  const copyFrom = cloneDeep(toImport)
+  Object.entries(copyFrom).forEach(([key, value]) => {
+    if (key in object && isComplexObject(value)) {
+      if (isArray(value))
+        (object[key] as any[]).push(...value)
+      else if (isObject(value))
+        object[key] = {...object[key], ...copyFrom[key]}
+    } else
+      object[key] = value
+  })
 }
 
 export async function importedYamlConfigAsJson(files: FileList): Promise<ImportedConfig> {

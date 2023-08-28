@@ -1,4 +1,4 @@
-import {Import} from "./configimport"
+import {Import, mergeTopLevelObjectsAndAppendTopLevelArrays} from "./configimport"
 
 describe('isWholeConfigImported', () => {
 
@@ -363,6 +363,51 @@ describe('used items from pipeline are automatically imported', () => {
     expect(i.isSecondLevelElementEditable('filters', 'filter')).toBe(false)
     expect(i.isSecondLevelElementEditable('mixers', 'mixer')).toBe(false)
     expect(i.isSecondLevelElementEditable('processors', 'processor')).toBe(false)
+  })
+
+})
+
+describe('mergeTopLevelObjectsAndAppendTopLevelArrays', () => {
+
+  test('simple properties are overriden and result is written to first argument', () => {
+    const target = {a: 1}
+    const source = {a: 2}
+    mergeTopLevelObjectsAndAppendTopLevelArrays(target, source)
+    expect(target).toEqual({a: 2})
+  })
+
+  test('top level arrays are appended', () => {
+    const target = {a: [1]}
+    const source = {a: [2]}
+    mergeTopLevelObjectsAndAppendTopLevelArrays(target,source)
+    expect(target).toEqual({a:[1,2]})
+  })
+
+  test('top level objects are merged', () => {
+    const target = {a: {b: 1}}
+    const source = {a: {c: 2}}
+    mergeTopLevelObjectsAndAppendTopLevelArrays(target, source)
+    expect(target).toEqual(
+        {a: {b: 1, c: 2}}
+    )
+  })
+
+  test('second level objects are overridden', () => {
+    const target = {a: {b: {c: 1}}}
+    const source = {a: {b: {c: 2}}}
+    mergeTopLevelObjectsAndAppendTopLevelArrays(target, source)
+    expect(target).toEqual(
+        {a: {b: {c: 2}}}
+    )
+  })
+
+  test('missing properties are added', () => {
+    const target = {a: 1}
+    const source = {b: 2}
+    mergeTopLevelObjectsAndAppendTopLevelArrays(target, source)
+    expect(target).toEqual(
+        {a: 1, b: 2}
+    )
   })
 
 })
