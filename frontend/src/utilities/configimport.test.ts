@@ -1,5 +1,27 @@
 import {Import} from "./configimport"
 
+describe('isWholeConfigImported', () => {
+
+  test('whole config is imported', () => {
+    const config = {
+      a: 0,
+      b: {c: 1}
+    }
+    expect(new Import(config, config).isWholeConfigImported()).toBe(true)
+  })
+
+  test('partial config is imported', () => {
+    const partialImport = new Import({a: 0, b: 1}, {a: 0})
+    expect(partialImport.isWholeConfigImported()).toBe('partially')
+    expect(partialImport.isAnythingImported()).toBe(true)
+  })
+
+  test('nothing is imported', () => {
+    expect(new Import({a: 0}).isWholeConfigImported()).toBe(false)
+  })
+
+})
+
 describe('toggleTopLevelElement', () => {
 
   test('import primitive', () => {
@@ -252,7 +274,7 @@ describe('isSecondLevelElementImported', () => {
   test('only second element is imported in array', () => {
     const i = new Import(
         {a: ['b','c']}
-    ).toggleSecondLevelElement('a', '1', 'import');
+    ).toggleSecondLevelElement('a', '1', 'import')
     expect(i.isSecondLevelElementImported('a', '0')).toBe(false)
     expect(i.isSecondLevelElementImported('a', '1')).toBe(true)
   })
@@ -289,7 +311,7 @@ describe('used items from pipeline are automatically imported', () => {
       ]
     }
     const i = new Import(config)
-        .toggleTopLevelElement('pipeline', 'import');
+        .toggleTopLevelElement('pipeline', 'import')
     const c = i
         .configToImport
     expect(c).toEqual(config)

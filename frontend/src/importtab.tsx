@@ -2,7 +2,7 @@ import React, {ReactNode, useEffect, useState} from "react"
 import {Button, CheckBox, MdiIcon, UploadButton} from "./utilities/ui-components"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {isEqual, merge} from "lodash"
+import {merge} from "lodash"
 import {isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
 import {
   Import,
@@ -99,16 +99,6 @@ function ConfigItemSelection(props: {
   useEffect(() => { ReactTooltip.rebuild() })
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
-  const importConfig = configImport.configToImport
-  function isWholeConfigImported(): boolean | "partially" {
-    if (isEqual(config, importConfig))
-      return true
-    else if (isEqual(importConfig, {}))
-      return false
-    else
-      return "partially"
-  }
-  const willAnythingBeImported = Object.keys(importConfig).length > 0
   const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
   return <>
     <div style={bottomMargin}>Select what to import</div>
@@ -116,7 +106,7 @@ function ConfigItemSelection(props: {
       {<>
         <CheckBox
             text={props.configName}
-            checked={isWholeConfigImported()}
+            checked={configImport.isWholeConfigImported()}
             onChange={checked => setConfigImport(new Import(config, checked ? config : {}))}/>
         <br/>
       </>}
@@ -153,8 +143,11 @@ function ConfigItemSelection(props: {
       )}
     </div>
     <div className="horizontally-spaced-content">
-      <Button text="Import" enabled={willAnythingBeImported} onClick={() => props.import(importConfig)}/>
-      <Button text="Cancel" onClick={props.cancel}/>
+      <Button text="Import"
+              enabled={configImport.isAnythingImported()}
+              onClick={() => props.import(configImport.configToImport)}/>
+      <Button text="Cancel"
+              onClick={props.cancel}/>
     </div>
   </>
 }

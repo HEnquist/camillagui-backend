@@ -49,6 +49,19 @@ export class Import {
     return config
   }
 
+  isAnythingImported(): boolean {
+    return this.isWholeConfigImported() !== false
+  }
+
+  isWholeConfigImported(): boolean | "partially" {
+    if (isEqual(this.config, this.configToImport))
+      return true
+    else if (isEqual(this.configToImport, {}))
+      return false
+    else
+      return "partially"
+  }
+
   toggleTopLevelElement(name: string, action: 'import' | 'remove'): Import {
     const toImport = cloneDeep(this.toImport)
     if (action === 'import')
