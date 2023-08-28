@@ -1,5 +1,4 @@
-import {modifiedCopyOf, withoutEmptyProperties} from "./common"
-import {isArray} from "lodash";
+import {asFormattedText, modifiedCopyOf, withoutEmptyProperties} from "./common"
 
 test('modifiedCopyOf', () => {
   const object = {a: 1, b: 2}
@@ -37,4 +36,24 @@ test('withoutEmptyProperties', () => {
       object: {a: 1},
     },
   })
+})
+
+test('asFormattedText', () => {
+  expect(asFormattedText(
+      {
+        a: 0,
+        b: ['1', '2'],
+        c: [3, 4],
+        d: {e: 5, f: 6},
+      }
+  )).toEqual(
+      'a=0\n' +
+      'b\n' +
+      '  1\n' +
+      '  2\n' +
+      'c=3,4\n' +
+      'd\n' +
+      '  e=5\n' +
+      '  f=6'
+  )
 })

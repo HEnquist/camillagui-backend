@@ -220,7 +220,7 @@ export function MdiButton(props: {
  */
 export function MdiIcon(props: {
     icon: string
-    tooltip: string
+    tooltip?: string
     style?: CSSProperties
 }) {
     return <span data-tip={props.tooltip} style={props.style}>

@@ -416,3 +416,9 @@ div .popup-content {
   position: relative;
   padding: 5px 5px;
 }
+
+.import-tab-tooltip {
+  opacity: 1 !important;
+  border-radius: var(--border-radius) !important;
+  border: var(--box-border) !important;
+}

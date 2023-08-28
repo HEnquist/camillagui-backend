@@ -28,3 +28,21 @@ function removeEmptyProperties(object: any): any {
 export function isComplexObject(item: any): boolean {
   return item !== null && item !== undefined && (isArray(item) || isObject(item))
 }
+
+export function asFormattedText(object: any): string {
+  return asFormattedLines(object).join("\n")
+}
+
+function asFormattedLines(object: any): string[] {
+  return Object.entries(object)
+      .flatMap(([key, value]) => {
+        if (isArray(value) && value.every(item => typeof item === 'number'))
+          return [key + '=' + value.join(',')]
+        else if (isComplexObject(value))
+          return [key].concat(asFormattedLines(value).map(v => "  " + v))
+        else if (isArray(object))
+          return [(value as any).toString()]
+        else
+          return [`${key}=${value}`]
+      })
+}

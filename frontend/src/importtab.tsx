@@ -3,7 +3,7 @@ import {Button, CheckBox, MdiIcon, UploadButton} from "./utilities/ui-components
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
 import {merge} from "lodash"
-import {isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
+import {asFormattedText, isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
 import {
   Import,
   ImportedConfig,
@@ -121,7 +121,7 @@ function ConfigItemSelection(props: {
                   }
                   style={{marginLeft: margin(1)}}
               />
-              {valueAppended(config[parentKey], false)}
+              {valueAppended(config[parentKey])}
               <br/>
               {isComplexObject(subElement)
                   && Object.entries(subElement).map(([key, subValue]) => {
@@ -133,7 +133,7 @@ function ConfigItemSelection(props: {
                                     setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
                                 }
                       />
-                      {valueAppended(subValue, true)}
+                      {valueAppended(subValue, `${parentKey}-${key}`)}
                       <br/>
                     </div>
               })
@@ -152,11 +152,17 @@ function ConfigItemSelection(props: {
   </>
 }
 
-function valueAppended(value: any, appendComplexObjects: boolean): ReactNode {
+function valueAppended(value: any, tooltipId?: string): ReactNode {
   if (!isComplexObject(value))
     return <span style={{color: 'var(--disabled-text-color)'}}>: {value.toString()}</span>
-  if (isComplexObject(value) && appendComplexObjects)
-    return <MdiIcon icon={mdiInformation} tooltip={JSON.stringify(value, undefined, 2)}/>
+  if (isComplexObject(value) && tooltipId) {
+    return <span data-tip={true} data-for={tooltipId}>
+      <MdiIcon icon={mdiInformation}/>
+      <ReactTooltip id={tooltipId} className="import-tab-tooltip" arrowColor="var(--box-border-color)">
+        <pre>{asFormattedText(value)}</pre>
+      </ReactTooltip>
+    </span>
+  }
   else
     return null
 }
