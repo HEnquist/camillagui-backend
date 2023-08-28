@@ -12,7 +12,7 @@ import {
   importedYamlConfigAsJson,
   topLevelComparator
 } from "./utilities/configimport"
-import {mdiAlert, mdiAlertCircle, mdiInformation} from "@mdi/js"
+import {mdiAlert, mdiInformation} from "@mdi/js"
 import {bottomMargin} from "./utilities/styles"
 import ReactTooltip from "react-tooltip"
 
@@ -22,6 +22,7 @@ export class ImportTab extends React.Component<
       updateConfig: (update: Update<Config>) => void
     },
     {
+      importDoneFromFile?: string
       importConfig?: {
         name: string
         config: ImportedConfig
@@ -31,33 +32,39 @@ export class ImportTab extends React.Component<
   constructor(props: any) {
     super(props)
     this.setImportConfig = this.setImportConfig.bind(this)
-    this.state = {}
+    this.state = {importDoneFromFile: undefined}
   }
 
   private setImportConfig(name: string, config: ImportedConfig) {
-    this.setState({importConfig: {name, config}})
+    this.setState({importDoneFromFile: undefined, importConfig: {name, config}})
   }
 
   render() {
     const {currentConfig, updateConfig} = this.props
-    const {importConfig} = this.state
+    const {importDoneFromFile, importConfig} = this.state
     return importConfig ?
         <ConfigItemSelection
             currentConfig={currentConfig}
             configName={importConfig.name}
             config={importConfig.config}
-            import={importConfig => updateConfig(config => merge(config, importConfig))}
-            cancel={() => this.setState({importConfig: undefined})}
+            import={configToImport => {
+              updateConfig(config => merge(config, configToImport))
+              this.setState({importDoneFromFile: importConfig?.name, importConfig: undefined})
+            }}
+            cancel={() => this.setState({importDoneFromFile: undefined, importConfig: undefined})}
         />
-        : <FileList setImportConfig={this.setImportConfig}/>
+        : <FileList
+            importDoneFromFile={importDoneFromFile}
+            setImportConfig={this.setImportConfig}/>
   }
 
 }
 
 function FileList(props: {
+  importDoneFromFile?: string
   setImportConfig: (name: string, config: ImportedConfig) => void
 }) {
-  const {setImportConfig} = props
+  const {importDoneFromFile, setImportConfig} = props
   const [fileList, setFileList] = useState<string[]>([])
   useEffect(() => {
     loadFilenames('config').then(files => setFileList(files))
@@ -75,7 +82,14 @@ function FileList(props: {
     loadConfigJson(name).then(config => setImportConfig(name, config))
   }
   return <div className="wide-tabpanel">
-    <div style={bottomMargin}>Select from which file to import</div>
+    {importDoneFromFile ?
+        <div style={bottomMargin}>
+          Import from {importDoneFromFile} successful.<br/>
+          <br/>
+          Would you like to import another file?
+        </div>
+        : <div style={bottomMargin}>Select from which file to import</div>
+    }
     <div style={bottomMargin} className="horizontally-spaced-content">
       <UploadButton text="CamillaDSP Config" upload={loadLocalCdspConfig}/>
       <UploadButton text="Equalizer APO Config" upload={loadLocalEqApoConfig}/>
