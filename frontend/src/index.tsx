@@ -4,14 +4,14 @@ import "react-tabs/style/react-tabs.css"
 import "./index.css"
 
 import * as React from "react"
-import { createRoot } from 'react-dom/client';
+import {createRoot} from 'react-dom/client';
 import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
-import { ProcessorsTab } from "./processorstab"
+import {ProcessorsTab} from "./processorstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
-import { TitleTab } from "./titletab"
+import {TitleTab} from "./titletab"
 import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
@@ -21,7 +21,7 @@ import {Config, defaultConfig} from "./camilladsp/config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
 import {delayedExecutor, MdiButton, MdiIcon} from "./utilities/ui-components"
 import {cloneDeep} from "lodash"
-import {mdiAlertCircle, mdiImageSizeSelectSmall, mdiArrowULeftTop, mdiArrowURightTop} from "@mdi/js"
+import {mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall} from "@mdi/js"
 import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
@@ -338,7 +338,10 @@ class CamillaConfig extends React.Component<
           />
         </TabPanel>
         <TabPanel>
-          <ImportTab updateConfig={this.updateConfig}/>
+          <ImportTab
+              currentConfig={config}
+              updateConfig={this.updateConfig}
+          />
         </TabPanel>
         <TabPanel>
           <Shortcuts
@@ -358,7 +361,7 @@ class CamillaConfig extends React.Component<
 
 function ErrorIcon() {
   return <MdiIcon
-      icon={mdiAlertCircle}
+      icon={mdiAlert}
       tooltip="There are errors on this tab"
       style={{color: 'var(--error-text-color)'}}/>
 }

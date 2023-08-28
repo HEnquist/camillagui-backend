@@ -2,7 +2,7 @@ import React, {ReactNode, useEffect, useState} from "react"
 import {Button, CheckBox, MdiIcon, UploadButton} from "./utilities/ui-components"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {merge} from "lodash"
+import {isObject, merge} from "lodash"
 import {asFormattedText, isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
 import {
   Import,
@@ -12,12 +12,13 @@ import {
   importedYamlConfigAsJson,
   topLevelComparator
 } from "./utilities/configimport"
-import {mdiInformation} from "@mdi/js"
+import {mdiAlert, mdiAlertCircle, mdiInformation} from "@mdi/js"
 import {bottomMargin} from "./utilities/styles"
 import ReactTooltip from "react-tooltip"
 
 export class ImportTab extends React.Component<
     {
+      currentConfig: Config
       updateConfig: (update: Update<Config>) => void
     },
     {
@@ -38,10 +39,11 @@ export class ImportTab extends React.Component<
   }
 
   render() {
-    const {updateConfig} = this.props
+    const {currentConfig, updateConfig} = this.props
     const {importConfig} = this.state
     return importConfig ?
         <ConfigItemSelection
+            currentConfig={currentConfig}
             configName={importConfig.name}
             config={importConfig.config}
             import={importConfig => updateConfig(config => merge(config, importConfig))}
@@ -91,12 +93,14 @@ function FileList(props: {
 }
 
 function ConfigItemSelection(props: {
+  currentConfig: Config
   configName: string
   config: ImportedConfig
   import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
   useEffect(() => { ReactTooltip.rebuild() })
+  const {currentConfig} = props
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
   const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
@@ -134,6 +138,7 @@ function ConfigItemSelection(props: {
                                 }
                       />
                       {valueAppended(subValue, `${parentKey}-${key}`)}
+                      {collisionWarning(currentConfig, parentKey, key)}
                       <br/>
                     </div>
               })
@@ -169,4 +174,20 @@ function valueAppended(value: any, tooltipId?: string): ReactNode {
 
 function margin(level: number): string {
   return `${level * 20}px`
+}
+
+function collisionWarning(config: any, parentKey: string, valueKey: string): ReactNode {
+  if (['filters', 'mixers', 'processors'].includes(parentKey)
+      && parentKey in config
+      && valueKey in config[parentKey]
+  ) {
+    const value = config[parentKey][valueKey]
+    if (isObject(value))
+      return <MdiIcon
+          icon={mdiAlert}
+          tooltip={`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
+          style={{color: 'var(--error-text-color)'}}
+      />
+  }
+  return null
 }
