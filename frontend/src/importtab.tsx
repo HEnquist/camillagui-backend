@@ -14,6 +14,7 @@ import {
 } from "./utilities/configimport"
 import {mdiInformation} from "@mdi/js"
 import {bottomMargin} from "./utilities/styles"
+import ReactTooltip from "react-tooltip"
 
 export class ImportTab extends React.Component<
     {
@@ -95,6 +96,7 @@ function ConfigItemSelection(props: {
   import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
+  useEffect(() => { ReactTooltip.rebuild() })
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
   const importConfig = configImport.configToImport()
@@ -110,7 +112,6 @@ function ConfigItemSelection(props: {
   const importConfigCheckBox = <>
     <CheckBox
       text={props.configName}
-      tooltip={props.configName}
       checked={isWholeConfigImported()}
       onChange={checked => setConfigImport(new Import(config, checked ? config : {}))}/>
     <br/>
@@ -125,21 +126,20 @@ function ConfigItemSelection(props: {
             return <ImportTopLevelElementCheckBox
                 key={parentKey}
                 element={parentKey}
-                config={config}
+                value={config[parentKey]}
                 configImport={configImport}
                 setConfigImport={setConfigImport}>
               {isComplexObject(subElement)
                   && Object.entries(subElement).map(([key, subValue]) => {
                     return <div key={key} style={{marginLeft: margin(2)}}>
                       <CheckBox text={key}
-                                tooltip={key}
                                 editable={configImport.isSecondLevelElementEditable(parentKey, key)}
                                 checked={configImport.isSecondLevelElementImported(parentKey, key)}
                                 onChange={checked =>
                                     setConfigImport(prev => prev.toggleSecondLevelElement(parentKey, key, checked ? 'import' : 'remove'))
                                 }
                       />
-                      {valueAppended(subValue)}
+                      {valueAppended(subValue, true)}
                       <br/>
                     </div>
               })
@@ -155,32 +155,33 @@ function ConfigItemSelection(props: {
   </>
 }
 
-function valueAppended(value: any): ReactNode | undefined {
-  if (isComplexObject(value))
-    return <MdiIcon icon={mdiInformation} tooltip={JSON.stringify(value, undefined, 2)}/> //TODO render tooltip properly
-  else
+function valueAppended(value: any, appendComplexObjects: boolean): ReactNode {
+  if (!isComplexObject(value))
     return <span style={{color: 'var(--disabled-text-color)'}}>: {value.toString()}</span>
+  if (isComplexObject(value) && appendComplexObjects)
+    return <MdiIcon icon={mdiInformation} tooltip={JSON.stringify(value, undefined, 2)}/>
+  else
+    return null
 }
 
 function ImportTopLevelElementCheckBox(props: {
   element: string
-  config: ImportedConfig
+  value: any
   configImport: Import
   setConfigImport:  React.Dispatch<React.SetStateAction<Import>>
   children?: ReactNode
 }) {
-  const {element, config, configImport, children} = props
+  const {element, value, configImport, children} = props
   return <>
     <CheckBox
         text={element}
-        tooltip={element}
         checked={configImport.isTopLevelElementImported(element)}
         onChange={checked =>
           props.setConfigImport(prev => prev.toggleTopLevelElement(element, checked ? 'import' : 'remove'))
         }
         style={{marginLeft: margin(1)}}
     />
-    {valueAppended((config as any)[element])}
+    {valueAppended(value, false)}
     <br/>
     {children}
   </>

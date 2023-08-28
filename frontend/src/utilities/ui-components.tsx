@@ -29,7 +29,7 @@ export function Box(props: {
 
 export function CheckBox(props: {
     text?: string
-    tooltip: string
+    tooltip?: string
     checked: boolean | "partially"
     editable?: boolean
     onChange: (checked: boolean) => void
