@@ -109,26 +109,30 @@ function ConfigItemSelection(props: {
       return "partially"
   }
   const willAnythingBeImported = Object.keys(importConfig).length > 0
-  const importConfigCheckBox = <>
-    <CheckBox
-      text={props.configName}
-      checked={isWholeConfigImported()}
-      onChange={checked => setConfigImport(new Import(config, checked ? config : {}))}/>
-    <br/>
-  </>
   const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
   return <>
     <div style={bottomMargin}>Select what to import</div>
     <div style={bottomMargin}>
-      {importConfigCheckBox}
+      {<>
+        <CheckBox
+            text={props.configName}
+            checked={isWholeConfigImported()}
+            onChange={checked => setConfigImport(new Import(config, checked ? config : {}))}/>
+        <br/>
+      </>}
       {topLevelConfigElements.map(parentKey => {
             const subElement = config[parentKey]
-            return <ImportTopLevelElementCheckBox
-                key={parentKey}
-                element={parentKey}
-                value={config[parentKey]}
-                configImport={configImport}
-                setConfigImport={setConfigImport}>
+            return <div key={parentKey}>
+              <CheckBox
+                  text={parentKey}
+                  checked={configImport.isTopLevelElementImported(parentKey)}
+                  onChange={checked =>
+                      setConfigImport(prev => prev.toggleTopLevelElement(parentKey, checked ? 'import' : 'remove'))
+                  }
+                  style={{marginLeft: margin(1)}}
+              />
+              {valueAppended(config[parentKey], false)}
+              <br/>
               {isComplexObject(subElement)
                   && Object.entries(subElement).map(([key, subValue]) => {
                     return <div key={key} style={{marginLeft: margin(2)}}>
@@ -144,7 +148,7 @@ function ConfigItemSelection(props: {
                     </div>
               })
               }
-            </ImportTopLevelElementCheckBox>
+            </div>
           }
       )}
     </div>
@@ -162,29 +166,6 @@ function valueAppended(value: any, appendComplexObjects: boolean): ReactNode {
     return <MdiIcon icon={mdiInformation} tooltip={JSON.stringify(value, undefined, 2)}/>
   else
     return null
-}
-
-function ImportTopLevelElementCheckBox(props: {
-  element: string
-  value: any
-  configImport: Import
-  setConfigImport:  React.Dispatch<React.SetStateAction<Import>>
-  children?: ReactNode
-}) {
-  const {element, value, configImport, children} = props
-  return <>
-    <CheckBox
-        text={element}
-        checked={configImport.isTopLevelElementImported(element)}
-        onChange={checked =>
-          props.setConfigImport(prev => prev.toggleTopLevelElement(element, checked ? 'import' : 'remove'))
-        }
-        style={{marginLeft: margin(1)}}
-    />
-    {valueAppended(value, false)}
-    <br/>
-    {children}
-  </>
 }
 
 function margin(level: number): string {
