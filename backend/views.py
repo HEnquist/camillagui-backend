@@ -59,21 +59,24 @@ async def get_status(request):
     cache = request.app["STATUSCACHE"]
     cachetime = request.app["CACHETIME"]
     try:
+        levels_since = float(request.query.get("since"))
+    except:
+        levels_since = None
+    try:
         state = cdsp.general.state()
         state_str = state.name
         cache["cdsp_status"] = state_str
         try:
-            levels = cdsp.levels.levels_since_last()
-            if len(levels["capture_rms"]) > 0:
-                cache.update({
-                    "capturesignalrms": levels["capture_rms"],
-                    "capturesignalpeak": levels["capture_peak"],
-                })
-            if len(levels["playback_rms"]) > 0:
-                cache.update({
-                    "playbacksignalrms": levels["playback_rms"],
-                    "playbacksignalpeak": levels["playback_peak"],
-                })
+            if levels_since is not None:
+                levels = cdsp.levels.levels_since(levels_since)
+            else:
+                levels = cdsp.levels.levels()
+            cache.update({
+                "capturesignalrms": levels["capture_rms"],
+                "capturesignalpeak": levels["capture_peak"],
+                "playbacksignalrms": levels["playback_rms"],
+                "playbacksignalpeak": levels["playback_peak"],
+            })
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
             if now - cachetime > 1.0:
