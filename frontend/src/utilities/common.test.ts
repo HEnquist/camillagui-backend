@@ -38,22 +38,44 @@ test('withoutEmptyProperties', () => {
   })
 })
 
-test('asFormattedText', () => {
-  expect(asFormattedText(
-      {
-        a: 0,
-        b: ['1', '2'],
-        c: [3, 4],
-        d: {e: 5, f: 6},
-      }
-  )).toEqual(
-      'a=0\n' +
-      'b\n' +
-      '  1\n' +
-      '  2\n' +
-      'c=3,4\n' +
-      'd\n' +
-      '  e=5\n' +
-      '  f=6'
-  )
+describe('asFormattedText', () => {
+
+  test('format object with arrays and child objects', () => {
+    expect(asFormattedText(
+        {
+          a: 0,
+          b: ['1', '2'],
+          c: [3, 4],
+          d: {e: 5, f: 6},
+        },
+        Infinity
+    )).toEqual(
+        'a=0\n' +
+        'b\n' +
+        '  1\n' +
+        '  2\n' +
+        'c=3,4\n' +
+        'd\n' +
+        '  e=5\n' +
+        '  f=6'
+    )
+  })
+
+  test('does not truncate on nth line', () => {
+    expect(
+        asFormattedText({a:0, b:1}, 2)
+    ).toEqual(
+        'a=0\n' +
+        'b=1'
+    )
+  })
+
+  test('truncates after nth line', () => {
+    expect(
+        asFormattedText({a:0, b:1}, 1)
+    ).toEqual(
+        'a=0\n' +
+        '...'
+    )
+  })
 })

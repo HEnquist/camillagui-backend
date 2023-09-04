@@ -179,7 +179,7 @@ function valueAppended(value: any, tooltipId?: string): ReactNode {
     return <span data-tip={true} data-for={tooltipId}>
       <MdiIcon icon={mdiInformation}/>
       <ReactTooltip id={tooltipId} className="import-tab-tooltip" arrowColor="var(--box-border-color)">
-        <pre>{asFormattedText(value)}</pre>
+        <pre>{asFormattedText(value, 20)}</pre>
       </ReactTooltip>
     </span>
   }

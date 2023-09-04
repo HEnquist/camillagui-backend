@@ -29,8 +29,13 @@ export function isComplexObject(item: any): boolean {
   return item !== null && item !== undefined && (isArray(item) || isObject(item))
 }
 
-export function asFormattedText(object: any): string {
-  return asFormattedLines(object).join("\n")
+export function asFormattedText(object: any, truncateAt: number): string {
+  const lines = asFormattedLines(object)
+  if (lines.length > truncateAt) {
+    lines.splice(truncateAt)
+    lines.push('...')
+  }
+  return lines.join("\n")
 }
 
 function asFormattedLines(object: any): string[] {
