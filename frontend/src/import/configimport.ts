@@ -1,6 +1,6 @@
 import {Config, Devices, Pipeline, PipelineStep} from "../camilladsp/config"
 import {cloneDeep, isArray, isEqual, isObject} from "lodash"
-import {isComplexObject} from "./common"
+import {isComplexObject} from "../utilities/common"
 
 /**
  * Like {@link Config}, except all properties are optional and all properties in {@link Config#devices} are optional.

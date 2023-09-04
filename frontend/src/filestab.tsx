@@ -24,6 +24,8 @@ import {
   loadDefaultConfigJson,
   loadFiles
 } from "./utilities/files"
+import {ImportPopup, ImportPopupProps} from "./import/importpopup"
+import {Update} from "./utilities/common"
 
 export function Files(props: {
   guiConfig: GuiConfig
@@ -31,10 +33,13 @@ export function Files(props: {
   config: Config
   setCurrentConfig: (filename: string | undefined, config: Config) => void
   setCurrentConfigFileName: (filename: string | undefined) => void
+  updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
   return <div className="wide-tabpanel">
-    <NewConfig setCurrentConfig={props.setCurrentConfig}/>
+    <NewConfig currentConfig={props.config}
+               setCurrentConfig={props.setCurrentConfig}
+               updateConfig={props.updateConfig}/>
     <FileTable title='Configs'
                type="config"
                currentConfigFile={props.currentConfigFile}
@@ -496,12 +501,17 @@ function isValidFilename(newFileName: string) {
 
 class NewConfig extends Component<
     {
-      setCurrentConfig?: (filename: string | undefined, config: Config) => void,
-    }> {
+      currentConfig: Config
+      setCurrentConfig?: (filename: string | undefined, config: Config) => void
+      updateConfig: (update: Update<Config>) => void
+    },
+    { importPopupProps: ImportPopupProps }
+> {
 
   constructor(props: any) {
     super(props)
     this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
+    this.state = {importPopupProps: {}}
   }
 
   componentDidUpdate() {
@@ -522,39 +532,51 @@ class NewConfig extends Component<
     }
   }
 
-  private async loadBlankConfig() {
-    try {
-      let config = defaultConfig()
-      this.props.setCurrentConfig!(undefined, config as Config)
-    } catch(e) {
-      console.log(e)
-    }
+  private loadBlankConfig() {
+    let config = defaultConfig()
+    this.props.setCurrentConfig!(undefined, config as Config)
+  }
+
+  private openImportConfigPopup() {
+    this.setState({
+      importPopupProps: {
+        currentConfig: this.props.currentConfig,
+        updateConfig: this.props.updateConfig,
+        close: () => this.setState({importPopupProps: {}})
+      }
+    })
   }
 
   render() {
     return (
-      <Box title='Create new config'>
+      <Box title='Create or import config'>
         <div style={{
+          marginTop: '10px',
           display: 'grid',
           alignItems: 'center',
-          gridTemplateColumns: '48% 48%',
-          gap: '4% 4%'
+          gridTemplateColumns: '40% 28% 28%',
+          columnGap: '2%'
         }}>
           <Button
-          text="New config from default"
-          onClick={() => this.loadDefaultConfig()}
-          style={{marginTop: '10px'}}
-          enabled={true}
-          data-tip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
+            text="New config from default"
+            onClick={() => this.loadDefaultConfig()}
+            enabled={true}
+            data-tip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
           />
           <Button
-          text="New blank config"
-          onClick={() => this.loadBlankConfig()}
-          style={{marginTop: '10px'}}
-          enabled={true}
-          data-tip="Create and load a new blank config.<br>Any unsaved changes will be lost."
+            text="New blank config"
+            onClick={() => this.loadBlankConfig()}
+            enabled={true}
+            data-tip="Create and load a new blank config.<br>Any unsaved changes will be lost."
+          />
+          <Button
+            text="Import config"
+            onClick={() => this.openImportConfigPopup()}
+            enabled={true}
+            data-tip="Import items from another config into this one."
           />
         </div>
+        <ImportPopup {...this.state.importPopupProps}/>
       </Box>
     )
   }

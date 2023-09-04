@@ -4,7 +4,7 @@ import "react-tabs/style/react-tabs.css"
 import "./index.css"
 
 import * as React from "react"
-import {createRoot} from 'react-dom/client';
+import {createRoot} from 'react-dom/client'
 import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
@@ -26,7 +26,6 @@ import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
-import {ImportTab} from "./importtab"
 import {loadActiveConfig} from "./utilities/files"
 
 class CamillaConfig extends React.Component<
@@ -93,7 +92,7 @@ class CamillaConfig extends React.Component<
   private async fetchConfig() {
     const conf_req = await fetch("/api/getconfig")
     if (!conf_req.ok) {
-      const errorMessage = await conf_req.text();
+      const errorMessage = await conf_req.text()
       this.setState({message: errorMessage})
       throw new Error(errorMessage)
     }
@@ -278,7 +277,6 @@ class CamillaConfig extends React.Component<
           <Tab>Processors {errors({path: ['processors'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
-          <Tab>Import</Tab>
           <Tab>Shortcuts</Tab>
         </TabList>
         <TabPanel/>
@@ -333,14 +331,9 @@ class CamillaConfig extends React.Component<
               config={config}
               setCurrentConfig={this.setCurrentConfig}
               setCurrentConfigFileName={this.setCurrentConfigFileName}
+              updateConfig={this.updateConfig}
               saveNotify={this.saveNotify}
               guiConfig={this.state.guiConfig}
-          />
-        </TabPanel>
-        <TabPanel>
-          <ImportTab
-              currentConfig={config}
-              updateConfig={this.updateConfig}
           />
         </TabPanel>
         <TabPanel>
@@ -366,6 +359,6 @@ function ErrorIcon() {
       style={{color: 'var(--error-text-color)'}}/>
 }
 
-const container = document.getElementById('root');
-const root = createRoot(container!);
+const container = document.getElementById('root')
+const root = createRoot(container!)
 root.render(<CamillaConfig/>)

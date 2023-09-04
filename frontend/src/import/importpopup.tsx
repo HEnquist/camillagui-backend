@@ -1,9 +1,9 @@
 import React, {ReactNode, useEffect, useState} from "react"
-import {Button, CheckBox, MdiIcon, UploadButton} from "./utilities/ui-components"
-import {loadConfigJson, loadFilenames} from "./utilities/files"
-import {Config} from "./camilladsp/config"
+import {Button, CheckBox, CloseButton, MdiIcon, UploadButton} from "../utilities/ui-components"
+import {loadConfigJson, loadFilenames} from "../utilities/files"
+import {Config} from "../camilladsp/config"
 import {isObject} from "lodash"
-import {asFormattedText, isComplexObject, Update, withoutEmptyProperties} from "./utilities/common"
+import {asFormattedText, isComplexObject, Update, withoutEmptyProperties} from "../utilities/common"
 import {
   Import,
   ImportedConfig,
@@ -12,16 +12,20 @@ import {
   importedYamlConfigAsJson,
   mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator
-} from "./utilities/configimport"
+} from "./configimport"
 import {mdiAlert, mdiInformation} from "@mdi/js"
-import {bottomMargin} from "./utilities/styles"
+import {bottomMargin} from "../utilities/styles"
 import ReactTooltip from "react-tooltip"
+import Popup from "reactjs-popup"
 
-export class ImportTab extends React.Component<
-    {
-      currentConfig: Config
-      updateConfig: (update: Update<Config>) => void
-    },
+export type ImportPopupProps = {} | {
+  currentConfig: Config
+  updateConfig: (update: Update<Config>) => void
+  close: () => void
+}
+
+export class ImportPopup extends React.Component<
+    ImportPopupProps,
     {
       importDoneFromFile?: string
       importConfig?: {
@@ -33,30 +37,46 @@ export class ImportTab extends React.Component<
   constructor(props: any) {
     super(props)
     this.setImportConfig = this.setImportConfig.bind(this)
-    this.state = {importDoneFromFile: undefined}
+    this.state = {}
   }
 
   private setImportConfig(name: string, config: ImportedConfig) {
     this.setState({importDoneFromFile: undefined, importConfig: {name, config}})
   }
 
+  private close() {
+    if ('close' in this.props)
+      this.props.close()
+    this.setState({importDoneFromFile: undefined, importConfig: undefined})
+  }
+
   render() {
+    if (!('close' in this.props))
+      return null
     const {currentConfig, updateConfig} = this.props
     const {importDoneFromFile, importConfig} = this.state
-    return importConfig ?
-        <ConfigItemSelection
-            currentConfig={currentConfig}
-            configName={importConfig.name}
-            config={importConfig.config}
-            import={configToImport => {
-              updateConfig(config => mergeTopLevelObjectsAndAppendTopLevelArrays(config, configToImport))
-              this.setState({importDoneFromFile: importConfig?.name, importConfig: undefined})
-            }}
-            cancel={() => this.setState({importDoneFromFile: undefined, importConfig: undefined})}
-        />
-        : <FileList
-            importDoneFromFile={importDoneFromFile}
-            setImportConfig={this.setImportConfig}/>
+    return <Popup open={true}
+                  onClose={() => this.close()}
+                  closeOnDocumentClick={true}
+                  contentStyle={{width: 'max-content'}} >
+      <CloseButton onClick={() => this.close()}/>
+      <div style={{height: '90vh', overflowY: 'auto'}}>
+        {importConfig ?
+          <ConfigItemSelection
+              currentConfig={currentConfig}
+              configName={importConfig.name}
+              config={importConfig.config}
+              import={configToImport => {
+                updateConfig(config => mergeTopLevelObjectsAndAppendTopLevelArrays(config, configToImport))
+                this.setState({importDoneFromFile: importConfig?.name, importConfig: undefined})
+              }}
+              cancel={() => this.close()}
+          />
+          : <FileList
+              importDoneFromFile={importDoneFromFile}
+              setImportConfig={this.setImportConfig}/>}
+      </div>
+    </Popup>
   }
 
 }
@@ -197,12 +217,16 @@ function collisionWarning(config: any, parentKey: string, valueKey: string): Rea
       && valueKey in config[parentKey]
   ) {
     const value = config[parentKey][valueKey]
+    const tooltipId = `${parentKey}-${valueKey}-warning`
     if (isObject(value))
-      return <MdiIcon
+      return <span data-tip={true} data-for={tooltipId}>
+        <MdiIcon
           icon={mdiAlert}
-          tooltip={`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
-          style={{color: 'var(--error-text-color)'}}
-      />
+          style={{color: 'var(--error-text-color)'}}/>
+        <ReactTooltip id={tooltipId}>
+          {`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
+        </ReactTooltip>
+    </span>
   }
   return null
 }
