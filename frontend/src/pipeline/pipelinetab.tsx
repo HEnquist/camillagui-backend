@@ -67,7 +67,12 @@ export class PipelineTab extends React.Component<{
   }
 
   updatePipeline = (update: Update<Pipeline>) =>
-      this.props.updateConfig(config => update(config.pipeline))
+      this.props.updateConfig(config => {
+        if (!config.pipeline) {
+          config.pipeline = []
+        }
+        update(config.pipeline)
+      })
 
   addStep = () =>
       this.updatePipeline(pipeline => pipeline.push(defaultFilterStep(this.props.config)))
@@ -118,7 +123,7 @@ export class PipelineTab extends React.Component<{
         <div className="pipeline-channel">
           Capture: {config.devices.capture.channels} channels in
         </div>
-        {pipeline.map((step: PipelineStep, index: number) => {
+        {pipeline?.map((step: PipelineStep, index: number) => {
               const stepErrors = errorsForSubpath(errors, index)
               const typeSelect = <EnumInput
                   value={step.type}
@@ -147,7 +152,7 @@ export class PipelineTab extends React.Component<{
                     maxChannelCount={maxChannelCount(config, index)}
                     typeSelect={typeSelect}
                     filterStep={step}
-                    filters={config.filters}
+                    filters={config.filters ? config.filters : {}}
                     updatePipeline={this.updatePipeline}
                     plot={() => this.plotFilterStep(index)}
                     errors={stepErrors}
@@ -158,7 +163,7 @@ export class PipelineTab extends React.Component<{
                     stepIndex={index}
                     typeSelect={typeSelect}
                     mixerStep={step}
-                    mixers={config.mixers}
+                    mixers={config.mixers ? config.mixers : {}}
                     updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>
@@ -168,7 +173,7 @@ export class PipelineTab extends React.Component<{
                     stepIndex={index}
                     typeSelect={typeSelect}
                     processorStep={step}
-                    processors={config.processors}
+                    processors={config.processors ? config.processors : {}}
                     updatePipeline={this.updatePipeline}
                     errors={stepErrors}
                     controls={controls}/>

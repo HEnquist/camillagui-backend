@@ -142,7 +142,12 @@ export class FiltersTab extends React.Component<
   }
 
   private updateFilter(name: string, update: Update<Filter>) {
-    this.props.updateConfig(config => update(config.filters[name]))
+    this.props.updateConfig(config => {
+      if (!config.filters) {
+        config.filters = {}
+      }
+      update(config.filters[name])
+    })
   }
 
   private updateAvailableCoeffFiles() {

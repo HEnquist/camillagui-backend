@@ -222,15 +222,18 @@ export function sortedFilterNamesOf(configOrFilters: Config | Filters | null, so
     if (configOrFilters === null) {
         return []
     }
-    const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
-    return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
+    const filters: Filters | null = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+    if (filters) {
+        return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
+    }
+    return []
 }
 
 export function filterNamesOf(configOrFilters: Config | Filters | null): string[] {
     if (configOrFilters === null) {
         return []
     }
-    const filters: Filters = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+    const filters: Filters | null = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
     if (filters === null) {
         return []
     }
@@ -241,7 +244,7 @@ function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config
     return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
 }
 
-export function newFilterName(filters: Filters): string {
+export function newFilterName(filters: Filters | null): string {
     return newName('Unnamed Filter ', filterNamesOf(filters))
 }
 
@@ -344,41 +347,51 @@ export function defaultFilter() {
 }
 
 export function removeFilter(config: Config, name: string) {
-    delete config.filters[name]
-    for (let step of config.pipeline)
-        if (step.type === 'Filter')
-            step.names = step.names.filter(filterName => filterName !== name)
+    delete config.filters?.[name]
+    if (config.pipeline) {
+        for (let step of config.pipeline)
+            if (step.type === 'Filter')
+                step.names = step.names.filter(filterName => filterName !== name)
+    }
 }
 
 export function renameFilter(config: Config, oldName: string, newName: string) {
     if (filterNamesOf(config).includes(newName))
         throw new Error(`Filter '${newName}' already exists`)
-    config.filters[newName] = config.filters[oldName]
-    delete config.filters[oldName]
-    for (let step of config.pipeline)
-        if (step.type === 'Filter')
-            for (let i = 0; i < step.names.length; i++)
-                if (step.names[i] === oldName)
-                    step.names[i] = newName
+    if (config.filters) {
+        config.filters[newName] = config.filters[oldName]
+        delete config.filters[oldName]
+        for (let step of config.pipeline ? config.pipeline: [])
+            if (step.type === 'Filter')
+                for (let i = 0; i < step.names.length; i++)
+                    if (step.names[i] === oldName)
+                        step.names[i] = newName
+    }
 }
 
 export function processorNamesOf(configOrProcessors: Config | Processors | null): string[] {
     if (configOrProcessors === null) {
         return []
     }
-    const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
-    return sortedAlphabetically(Object.keys(processors))
+    const processors: Processors | null = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
+    if (processors) {
+        return sortedAlphabetically(Object.keys(processors))
+    }
+    return []
 }
 
 export function sortedProcessorNamesOf(configOrProcessors: Config | Processors | null, sortKey: string, reverse: boolean): string[] {
     if (configOrProcessors === null) {
         return []
     }
-    const processors: Processors = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
-    return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
+    const processors: Processors | null = isConfig(configOrProcessors) ? configOrProcessors.processors : configOrProcessors
+    if (processors) {
+        return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
+    }
+    return []
 }
 
-export function newProcessorName(processors: Processors): string {
+export function newProcessorName(processors: Processors | null): string {
     return newName('Unnamed Processor ', processorNamesOf(processors))
 }
 
@@ -391,47 +404,56 @@ export function defaultProcessor() {
 }
 
 export function removeProcessor(config: Config, name: string) {
-    delete config.processors[name]
+    delete config.processors?.[name]
     const pipeline = config.pipeline
-    config.pipeline = pipeline.filter(step => step.type !== 'Processor' || step.name !== name)
+    if (pipeline)
+        config.pipeline = pipeline.filter(step => step.type !== 'Processor' || step.name !== name)
 }
 
 export function renameProcessor(config: Config, oldName: string, newName: string) {
     if (processorNamesOf(config).includes(newName))
         throw new Error(`Processor '${newName}' already exists`)
-    config.processors[newName] = config.processors[oldName]
-    delete config.processors[oldName]
-    for (let step of config.pipeline)
-        if (step.type === 'Processor' && step.name === oldName)
-            step.name = newName
+    if (config.processors) {
+        config.processors[newName] = config.processors[oldName]
+        delete config.processors[oldName]
+        for (let step of config.pipeline ? config.pipeline: [])
+            if (step.type === 'Processor' && step.name === oldName)
+                step.name = newName
+    }
 }
 
 export function mixerNamesOf(configOrMixers: Config | Mixers | null): string[] {
     if (configOrMixers === null) {
         return []
     }
-    const mixers: Mixers = isConfig(configOrMixers) ? configOrMixers.mixers : configOrMixers
-    return sortedAlphabetically(Object.keys(mixers))
+    const mixers: Mixers | null = isConfig(configOrMixers) ? configOrMixers.mixers : configOrMixers
+    if (mixers)
+        return sortedAlphabetically(Object.keys(mixers))
+    return []
 }
 
-export function newMixerName(mixers: Mixers): string {
+export function newMixerName(mixers: Mixers | null): string {
     return newName('Unnamed Mixer ', mixerNamesOf(mixers))
 }
 
 export function removeMixer(config: Config, name: string) {
-    delete config.mixers[name]
+    delete config.mixers?.[name]
     const pipeline = config.pipeline
-    config.pipeline = pipeline.filter(step => step.type !== 'Mixer' || step.name !== name)
+    if (pipeline)
+        config.pipeline = pipeline.filter(step => step.type !== 'Mixer' || step.name !== name)
 }
 
 export function renameMixer(config: Config, oldName: string, newName: string) {
     if (mixerNamesOf(config).includes(newName))
         throw new Error(`Mixer '${newName}' already exists`)
-    config.mixers[newName] = config.mixers[oldName]
-    delete config.mixers[oldName]
-    for (let step of config.pipeline)
-        if (step.type === 'Mixer' && step.name === oldName)
-            step.name = newName
+    if (config.mixers) {
+        config.mixers[newName] = config.mixers[oldName]
+        delete config.mixers[oldName]
+        for (let step of config.pipeline ? config.pipeline : [])
+            if (step.type === 'Mixer' && step.name === oldName)
+                step.name = newName
+
+    }
 }
 
 export function defaultMixer(): Mixer {
@@ -493,10 +515,10 @@ export function defaultProcessorStep(config: Config): ProcessorStep {
 
 export interface Config {
     devices: Devices,
-    filters: Filters,
-    mixers: Mixers,
-    processors: Processors,
-    pipeline: Pipeline,
+    filters: Filters | null,
+    mixers: Mixers | null,
+    processors: Processors | null,
+    pipeline: Pipeline | null,
     title: string | null,
     description: string | null
 }
@@ -674,31 +696,34 @@ export interface ProcessorStep { type: 'Processor', name: string, description: s
 export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string | null, bypassed: boolean | null }
 
 export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
-    const lastValidMixerStepBeforeIndex = List(config.pipeline)
-        .findLast((step, index) =>
-            step.type === 'Mixer'
-            && step.name !== ''
-            && index < pipelineStepIndex
-        ) as MixerStep | undefined
-    if (lastValidMixerStepBeforeIndex) {
+    var lastValidMixerStepBeforeIndex = null
+    if (config.pipeline) {
+        lastValidMixerStepBeforeIndex = List(config.pipeline)
+            .findLast((step, index) =>
+                step.type === 'Mixer'
+                && step.name !== ''
+                && index < pipelineStepIndex
+            ) as MixerStep | undefined
+    }
+    if (lastValidMixerStepBeforeIndex && config.mixers) {
         const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
         return mixer.channels.out
-    } else
-        return config.devices.capture.channels
+    }
+    return config.devices.capture.channels
 }
 
 export function filterGain(config: Config, filterName: string): number | undefined {
-    return config.filters[filterName]?.parameters?.gain
+    return config.filters?.[filterName]?.parameters?.gain
 }
 
 export function filterParameter(config: Config, filterName: string, param: string): number | undefined {
-    const parameters = config.filters[filterName]?.parameters
+    const parameters = config.filters?.[filterName]?.parameters
     if (parameters !== undefined && parameters.hasOwnProperty(param))
         return parameters[param]
 }
 
 export function setFilterParameter(config: Config, filterName: string, param: string, value: number) {
-    const parameters = config.filters[filterName]?.parameters
+    const parameters = config.filters?.[filterName]?.parameters
     if (parameters !== undefined && parameters.hasOwnProperty(param))
         parameters[param] = value
 }

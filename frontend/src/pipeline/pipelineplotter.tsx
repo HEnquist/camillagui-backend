@@ -292,9 +292,10 @@ class PipelinePlot extends React.Component<Props, State> {
     // loop through pipeline
     let total_length = 0
     let stage_start = 0
-    for (let n = 0; n < conf.pipeline.length; n++) {
-      const step = conf.pipeline[n]
-      if (step.type === "Mixer") {
+    const pipeline = conf.pipeline ? conf.pipeline : []
+    for (let n = 0; n < pipeline.length; n++) {
+      const step = pipeline[n]
+      if (step.type === "Mixer" && conf.mixers) {
         total_length += 1
         const mixername = step.name
         const mixconf = conf["mixers"][mixername]
@@ -338,7 +339,7 @@ class PipelinePlot extends React.Component<Props, State> {
         stages.push(mixerchannels)
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
-      } else if (step.type === "Processor") {
+      } else if (step.type === "Processor" && conf.processors) {
         total_length += 1
         const procname = step.name
         const procconf = conf["processors"][procname]

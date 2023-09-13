@@ -116,7 +116,11 @@ export class ProcessorsTab extends React.Component<
     }
 
     private updateProcessor(name: string, update: Update<Processor>) {
-        this.props.updateConfig(config => update(config.processors[name]))
+        this.props.updateConfig(config => {
+            if (config.processors) {
+                update(config.processors[name])
+            }
+        })
     }
 
     render() {

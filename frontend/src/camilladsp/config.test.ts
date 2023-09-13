@@ -10,6 +10,7 @@ import {
 
 test('newFilterName ', () => {
     const config = defaultConfig()
+    config.filters = {}
     const filters = config.filters
     expect(newFilterName(filters)).toBe('Unnamed Filter 1')
     filters['Unnamed Filter 1'] = defaultFilter()
@@ -18,6 +19,8 @@ test('newFilterName ', () => {
 
 test('removeFilter', () => {
     const config = defaultConfig()
+    config.filters = {}
+    config.pipeline = []
     config.filters['to be removed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
@@ -41,6 +44,8 @@ test('removeFilter', () => {
 
 test('renameFilter', () => {
     const config = defaultConfig()
+    config.filters = {}
+    config.pipeline = []
     config.filters['to be renamed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
@@ -64,6 +69,7 @@ test('renameFilter', () => {
 
 test('renameFilter throws on name collision', () => {
     const config = defaultConfig()
+    config.filters = {}
     config.filters['to be renamed'] = defaultFilter()
     config.filters['collision'] = defaultFilter()
     expect(() => renameFilter(config, 'to be renamed', 'collision')).toThrow("Filter 'collision' already exists")
@@ -87,6 +93,8 @@ test('defaultSource counts input channel up until in channel count', () => {
 
 test('removeMixer', () => {
     const config = defaultConfig()
+    config.mixers = {}
+    config.pipeline = []
     config.mixers['to be removed'] = defaultMixer()
     config.mixers['Mixer1'] = defaultMixer()
     config.pipeline[0] = {type: 'Mixer', name: 'to be removed', description: null, bypassed: null}
@@ -98,6 +106,8 @@ test('removeMixer', () => {
 
 test('renameMixer', () => {
     const config = defaultConfig()
+    config.mixers = {}
+    config.pipeline = []
     config.mixers['to be renamed'] = defaultMixer()
     config.pipeline[0] = {type: 'Mixer', name: 'Mixer1', description: null, bypassed: null}
     config.pipeline[1] = {type: 'Mixer', name: 'to be renamed', description: null, bypassed: null}
@@ -111,6 +121,7 @@ test('renameMixer', () => {
 
 test('renameMixer throws on name collision', () => {
     const config = defaultConfig()
+    config.mixers = {}
     config.mixers['to be renamed'] = defaultMixer()
     config.mixers['collision'] = defaultMixer()
     expect(() => renameMixer(config, 'to be renamed', 'collision')).toThrow("Mixer 'collision' already exists")
@@ -118,6 +129,7 @@ test('renameMixer throws on name collision', () => {
 
 test('maxChannelCount', () => {
     const config = defaultConfig()
+    config.mixers = {}
     config.devices.capture.channels = 1
     config.devices.playback.channels = 9999
     config.mixers.mixer1 = defaultMixer()

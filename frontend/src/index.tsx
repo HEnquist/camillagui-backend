@@ -296,7 +296,7 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <FiltersTab
-              filters={config.filters}
+              filters={config.filters ? config.filters : {}}
               samplerate={config.devices.samplerate}
               channels={config.devices.capture.channels}
               coeffDir={this.state.guiConfig.coeff_dir}
@@ -306,14 +306,14 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <MixersTab
-              mixers={config.mixers}
+              mixers={config.mixers ? config.mixers : {}}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'mixers')}
           />
         </TabPanel>
         <TabPanel>
           <ProcessorsTab
-              processors={config.processors}
+              processors={config.processors ? config.processors : {}}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'mixers')}
           />

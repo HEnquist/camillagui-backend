@@ -42,6 +42,7 @@ export class MixersTab extends React.Component<{
     super(props)
     this.mixerNames = this.mixerNames.bind(this)
     this.addMixer = this.addMixer.bind(this)
+    this.updateMixer = this.updateMixer.bind(this)
     this.renameMixer = this.renameMixer.bind(this)
     this.removeMixer = this.removeMixer.bind(this)
     this.isFreeMixerName = this.isFreeMixerName.bind(this)
@@ -53,6 +54,15 @@ export class MixersTab extends React.Component<{
 
   private mixerNames(): string[] {
     return mixerNamesOf(this.props.mixers)
+  }
+
+  private updateMixer(name: string, update: Update<Mixer>) {
+    this.props.updateConfig(config => {
+      if (!config.mixers) {
+        config.mixers = {}
+      }
+      update(config.mixers[name])
+    })
   }
 
   private addMixer() {
@@ -96,7 +106,7 @@ export class MixersTab extends React.Component<{
   }
 
   render() {
-    const {mixers, errors, updateConfig} = this.props
+    const {mixers, errors} = this.props
     return (
         <div className="tabpanel" style={{width: '700px'}}>
           <ErrorMessage message={errors({path: []})}/>
@@ -107,7 +117,7 @@ export class MixersTab extends React.Component<{
                       name={name}
                       mixer={mixers[name]}
                       errors={errorsForSubpath(errors, name)}
-                      update={updateMixer => updateConfig(config => updateMixer(config.mixers[name]))}
+                      update={update => this.updateMixer(name, update)}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
                       remove={() => this.removeMixer(name)}
