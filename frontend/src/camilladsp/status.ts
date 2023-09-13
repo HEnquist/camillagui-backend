@@ -86,6 +86,20 @@ export class StatusPoller {
       this.playbacksignalrms = status.playbacksignalrms
       this.lastLevelTime = now
     } else {
+      if (levelsSince > 2.0) {
+        this.capturesignalpeak.forEach((_level, index, levelArray) => {
+          levelArray[index] = -1000.0
+        })
+        this.capturesignalrms.forEach((_level, index, levelArray) => {
+          levelArray[index] = -1000.0
+        })
+        this.playbacksignalpeak.forEach((_level, index, levelArray) => {
+          levelArray[index] = -1000.0
+        })
+        this.playbacksignalrms.forEach((_level, index, levelArray) => {
+          levelArray[index] = -1000.0
+        })
+      }
       status.capturesignalpeak = this.capturesignalpeak
       status.capturesignalrms = this.capturesignalrms
       status.playbacksignalpeak = this.playbacksignalpeak
