@@ -286,7 +286,7 @@ def convert_config_filter_paths(json_config, conversion):
     Apply a path conversion to all filter coefficient paths of a config.
     """
     config = deepcopy(json_config)
-    filters = config["filters"]
+    filters = config.get("filters")
     if filters is not None:
         for filter_name in filters:
             filt = filters[filter_name]

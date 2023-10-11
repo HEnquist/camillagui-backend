@@ -223,7 +223,7 @@ async def eval_filterstep_values(request):
     plot_config = make_config_filter_paths_absolute(config, config_dir)
     filter_file_names, _ = list_of_files_in_directory(request.app["coeff_dir"])
     options = pipeline_step_options(filter_file_names, config, step_index)
-    for _, filt in plot_config["filters"].items():
+    for _, filt in plot_config.get("filters", {}).items():
         replace_tokens_in_filter_config(filt, samplerate, channels)
     try:
         data = eval_filterstep(
