@@ -313,7 +313,7 @@ export const DefaultFilterParameters: {
     Dither: {
         None: { type: "None", bits: 16 },
         Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
-        HighPass: { type: "HighPass", bits: 16 },
+        Highpass: { type: "Highpass", bits: 16 },
         Fweighted441: { type: "Fweighted441", bits: 16 },
         FweightedLong441: { type: "FweightedLong441", bits: 16 },
         FweightedShort441: { type: "FweightedShort441", bits: 16 },
@@ -325,6 +325,7 @@ export const DefaultFilterParameters: {
         ShibataHigh441: { type: "ShibataHigh441", bits: 16 },
         ShibataLow441: { type: "ShibataLow441", bits: 16 },
         Shibata48: { type: "Shibata48", bits: 16 },
+        ShibataHigh48: { type: "ShibataHigh48", bits: 16 },
         ShibataLow48: { type: "ShibataLow48", bits: 16 },
         Shibata882: { type: "Shibata882", bits: 16 },
         ShibataLow882: { type: "ShibataLow882", bits: 16 },
