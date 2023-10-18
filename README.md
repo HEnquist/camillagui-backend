@@ -11,7 +11,7 @@ The complete GUI is made up of two parts:
 ## Setting up
 ### Python dependencies
 Install the dependencies:
-- python 3.6 or later
+- python 3.8 or later
 - websocket-client (required by pycamilladsp)
 - jsonschema (required by pycamilladsp-plot)
 - aiohttp
@@ -28,7 +28,7 @@ These are the names of the packages needed:
 TODO shorten and link to the pycamilladsp install guide!
 
 #### Linux
-Most linux distributions have Python 3.6 or newer installed by default. Use the normal package manager to install the packages.
+Most linux distributions have Python 3.8 or newer installed by default. Use the normal package manager to install the packages.
 
 #### Windows
 Use Anaconda: https://www.anaconda.com/products/individual. Then use Anaconda Navigator to install the dependencies.
@@ -46,7 +46,7 @@ You need both the CamillaDSP companion python libraries:
 To install the libraries, use `pip` to install directly from github:
 ```sh
 pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0-alpha2
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0-alpha2
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0-alpha3
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
