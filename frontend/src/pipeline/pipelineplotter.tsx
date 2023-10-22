@@ -263,6 +263,7 @@ class PipelinePlot extends React.Component<Props, State> {
     const spacing_h = 3
     const spacing_v = 1
     let max_v: number
+    let max_h: number = 1
     const labels: Text[] = []
     const boxes: Rect[] = []
     const links: Link[] = []
@@ -302,12 +303,18 @@ class PipelinePlot extends React.Component<Props, State> {
     const pipeline = conf.pipeline ? conf.pipeline : []
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
-      const disabled = step.bypassed == true
+      const disabled = step.bypassed === true
       if (step.type === "Mixer" && conf.mixers) {
         total_length += 1
         const mixername = step.name
         const mixconf = conf["mixers"][mixername]
-        active_channels = mixconf.channels.out
+        if (active_channels !== mixconf.channels.in && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
+        if (!disabled) {
+          active_channels = mixconf.channels.out
+        }
         const mixerchannels: Block[][] = []
         this.appendFrame(
           labels,
@@ -316,9 +323,9 @@ class PipelinePlot extends React.Component<Props, State> {
           spacing_h * total_length,
           0,
           1.5,
-          spacing_v * active_channels
+          spacing_v * mixconf.channels.out
         )
-        for (let m = 0; m < active_channels; m++) {
+        for (let m = 0; m < mixconf.channels.out; m++) {
           mixerchannels.push([])
           const label = "ch " + m
           const io_points = this.appendBlock(
@@ -326,7 +333,7 @@ class PipelinePlot extends React.Component<Props, State> {
             boxes,
             label,
             total_length * spacing_h,
-            spacing_v * (-active_channels / 2 + 0.5 + m),
+            spacing_v * (-mixconf.channels.out / 2 + 0.5 + m),
             1,
             disabled
           )
@@ -336,11 +343,11 @@ class PipelinePlot extends React.Component<Props, State> {
           for (let m = 0; m < mixconf.mapping.length; m++) {
             const mapping = mixconf.mapping[m]
             const dest_ch = mapping.dest
-            const mapping_muted = mapping.mute == true
+            const mapping_muted = mapping.mute === true
             for (let p = 0; p < mapping.sources.length; p++) {
               const src = mapping.sources[p]
               const src_ch = src.channel
-              const muted = src.mute == true || mapping_muted
+              const muted = src.mute === true || mapping_muted
               const label = muted ? "muted" : src.gain + " dB" + (src.inverted ? " inv." : '')
               const srclen = stages[stages.length - 1][src_ch].length
               const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
@@ -357,6 +364,10 @@ class PipelinePlot extends React.Component<Props, State> {
         const procname = step.name
         const procconf = conf["processors"][procname]
         const procchannels: Block[][] = []
+        if (active_channels !== procconf.parameters.channels && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
         this.appendFrame(
           labels,
           boxes,
@@ -409,10 +420,19 @@ class PipelinePlot extends React.Component<Props, State> {
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
         const ch_nbr = step.channel
+        if (ch_nbr >= active_channels && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
         if (expand_filters) {
           for (let m = 0; m < step.names.length; m++) {
             const name = step.names[m]
-            const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+            let ch_step: number
+            if (ch_nbr < stages[stages.length - 1].length) {
+              ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+            } else {
+              ch_step = stage_start + stages[stages.length - 1][0].length
+            }
             total_length = Math.max(total_length, ch_step)
             const io_points = this.appendBlock(
               labels,
@@ -423,10 +443,10 @@ class PipelinePlot extends React.Component<Props, State> {
               2.5,
               disabled
             )
-            const src_list = stages[stages.length - 1][ch_nbr]
-            const src_p = src_list[src_list.length - 1].output
-            const dest_p = io_points.input
             if (!disabled) {
+              const src_list = stages[stages.length - 1][ch_nbr]
+              const src_p = src_list[src_list.length - 1].output
+              const dest_p = io_points.input
               stages[stages.length - 1][ch_nbr].push(io_points)
               this.appendLink(links, labels, src_p, dest_p)
             }
@@ -440,7 +460,12 @@ class PipelinePlot extends React.Component<Props, State> {
               name = name + " (+" + (step.names.length - 1) + ")"
             }
           }
-          const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+          let ch_step: number
+          if (ch_nbr < stages[stages.length - 1].length) {
+            ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+          } else {
+            ch_step = stage_start + stages[stages.length - 1][0].length
+          }
           total_length = Math.max(total_length, ch_step)
           this.appendBlock(
             labels,
@@ -460,10 +485,10 @@ class PipelinePlot extends React.Component<Props, State> {
             2.5,
             disabled
           )
-          const src_list = stages[stages.length - 1][ch_nbr]
-          const src_p = src_list[src_list.length - 1].output
-          const dest_p = io_points.input
           if (!disabled) {
+            const src_list = stages[stages.length - 1][ch_nbr]
+            const src_p = src_list[src_list.length - 1].output
+            const dest_p = io_points.input
             stages[stages.length - 1][ch_nbr].push(io_points)
             this.appendLink(links, labels, src_p, dest_p)
           }
@@ -472,7 +497,7 @@ class PipelinePlot extends React.Component<Props, State> {
     }
     const playbackchannels = []
     total_length = total_length + 1
-    const max_h = (total_length + 1) * spacing_h
+    max_h = (total_length + 1) * spacing_h
     const playbackname = PipelinePlot.deviceText(conf.devices.playback)
     this.appendFrame(
       labels,
