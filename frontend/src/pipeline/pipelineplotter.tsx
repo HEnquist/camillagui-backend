@@ -111,10 +111,13 @@ class PipelinePlot extends React.Component<Props, State> {
   private textColor?: string
   private borderColor?: string
   private arrowColor?: string
+  private arrowWidth?: string
   private backgroundColor?: string
   private frameBgColor?: string
   private blockBgColor?: string
+  private disabledBlockBgColor?: string
   private blockTextColor?: string
+  private disabledBlockTextColor?: string
   private node?: any
 
   constructor(props: Props) {
@@ -127,10 +130,13 @@ class PipelinePlot extends React.Component<Props, State> {
     this.textColor = styles.getPropertyValue('--text-color')
     this.borderColor = styles.getPropertyValue('--box-border-color')
     this.arrowColor = styles.getPropertyValue('--arrow-color')
+    this.arrowWidth = styles.getPropertyValue('--arrow-width')
     this.backgroundColor = styles.getPropertyValue('--background-color')
     this.frameBgColor = styles.getPropertyValue('--frame-background-color')
     this.blockBgColor = styles.getPropertyValue('--block-background-color')
+    this.disabledBlockBgColor = styles.getPropertyValue('--disabled-block-background-color')
     this.blockTextColor = styles.getPropertyValue('--block-text-color')
+    this.disabledBlockTextColor = styles.getPropertyValue('--disabled-block-text-color')
     this.createPipelinePlot()
   }
 
@@ -139,14 +145,14 @@ class PipelinePlot extends React.Component<Props, State> {
       this.createPipelinePlot()
   }
 
-  private appendBlock(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number): Block {
+  private appendBlock(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number, disabled: boolean): Block {
     const rect = {
       x: x - 0.5 * width,
       y: y - 0.35,
       width: width,
       height: 0.7,
       radius: 0.1,
-      fill: this.blockBgColor!,
+      fill: disabled ? this.disabledBlockBgColor! : this.blockBgColor!,
       stroke: this.borderColor!,
       "stroke-width": 1,
     }
@@ -161,7 +167,7 @@ class PipelinePlot extends React.Component<Props, State> {
       x: x,
       y: y + 0.1,
       text: label,
-      fill: this.blockTextColor!,
+      fill: disabled ? this.disabledBlockTextColor! : this.blockTextColor!,
       size: label_size,
       angle: 0,
     }
@@ -282,7 +288,8 @@ class PipelinePlot extends React.Component<Props, State> {
         label,
         0,
         spacing_v * (-active_channels / 2 + 0.5 + n),
-        1
+        1,
+        false
       )
       channels.push([io_points])
     }
@@ -295,6 +302,7 @@ class PipelinePlot extends React.Component<Props, State> {
     const pipeline = conf.pipeline ? conf.pipeline : []
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
+      const disabled = step.bypassed == true
       if (step.type === "Mixer" && conf.mixers) {
         total_length += 1
         const mixername = step.name
@@ -319,24 +327,29 @@ class PipelinePlot extends React.Component<Props, State> {
             label,
             total_length * spacing_h,
             spacing_v * (-active_channels / 2 + 0.5 + m),
-            1
+            1,
+            disabled
           )
           mixerchannels[m].push(io_points)
         }
-        for (let m = 0; m < mixconf.mapping.length; m++) {
-          const mapping = mixconf.mapping[m]
-          const dest_ch = mapping.dest
-          for (let p = 0; p < mapping.sources.length; p++) {
-            const src = mapping.sources[p]
-            const src_ch = src.channel
-            const label = src.gain + " dB" + (src.inverted ? " inv." : '')
-            const srclen = stages[stages.length - 1][src_ch].length
-            const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
-            const dest_p = mixerchannels[dest_ch][0].input
-            this.appendLink(links, labels, src_p, dest_p, label)
+        if (!disabled) {
+          for (let m = 0; m < mixconf.mapping.length; m++) {
+            const mapping = mixconf.mapping[m]
+            const dest_ch = mapping.dest
+            const mapping_muted = mapping.mute == true
+            for (let p = 0; p < mapping.sources.length; p++) {
+              const src = mapping.sources[p]
+              const src_ch = src.channel
+              const muted = src.mute == true || mapping_muted
+              const label = muted ? "muted" : src.gain + " dB" + (src.inverted ? " inv." : '')
+              const srclen = stages[stages.length - 1][src_ch].length
+              const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
+              const dest_p = mixerchannels[dest_ch][0].input
+              this.appendLink(links, labels, src_p, dest_p, label)
+            }
           }
+          stages.push(mixerchannels)
         }
-        stages.push(mixerchannels)
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Processor" && conf.processors) {
@@ -378,17 +391,20 @@ class PipelinePlot extends React.Component<Props, State> {
             label,
             total_length * spacing_h,
             spacing_v * (-active_channels / 2 + 0.5 + m),
-            1
+            1,
+            disabled
           )
           procchannels[m].push(io_points)
         }
-        for (let m = 0; m < active_channels; m++) {
-          const srclen = stages[stages.length - 1][m].length
-          const src_p = stages[stages.length - 1][m][srclen - 1].output
-          const dest_p = procchannels[m][0].input
-          this.appendLink(links, labels, src_p, dest_p)
+        if (!disabled) {
+          for (let m = 0; m < active_channels; m++) {
+            const srclen = stages[stages.length - 1][m].length
+            const src_p = stages[stages.length - 1][m][srclen - 1].output
+            const dest_p = procchannels[m][0].input
+            this.appendLink(links, labels, src_p, dest_p)
+          }
+          stages.push(procchannels)
         }
-        stages.push(procchannels)
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
@@ -404,13 +420,16 @@ class PipelinePlot extends React.Component<Props, State> {
               name,
               ch_step * spacing_h,
               spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-              2.5
+              2.5,
+              disabled
             )
             const src_list = stages[stages.length - 1][ch_nbr]
             const src_p = src_list[src_list.length - 1].output
             const dest_p = io_points.input
-            stages[stages.length - 1][ch_nbr].push(io_points)
-            this.appendLink(links, labels, src_p, dest_p)
+            if (!disabled) {
+              stages[stages.length - 1][ch_nbr].push(io_points)
+              this.appendLink(links, labels, src_p, dest_p)
+            }
           }
         }
         else {
@@ -429,7 +448,8 @@ class PipelinePlot extends React.Component<Props, State> {
             "",
             ch_step * spacing_h - 0.04,
             spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
-            2.5
+            2.5,
+            disabled
           )
           const io_points = this.appendBlock(
             labels,
@@ -437,13 +457,16 @@ class PipelinePlot extends React.Component<Props, State> {
             name,
             ch_step * spacing_h,
             spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-            2.5
+            2.5,
+            disabled
           )
           const src_list = stages[stages.length - 1][ch_nbr]
           const src_p = src_list[src_list.length - 1].output
           const dest_p = io_points.input
-          stages[stages.length - 1][ch_nbr].push(io_points)
-          this.appendLink(links, labels, src_p, dest_p)
+          if (!disabled) {
+            stages[stages.length - 1][ch_nbr].push(io_points)
+            this.appendLink(links, labels, src_p, dest_p)
+          }
         }
       }
     }
@@ -468,7 +491,8 @@ class PipelinePlot extends React.Component<Props, State> {
         label,
         spacing_h * total_length,
         spacing_v * (-active_channels / 2 + 0.5 + n),
-        1
+        1,
+        false
       )
       playbackchannels.push([io_points])
       const srclen = stages[stages.length - 1][n].length
@@ -584,6 +608,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("marker-end", "url(#arrow)")
       .attr("fill", "none")
       .attr("stroke", this.arrowColor!)
+      .attr("stroke-width", this.arrowWidth!)
   }
 
   render() {

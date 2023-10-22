@@ -61,10 +61,13 @@
     --groupdelay-color: #ffa010;
 
     /* Pipeline plot */
-    --arrow-color: var(--axes-color);
+    --arrow-color: rgb(106, 190, 124);
+    --arrow-width: 3px;
     --frame-background-color: #333;
     --block-background-color: rgb(200, 200, 200);
+    --disabled-block-background-color: rgb(120, 120, 120);
     --block-text-color: rgb(16, 10, 90);
+    --disabled-block-text-color: rgb(75, 75, 75);
 }
 
 /*
@@ -119,7 +122,10 @@
 
     /* Pipeline plot */
     --arrow-color: var(--text-color);
+    --arrow-width: 3px;
     --frame-background-color: rgb(180, 180, 180);
     --block-background-color: rgb(233, 233, 233);
+    --disabled-block-background-color: rgb(100, 100, 100);
     --block-text-color: rgb(16, 10, 90);
+    --disabled-block-text-color: rgb(0, 0, 0);
 }
