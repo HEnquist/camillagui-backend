@@ -5,6 +5,7 @@
   "homepage": ".",
   "dependencies": {
     "@babel/core": "^7.19.6",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@mdi/js": "^7.0.96",
     "@mdi/react": "^1.6.1",
     "@svgr/plugin-svgo": "^6.5.0",
