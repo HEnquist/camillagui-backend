@@ -210,6 +210,8 @@ export function Chart(props: {
       'freq': {
         type: 'logarithmic',
         position: 'bottom',
+        min: 10,
+        max: 20000,
         title: {
           display: true,
           text: 'Frequency, Hz',
@@ -380,8 +382,8 @@ export function Chart(props: {
       'delay': {
         type: 'linear',
         position: 'right',
-        suggestedMin: -0.001,
-        suggestedMax: 0.001,
+        suggestedMin: -0.1,
+        suggestedMax: 0.1,
         ticks: {
           color: groupdelayColor
         },
