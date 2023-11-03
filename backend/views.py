@@ -204,9 +204,9 @@ async def eval_filter_values(request):
         data["options"] = options
         return web.json_response(data)
     except FileNotFoundError:
-        raise web.HTTPNotFound("Filter coefficient file not found")
+        raise web.HTTPNotFound(text="Filter coefficient file not found")
     except Exception as e:
-        raise web.HTTPBadRequest(str(e))
+        raise web.HTTPBadRequest(text=str(e))
 
 async def eval_filterstep_values(request):
     """
@@ -236,9 +236,9 @@ async def eval_filterstep_values(request):
         data["options"] = options
         return web.json_response(data)
     except FileNotFoundError:
-        raise web.HTTPNotFound("Filter coefficient file not found")
+        raise web.HTTPNotFound(text="Filter coefficient file not found")
     except Exception as e:
-        raise web.HTTPBadRequest(str(e))
+        raise web.HTTPBadRequest(text=str(e))
 
 async def get_config(request):
     """
