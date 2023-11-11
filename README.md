@@ -43,10 +43,10 @@ You need both the CamillaDSP companion python libraries:
 - `pycamilladsp` version 2.0.0 from https://github.com/HEnquist/pycamilladsp
 - `pycamilladsp-plot` version 2.0.0 from https://github.com/HEnquist/pycamilladsp-plot
 
-To install the libraries, use `pip` to install directly from github:
+To install the libraries, use `pip` to install directly from github (replace the `v2.0.0` tag if needed to select a later version):
 ```sh
-pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0-alpha2
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0-alpha3
+pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0
+pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0
 ```
 Note that on some systems the command is `pip3` instead of `pip`.
 
@@ -84,9 +84,15 @@ If you want to be able to view the log file in the GUI, configure CamillaDSP to 
 
 ### Active config file
 The active config file path is memorized via the CamillaDSP state file.
-Set the `statefile_path` to point at the state file that the CamillaDSP process uses.
+Set the `statefile_path` to point at the statefile that the CamillaDSP process uses.
+For this to work, CamillaDSP must be running with a statefile.
+That is achieved by starting it with the `-s` parameter, giving the same path to the statefile as in `camillagui.yml`:
+```sh
+camilladsp -p 1234 -w -s /path/to/statefile.yml
+```
+
 If the CamillaDSP process is running, the active config file path will be fetched by querying the running process.
-If its not running, it will instead be read directly from the state file.
+If its not running, it will instead be read directly from the statefile.
 
 The active config will be loaded into the web interface when it is opened.
 If there is no active config, the `default_config` will be used.
