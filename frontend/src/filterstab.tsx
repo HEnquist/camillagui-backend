@@ -503,9 +503,16 @@ class FilterParams extends React.Component<{
   private onSubtypeChange(subtype: string) {
     this.props.updateFilter(filter => {
       const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
+      const oldParameters = filter.parameters
       filter.parameters = cloneDeep(DefaultFilterParameters[filter.type][subtype])
       if (oldFilename && isConvolutionFileFilter(filter))
         filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
+        for (const par in oldParameters) {
+          // Copy the value of any parameter common to old and new, except "type"
+          if (filter.parameters.hasOwnProperty(par) && par !== "type") {
+            filter.parameters[par] = oldParameters[par]
+          }
+      }
     }
     )
   }
