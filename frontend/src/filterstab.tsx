@@ -1,7 +1,7 @@
 import React from "react"
 import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
-import {mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowCollapse, mdiArrowExpand} from '@mdi/js'
+import { mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowCollapse, mdiArrowExpand } from '@mdi/js'
 import {
   Config,
   defaultFilter,
@@ -41,10 +41,10 @@ import {
   TextOption,
   UploadButton
 } from "./utilities/ui-components"
-import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
-import {modifiedCopyOf, Update} from "./utilities/common"
-import {isEqual} from "lodash"
-import {Chart, ChartData} from "./utilities/chart"
+import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { isEqual } from "lodash"
+import { Chart, ChartData } from "./utilities/chart"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -52,20 +52,20 @@ import {Chart, ChartData} from "./utilities/chart"
 
 
 export class FiltersTab extends React.Component<
-    {
-      filters: Filters
-      samplerate: number
-      channels: number
-      coeffDir: string
-      updateConfig: (update: Update<Config>) => void
-      errors: ErrorsForPath
-    },
-    {
-      filterKeys: { [name: string]: number}
-      availableCoeffFiles: string[]
-      sortBy: string
-      sortReverse: boolean
-    }
+  {
+    filters: Filters
+    samplerate: number
+    channels: number
+    coeffDir: string
+    updateConfig: (update: Update<Config>) => void
+    errors: ErrorsForPath
+  },
+  {
+    filterKeys: { [name: string]: number }
+    availableCoeffFiles: string[]
+    sortBy: string
+    sortReverse: boolean
+  }
 > {
   constructor(props: any) {
     super(props)
@@ -95,20 +95,20 @@ export class FiltersTab extends React.Component<
   }
 
   private changeSortBy(key: string) {
-    this.setState({sortBy: key})
+    this.setState({ sortBy: key })
   }
 
   private changeSortOrder(reverse: boolean) {
-    this.setState({sortReverse: reverse})
+    this.setState({ sortReverse: reverse })
   }
 
   private addFilter() {
     this.props.updateConfig(config => {
       const newFilter = newFilterName(config.filters)
       this.setState(oldState =>
-          modifiedCopyOf(oldState, newState =>
-              newState.filterKeys[newFilter] = 1 + Math.max(0, ...Object.values(oldState.filterKeys))
-          )
+        modifiedCopyOf(oldState, newState =>
+          newState.filterKeys[newFilter] = 1 + Math.max(0, ...Object.values(oldState.filterKeys))
+        )
       )
       if (config.filters === null) {
         config.filters = {}
@@ -121,20 +121,20 @@ export class FiltersTab extends React.Component<
     this.props.updateConfig(config => {
       removeFilter(config, name)
       this.setState(oldState =>
-          modifiedCopyOf(oldState, newState => delete newState.filterKeys[name]))
+        modifiedCopyOf(oldState, newState => delete newState.filterKeys[name]))
     })
   }
 
   private renameFilter(oldName: string, newName: string) {
     if (this.isFreeFilterName(newName))
-        this.props.updateConfig(config => {
-          this.setState(oldState =>
-              modifiedCopyOf(oldState, newState => {
-                newState.filterKeys[newName] = newState.filterKeys[oldName]
-                delete newState.filterKeys[oldName]
-              }))
-          renameFilter(config, oldName, newName)
-        })
+      this.props.updateConfig(config => {
+        this.setState(oldState =>
+          modifiedCopyOf(oldState, newState => {
+            newState.filterKeys[newName] = newState.filterKeys[oldName]
+            delete newState.filterKeys[oldName]
+          }))
+        renameFilter(config, oldName, newName)
+      })
   }
 
   private isFreeFilterName(name: string): boolean {
@@ -152,51 +152,51 @@ export class FiltersTab extends React.Component<
 
   private updateAvailableCoeffFiles() {
     fetch("/api/storedcoeffs")
-        .then(
-            result => result.json()
-                .then(coeffFiles => this.setState({availableCoeffFiles: coeffFiles[0]})),
-            error => console.log("Could not load stored coeffs", error)
-        )
+      .then(
+        result => result.json()
+          .then(coeffFiles => this.setState({ availableCoeffFiles: coeffFiles[0] })),
+        error => console.log("Could not load stored coeffs", error)
+      )
   }
 
   render() {
-    let {filters, errors} = this.props
+    let { filters, errors } = this.props
     return <div>
-      <div className="horizontally-spaced-content" style={{width: '700px'}}>
-      <EnumOption
-            value={this.state.sortBy}
-            options={FilterSortKeys}
-            desc="Sort filters by"
-            data-tip="Property used to sort filters"
-            onChange={this.changeSortBy}/>
-      <BoolOption
-            value={this.state.sortReverse}
-            desc="Reverse order"
-            data-tip="Reverse display order"
-            onChange={this.changeSortOrder} />
+      <div className="horizontally-spaced-content" style={{ width: '700px' }}>
+        <EnumOption
+          value={this.state.sortBy}
+          options={FilterSortKeys}
+          desc="Sort filters by"
+          data-tip="Property used to sort filters"
+          onChange={this.changeSortBy} />
+        <BoolOption
+          value={this.state.sortReverse}
+          desc="Reverse order"
+          data-tip="Reverse display order"
+          onChange={this.changeSortOrder} />
       </div>
-      <div className="tabpanel" style={{width: '700px'}}>
-        <ErrorMessage message={errors({path: []})}/>
-      {this.filterNames()
+      <div className="tabpanel" style={{ width: '700px' }}>
+        <ErrorMessage message={errors({ path: [] })} />
+        {this.filterNames()
           .map(name =>
             <FilterView
-            key={this.state.filterKeys[name]}
-            name={name}
-            filter={filters[name]}
-            errors={errorsForSubpath(errors, name)}
-            availableCoeffFiles={this.state.availableCoeffFiles}
-            updateFilter={update => this.updateFilter(name, update)}
-            rename={newName => this.renameFilter(name, newName)}
-            isFreeFilterName={this.isFreeFilterName}
-            remove={() => this.removeFilter(name)}
-            updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
-            coeffDir={this.props.coeffDir}
-            samplerate={this.props.samplerate}
-            channels={this.props.channels}
+              key={this.state.filterKeys[name]}
+              name={name}
+              filter={filters[name]}
+              errors={errorsForSubpath(errors, name)}
+              availableCoeffFiles={this.state.availableCoeffFiles}
+              updateFilter={update => this.updateFilter(name, update)}
+              rename={newName => this.renameFilter(name, newName)}
+              isFreeFilterName={this.isFreeFilterName}
+              remove={() => this.removeFilter(name)}
+              updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
+              coeffDir={this.props.coeffDir}
+              samplerate={this.props.samplerate}
+              channels={this.props.channels}
             />
-            )}
-      <AddButton tooltip="Add a new filter" onClick={this.addFilter}/>
-    </div></div>
+          )}
+        <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
+      </div></div>
   }
 }
 
@@ -270,18 +270,18 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
 
   private uploadCoeffs(files: FileList) {
     doUpload('coeff', files,
-        fileNames => {
-          this.setState({uploadState: {success: true}})
-          const {updateAvailableCoeffFiles} = this.props
-          this.pickFilterFile(fileNames[0])
-          updateAvailableCoeffFiles()
-        },
-        message => this.setState({uploadState: {success: false, message: message}})
+      fileNames => {
+        this.setState({ uploadState: { success: true } })
+        const { updateAvailableCoeffFiles } = this.props
+        this.pickFilterFile(fileNames[0])
+        updateAvailableCoeffFiles()
+      },
+      message => this.setState({ uploadState: { success: false, message: message } })
     )
   }
 
   private pickFilterFile(selectedFilename: string) {
-    const {coeffDir, updateFilter} = this.props
+    const { coeffDir, updateFilter } = this.props
     updateFilter(coeffFileNameUpdate(coeffDir, selectedFilename))
     this.updateDefaults(coeffFilePath(coeffDir, selectedFilename), true)
   }
@@ -290,14 +290,14 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     const filter = this.props.filter
     if (isConvolutionFileFilter(filter)) {
       fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`)
-          .then(response =>
-              response.json().then(json => {
-                const defaults = json as FilterDefaults
-                this.setState({filterDefaults: defaults, showDefaults: false})
-                if (updateFilter)
-                  this.updateFilterParamsWithDefaults(defaults)
-              })
-          )
+        .then(response =>
+          response.json().then(json => {
+            const defaults = json as FilterDefaults
+            this.setState({ filterDefaults: defaults, showDefaults: false })
+            if (updateFilter)
+              this.updateFilterParamsWithDefaults(defaults)
+          })
+        )
     }
   }
 
@@ -326,16 +326,16 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
 
   private toggleFilterPlot() {
     const showFilterPlot = !this.state.showFilterPlot
-    this.setState({showFilterPlot})
+    this.setState({ showFilterPlot })
     if (showFilterPlot)
       this.plotFilter()
     else
-      this.setState({data: undefined})
+      this.setState({ data: undefined })
   }
 
   private toggleExpand() {
     const expandPlot = !this.state.expandPlot
-    this.setState({expandPlot})
+    this.setState({ expandPlot })
   }
 
   private plotFilterInitially(file: string) {
@@ -357,89 +357,89 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         channels: channels || this.props.channels
       }),
     }).then(
-        result => result.json()
-            .then(data => {
-              if (this.state.showFilterPlot)
-                this.setState({data: data as ChartData})
-            }),
-        error => console.log("Failed", error)
+      result => result.json()
+        .then(data => {
+          if (this.state.showFilterPlot)
+            this.setState({ data: data as ChartData })
+        }),
+      error => console.log("Failed", error)
     )
   }
 
   render() {
-    const {name, filter} = this.props
+    const { name, filter } = this.props
     const uploadState = this.state.uploadState
     const isValidFilterName = (newName: string) =>
-        name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
+      name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
     let uploadIcon: { icon: string, className?: string, errorMessage?: string } =
-        {icon: mdiUpload}
+      { icon: mdiUpload }
     if (uploadState !== undefined && !uploadState.success)
-      uploadIcon = {icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message}
+      uploadIcon = { icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message }
     return <Box title={
       <ParsedInput
-          style={{width: '300px'}}
-          value={name}
-          asString={x => x}
-          parseValue={newName => isValidFilterName(newName) ? newName : undefined}
-          data-tip="Filter name, must be unique"
-          onChange={newName => this.props.rename(newName)}
-          immediate={false}
+        style={{ width: '300px' }}
+        value={name}
+        asString={x => x}
+        parseValue={newName => isValidFilterName(newName) ? newName : undefined}
+        data-tip="Filter name, must be unique"
+        onChange={newName => this.props.rename(newName)}
+        immediate={false}
       />
     }>
-      <div style={{display: 'flex', flexDirection: 'row'}}>
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
         <div
-            className="vertically-spaced-content"
-            style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
+          className="vertically-spaced-content"
+          style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <MdiButton
-              icon={mdiChartBellCurveCumulative}
-              tooltip="Plot frequency response of this filter"
-              onClick={this.toggleFilterPlot}/>
+            icon={mdiChartBellCurveCumulative}
+            tooltip="Plot frequency response of this filter"
+            onClick={this.toggleFilterPlot} />
           {isConvolutionFileFilter(filter) &&
-          <MdiButton
+            <MdiButton
               icon={mdiFileSearch}
               tooltip="Pick filter file"
-              onClick={() => this.setState({filterFilePopupOpen: true})}/>
+              onClick={() => this.setState({ filterFilePopupOpen: true })} />
           }
-          <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove}/>
+          <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove} />
         </div>
         <FilterParams
-            filter={this.props.filter}
-            errors={this.props.errors}
-            updateFilter={this.props.updateFilter}
-            availableCoeffFiles={this.props.availableCoeffFiles}
-            coeffDir={this.props.coeffDir}
-            filterDefaults={this.state.filterDefaults}
-            showDefaults={this.state.showDefaults}
-            setShowDefaults={() => this.setState({showDefaults: true})}/>
+          filter={this.props.filter}
+          errors={this.props.errors}
+          updateFilter={this.props.updateFilter}
+          availableCoeffFiles={this.props.availableCoeffFiles}
+          coeffDir={this.props.coeffDir}
+          filterDefaults={this.state.filterDefaults}
+          showDefaults={this.state.showDefaults}
+          setShowDefaults={() => this.setState({ showDefaults: true })} />
       </div>
 
 
       <ListSelectPopup
-          key="filter select popup"
-          open={this.state.filterFilePopupOpen}
-          header={
-            <>
-              <UploadButton
-                  icon={uploadIcon.icon}
-                  className={uploadIcon.className}
-                  tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
-                  upload={this.uploadCoeffs}
-                  multiple={true}/>
-              <div style={{margin: '10px 0'}}>For Raw filters, only single channel files are supported.</div>
-            </>
-          }
-          items={this.props.availableCoeffFiles}
-          onClose={() => this.setState({filterFilePopupOpen: false})}
-          onSelect={this.pickFilterFile}
+        key="filter select popup"
+        open={this.state.filterFilePopupOpen}
+        header={
+          <>
+            <UploadButton
+              icon={uploadIcon.icon}
+              className={uploadIcon.className}
+              tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
+              upload={this.uploadCoeffs}
+              multiple={true} />
+            <div style={{ margin: '10px 0' }}>For Raw filters, only single channel files are supported.</div>
+          </>
+        }
+        items={this.props.availableCoeffFiles}
+        onClose={() => this.setState({ filterFilePopupOpen: false })}
+        onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
-          <div style={{width: this.state.expandPlot&&this.state.showFilterPlot ? '1200px': '670px'}}>
-          <Chart data={this.state.data} onChange={this.plotFilterInitially}/>
+        <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1200px' : '670px' }}>
+          <Chart data={this.state.data} onChange={this.plotFilterInitially} />
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
-            tooltip={this.state.expandPlot ? "Collapse plot": "Expand plot" }
-            onClick={this.toggleExpand}/></div>
-          : null}
+            tooltip={this.state.expandPlot ? "Collapse plot" : "Expand plot"}
+            onClick={this.toggleExpand} /></div>
+        : null}
     </Box>
   }
 }
@@ -485,7 +485,7 @@ class FilterParams extends React.Component<{
 
   //private timer = delayedExecutor(1000)
 
-  private onDescChange(desc: string|null) {
+  private onDescChange(desc: string | null) {
     this.props.updateFilter(filter => {
       filter.description = desc
     })
@@ -502,11 +502,11 @@ class FilterParams extends React.Component<{
 
   private onSubtypeChange(subtype: string) {
     this.props.updateFilter(filter => {
-          const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
-          filter.parameters = cloneDeep(DefaultFilterParameters[filter.type][subtype])
-          if (oldFilename && isConvolutionFileFilter(filter))
-            filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
-        }
+      const oldFilename = isConvolutionFileFilter(filter) ? filter.parameters.filename : undefined
+      filter.parameters = cloneDeep(DefaultFilterParameters[filter.type][subtype])
+      if (oldFilename && isConvolutionFileFilter(filter))
+        filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
+    }
     )
   }
 
@@ -523,9 +523,9 @@ class FilterParams extends React.Component<{
       return freq.toFixed(0)
     }
     if (freq < 10000) {
-      return (freq/1000).toFixed(1)+ 'k'
+      return (freq / 1000).toFixed(1) + 'k'
     }
-    return (freq/1000).toFixed(0)+ 'k'
+    return (freq / 1000).toFixed(0) + 'k'
   }
 
   private addBand() {
@@ -548,59 +548,59 @@ class FilterParams extends React.Component<{
   }
 
   render() {
-    const {filter, errors} = this.props
+    const { filter, errors } = this.props
     const defaults = DefaultFilterParameters[filter.type]
     const subtypeOptions = defaults ? Object.keys(defaults) : []
-    return <div style={{width: '100%', textAlign: 'right'}}>
-      <ErrorMessage message={errors({path: []})}/>
+    return <div style={{ width: '100%', textAlign: 'right' }}>
+      <ErrorMessage message={errors({ path: [] })} />
       <EnumOption
-          value={filter.type}
-          error={errors({path: ['type']})}
-          options={Object.keys(DefaultFilterParameters)}
-          desc="type"
-          data-tip="Filter type"
-          onChange={this.onTypeChange}/>
+        value={filter.type}
+        error={errors({ path: ['type'] })}
+        options={Object.keys(DefaultFilterParameters)}
+        desc="type"
+        data-tip="Filter type"
+        onChange={this.onTypeChange} />
       {subtypeOptions[0] !== 'Default' &&
-      <EnumOption
+        <EnumOption
           value={filter.parameters.type}
-          error={errors({path: ['parameters', 'type']})}
+          error={errors({ path: ['parameters', 'type'] })}
           options={subtypeOptions}
           desc="subtype"
           data-tip="Filter subtype"
-          onChange={this.onSubtypeChange}/>
+          onChange={this.onSubtypeChange} />
       }
-      <ErrorMessage message={errors({path: ['parameters']})}/>
+      <ErrorMessage message={errors({ path: ['parameters'] })} />
       {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
-        <Button text="..." onClick={() => this.props.setShowDefaults()}/>
+        <Button text="..." onClick={() => this.props.setShowDefaults()} />
       }
       <OptionalTextOption
         placeholder="none"
         value={filter.description}
         desc="description"
         data-tip="Filter description"
-        onChange={this.onDescChange}/>
+        onChange={this.onDescChange} />
       {isGraphicEqualizer(filter) &&
-          <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
           {filter.parameters.gains.map((gain: number, index: number, gains: [number]) =>
-            <div key={"eqslider" + index} style={{display: 'flex', flexDirection: 'column'}}>
-              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+            <div key={"eqslider" + index} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
                 {gain.toFixed(1)}
               </div>
               <div className="eqslider-wrapper">
                 <input className="eqslider" type="range" min="-10" max="10" value={gain} step="0.1" onChange={e => this.adjustBand(index, e.target.value)} onDoubleClick={e => this.adjustBand(index, "0.0")} />
               </div>
-              <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center'}}>
+              <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
                 {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
               </div>
             </div>
           )}
-          <div style={{display: 'flex', flexDirection: 'column'}}>
-            <AddButton tooltip="Add one band" onClick={this.addBand}/>
-            <DeleteButton tooltip="Remove one band" onClick={this.removeBand}/>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <AddButton tooltip="Add one band" onClick={this.addBand} />
+            <DeleteButton tooltip="Remove one band" onClick={this.removeBand} />
           </div>
         </div>
-        }
+      }
     </div>
   }
 
@@ -616,7 +616,7 @@ class FilterParams extends React.Component<{
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
-        error: errors({path: [parameter]}),
+        error: errors({ path: [parameter] }),
         desc: info.desc,
         'data-tip': info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
@@ -627,79 +627,79 @@ class FilterParams extends React.Component<{
       if (this.isHiddenDefaultValue(parameter))
         return null
       if ((this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type))
-          && (parameter === 'q' || parameter === 'slope' || parameter === 'bandwidth'))
+        && (parameter === 'q' || parameter === 'slope' || parameter === 'bandwidth'))
         return <this.QorBandwithOrSlope
-            {...commonProps}
-            parameter={parameter}
-            parameters={parameters}
-            onDescChange={option => this.props.updateFilter(filter => {
-              this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
-              filter.parameters[option] = this.defaultParameterValues[option]
-            })}/>
+          {...commonProps}
+          parameter={parameter}
+          parameters={parameters}
+          onDescChange={option => this.props.updateFilter(filter => {
+            this.qBandwithSlope.forEach(parameter => { delete filter.parameters[parameter] })
+            filter.parameters[option] = this.defaultParameterValues[option]
+          })} />
 
       if (info.type === 'text')
-        return <TextOption {...commonProps}/>
+        return <TextOption {...commonProps} />
       if (info.type === 'int')
-        return <IntOption {...commonProps}/>
+        return <IntOption {...commonProps} />
       if (info.type === 'float')
-        return <FloatOption {...commonProps}/>
+        return <FloatOption {...commonProps} />
       if (info.type === 'optional_int')
-        return <OptionalIntOption {...commonProps}/>
+        return <OptionalIntOption {...commonProps} />
       if (info.type === 'optional_float')
-        return <OptionalFloatOption {...commonProps}/>
+        return <OptionalFloatOption {...commonProps} />
       if (info.type === "bool")
-        return <BoolOption {...commonProps}/>
+        return <BoolOption {...commonProps} />
       if (info.type === "optional_bool")
-        return <OptionalBoolOption {...commonProps}/>
+        return <OptionalBoolOption {...commonProps} />
       if (info.type === 'floatlist')
-        return <FloatListOption {...commonProps}/>
+        return <FloatListOption {...commonProps} />
       if (info.type === 'enum') {
         let options = info.options
         if (parameter === "fader" && this.props.filter.type === "Volume") {
           options = VolumeFaders
         }
-        return <EnumOption {...commonProps} options={options}/>
+        return <EnumOption {...commonProps} options={options} />
       }
       return null
     })
   }
 
   private filenameField(
-      filename: string,
-      props: {
-        onChange: (value: any) => void
-        "data-tip": string
-        value: any
-        key: string
-        desc: string
-      }
+    filename: string,
+    props: {
+      onChange: (value: any) => void
+      "data-tip": string
+      value: any
+      key: string
+      desc: string
+    }
   ) {
     const coeffDir = this.props.coeffDir
     const selectedFile = coeffFileNameFromPath(coeffDir, filename)
     return <TextOption
-        {...props}
-        value={selectedFile}
-        onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}/>
+      {...props}
+      value={selectedFile}
+      onChange={value => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))} />
   }
 
   private hasHiddenDefaultValue() {
     const filterDefaults = this.props.filterDefaults
     return filterDefaults
-        && Object.keys(filterDefaults).some(parameter => this.isHiddenDefaultValue(parameter))
+      && Object.keys(filterDefaults).some(parameter => this.isHiddenDefaultValue(parameter))
   }
 
   private isHiddenDefaultValue(parameter: string) {
     const filter = this.props.filter
     const filterDefaults: any = this.props.filterDefaults
     return !this.props.showDefaults
-        && parameter
-        && hiddenParameters.includes(parameter)
-        && filter.parameters[parameter] === filterDefaults[parameter]
+      && parameter
+      && hiddenParameters.includes(parameter)
+      && filter.parameters[parameter] === filterDefaults[parameter]
   }
 
   parameterInfos: {
     [type: string]: {
-      type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_bool' |'optional_int' | 'optional_float'
+      type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_bool' | 'optional_int' | 'optional_float'
       desc: string
       tooltip: string
     } | {
@@ -709,191 +709,191 @@ class FilterParams extends React.Component<{
       options: string[]
     }
   } = {
-    a: {
-      type: "floatlist",
-      desc: "a",
-      tooltip: "Comma-separated list of coefficients for a",
-    },
-    a1: {
-      type: "float",
-      desc: "a1",
-      tooltip: "Value for Biquad a1 coefficient",
-    },
-    a2: {
-      type: "float",
-      desc: "a2",
-      tooltip: "Value for Biquad a2 coefficient",
-    },
-    amplitude: {
-      type: "float",
-      desc: "amplitude",
-      tooltip: "Dither amplitude relative to target LSB",
-    },
-    attenuate_mid: {
-      type: "bool",
-      desc: "attenuate_mid",
-      tooltip: "Attenuate midband instead of boosting extremes, avoids clipping when used with external volume control"
-    },
-    b0: {
-      type: "float",
-      desc: "b0",
-      tooltip: "Value for Biquad b0 coefficient",
-    },
-    b: {
-      type: "floatlist",
-      desc: "b",
-      tooltip: "Comma-separated list of coefficients for b",
-    },
-    b1: {
-      type: "float",
-      desc: "b1",
-      tooltip: "Value for Biquad b1 coefficient",
-    },
-    b2: {
-      type: "float",
-      desc: "b2",
-      tooltip: "Value for Biquad b2 coefficient",
-    },
-    bandwidth: {
-      type: "float",
-      desc: "bandwidth",
-      tooltip: "Filter bandwidth in octaves"
-    },
-    bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
-    channel: {
-      type: "int",
-      desc: "channel",
-      tooltip: "Index of channel to use, starting from 0",
-    },
-    clip_limit: { type: "float", desc: "clip_limit", tooltip: "Clip limit in dB" },
-    delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
-    filename: {
-      type: "text",
-      desc: "filename",
-      tooltip:
+      a: {
+        type: "floatlist",
+        desc: "a",
+        tooltip: "Comma-separated list of coefficients for a",
+      },
+      a1: {
+        type: "float",
+        desc: "a1",
+        tooltip: "Value for Biquad a1 coefficient",
+      },
+      a2: {
+        type: "float",
+        desc: "a2",
+        tooltip: "Value for Biquad a2 coefficient",
+      },
+      amplitude: {
+        type: "float",
+        desc: "amplitude",
+        tooltip: "Dither amplitude relative to target LSB",
+      },
+      attenuate_mid: {
+        type: "bool",
+        desc: "attenuate_mid",
+        tooltip: "Attenuate midband instead of boosting extremes, avoids clipping when used with external volume control"
+      },
+      b0: {
+        type: "float",
+        desc: "b0",
+        tooltip: "Value for Biquad b0 coefficient",
+      },
+      b: {
+        type: "floatlist",
+        desc: "b",
+        tooltip: "Comma-separated list of coefficients for b",
+      },
+      b1: {
+        type: "float",
+        desc: "b1",
+        tooltip: "Value for Biquad b1 coefficient",
+      },
+      b2: {
+        type: "float",
+        desc: "b2",
+        tooltip: "Value for Biquad b2 coefficient",
+      },
+      bandwidth: {
+        type: "float",
+        desc: "bandwidth",
+        tooltip: "Filter bandwidth in octaves"
+      },
+      bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
+      channel: {
+        type: "int",
+        desc: "channel",
+        tooltip: "Index of channel to use, starting from 0",
+      },
+      clip_limit: { type: "float", desc: "clip_limit", tooltip: "Clip limit in dB" },
+      delay: { type: "float", desc: "delay", tooltip: "Delay in ms or samples" },
+      filename: {
+        type: "text",
+        desc: "filename",
+        tooltip:
           `Filter file name
            <br/>$samplerate$ will be replaced with the current samplerate
            <br/>$channels$ will be replaced with the number of channels of the capture device
           `,
-    },
-    fader: {
-      type: "enum",
-      desc: "fader",
-      options: LoudnessFaders,
-      tooltip: "Fader to react to",
-    },
-    format: {
-      type: "enum",
-      desc: "format",
-      options: ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
-      tooltip: "Sample format",
-    },
-    freq: { type: "float", desc: "freq", tooltip: "Frequency" },
-    freq_act: {
-      type: "float",
-      desc: "freq_act",
-      tooltip: "Frequency of actual system",
-    },
-    freq_max: {
-      type: "float",
-      desc: "freq_max",
-      tooltip: "Upper frequency limit",
-    },
-    freq_min: {
-      type: "float",
-      desc: "freq_min",
-      tooltip: "Lower frequency limit",
-    },
-    freq_p: { type: "float", desc: "freq_p", tooltip: "Pole frequency" },
-    freq_target: {
-      type: "float",
-      desc: "freq_target",
-      tooltip: "Target frequency",
-    },
-    freq_z: { type: "float", desc: "freq_z", tooltip: "Zero frequency" },
-    gain: { type: "float", desc: "gain", tooltip: "Gain in dB" },
-    high_boost: {
-      type: "float",
-      desc: "high_boost",
-      tooltip: "Volume boost for high frequencies when volume is at reference_level - 20dB",
-    },
-    inverted: { type: "optional_bool", desc: "inverted", tooltip: "Invert signal" },
-    length: {
-      type: "int",
-      desc: "length",
-      tooltip: "Number of coefficients to generate",
-    },
-    low_boost: {
-      type: "float",
-      desc: "low_boost",
-      tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
-    },
-    mute: { type: "optional_bool", desc: "mute", tooltip: "Mute" },
-    normalize_at_dc: {
-      type: "bool",
-      desc: "normalize_at_dc",
-      tooltip: "Normalize at low frequencies"
-    },
-    order: { type: "int", desc: "order", tooltip: "Filter order" },
-    q: { type: "float", desc: "Q", tooltip: "Q-value" },
-    q_act: {
-      type: "float",
-      desc: "Q actual",
-      tooltip: "Q-value of actual system",
-    },
-    q_p: { type: "float", desc: "Q pole", tooltip: "Pole Q-value" },
-    q_target: { type: "float", desc: "Q target", tooltip: "Target Q-value" },
-    ramp_time: {
-      type: "float",
-      desc: "ramp_time",
-      tooltip: "Volume change ramp time in ms",
-    },
-    read_bytes_lines: {
-      type: "optional_int",
-      desc: "read_bytes_lines",
-      tooltip: "Read up to this number of bytes or lines",
-    },
-    reference_level: {
-      type: "float",
-      desc: "reference_level",
-      tooltip: "Volume level at which low_boost/high_boost is starting to be applied.<br>" +
+      },
+      fader: {
+        type: "enum",
+        desc: "fader",
+        options: LoudnessFaders,
+        tooltip: "Fader to react to",
+      },
+      format: {
+        type: "enum",
+        desc: "format",
+        options: ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
+        tooltip: "Sample format",
+      },
+      freq: { type: "float", desc: "freq", tooltip: "Frequency" },
+      freq_act: {
+        type: "float",
+        desc: "freq_act",
+        tooltip: "Frequency of actual system",
+      },
+      freq_max: {
+        type: "float",
+        desc: "freq_max",
+        tooltip: "Upper frequency limit",
+      },
+      freq_min: {
+        type: "float",
+        desc: "freq_min",
+        tooltip: "Lower frequency limit",
+      },
+      freq_p: { type: "float", desc: "freq_p", tooltip: "Pole frequency" },
+      freq_target: {
+        type: "float",
+        desc: "freq_target",
+        tooltip: "Target frequency",
+      },
+      freq_z: { type: "float", desc: "freq_z", tooltip: "Zero frequency" },
+      gain: { type: "float", desc: "gain", tooltip: "Gain in dB" },
+      high_boost: {
+        type: "float",
+        desc: "high_boost",
+        tooltip: "Volume boost for high frequencies when volume is at reference_level - 20dB",
+      },
+      inverted: { type: "optional_bool", desc: "inverted", tooltip: "Invert signal" },
+      length: {
+        type: "int",
+        desc: "length",
+        tooltip: "Number of coefficients to generate",
+      },
+      low_boost: {
+        type: "float",
+        desc: "low_boost",
+        tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
+      },
+      mute: { type: "optional_bool", desc: "mute", tooltip: "Mute" },
+      normalize_at_dc: {
+        type: "bool",
+        desc: "normalize_at_dc",
+        tooltip: "Normalize at low frequencies"
+      },
+      order: { type: "int", desc: "order", tooltip: "Filter order" },
+      q: { type: "float", desc: "Q", tooltip: "Q-value" },
+      q_act: {
+        type: "float",
+        desc: "Q actual",
+        tooltip: "Q-value of actual system",
+      },
+      q_p: { type: "float", desc: "Q pole", tooltip: "Pole Q-value" },
+      q_target: { type: "float", desc: "Q target", tooltip: "Target Q-value" },
+      ramp_time: {
+        type: "float",
+        desc: "ramp_time",
+        tooltip: "Volume change ramp time in ms",
+      },
+      read_bytes_lines: {
+        type: "optional_int",
+        desc: "read_bytes_lines",
+        tooltip: "Read up to this number of bytes or lines",
+      },
+      reference_level: {
+        type: "float",
+        desc: "reference_level",
+        tooltip: "Volume level at which low_boost/high_boost is starting to be applied.<br>" +
           "Boost is scaled up linearly to reach the full value at reference_level - 20dB.<br>" +
           "Above reference_level only gain is applied.",
-    },
-    skip_bytes_lines: {
-      type: "optional_int",
-      desc: "skip_bytes_lines",
-      tooltip: "Number of bytes or lines to skip at beginning of file",
-    },
-    slope: {
-      type: "float",
-      desc: "slope",
-      tooltip: "Filter slope in dB per octave",
-    },
-    soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
-    subsample: {
-      type: "bool",
-      desc: "subsample",
-      tooltip: "Use subsample precision for delays"
-    },
-    unit: {
-      type: "enum",
-      desc: "unit",
-      options: ["ms", "samples"],
-      tooltip: "Unit for delay",
-    },
-    values: {
-      type: "floatlist",
-      desc: "values",
-      tooltip: "Comma separated list of filter coefficients",
-    },
-    scale: {
-      type: "enum",
-      desc: "scale",
-      options: ["dB", "linear"],
-      tooltip: "Scale for gain",
-    },
-  }
+      },
+      skip_bytes_lines: {
+        type: "optional_int",
+        desc: "skip_bytes_lines",
+        tooltip: "Number of bytes or lines to skip at beginning of file",
+      },
+      slope: {
+        type: "float",
+        desc: "slope",
+        tooltip: "Filter slope in dB per octave",
+      },
+      soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
+      subsample: {
+        type: "bool",
+        desc: "subsample",
+        tooltip: "Use subsample precision for delays"
+      },
+      unit: {
+        type: "enum",
+        desc: "unit",
+        options: ["ms", "samples"],
+        tooltip: "Unit for delay",
+      },
+      values: {
+        type: "floatlist",
+        desc: "values",
+        tooltip: "Comma separated list of filter coefficients",
+      },
+      scale: {
+        type: "enum",
+        desc: "scale",
+        options: ["dB", "linear"],
+        tooltip: "Scale for gain",
+      },
+    }
 
   qBandwithSlope = ['q', 'slope', 'bandwidth']
 
@@ -917,31 +917,31 @@ class FilterParams extends React.Component<{
     onDescChange: (option: string) => void
     onChange: (value: number) => void
   }) {
-    const {parameter, parameters, desc, value, error, onDescChange, onChange} = props
+    const { parameter, parameters, desc, value, error, onDescChange, onChange } = props
     let descOptions: { [parameter: string]: string } = {}
     if (this.qAndSlopeFilters.includes(parameters.type))
       ['q', 'slope'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
     else if (this.qAndBandwidthFilters.includes(parameters.type))
       ['q', 'bandwidth'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
     else
-      return <ErrorMessage message={error}/>
+      return <ErrorMessage message={error} />
     return <>
-      <label className="setting" style={{textAlign: 'right'}} data-tip={props['data-tip']}>
+      <label className="setting" style={{ textAlign: 'right' }} data-tip={props['data-tip']}>
         <EnumInput
-            value={parameter}
-            options={descOptions}
-            desc={desc}
-            style={{display: 'table-cell', width: 'min-content', textAlign: 'right', marginRight: '5px'}}
-            data-tip={props["data-tip"]}
-            onChange={onDescChange}/>
+          value={parameter}
+          options={descOptions}
+          desc={desc}
+          style={{ display: 'table-cell', width: 'min-content', textAlign: 'right', marginRight: '5px' }}
+          data-tip={props["data-tip"]}
+          onChange={onDescChange} />
         <FloatInput
-            className="setting-input"
-            error={error !== undefined}
-            value={value}
-            style={{width: '55%'}}
-            data-tip={props["data-tip"]}
-            onChange={onChange}/>
-        <ErrorMessage message={error}/>
+          className="setting-input"
+          error={error !== undefined}
+          value={value}
+          style={{ width: '55%' }}
+          data-tip={props["data-tip"]}
+          onChange={onChange} />
+        <ErrorMessage message={error} />
       </label>
     </>
   }
