@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 2.0.0 and up.
+This version works with CamillaDSP 2.0.x.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
@@ -10,46 +10,24 @@ The complete GUI is made up of two parts:
 
 ## Setting up
 ### Python dependencies
-Install the dependencies:
-- python 3.8 or later
+The gui requires the following Python packages:
+- Python 3.8 or later
 - websocket-client (required by pycamilladsp)
 - jsonschema (required by pycamilladsp-plot)
 - aiohttp
-
-These are the names of the packages needed:
-| Distribution    | python  | websocket-client         | aiohttp         | jsonschema         |
-|-----------------|---------|--------------------------|-----------------|--------------------|
-| Fedora          | python3 | python3-websocket-client | python3-aiohttp | python3-jsonschema |
-| Debian/Raspbian | python3 | python3-websocket        | python3-aiohttp | python3-jsonschema |
-| Arch            | python  | python-websocket-client  | python-aiohttp  | python-jsonschema  |
-| pip             | -       | websocket_client         | aiohttp         | jsonschema         |
-| Anaconda        | -       | websocket_client         | aiohttp         | jsonschema         |
-
-TODO shorten and link to the pycamilladsp install guide!
-
-#### Linux
-Most linux distributions have Python 3.8 or newer installed by default. Use the normal package manager to install the packages.
-
-#### Windows
-Use Anaconda: https://www.anaconda.com/products/individual. Then use Anaconda Navigator to install the dependencies.
-
-#### macOS
-On macOS use either Anaconda or Homebrew. The Anaconda procedure is the same as for Windows.
-
-For Homebrew, install Python with `brew install python`, after which you can install the needed packages with pip, `pip3 install websocket_client` etc.
 
 ### CamillaDSP Python libraries
 You need both the CamillaDSP companion python libraries:
 - `pycamilladsp` version 2.0.0 from https://github.com/HEnquist/pycamilladsp
 - `pycamilladsp-plot` version 2.0.0 from https://github.com/HEnquist/pycamilladsp-plot
 
-To install the libraries, use `pip` to install directly from github (replace the `v2.0.0` tag if needed to select a later version):
-```sh
-pip install git+https://github.com/HEnquist/pycamilladsp.git@v2.0.0
-pip install git+https://github.com/HEnquist/pycamilladsp-plot.git@v2.0.0
-```
-Note that on some systems the command is `pip3` instead of `pip`.
+### Prepare the Python environment
+The easiest way to get the Python environment prepared is to use the setup scripts from
+[camilladsp-setupscripts](https://github.com/HEnquist/camilladsp-setupscripts).
 
+If doing a manual installation, there are many ways of installing Python and setting up environments.
+Please see the [documentation for pycamilladsp](https://henquist.github.io/pycamilladsp/install/#installing)
+for more information.
 
 ### Install gui server
 Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
