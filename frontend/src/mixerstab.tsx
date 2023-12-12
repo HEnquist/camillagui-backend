@@ -6,8 +6,11 @@ import {
   DeleteButton,
   ErrorMessage,
   IntOption,
+  FloatOption,
   MdiButton,
-  ParsedInput
+  ParsedInput,
+  OptionalTextInput,
+  OptionalEnumOption
 } from "./utilities/ui-components"
 import {
   Config,
@@ -21,7 +24,8 @@ import {
   newMixerName,
   removeMixer,
   renameMixer,
-  Source
+  Source,
+  GainScales
 } from "./camilladsp/config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
@@ -38,6 +42,7 @@ export class MixersTab extends React.Component<{
     super(props)
     this.mixerNames = this.mixerNames.bind(this)
     this.addMixer = this.addMixer.bind(this)
+    this.updateMixer = this.updateMixer.bind(this)
     this.renameMixer = this.renameMixer.bind(this)
     this.removeMixer = this.removeMixer.bind(this)
     this.isFreeMixerName = this.isFreeMixerName.bind(this)
@@ -51,6 +56,15 @@ export class MixersTab extends React.Component<{
     return mixerNamesOf(this.props.mixers)
   }
 
+  private updateMixer(name: string, update: Update<Mixer>) {
+    this.props.updateConfig(config => {
+      if (!config.mixers) {
+        config.mixers = {}
+      }
+      update(config.mixers[name])
+    })
+  }
+
   private addMixer() {
     this.props.updateConfig(config => {
       const newMixer = newMixerName(config.mixers)
@@ -59,6 +73,9 @@ export class MixersTab extends React.Component<{
               newState.mixerKeys[newMixer] = 1 + Math.max(0, ...Object.values(oldState.mixerKeys))
           )
       )
+      if (config.mixers === null) {
+        config.mixers = {}
+      }
       config.mixers[newMixer] = defaultMixer()
     })
   }
@@ -89,9 +106,9 @@ export class MixersTab extends React.Component<{
   }
 
   render() {
-    const {mixers, errors, updateConfig} = this.props
+    const {mixers, errors} = this.props
     return (
-        <div className="tabpanel">
+        <div className="tabpanel" style={{width: '700px'}}>
           <ErrorMessage message={errors({path: []})}/>
           {this.mixerNames()
               .map(name =>
@@ -100,7 +117,7 @@ export class MixersTab extends React.Component<{
                       name={name}
                       mixer={mixers[name]}
                       errors={errorsForSubpath(errors, name)}
-                      update={updateMixer => updateConfig(config => updateMixer(config.mixers[name]))}
+                      update={update => this.updateMixer(name, update)}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
                       remove={() => this.removeMixer(name)}
@@ -175,13 +192,20 @@ function MixerView(props: {
             update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
             remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
     )}
-    <div>
+    <div className="vertically-spaced-content">
+    <div style={{display: 'flex', justifyContent: 'left'}}>
       {mixer.mapping.length < mixer.channels.out &&
         <AddButton
             tooltip="Add a mapping"
             style={{marginTop: '10px'}}
             onClick={() => update(mixer => mixer.mapping.push(defaultMapping(mixer.channels.out, mixer.mapping)))}/>
       }
+      </div>
+      <OptionalTextInput
+        placeholder="description"
+        value={mixer.description}
+        data-tip="Mixer description"
+        onChange={desc => update(mixer => mixer.description = desc)}/>
     </div>
   </Box>
 }
@@ -209,7 +233,7 @@ function MappingView(props: {
           icon={mdiVolumeOff}
           tooltip={"Mute this destination channel"}
           buttonSize="small"
-          className={mapping.mute ? "highlighted-button" : ""}
+          highlighted={mapping.mute}
           onClick={() => update(mapping => mapping.mute = !mapping.mute)}/>
       <DeleteButton
           tooltip="Delete this mapping"
@@ -264,24 +288,32 @@ function SourceView(props: {
             onChange={channel => update(source => source.channel = channel)}/>
       </div>
       <div style={{flexGrow: 1}}>
-        <IntOption
-            value={source.gain}
+        <FloatOption
+            value={source.gain ? source.gain : 0.0}
             desc="gain"
             data-tip="Gain in dB for this source channel"
-            small={true}
             onChange={gain => update(source => source.gain = gain)}/>
+      </div>
+      <div style={{flexGrow: 1}}>
+        <OptionalEnumOption
+            value= {source.scale}
+            error={errors({path: ['scale']})}
+            options={GainScales}
+            desc="scale"
+            data-tip="Scale for gain"
+            onChange={scale => update(source => source.scale = scale )}/>
       </div>
       <MdiButton
           icon={mdiPlusMinusVariant}
           tooltip={"Invert this source channel"}
           buttonSize="small"
-          className={source.inverted ? "highlighted-button" : ""}
+          highlighted={source.inverted}
           onClick={() => update(source => source.inverted = !source.inverted)}/>
       <MdiButton
           icon={mdiVolumeOff}
           tooltip={"Mute this source channel"}
           buttonSize="small"
-          className={source.mute ? "highlighted-button" : ""}
+          highlighted={source.mute}
           onClick={() => update(source => source.mute = !source.mute)}/>
       <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
     </div>

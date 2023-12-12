@@ -63,6 +63,10 @@ textarea.logfileviewer {
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
 
+.react-tabs__tab--selected:after { /* Removes the white bar below selected tab headers */
+  visibility: hidden;
+}
+
 .react-tabs__tab-list {
   border-bottom: var(--box-border);
 }
@@ -144,8 +148,41 @@ textarea.logfileviewer {
   vertical-align: middle;
 }
 
+.setting-button {
+  vertical-align: middle;
+}
+
+.textbox {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+}
+
+.textbox-large {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+}
+
+.setting-input-default {
+  display: table-cell;
+  width: 100%;
+  vertical-align: middle;
+  color: var(--disabled-text-color);
+}
+
 .small-setting-input {
   width: 5em;
+}
+
+.optional-setting-input {
+  display: table-cell;
+  width: 67%;
+  vertical-align: middle;
+}
+
+.small-optinal-setting-input {
+  width: 4em;
 }
 
 .box {
@@ -353,4 +390,22 @@ div .popup-content {
   transform: rotate(270deg);
   transform-origin: center;
   text-align: center;
+}
+
+.eqslider {
+  width: 200px;
+  height: 30px;
+  transform: rotate(-90deg);
+  transform-origin: left;
+  position: absolute;
+  left: 50%;
+  bottom: -5%;
+}
+
+.eqslider-wrapper {
+  display: inline-block;
+  width: 30px;
+  height: 200px;
+  position: relative;
+  padding: 5px 5px;
 }

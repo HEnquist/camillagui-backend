@@ -1,16 +1,16 @@
-import React, {ChangeEvent, Component} from "react"
+import React, {Component} from "react"
 import {Set} from "immutable"
 import {Box, Button, CheckBox, doUpload, download, MdiButton, UploadButton} from "./utilities/ui-components"
-import { GuiConfig } from "./guiconfig"
+import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
-  mdiAlphaABox,
-  mdiAlphaABoxOutline,
   mdiCheck,
   mdiContentSave,
   mdiDelete,
   mdiDownload,
   mdiRefresh,
+  mdiStar,
+  mdiStarOutline,
   mdiUpload
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
@@ -155,10 +155,10 @@ class FileTable extends Component<
     download(this.type + 's.zip', zipFile)
   }
 
-  private upload(event: ChangeEvent<HTMLInputElement>) {
+  private upload(files: FileList) {
     doUpload(
         this.type,
-        event,
+        files,
         () => {
           this.setState({
             fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
@@ -354,7 +354,12 @@ export function loadDefaultConfigJson(): Promise<Response> {
 
 export function loadActiveConfig(): Promise<{configFileName: string, config: Config}> {
   return fetch("/api/getactiveconfigfile")
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw Error(response.statusText);
+        }
+        return response.json()
+      })
 }
 
 function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
@@ -389,7 +394,7 @@ function DeleteFilesButton(props: { selectedFiles: Set<string>, delete: () => {}
 
 function UploadFilesButton(props: {
   fileStatus: FileStatus | null,
-  upload: (e: ChangeEvent<HTMLInputElement>) => void
+  upload: (files: FileList) => void
 }) {
   const fileStatus = props.fileStatus
   let uploadIcon: { icon: string, className?: string } =
@@ -402,7 +407,7 @@ function UploadFilesButton(props: {
   return <UploadButton
       icon={uploadIcon.icon}
       tooltip={'Upload files'}
-      onChange={props.upload}
+      upload={props.upload}
       className={uploadIcon.className}
       multiple={true}/>
 }
@@ -424,9 +429,9 @@ function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?:
 
   return <MdiButton
       enabled={enabled}
-      icon={active ? mdiAlphaABox : mdiAlphaABoxOutline}
+      icon={active ? mdiStar : mdiStarOutline}
       tooltip={tooltip}
-      className={active ? "highlighted-button" : ""}
+      highlighted={active}
       onClick={onClick}/>
 }
 
@@ -478,7 +483,6 @@ function LoadButton(
 
 function FileDownloadButton(props: { type: string, filename: string, isCurrentConfig: boolean }) {
   const { type, filename, isCurrentConfig } = props
-  //const classNames = 'button button-with-text ' + (isCurrentConfig ? 'highlighted-button' : '')
   const classNames = 'file-link'
   return <a className={classNames}
             style={{width: 'max-content'}}
@@ -536,7 +540,6 @@ class NewConfig extends Component<
         return
       }
       const jsonConfig = await response.json()
-      console.log(jsonConfig)
       this.props.setCurrentConfig!(undefined, jsonConfig as Config)
     } catch(e) {
       console.log(e)

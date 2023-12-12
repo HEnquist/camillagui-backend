@@ -3,12 +3,11 @@ import 'reactjs-popup/dist/index.css'
 import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
-import {CloseButton, cssStyles} from "../utilities/ui-components"
-import {CaptureDevice, Config, PlaybackDevice} from "../camilladsp/config"
+import { CloseButton, cssStyles } from "../utilities/ui-components"
+import { CaptureDevice, Config, PlaybackDevice } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
-
 
 export function PipelinePopup(props: {
   config: Config,
@@ -21,8 +20,8 @@ export function PipelinePopup(props: {
     var svg = document.getElementById("svg_pipeline");
     if (svg !== null) {
       var serializer = new XMLSerializer();
-      var source ='<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg);
-      var url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
+      var source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg);
+      var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
       const link = document.createElement('a')
       link.download = "pipeline.svg"
       link.href = url
@@ -32,28 +31,28 @@ export function PipelinePopup(props: {
   const toggleExpandFiltersteps = () => setExpandFiltersteps(!expandFiltersteps)
   const toggleExpandVertical = () => setExpandVertical(!expandVertical)
   return <Popup
-      open={props.open}
-      closeOnDocumentClick
-      onClose={props.onClose}
-      contentStyle={{width: '90%'}}
+    open={props.open}
+    closeOnDocumentClick
+    onClose={props.onClose}
+    contentStyle={{ width: '90%' }}
   >
-    <CloseButton onClick={props.onClose}/>
-    <PipelinePlot config={props.config} expand_filters={expandFiltersteps} expand_vertical={expandVertical}/>
+    <CloseButton onClick={props.onClose} />
+    <PipelinePlot config={props.config} expand_filters={expandFiltersteps} expand_vertical={expandVertical} />
     <MdiButton
-            icon={mdiImage}
-            tooltip="Save plot as image"
-            onClick={downloadSvg} />
+      icon={mdiImage}
+      tooltip="Save plot as image"
+      onClick={downloadSvg} />
     <MdiButton
-            icon={expandFiltersteps ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal}
-            tooltip={expandFiltersteps ? "Collapse individual filters into filter steps" : "Expand filter steps to individual filters"}
-            onClick={toggleExpandFiltersteps} />
+      icon={expandFiltersteps ? mdiArrowCollapseHorizontal : mdiArrowExpandHorizontal}
+      tooltip={expandFiltersteps ? "Collapse individual filters into filter steps" : "Expand filter steps to individual filters"}
+      onClick={toggleExpandFiltersteps} />
     <MdiButton
-            icon={expandVertical ? mdiArrowCollapse : mdiArrowExpand}
-            tooltip={expandVertical ? "Zoom out to display entire plot height" : "Enlarge plot"}
-            onClick={toggleExpandVertical} />
+      icon={expandVertical ? mdiArrowCollapse : mdiArrowExpand}
+      tooltip={expandVertical ? "Zoom out to display entire plot height" : "Enlarge plot"}
+      onClick={toggleExpandVertical} />
     <ReactTooltip />
   </Popup>
-  
+
 }
 
 
@@ -94,7 +93,7 @@ interface Block {
 }
 
 type Props = {
-  config: Config, 
+  config: Config,
   expand_filters: boolean
   expand_vertical: boolean
 }
@@ -112,10 +111,13 @@ class PipelinePlot extends React.Component<Props, State> {
   private textColor?: string
   private borderColor?: string
   private arrowColor?: string
+  private arrowWidth?: string
   private backgroundColor?: string
   private frameBgColor?: string
   private blockBgColor?: string
+  private disabledBlockBgColor?: string
   private blockTextColor?: string
+  private disabledBlockTextColor?: string
   private node?: any
 
   constructor(props: Props) {
@@ -128,10 +130,13 @@ class PipelinePlot extends React.Component<Props, State> {
     this.textColor = styles.getPropertyValue('--text-color')
     this.borderColor = styles.getPropertyValue('--box-border-color')
     this.arrowColor = styles.getPropertyValue('--arrow-color')
+    this.arrowWidth = styles.getPropertyValue('--arrow-width')
     this.backgroundColor = styles.getPropertyValue('--background-color')
     this.frameBgColor = styles.getPropertyValue('--frame-background-color')
     this.blockBgColor = styles.getPropertyValue('--block-background-color')
+    this.disabledBlockBgColor = styles.getPropertyValue('--disabled-block-background-color')
     this.blockTextColor = styles.getPropertyValue('--block-text-color')
+    this.disabledBlockTextColor = styles.getPropertyValue('--disabled-block-text-color')
     this.createPipelinePlot()
   }
 
@@ -140,14 +145,14 @@ class PipelinePlot extends React.Component<Props, State> {
       this.createPipelinePlot()
   }
 
-  private appendBlock(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number): Block {
+  private appendBlock(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number, disabled: boolean): Block {
     const rect = {
       x: x - 0.5 * width,
       y: y - 0.35,
       width: width,
       height: 0.7,
       radius: 0.1,
-      fill: this.blockBgColor!,
+      fill: disabled ? this.disabledBlockBgColor! : this.blockBgColor!,
       stroke: this.borderColor!,
       "stroke-width": 1,
     }
@@ -162,7 +167,7 @@ class PipelinePlot extends React.Component<Props, State> {
       x: x,
       y: y + 0.1,
       text: label,
-      fill: this.blockTextColor!,
+      fill: disabled ? this.disabledBlockTextColor! : this.blockTextColor!,
       size: label_size,
       angle: 0,
     }
@@ -174,7 +179,7 @@ class PipelinePlot extends React.Component<Props, State> {
     }
   }
 
-  private appendFrame(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number, height:number) {
+  private appendFrame(labels: Text[], boxes: Rect[], label: string, x: number, y: number, width: number, height: number) {
     const rect = {
       x: x - 0.5 * width,
       y: -height / 2 + y,
@@ -204,7 +209,7 @@ class PipelinePlot extends React.Component<Props, State> {
     boxes.push(rect)
   }
 
-  private fillBackground(boxes: Rect[], x: number, y: number, width: number, height:number) {
+  private fillBackground(boxes: Rect[], x: number, y: number, width: number, height: number) {
     const rect = {
       x: x,
       y: y,
@@ -225,14 +230,14 @@ class PipelinePlot extends React.Component<Props, State> {
     }
     if (label) {
       const position = dest.y <= source.y ?
-          {
-            x: (2 * source.x) / 3 + dest.x / 3,
-            y: (2 * source.y) / 3 + dest.y / 3,
-          }
-          : {
-            x: source.x / 3 + (2 * dest.x) / 3,
-            y: source.y / 3 + (2 * dest.y) / 3,
-          }
+        {
+          x: (2 * source.x) / 3 + dest.x / 3,
+          y: (2 * source.y) / 3 + dest.y / 3,
+        }
+        : {
+          x: source.x / 3 + (2 * dest.x) / 3,
+          y: source.y / 3 + (2 * dest.y) / 3,
+        }
       const text = {
         ...position,
         text: label,
@@ -247,17 +252,18 @@ class PipelinePlot extends React.Component<Props, State> {
 
   private static deviceText(device: CaptureDevice | PlaybackDevice): string {
     if ('device' in device)
-      return device.device
+      return device.device === null ? "default" : device.device
     else if ('filename' in device)
       return device.filename
     else
       return device.type
   }
 
-  private makeShapes(conf: Config, expand_filters:boolean) {
+  private makeShapes(conf: Config, expand_filters: boolean) {
     const spacing_h = 3
     const spacing_v = 1
     let max_v: number
+    let max_h: number = 1
     const labels: Text[] = []
     const boxes: Rect[] = []
     const links: Link[] = []
@@ -283,7 +289,8 @@ class PipelinePlot extends React.Component<Props, State> {
         label,
         0,
         spacing_v * (-active_channels / 2 + 0.5 + n),
-        1
+        1,
+        false
       )
       channels.push([io_points])
     }
@@ -293,13 +300,21 @@ class PipelinePlot extends React.Component<Props, State> {
     // loop through pipeline
     let total_length = 0
     let stage_start = 0
-    for (let n = 0; n < conf.pipeline.length; n++) {
-      const step = conf.pipeline[n]
-      if (step.type === "Mixer") {
+    const pipeline = conf.pipeline ? conf.pipeline : []
+    for (let n = 0; n < pipeline.length; n++) {
+      const step = pipeline[n]
+      const disabled = step.bypassed === true
+      if (step.type === "Mixer" && conf.mixers) {
         total_length += 1
         const mixername = step.name
         const mixconf = conf["mixers"][mixername]
-        active_channels = mixconf.channels.out
+        if (active_channels !== mixconf.channels.in && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
+        if (!disabled) {
+          active_channels = mixconf.channels.out
+        }
         const mixerchannels: Block[][] = []
         this.appendFrame(
           labels,
@@ -308,9 +323,9 @@ class PipelinePlot extends React.Component<Props, State> {
           spacing_h * total_length,
           0,
           1.5,
-          spacing_v * active_channels
+          spacing_v * mixconf.channels.out
         )
-        for (let m = 0; m < active_channels; m++) {
+        for (let m = 0; m < mixconf.channels.out; m++) {
           mixerchannels.push([])
           const label = "ch " + m
           const io_points = this.appendBlock(
@@ -318,33 +333,106 @@ class PipelinePlot extends React.Component<Props, State> {
             boxes,
             label,
             total_length * spacing_h,
-            spacing_v * (-active_channels / 2 + 0.5 + m),
-            1
+            spacing_v * (-mixconf.channels.out / 2 + 0.5 + m),
+            1,
+            disabled
           )
           mixerchannels[m].push(io_points)
         }
-        for (let m = 0; m < mixconf.mapping.length; m++) {
-          const mapping = mixconf.mapping[m]
-          const dest_ch = mapping.dest
-          for (let p = 0; p < mapping.sources.length; p++) {
-            const src = mapping.sources[p]
-            const src_ch = src.channel
-            const label = src.gain + " dB" + (src.inverted ? " inv." : '')
-            const srclen = stages[stages.length - 1][src_ch].length
-            const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
-            const dest_p = mixerchannels[dest_ch][0].input
-            this.appendLink(links, labels, src_p, dest_p, label)
+        if (!disabled) {
+          for (let m = 0; m < mixconf.mapping.length; m++) {
+            const mapping = mixconf.mapping[m]
+            const dest_ch = mapping.dest
+            const mapping_muted = mapping.mute === true
+            for (let p = 0; p < mapping.sources.length; p++) {
+              const src = mapping.sources[p]
+              const src_ch = src.channel
+              const muted = src.mute === true || mapping_muted
+              const label = muted ? "muted" : src.gain + " dB" + (src.inverted ? " inv." : '')
+              const srclen = stages[stages.length - 1][src_ch].length
+              const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
+              const dest_p = mixerchannels[dest_ch][0].input
+              this.appendLink(links, labels, src_p, dest_p, label)
+            }
           }
+          stages.push(mixerchannels)
         }
-        stages.push(mixerchannels)
+        stage_start = total_length
+        max_v = Math.max(max_v, active_channels / 2 + 1)
+      } else if (step.type === "Processor" && conf.processors) {
+        total_length += 1
+        const procname = step.name
+        const procconf = conf["processors"][procname]
+        const procchannels: Block[][] = []
+        if (active_channels !== procconf.parameters.channels && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
+        this.appendFrame(
+          labels,
+          boxes,
+          procname,
+          spacing_h * total_length,
+          0,
+          1.5,
+          spacing_v * active_channels
+        )
+        for (let m = 0; m < active_channels; m++) {
+          procchannels.push([])
+          let label = m.toString()
+          if (procconf.type === "Compressor") {
+            const is_m = procconf.parameters.monitor_channels.includes(m)
+            const is_p = procconf.parameters.process_channels.includes(m)
+            if (is_m && is_p) {
+              label = label + ": M+P"
+            }
+            else if (is_m) {
+              label = label + ": M"
+            }
+            else if (is_p) {
+              label = label + ": P"
+            }
+            else {
+              label = label + ": pass"
+            }
+          }
+          const io_points = this.appendBlock(
+            labels,
+            boxes,
+            label,
+            total_length * spacing_h,
+            spacing_v * (-active_channels / 2 + 0.5 + m),
+            1,
+            disabled
+          )
+          procchannels[m].push(io_points)
+        }
+        if (!disabled) {
+          for (let m = 0; m < active_channels; m++) {
+            const srclen = stages[stages.length - 1][m].length
+            const src_p = stages[stages.length - 1][m][srclen - 1].output
+            const dest_p = procchannels[m][0].input
+            this.appendLink(links, labels, src_p, dest_p)
+          }
+          stages.push(procchannels)
+        }
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
         const ch_nbr = step.channel
+        if (ch_nbr >= active_channels && !disabled) {
+          console.log("Invalid config, unable to plot")
+          return { labels, boxes, links, max_h, max_v }
+        }
         if (expand_filters) {
           for (let m = 0; m < step.names.length; m++) {
             const name = step.names[m]
-            const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+            let ch_step: number
+            if (ch_nbr < stages[stages.length - 1].length) {
+              ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+            } else {
+              ch_step = stage_start + stages[stages.length - 1][0].length
+            }
             total_length = Math.max(total_length, ch_step)
             const io_points = this.appendBlock(
               labels,
@@ -352,13 +440,16 @@ class PipelinePlot extends React.Component<Props, State> {
               name,
               ch_step * spacing_h,
               spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-              2.5
+              2.5,
+              disabled
             )
-            const src_list = stages[stages.length - 1][ch_nbr]
-            const src_p = src_list[src_list.length - 1].output
-            const dest_p = io_points.input
-            stages[stages.length - 1][ch_nbr].push(io_points)
-            this.appendLink(links, labels, src_p, dest_p)
+            if (!disabled) {
+              const src_list = stages[stages.length - 1][ch_nbr]
+              const src_p = src_list[src_list.length - 1].output
+              const dest_p = io_points.input
+              stages[stages.length - 1][ch_nbr].push(io_points)
+              this.appendLink(links, labels, src_p, dest_p)
+            }
           }
         }
         else {
@@ -369,15 +460,21 @@ class PipelinePlot extends React.Component<Props, State> {
               name = name + " (+" + (step.names.length - 1) + ")"
             }
           }
-          const ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+          let ch_step: number
+          if (ch_nbr < stages[stages.length - 1].length) {
+            ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+          } else {
+            ch_step = stage_start + stages[stages.length - 1][0].length
+          }
           total_length = Math.max(total_length, ch_step)
           this.appendBlock(
             labels,
             boxes,
             "",
             ch_step * spacing_h - 0.04,
-            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr)- 0.06,
-            2.5
+            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
+            2.5,
+            disabled
           )
           const io_points = this.appendBlock(
             labels,
@@ -385,19 +482,22 @@ class PipelinePlot extends React.Component<Props, State> {
             name,
             ch_step * spacing_h,
             spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-            2.5
+            2.5,
+            disabled
           )
-          const src_list = stages[stages.length - 1][ch_nbr]
-          const src_p = src_list[src_list.length - 1].output
-          const dest_p = io_points.input
-          stages[stages.length - 1][ch_nbr].push(io_points)
-          this.appendLink(links, labels, src_p, dest_p)
+          if (!disabled) {
+            const src_list = stages[stages.length - 1][ch_nbr]
+            const src_p = src_list[src_list.length - 1].output
+            const dest_p = io_points.input
+            stages[stages.length - 1][ch_nbr].push(io_points)
+            this.appendLink(links, labels, src_p, dest_p)
+          }
         }
       }
     }
     const playbackchannels = []
     total_length = total_length + 1
-    const max_h = (total_length + 1) * spacing_h
+    max_h = (total_length + 1) * spacing_h
     const playbackname = PipelinePlot.deviceText(conf.devices.playback)
     this.appendFrame(
       labels,
@@ -416,7 +516,8 @@ class PipelinePlot extends React.Component<Props, State> {
         label,
         spacing_h * total_length,
         spacing_v * (-active_channels / 2 + 0.5 + n),
-        1
+        1,
+        false
       )
       playbackchannels.push([io_points])
       const srclen = stages[stages.length - 1][n].length
@@ -425,13 +526,13 @@ class PipelinePlot extends React.Component<Props, State> {
       this.appendLink(links, labels, src_p, dest_p)
     }
     stages.push(playbackchannels)
-    return {labels, boxes, links, max_h, max_v}
+    return { labels, boxes, links, max_h, max_v }
   }
 
   createPipelinePlot() {
     d3.select(`#svg_pipeline`).selectAll('*').remove()
 
-    let {labels, boxes, links, max_h, max_v} = this.makeShapes(this.props.config, this.props.expand_filters)
+    let { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
     // if (max_h > (2*this.width/this.height) * max_v)
     //   max_v = max_h / (2*this.width/this.height)
     // else
@@ -442,8 +543,8 @@ class PipelinePlot extends React.Component<Props, State> {
     if (max_v < 4)
       max_v = 4
     const total_width = max_h + 2.5
-    const total_height = 2*max_v
-    const calculated_height = this.width * total_height/total_width
+    const total_height = 2 * max_v
+    const calculated_height = this.width * total_height / total_width
     this.setState({ height: calculated_height, width: this.width })
 
     this.fillBackground(boxes, -2.5, -max_v, total_width, total_height)
@@ -459,9 +560,9 @@ class PipelinePlot extends React.Component<Props, State> {
       .range([0, this.width])
 
     const linkGen = d3
-        .linkHorizontal()
-        .source((d) => [xScale(d.source[0]), yScale(d.source[1])])
-        .target((d) => [xScale(d.target[0]), yScale(d.target[1])])
+      .linkHorizontal()
+      .source((d) => [xScale(d.source[0]), yScale(d.source[1])])
+      .target((d) => [xScale(d.target[0]), yScale(d.target[1])])
 
     const markerBoxWidth = 7
     const markerBoxHeight = 7
@@ -490,11 +591,11 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("d", d3.line()(arrowPoints))
 
     const rects = d3
-        .select(node)
-        .selectAll("rect")
-        .data(boxes)
-        .enter()
-        .append("rect")
+      .select(node)
+      .selectAll("rect")
+      .data(boxes)
+      .enter()
+      .append("rect")
 
     rects
       .attr("x", d => xScale(d.x))
@@ -508,11 +609,11 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("stroke-width", d => d["stroke-width"])
 
     const text = d3
-        .select(node)
-        .selectAll("text")
-        .data(labels)
-        .enter()
-        .append("text")
+      .select(node)
+      .selectAll("text")
+      .data(labels)
+      .enter()
+      .append("text")
 
     //Add SVG Text Element Attributes
     text
@@ -532,16 +633,16 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("marker-end", "url(#arrow)")
       .attr("fill", "none")
       .attr("stroke", this.arrowColor!)
+      .attr("stroke-width", this.arrowWidth!)
   }
 
   render() {
-    console.log(this.state.height, this.state.width)
-    return <div style={{width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto'}}>
+    return <div style={{ width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto' }}>
       <svg
         ref={node => this.node = node}
         id="svg_pipeline"
         viewBox={`0 0 ${this.state.width} ${this.state.height}`}
-        style={this.props.expand_vertical ? {} : {height: '99%', width: '100%'} }
+        style={this.props.expand_vertical ? {} : { height: '99%', width: '100%' }}
       />
 
     </div>

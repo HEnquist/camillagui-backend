@@ -9,7 +9,9 @@ import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
+import { ProcessorsTab } from "./processorstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
+import { TitleTab } from "./titletab"
 import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
@@ -76,9 +78,14 @@ class CamillaConfig extends React.Component<
   }
 
   private async loadCurrentConfig() {
-    const json = await loadActiveConfig()
-    this.setCurrentConfig(json.configFileName, json.config)
-    this.setState({message: 'OK'})
+    try {
+      const json = await loadActiveConfig()
+      this.setCurrentConfig(json.configFileName, json.config)
+      this.setState({message: 'OK'})
+    }
+    catch(err) {
+      console.log("Failed getting active config:", err)
+    }
   }
 
   private async fetchConfig() {
@@ -263,14 +270,22 @@ class CamillaConfig extends React.Component<
                 onClick={() => this.setState(prevState => ({undoRedo: prevState.undoRedo.redo()}))}
                 enabled={undoRedo.canRedo()}/>
           </Tab>
+          <Tab>Title</Tab>
           <Tab>Devices {errors({path: ['devices'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Filters {errors({path: ['filters'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Mixers {errors({path: ['mixers'], includeChildren: true}) && <ErrorIcon/>}</Tab>
+          <Tab>Processors {errors({path: ['processors'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Pipeline {errors({path: ['pipeline'], includeChildren: true}) && <ErrorIcon/>}</Tab>
           <Tab>Files</Tab>
           <Tab>Shortcuts</Tab>
         </TabList>
         <TabPanel/>
+        <TabPanel>
+          <TitleTab
+              config={config}
+              updateConfig={this.updateConfig}
+          />
+        </TabPanel>
         <TabPanel>
           <DevicesTab
               devices={config.devices}
@@ -281,7 +296,7 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <FiltersTab
-              filters={config.filters}
+              filters={config.filters ? config.filters : {}}
               samplerate={config.devices.samplerate}
               channels={config.devices.capture.channels}
               coeffDir={this.state.guiConfig.coeff_dir}
@@ -291,7 +306,14 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <MixersTab
-              mixers={config.mixers}
+              mixers={config.mixers ? config.mixers : {}}
+              updateConfig={this.updateConfig}
+              errors={errorsForSubpath(errors, 'mixers')}
+          />
+        </TabPanel>
+        <TabPanel>
+          <ProcessorsTab
+              processors={config.processors ? config.processors : {}}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'mixers')}
           />

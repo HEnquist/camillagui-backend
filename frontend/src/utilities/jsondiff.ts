@@ -25,6 +25,7 @@ export function jsonDiff(json1: any, json2: any) : string {
  * @param object
  */
 function convertArraysToObjects(object: any) {
+  if (object !== null) {
   Object.getOwnPropertyNames(object)
       .forEach(property => {
         const value = object[property]
@@ -33,6 +34,7 @@ function convertArraysToObjects(object: any) {
         if (typeof value === 'object')
           convertArraysToObjects(value)
       })
+    }
 }
 
 function diffEntry(path: string[], oldValue: string, newValue: string): string {
@@ -49,7 +51,7 @@ function valueAsString(json: any): string {
   if (Array.isArray(json)) {
     const array = json as any[]
     return "[" + array.map(item => valueAsString(item)).join() + "]"
-  } else if (typeof json === 'object')
+  } else if (json !== null && typeof json === 'object')
     return "{"
         + Object.getOwnPropertyNames(json)
             .map(property => property + ":" + valueAsString(json[property]))
