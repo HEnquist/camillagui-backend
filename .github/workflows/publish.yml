@@ -9,18 +9,18 @@ jobs:
   build_fe:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: HEnquist/camillagui
-        ref: v1.0.1
+        ref: v2.0.0
     - name: Build and publish
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v3
       with:
         node-version: '16'
     - run: npm install
     - run: npm run build
     - name: Upload build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: build
         path: build
@@ -29,9 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_fe
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Download frontend
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
     - run: zip -r camillagui.zip *
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2

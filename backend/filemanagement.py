@@ -2,13 +2,26 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, islink, split, join, relpath, normpath, isabs, commonpath, getmtime
+from os.path import isfile, islink, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
+import logging
+import traceback
 
 import yaml
+from yaml.scanner import ScannerError
 from aiohttp import web
 
+from camilladsp import CamillaError
+
+DEFAULT_STATEFILE = {
+    "config_path": None,
+    "mute": [False, False, False, False, False],
+    "volume": [0.0, 0.0, 0.0, 0.0, 0.0],
+}
 
 def file_in_folder(folder, filename):
+    """
+    Safely join a folder and filename.
+    """
     if '/' in filename or '\\' in filename:
         raise IOError("Filename may not contain any slashes/backslashes")
     return os.path.abspath(os.path.join(folder, filename))
@@ -20,6 +33,9 @@ def path_of_configfile(request, config_name):
 
 
 async def store_files(folder, request):
+    """
+    Write a set of files (raw data) to disk.
+    """
     data = await request.post()
     i = 0
     while True:
@@ -36,6 +52,9 @@ async def store_files(folder, request):
 
 
 def list_of_files_in_directory(folder):
+    """
+    Return a list of files (name and modification date) in a folder.
+    """
     files = [file_in_folder(folder, file)
              for file in os.listdir(folder)
              if os.path.isfile(file_in_folder(folder, file))]
@@ -51,12 +70,18 @@ def list_of_files_in_directory(folder):
 
 
 def delete_files(folder, files):
+    """
+    Delete a list of files from a folder.
+    """
     for file in files:
         path = file_in_folder(folder, file)
         os.remove(path)
 
 
 async def zip_response(request, zip_file, file_name):
+    """
+    Send a response with a binary file (zip).
+    """
     response = web.StreamResponse()
     response.headers.add("Content-Disposition", "attachment; filename=" + file_name)
     await response.prepare(request)
@@ -66,6 +91,9 @@ async def zip_response(request, zip_file, file_name):
 
 
 def zip_of_files(folder, files):
+    """
+    Compress a list of files to a zip.
+    """
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         for file_name in files:
@@ -76,71 +104,152 @@ def zip_of_files(folder, files):
 
 
 def get_yaml_as_json(request, path):
+    """
+    Read a yaml file, return the validated content as json.
+    """
     validator = request.app["VALIDATOR"]
     validator.validate_file(path)
     return validator.get_config()
 
 
 def get_active_config(request):
-    active_config = request.app["active_config"]
-    active_config_txt = request.app["active_config_txt"]
+    """
+    Get the active config filename.
+    """
+    statefile_path = request.app["statefile_path"]
+    config_dir = request.app["config_dir"]
+    cdsp = request.app["CAMILLA"]
+    try:
+        _state = cdsp.general.state()
+        online = True
+    except (CamillaError, IOError):
+        online = False
     on_get = request.app["on_get_active_config"]
     if not on_get:
-        if islink(active_config) and isfile(active_config):
-            target = os.readlink(active_config)
-            _head, tail = split(target)
-            return tail
-        elif isfile(active_config_txt):
-            with open(active_config_txt) as f:
-                target = f.read().strip()
-                _head, tail = split(target)
-                return tail
+        if online:
+            dsp_statefile_path = cdsp.general.state_file_path()
+            if dsp_statefile_path:
+                fpath = cdsp.config.file_path()
+                filename = _verify_path_in_config_dir(fpath, config_dir)
+                logging.debug(filename)
+                return filename
+            else:
+                logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
+                return None
+        elif statefile_path:
+            confpath = _read_statefile_config_path(statefile_path)
+            return _verify_path_in_config_dir(confpath, config_dir)
         else:
-            return None
+            logging.error("The backend config has no state file and is unable to persistently store config file path")
     else:
         try:
-            print(f"Running command: {on_get}")
+            logging.debug(f"Running command: {on_get}")
             stream = os.popen(on_get)
             result = stream.read().strip()
-            _head, tail = split(result)
-            print(f"Command result: {result}, filename: {tail}")
-            return tail
+            logging.debug(f"Command result: {result}")
+            fname = _verify_path_in_config_dir(result, config_dir)
+            return fname
         except Exception as e:
-            print(f"Failed to run on_get_active_config command, error: {e}")
+            logging.error(f"Failed to run on_get_active_config command")
+            traceback.print_exc()
             return None
 
 
-def set_as_active_config(request, file):
-    active_config = request.app["active_config"]
-    active_config_txt = request.app["active_config_txt"]
-    update_config_symlink = request.app["update_config_symlink"]
-    update_config_txt = request.app["update_config_txt"]
+def set_as_active_config(request, filepath):
+    """
+    Persistlently set the given config file path as the active config.
+    """
     on_set = request.app["on_set_active_config"]
-    if update_config_symlink and active_config:
-        try:
-            if islink(active_config):
-                os.unlink(active_config)
-            os.symlink(file, active_config)
-        except Exception as e:
-            print(f"Failed to update symlink at {active_config}, error: {e}")
-            if os.name == "nt":
-                print("Creating symlinks on Windows requires special privileges or admin rights. Consider setting 'update_config_symlink: false' in camillagui.yml")
-    if update_config_txt and active_config_txt:
-        try:
-            with open(active_config_txt, "w") as f:
-                f.write(file)
-        except Exception as e:
-            print(f"Failed to update config name txt at {active_config_txt}, error: {e}")
+    statefile_path = request.app["statefile_path"]
+    cdsp = request.app["CAMILLA"]
+    try:
+        _state = cdsp.general.state()
+        online = True
+    except (CamillaError, IOError):
+        online = False
+    if not online:
+        if statefile_path:
+            try:
+                logging.debug(f"Update config file path in statefile to '{filepath}'")
+                _update_statefile_config_path(statefile_path, filepath)
+            except Exception as e:
+                logging.error(f"Failed to update statefile at {statefile_path}")
+                traceback.print_exc()
+        else:
+            logging.error("The backend config has no state file and is unable to persistently store config file path")
+    else:
+        dsp_statefile_path = cdsp.general.state_file_path()
+        if dsp_statefile_path:
+            logging.debug(f"Send set config file path command with '{filepath}'")
+            cdsp.config.set_file_path(filepath)
+        else:
+            logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
     if on_set:
         try:
-            cmd = on_set.format(f'"{file}"')
-            print(f"Running command: {cmd}")
+            cmd = on_set.format(f'"{filepath}"')
+            logging.debug(f"Running command: {cmd}")
             os.system(cmd)
         except Exception as e:
-            print(f"Failed to run on_set_active_config command, error: {e}")
+            logging.error(f"Failed to run on_set_active_config command")
+            traceback.print_exc()
 
+def _verify_path_in_config_dir(path, config_dir):
+    """
+    Verify that a given path points to a file in config_dir.
+    Returns the filename without the rest of the path.
+    """
+    if path is None:
+        logging.warning("The config file path is None")
+        return None
+    canonical = realpath(path)
+    if is_path_in_folder(canonical, config_dir):
+        _head, tail = split(canonical)
+        return tail
+    logging.error(f"The config file path '{path}' is not in the config dir '{config_dir}'")
+    return None
+
+
+def _update_statefile_config_path(statefile_path, new_config_path):
+    """
+    Read a statefile if possible, update the config filename, and write the result"
+    """
+    try:
+        with open(statefile_path) as f:
+            state = yaml.safe_load(f)
+    except ScannerError as e:
+        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
+        logging.error(f"Details: {e}")
+        state = deepcopy(DEFAULT_STATEFILE)
+    except OSError as e:
+        logging.error(f"Statefile could not be opened: {statefile_path}")
+        logging.error(f"Details: {e}")
+        state = deepcopy(DEFAULT_STATEFILE)
+    state["config_path"] = new_config_path
+    yaml_state = yaml.dump(state).encode('utf-8')
+    with open(statefile_path, "wb") as f:
+        f.write(yaml_state)
+
+
+def _read_statefile_config_path(statefile_path):
+    """
+    Read a statefile if possible, and get the config_path"
+    """
+    try:
+        with open(statefile_path) as f:
+            state = yaml.safe_load(f)
+            return state["config_path"]
+    except ScannerError as e:
+        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
+        logging.error(f"Details: {e}")
+    except OSError as e:
+        logging.error(f"Statefile could not be opened: {statefile_path}")
+        logging.error(f"Details: {e}")
+    return None
 
 def save_config(config_name, json_config, request):
+    """
+    Write a given config object to a yaml file.
+    """
     config_file = path_of_configfile(request, config_name)
     yaml_config = yaml.dump(json_config).encode('utf-8')
     with open(config_file, "wb") as f:
@@ -148,47 +257,75 @@ def save_config(config_name, json_config, request):
 
 
 def coeff_dir_relative_to_config_dir(request):
+    """
+    Get the relative path of the coeff_dir with respect to config_dir.
+    """
     relative_coeff_dir = relpath(request.app["coeff_dir"], start=request.app["config_dir"])
     coeff_dir_with_folder_separator_at_end = join(relative_coeff_dir, '')
     return coeff_dir_with_folder_separator_at_end
 
 
-def new_config_with_absolute_filter_paths(json_config, config_dir):
-    def conversion(path): return make_absolute(path, config_dir)
-    return new_config_with_paths_converted(json_config, conversion)
+def make_config_filter_paths_absolute(json_config, config_dir):
+    """
+    Convert paths to coefficient files in a config from relative to absolute.
+    """
+    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
+    return convert_config_filter_paths(json_config, conversion)
 
 
-def new_config_with_relative_filter_paths(json_config, config_dir):
-    def conversion(path): return make_relative(path, config_dir)
-    return new_config_with_paths_converted(json_config, conversion)
+def make_config_filter_paths_relative(json_config, config_dir):
+    """
+    Convert paths to coefficient files in a config from absolute to relative.
+    """
+    conversion = lambda path, config_dir=config_dir: make_relative(path, config_dir)
+    return convert_config_filter_paths(json_config, conversion)
 
 
-def new_config_with_paths_converted(json_config, conversion):
+def convert_config_filter_paths(json_config, conversion):
+    """
+    Apply a path conversion to all filter coefficient paths of a config.
+    """
     config = deepcopy(json_config)
-    filters = config["filters"]
-    for filterName in filters:
-        filt = filters[filterName]
-        convert_filter_path(filt, conversion)
+    filters = config.get("filters")
+    if filters is not None:
+        for filter_name in filters:
+            filt = filters[filter_name]
+            convert_filter_path(filt, conversion)
     return config
 
 
-def convert_filter_path(json_filter, conversion):
-    ftype = json_filter["type"]
-    parameters = json_filter["parameters"]
+def convert_filter_path(filter_as_dict, conversion):
+    """
+    Apply a path conversion to a filter coefficient path.
+    """
+    ftype = filter_as_dict["type"]
+    parameters = filter_as_dict["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
-        parameters["filename"] = conversion(parameters["filename"])
+        filename = parameters["filename"]
+        if filename:
+            filename = conversion(filename)
+        parameters["filename"] = filename
 
 
-def replace_relative_filter_path_with_absolute_paths(json_filter, config_dir):
-    def conversion(path): return make_absolute(path, config_dir)
-    convert_filter_path(json_filter, conversion)
+def replace_relative_filter_path_with_absolute_paths(filter_as_dict, config_dir):
+    """
+    Convert paths to coefficient files in a config from absolute to relative.
+    """
+    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
+    convert_filter_path(filter_as_dict, conversion)
 
 
 def make_absolute(path, base_dir):
+    """
+    Make a relative path absolute.
+    """
     return path if isabs(path) else normpath(join(base_dir, path))
 
 
 def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
+    """
+    Replace tokens in coefficient file paths.
+    """
     ftype = filterconfig["type"]
     parameters = filterconfig["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
@@ -198,8 +335,14 @@ def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
 
 
 def make_relative(path, base_dir):
+    """
+    Make a path relative to a base directory.
+    """
     return relpath(path, start=base_dir) if isabs(path) else path
 
 
 def is_path_in_folder(path, folder):
+    """
+    Check if a file is in a given directory.
+    """
     return folder == commonpath([path, folder])

@@ -19,6 +19,9 @@ FORMAT_MAP = {
 
 
 def defaults_for_filter(file_path):
+    """
+    Make suitable filter parameters based of coeff file ending.
+    """
     extension = splitext(file_path)[1].lower()
     if extension == ".wav":
         return {"type": "Wav"}
@@ -34,6 +37,9 @@ def defaults_for_filter(file_path):
 
 
 def filter_options(filter_file_names, filename):
+    """
+    Get the different available options for samplerate and channels for a set of coeffient files.
+    """
     filename_pattern = pattern_from_filter_file_name(filename)
     options = []
     for file in filter_file_names:
@@ -50,6 +56,9 @@ def filter_options(filter_file_names, filename):
 
 
 def pattern_from_filter_file_name(path):
+    """
+    Regex patterns for matching samplerate and channels tokens in filename.
+    """
     filename = re.escape(basename(path))
     pattern = filename.replace(r"\$samplerate\$", "(?P<samplerate>\\d*)")\
         .replace(r"\$channels\$", "(?P<channels>\\d*)")
@@ -57,6 +66,9 @@ def pattern_from_filter_file_name(path):
 
 
 def pipeline_step_options(filter_file_names, config, step_index):
+    """
+    Get the combined available samplerate and channels options for a filter step.
+    """
     samplerates_and_channels_for_filter = map_of_samplerates_and_channels_per_filter(
         config, filter_file_names,step_index)
     all_samplerate_and_channel_options = set_of_all_samplerate_and_channel_options(samplerates_and_channels_for_filter)
@@ -66,6 +78,9 @@ def pipeline_step_options(filter_file_names, config, step_index):
 
 
 def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_index):
+    """
+    Get samplerate and channel options for a set of filters.
+    """
     step_filters = config["pipeline"][step_index]["names"]
     default_samplerate = config["devices"]["samplerate"]
     default_channels = config["devices"]["capture"]["channels"]
@@ -84,6 +99,9 @@ def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_i
 
 
 def samplerate_and_channel_pairs_from_options(options, default_samplerate, default_channels):
+    """
+    Make a set of unique (samplerate, channels) pairs from a list of options.
+    """
     pairs = set()
     for option in options:
         samplerate = option["samplerate"] if "samplerate" in option else default_samplerate
@@ -93,6 +111,9 @@ def samplerate_and_channel_pairs_from_options(options, default_samplerate, defau
 
 
 def set_of_all_samplerate_and_channel_options(samplerates_and_channels_for_filter):
+    """
+    Converts a map to a set with unique values.
+    """
     samplerate_and_channel_options = set()
     for filter_name in samplerates_and_channels_for_filter:
         samplerate_and_channel_options.update(samplerates_and_channels_for_filter[filter_name])
@@ -101,6 +122,9 @@ def set_of_all_samplerate_and_channel_options(samplerates_and_channels_for_filte
 
 def set_of_samplerate_and_channel_options_available_for_all_filters(samplerate_and_channel_options,
                                                                     samplerates_and_channels_for_filter):
+    """
+    Append additional values to an existing set.
+    """
     options_available_for_all_filters = set(samplerate_and_channel_options)
     for filter_name in samplerates_and_channels_for_filter:
         options_available_for_all_filters.intersection_update(samplerates_and_channels_for_filter[filter_name])
@@ -108,6 +132,9 @@ def set_of_samplerate_and_channel_options_available_for_all_filters(samplerate_a
 
 
 def options_as_json(samplerate_and_channel_options):
+    """
+    Convert samplerate/channel options to an object suitable for conversion to json.
+    """
     step_options = []
     for option in samplerate_and_channel_options:
         samplerate = option[0]

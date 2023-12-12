@@ -12,6 +12,7 @@ from .views import (
     set_active_config_name,
     config_to_yml,
     yml_to_json,
+    yml_config_to_json_config,
     validate_config,
     get_gui_index,
     get_stored_coeffs,
@@ -27,7 +28,10 @@ from .views import (
     save_config_file,
     get_defaults_for_coeffs,
     get_status,
-    get_log_file
+    get_log_file,
+    get_capture_devices,
+    get_playback_devices,
+    get_backends
 )
 
 
@@ -44,6 +48,7 @@ def setup_routes(app):
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
     app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)
+    app.router.add_post("/api/ymlconfigtojsonconfig", yml_config_to_json_config)
     app.router.add_post("/api/ymltojson", yml_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
@@ -59,6 +64,9 @@ def setup_routes(app):
     app.router.add_get("/api/getconfigfile", get_config_file)
     app.router.add_post("/api/saveconfigfile", save_config_file)
     app.router.add_get("/api/logfile", get_log_file)
+    app.router.add_get("/api/capturedevices/{backend}", get_capture_devices)
+    app.router.add_get("/api/playbackdevices/{backend}", get_playback_devices)
+    app.router.add_get("/api/backends", get_backends)
 
     app.router.add_get("/", get_gui_index)
 
