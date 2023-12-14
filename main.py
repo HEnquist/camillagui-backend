@@ -53,4 +53,4 @@ if config["supported_capture_types"] is not None:
 if config["supported_playback_types"] is not None:
     camillavalidator.set_supported_playback_types(config["supported_playback_types"])
 app["VALIDATOR"] = camillavalidator
-web.run_app(app, port=config["port"])
+web.run_app(app, host=config["bind_address"], port=config["port"])
