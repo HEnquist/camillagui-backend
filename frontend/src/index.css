@@ -409,3 +409,12 @@ div .popup-content {
   position: relative;
   padding: 5px 5px;
 }
+
+.pipeline-tooltip {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  background-color: var(--background-color);
+  white-space: pre;
+  font-size: smaller;
+  border-radius: var(--border-radius);
+  padding: 5px 5px;
+}
