@@ -444,7 +444,7 @@ class PipelinePlot extends React.Component<Props, State> {
               }
               if (params.hasOwnProperty("parameters")) {
                 let fparams = params.parameters
-                tooltip = tooltip + "<br>" + "parameters:"
+                tooltip = tooltip + "<br>parameters:"
                 for (const [key, value] of Object.entries(fparams)) {
                   tooltip = tooltip + "<br>  " + key + ": " + value
                 }
