@@ -99,7 +99,7 @@ def zip_of_files(folder, files):
         for file_name in files:
             file_path = file_in_folder(folder, file_name)
             with open(file_path, 'r') as file:
-                zip_file.writestr(file_name, file.read())
+                zip_file.write(file_path, file_name)
     return zip_buffer.getvalue()
 
 
