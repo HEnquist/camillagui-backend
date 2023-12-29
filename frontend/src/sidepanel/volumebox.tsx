@@ -29,8 +29,8 @@ export class VolumePoller {
 
     private timerId: NodeJS.Timeout | undefined
     private readonly onUpdate: (volume: Volume) => void
-    private update_interval: number
-    private holdoff_interval: number
+    private readonly update_interval: number
+    private readonly holdoff_interval: number
 
     constructor(onUpdate: (volume: Volume) => void, update_interval: number, holdoff_interval: number) {
         this.onUpdate = onUpdate
@@ -48,7 +48,7 @@ export class VolumePoller {
             let mute = await (await mutereq).text()
             let volume: Volume = {
                 volume: parseFloat(vol),
-                mute: mute === "True" ? true : false,
+                mute: mute === "True",
             }
             // Only update if the timer hasn't been restarted
             // while we were reading the volume and mute settings.
@@ -80,7 +80,7 @@ export class VolumePoller {
 export class VolumeBox extends React.Component<Props, State> {
 
     private volumePoller = new VolumePoller(cdspVolume => this.setState({ volume: cdspVolume.volume, mute: cdspVolume.mute }), 1000.0, 2000.0)
-    private setDspVolumeDebounced: any
+    private readonly setDspVolumeDebounced: any
 
     constructor(props: Props) {
         super(props)
@@ -90,9 +90,9 @@ export class VolumeBox extends React.Component<Props, State> {
         this.state = { volume: -99, mute: false, dim: false, send_to_dsp: false }
     }
 
-    componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
+    componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
         const { volume, mute, send_to_dsp } = this.state
-        // Lets ignore any change smaller than 0.1 dB.
+        // Let's ignore any change smaller than 0.1 dB.
         let vol_changed = Math.round(volume * 10) !== Math.round(prevState.volume * 10)
         let mute_changed = mute !== prevState.mute
         if (send_to_dsp) {
@@ -105,8 +105,7 @@ export class VolumeBox extends React.Component<Props, State> {
                     this.setDspMute(mute)
                 this.setState({ send_to_dsp: false })
             }
-        }
-        else if (vol_changed) {
+        } else if (vol_changed) {
             // The volume was changed from somewhere else.
             this.setState({ dim: false })
         }
@@ -160,7 +159,7 @@ export class VolumeBox extends React.Component<Props, State> {
     }
 
     render() {
-        const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms, clipped }
+        const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms }
             = this.props.vuMeterStatus
         const { volume, mute, dim } = this.state
         return <Box title={
@@ -188,7 +187,6 @@ export class VolumeBox extends React.Component<Props, State> {
                 title="In"
                 levels={capturesignalrms}
                 peaks={capturesignalpeak}
-                clipped={clipped}
             />
             <input
                 style={{ width: '100%', margin: 0, padding: 0 }}
@@ -203,7 +201,6 @@ export class VolumeBox extends React.Component<Props, State> {
                 title="Out"
                 levels={playbacksignalrms}
                 peaks={playbacksignalpeak}
-                clipped={clipped}
             />
         </Box>
     }

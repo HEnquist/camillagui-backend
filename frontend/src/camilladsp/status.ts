@@ -5,7 +5,6 @@ export interface VuMeterStatus {
   capturesignalpeak: number[]
   playbacksignalrms: number[]
   playbacksignalpeak: number[]
-  clipped: boolean
 }
 
 export interface Status extends Versions, VuMeterStatus {
@@ -32,17 +31,12 @@ export function defaultStatus(): Status {
     cdsp_version: '',
     py_cdsp_version: '',
     backend_version: '',
-    clipped: false,
   }
 }
 
 const CDSP_OFFLINE = 'Offline'
 export const BACKEND_OFFLINE = 'Backend offline'
 export const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE]
-
-export function isCdspOffline(status: Status): boolean {
-  return status.cdsp_status === CDSP_OFFLINE
-}
 
 export function isCdspOnline(status: Status): boolean {
   return !OFFLINE_STATES.includes(status.cdsp_status)
@@ -56,7 +50,6 @@ export class StatusPoller {
 
   private timerId: NodeJS.Timeout
   private readonly onUpdate: (status: Status) => void
-  private lastClippedSamples: number = 0
   private lastLevelTime: number = 0
   private capturesignalrms: number[] = []
   private capturesignalpeak: number[] = []
@@ -87,28 +80,17 @@ export class StatusPoller {
       this.lastLevelTime = now
     } else {
       if (levelsSince > 2.0) {
-        this.capturesignalpeak.forEach((_level, index, levelArray) => {
-          levelArray[index] = -1000.0
-        })
-        this.capturesignalrms.forEach((_level, index, levelArray) => {
-          levelArray[index] = -1000.0
-        })
-        this.playbacksignalpeak.forEach((_level, index, levelArray) => {
-          levelArray[index] = -1000.0
-        })
-        this.playbacksignalrms.forEach((_level, index, levelArray) => {
-          levelArray[index] = -1000.0
-        })
+        this.capturesignalpeak.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
+        this.capturesignalrms.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
+        this.playbacksignalpeak.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
+        this.playbacksignalrms.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
       }
       status.capturesignalpeak = this.capturesignalpeak
       status.capturesignalrms = this.capturesignalrms
       status.playbacksignalpeak = this.playbacksignalpeak
       status.playbacksignalrms = this.playbacksignalrms
     }
-    const clipped_nbr: number = status.clippedsamples === '' ? 0 : status.clippedsamples
-    const clipped = this.lastClippedSamples >= 0 && clipped_nbr > this.lastClippedSamples
-    this.lastClippedSamples = clipped_nbr
-    this.onUpdate({...status, clipped})
+    this.onUpdate(status)
     this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
   }
 
