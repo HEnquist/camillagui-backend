@@ -1,0 +1,11 @@
+{# Template for conda environment file -#}
+---
+name: camillagui
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - aiohttp
+  - pip:
+    - "git+https://github.com/HEnquist/pycamilladsp.git@{{ pycamilladsp_tag }}"
+    - "camilladsp-plot[plot]@git+https://github.com/HEnquist/pycamilladsp-plot.git@{{ pycamilladsp_plot_tag }}"

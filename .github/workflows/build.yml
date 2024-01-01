@@ -3,13 +3,29 @@ name: npm build
 on: [push]
 
 jobs:
-  build_fe:
+
+  read_fe_tag:
     runs-on: ubuntu-latest
+    outputs:
+      fe_tag: ${{ steps.fe_tag_step.outputs.fe_tag }}
     steps:
     - uses: actions/checkout@v3
+    - name: Get CamillaGUI tag from versions.yml
+      id: fe_tag_step
+      run: |
+        FE_TAG=$(sed -n 's/camillagui_tag: \(.*\)$/\1/p' release_automation/versions.yml)
+        echo "fe_tag=$FE_TAG" >> "$GITHUB_OUTPUT"
+
+  build_fe:
+    runs-on: ubuntu-latest
+    needs: read_fe_tag
+    steps:
+    - uses: actions/checkout@v3
+      env:
+        FE_TAG: ${{ needs.read_fe_tag.outputs.fe_tag }}
       with:
         repository: HEnquist/camillagui
-        ref: v2.0.0
+        ref: $FE_TAG
     - name: Build and publish
       uses: actions/setup-node@v3
       with:
