@@ -24,11 +24,9 @@ jobs:
     needs: read_fe_tag
     steps:
     - uses: actions/checkout@v3
-      env:
-        FE_TAG: ${{ needs.read_fe_tag.outputs.fe_tag }}
       with:
         repository: HEnquist/camillagui
-        ref: $FE_TAG
+        ref: ${{ needs.read_fe_tag.outputs.fe_tag }}
     - name: Build and publish
       uses: actions/setup-node@v3
       with:
