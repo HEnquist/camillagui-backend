@@ -56,7 +56,10 @@ jobs:
         pip install jinja2 PyYAML
     
     - name: Render scripts from templates
-      run: python release_automation/render_env_files.py
+      run: python -m release_automation.render_env_files
+
+    - name: Clean up
+      run: rm -rf release_automation
 
     - name: Download frontend
       uses: actions/download-artifact@v3
