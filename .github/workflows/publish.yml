@@ -17,6 +17,7 @@ jobs:
       id: fe_tag_step
       run: |
         FE_TAG=$(sed -n 's/camillagui_tag: \(.*\)$/\1/p' release_automation/versions.yml)
+        echo "fe_tag=$FE_TAG"
         echo "fe_tag=$FE_TAG" >> "$GITHUB_OUTPUT"
 
   build_fe:
@@ -24,6 +25,7 @@ jobs:
     needs: read_fe_tag
     steps:
     - uses: actions/checkout@v3
+      name: Check out frontend ${{ needs.read_fe_tag.outputs.fe_tag }}
       with:
         repository: HEnquist/camillagui
         ref: ${{ needs.read_fe_tag.outputs.fe_tag }}
