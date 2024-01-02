@@ -63,10 +63,23 @@ jobs:
 
     - name: Download frontend
       uses: actions/download-artifact@v3
-    - name: Upload all
+
+    - name: Create zip
+      run: zip -r camillagui.zip *
+
+    - name: Upload all as artifact
       uses: actions/upload-artifact@v3
       with:
         name: camillagui-backend
         path: |
           .
           !.git*
+
+    - name: Upload binaries to release
+      if: contains(github.ref, 'refs/tags/')
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: camillagui.zip
+        asset_name: camillagui.zip
+        tag: ${{ github.ref }}
