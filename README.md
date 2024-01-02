@@ -9,17 +9,19 @@ The complete GUI is made up of two parts:
 - a backend based on AIOHTTP: https://docs.aiohttp.org/en/stable/
 
 ## Setting up
-### Python dependencies
-The gui requires the following Python packages:
-- Python 3.8 or later
-- websocket-client (required by pycamilladsp)
-- jsonschema (required by pycamilladsp-plot)
-- aiohttp
+### Install gui server
+Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
+Download the zip-file ("camillagui.zip") for the latest release. This includes both the backend and the frontend.
 
-### CamillaDSP Python libraries
-You need both the CamillaDSP companion python libraries:
-- `pycamilladsp` version 2.0.0 from https://github.com/HEnquist/pycamilladsp
-- `pycamilladsp-plot` version 2.0.0 from https://github.com/HEnquist/pycamilladsp-plot
+Unzip the file and edit `config/camillagui.yml` as needed, see [Configuration](#configuration).
+
+### Python dependencies
+The Python dependencies are listed in three different files,
+for use with different Python package/environment managers.
+- `cdsp_conda.yml` for [conda](https://conda.io/).
+- `requirements.txt` for [pip](https://pip.pypa.io/), often combined with an environment manager such as [venv](https://docs.python.org/3/library/venv.html).
+- `pyproject.toml` for [Poetry](https://python-poetry.org).
+
 
 ### Prepare the Python environment
 The easiest way to get the Python environment prepared is to use the setup scripts from
@@ -29,11 +31,6 @@ If doing a manual installation, there are many ways of installing Python and set
 Please see the [documentation for pycamilladsp](https://henquist.github.io/pycamilladsp/install/#installing)
 for more information.
 
-### Install gui server
-Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
-Download the zip-file ("camillagui.zip") for the latest release. This includes both the backend and the frontend.
-
-Unzip the file, and edit `config/camillagui.yml` if needed.
 
 ## Configuration
 
@@ -57,7 +54,7 @@ supported_playback_types: null (*)
 ```
 The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
-**Warning**: By default the backend will bind to all networks and this may be insecure. Make sure to change the `bind_address` if you want it to be reachable only on specific network interface(s) and/or to set your firewall to block external (internet) access to this backend.
+**Warning**: By default the backend will bind to all network interfaces. This makes the gui available on all networks the system is connected to, which may be insecure. Make sure to change the `bind_address` if you want it to be reachable only on specific network interface(s) and/or to set your firewall to block external (internet) access to this backend.
 
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
 
@@ -150,7 +147,20 @@ The gui should now be available at: http://localhost:5000/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
 
-### Running the tests (for developers)
+
+## Development
+### Render the environment files
+This repository contains [jinja](https://palletsprojects.com/p/jinja/) templates used to create the Python environment files.
+The templates are stored in `release_automation/templates/`.
+
+To render the templates, install the dependencies `PyYAML` and `jinja2` and run the Python script `render_env_files.py`:
+```sh
+python -m release_automation.render_env_files
+```
+When rendering, the versions of the Python dependencies are taken from the file `release_automation/versions.yml`.
+The backend version is read from `backend/version.py`.
+
+### Running the tests
 
 ```sh
 python -m unittest discover -p "*_test.py"
