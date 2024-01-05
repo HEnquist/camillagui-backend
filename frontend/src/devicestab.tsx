@@ -61,12 +61,11 @@ export function DevicesTab(props: {
   ])
   useEffect(() => {
     fetch("/api/backends")
-      .then((resp) => resp.json()
-        .then((backends) => {
-          setAvailableBackends(backends)
-        }
-      )
-    )
+      .then(response => {
+        if (response.ok)
+          return response.json()
+            .then(backends => setAvailableBackends(backends))
+      })
   }, []);
   return <div className="tabpanel">
     <ErrorMessage message={errors({path: []})}/>
