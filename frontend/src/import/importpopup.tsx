@@ -8,7 +8,6 @@ import {
   Import,
   ImportedConfig,
   importedConvolverConfigAsJson,
-  importedEqApoConfigAsJson,
   importedYamlConfigAsJson,
   mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator
@@ -93,9 +92,6 @@ function FileList(props: {
   function loadLocalCdspConfig(files: FileList): void {
     importedYamlConfigAsJson(files).then(config => setImportConfig(files[0].name, config))
   }
-  function loadLocalEqApoConfig(files: FileList): void {
-    importedEqApoConfigAsJson(files).then(config => setImportConfig(files[0].name, config))
-  }
   function loadLocalConvolverConfig(files: FileList): void {
     importedConvolverConfigAsJson(files).then(config => setImportConfig(files[0].name, config))
   }
@@ -113,7 +109,6 @@ function FileList(props: {
     }
     <div style={bottomMargin} className="horizontally-spaced-content">
       <UploadButton text="CamillaDSP Config" upload={loadLocalCdspConfig}/>
-      <UploadButton text="Equalizer APO Config" upload={loadLocalEqApoConfig}/>
       <UploadButton text="Convolver Config" upload={loadLocalConvolverConfig}/>
     </div>
     <div>

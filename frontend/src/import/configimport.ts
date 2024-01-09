@@ -174,16 +174,6 @@ function fileContent(files: FileList): Promise<string> {
   })
 }
 
-export async function importedEqApoConfigAsJson(files: FileList): Promise<ImportedConfig> {
-  const content = await fileContent(files)
-  const response = await fetch("/api/eqapotojson", {method: "POST", body: content})
-  if (response.ok) {
-    const text = await response.text()
-    return JSON.parse(text) as ImportedConfig
-  }
-  throw new Error("Could extract filters from file")
-}
-
 export async function importedConvolverConfigAsJson(files: FileList): Promise<ImportedConfig> {
   const content = await fileContent(files)
   const response = await fetch("/api/convolvertojson", {method: "POST", body: content})
