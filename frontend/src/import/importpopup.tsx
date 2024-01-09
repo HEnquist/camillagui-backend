@@ -98,7 +98,7 @@ function FileList(props: {
   function loadJsonConfigWithName(name: string): void {
     loadConfigJson(name).then(config => setImportConfig(name, config))
   }
-  return <div className="wide-tabpanel">
+  return <div className="tabpanel">
     {importDoneFromFile ?
         <div style={bottomMargin}>
           Import from {importDoneFromFile} successful.<br/>
