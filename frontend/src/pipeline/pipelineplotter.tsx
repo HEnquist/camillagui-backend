@@ -435,7 +435,7 @@ class PipelinePlot extends React.Component<Props, State> {
           for (let m = 0; m < step.names.length; m++) {
             const name = step.names[m]
             let params = conf.filters ? conf.filters[name] : null
-            let tooltip = "Filter:"
+            let tooltip = "<strong>Filter</strong>"
             if (params !== null) {
               for (const [key, value] of Object.entries(params)) {
                 if (key !== "parameters") {
@@ -478,7 +478,7 @@ class PipelinePlot extends React.Component<Props, State> {
         }
         else {
           let name = "(empty)"
-          let tooltip = "Filters:"
+          let tooltip = "<strong>Filters</strong>"
           if (step.names.length > 0) {
             name = step.names[0]
             if (step.names.length > 1) {
