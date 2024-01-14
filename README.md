@@ -87,6 +87,24 @@ supported_capture_types: ["Alsa", "File", "Stdin"]
 supported_playback_types: ["Alsa", "File", "Stdout"]
 ```
 
+### Adding custom shortcut settings
+It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
+Here is an example config to set the gain of a filter called `MyFilter` within the range from 0 to 10 db in steps of 0.1 dB. 
+```
+custom_shortcuts:
+  - section: "My custom section"
+    description: "Optional description for the section. Omit the attribute, if unwanted"
+    shortcuts:
+      - name: "My filter gain"
+        description: "Optional description for the setting. Omit the attribute, if unwanted"
+        path_in_config: ["filters", "MyFilter", "parameters", "gain"]
+        range_from: 0
+        range_to: 10
+        step: 0.1
+      - name: "The next setting"
+        ...
+```
+
 ### Integrating with other software
 If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
