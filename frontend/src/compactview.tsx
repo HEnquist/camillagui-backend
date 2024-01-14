@@ -5,7 +5,8 @@ import {mdiImageSizeSelectSmall} from "@mdi/js"
 import {Config} from "./camilladsp/config"
 import {defaultStatus} from "./camilladsp/status"
 import {Update} from "./utilities/common"
-import {BassAndTreble, QuickConfigSwitch} from "./shortcuts"
+import {QuickConfigSwitch, ShortcutSections} from "./shortcuts"
+import {GuiConfig} from "./guiconfig"
 
 export function isCompactViewEnabled(): boolean {
   return new URLSearchParams(window.location.search).has("compactview")
@@ -32,12 +33,13 @@ export function CompactView(props: {
   updateConfig: (update: Update<Config>) => void
   setConfig: (name: string, config: Config) => void
   disableCompactView: () => void
+  guiConfig: GuiConfig
 }) {
-  const {currentConfigName, config, setConfig, updateConfig, disableCompactView} = props
+  const {currentConfigName, config, setConfig, updateConfig, disableCompactView, guiConfig} = props
   return <div className="tabpanel" style={{margin: 'auto'}}>
     <DisableCompactViewButton disableCompactView={disableCompactView}/>
     <VolumeBox vuMeterStatus={defaultStatus()} setMessage={() => {}}/>
-    <BassAndTreble config={config} updateConfig={updateConfig}/>
+    <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig}/>
     <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
   </div>
 }

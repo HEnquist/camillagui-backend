@@ -209,19 +209,13 @@ div .popup-content {
 .horizontally-spaced-content {
   display: flex;
   flex-direction: row;
-}
-
-.horizontally-spaced-content > *:not(:last-child) {
-  margin-right: 5px;
+  gap: 5px;
 }
 
 .vertically-spaced-content {
   display: flex;
   flex-direction: column;
-}
-
-.vertically-spaced-content > *:not(:last-child) {
-  margin-bottom: 5px;
+  gap: 5px;
 }
 
 .two-column-grid {

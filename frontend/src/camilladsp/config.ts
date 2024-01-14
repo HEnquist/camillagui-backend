@@ -712,19 +712,3 @@ export function maxChannelCount(config: Config, pipelineStepIndex: number): numb
     }
     return config.devices.capture.channels
 }
-
-export function filterGain(config: Config, filterName: string): number | undefined {
-    return config.filters?.[filterName]?.parameters?.gain
-}
-
-export function filterParameter(config: Config, filterName: string, param: string): number | undefined {
-    const parameters = config.filters?.[filterName]?.parameters
-    if (parameters !== undefined && parameters.hasOwnProperty(param))
-        return parameters[param]
-}
-
-export function setFilterParameter(config: Config, filterName: string, param: string, value: number) {
-    const parameters = config.filters?.[filterName]?.parameters
-    if (parameters !== undefined && parameters.hasOwnProperty(param))
-        parameters[param] = value
-}
