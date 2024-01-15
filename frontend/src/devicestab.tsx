@@ -60,13 +60,10 @@ export function DevicesTab(props: {
     guiConfig.supported_capture_types
   ])
   useEffect(() => {
-    fetch("/api/backends")
-      .then((resp) => resp.json()
-        .then((backends) => {
-          setAvailableBackends(backends)
-        }
-      )
-    )
+    fetch("/api/backends").then(async resp => {
+      if (resp.ok)
+        setAvailableBackends(await resp.json())
+    })
   }, []);
   return <div className="tabpanel">
     <ErrorMessage message={errors({path: []})}/>
