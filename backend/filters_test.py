@@ -1,5 +1,5 @@
 from unittest import TestCase
-from filters import filter_plot_options, pipeline_step_plot_options
+from backend.filters import filter_plot_options, pipeline_step_plot_options
 
 
 class FiltersTest(TestCase):

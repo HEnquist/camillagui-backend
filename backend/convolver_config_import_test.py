@@ -1,6 +1,6 @@
 from unittest import TestCase
 from textwrap import dedent
-from convolver_config_import import (
+from backend.convolver_config_import import (
     ConvolverConfig,
     filename_of_path,
     channels_factors_and_inversions_as_list,
