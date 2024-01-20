@@ -111,16 +111,16 @@ def zip_of_files(folder, files):
     return zip_buffer.getvalue()
 
 
-def get_yaml_as_json(request, path):
+def read_yaml_from_path_to_object(request, path):
     """
-    Read a yaml file, return the validated content as json.
+    Read a yaml file at the given path, return the validated content as a Python object.
     """
     validator = request.app["VALIDATOR"]
     validator.validate_file(path)
     return validator.get_config()
 
 
-def get_active_config(request):
+def get_active_config_path(request):
     """
     Get the active config filename.
     """
@@ -163,7 +163,7 @@ def get_active_config(request):
             return None
 
 
-def set_as_active_config(request, filepath):
+def set_path_as_active_config(request, filepath):
     """
     Persistlently set the given config file path as the active config.
     """
@@ -254,12 +254,12 @@ def _read_statefile_config_path(statefile_path):
         logging.error(f"Details: {e}")
     return None
 
-def save_config(config_name, json_config, request):
+def save_config_to_yaml_file(config_name, config_object, request):
     """
     Write a given config object to a yaml file.
     """
     config_file = path_of_configfile(request, config_name)
-    yaml_config = yaml.dump(json_config).encode('utf-8')
+    yaml_config = yaml.dump(config_object).encode('utf-8')
     with open(config_file, "wb") as f:
         f.write(yaml_config)
 
@@ -273,27 +273,27 @@ def coeff_dir_relative_to_config_dir(request):
     return coeff_dir_with_folder_separator_at_end
 
 
-def make_config_filter_paths_absolute(json_config, config_dir):
+def make_config_filter_paths_absolute(config_object, config_dir):
     """
     Convert paths to coefficient files in a config from relative to absolute.
     """
     conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
-    return convert_config_filter_paths(json_config, conversion)
+    return convert_config_filter_paths(config_object, conversion)
 
 
-def make_config_filter_paths_relative(json_config, config_dir):
+def make_config_filter_paths_relative(config_object, config_dir):
     """
     Convert paths to coefficient files in a config from absolute to relative.
     """
     conversion = lambda path, config_dir=config_dir: make_relative(path, config_dir)
-    return convert_config_filter_paths(json_config, conversion)
+    return convert_config_filter_paths(config_object, conversion)
 
 
-def convert_config_filter_paths(json_config, conversion):
+def convert_config_filter_paths(config_object, conversion):
     """
     Apply a path conversion to all filter coefficient paths of a config.
     """
-    config = deepcopy(json_config)
+    config = deepcopy(config_object)
     filters = config.get("filters")
     if filters is not None:
         for filter_name in filters:

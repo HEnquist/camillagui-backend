@@ -36,7 +36,7 @@ def defaults_for_filter(file_path):
         return {}
 
 
-def filter_options(filter_file_names, filename):
+def filter_plot_options(filter_file_names, filename):
     """
     Get the different available options for samplerate and channels for a set of coeffient files.
     """
@@ -65,7 +65,7 @@ def pattern_from_filter_file_name(path):
     return re.compile(pattern)
 
 
-def pipeline_step_options(filter_file_names, config, step_index):
+def pipeline_step_plot_options(filter_file_names, config, step_index):
     """
     Get the combined available samplerate and channels options for a filter step.
     """
@@ -74,7 +74,7 @@ def pipeline_step_options(filter_file_names, config, step_index):
     all_samplerate_and_channel_options = set_of_all_samplerate_and_channel_options(samplerates_and_channels_for_filter)
     samplerate_and_channel_options = set_of_samplerate_and_channel_options_available_for_all_filters(
         all_samplerate_and_channel_options, samplerates_and_channels_for_filter)
-    return options_as_json(samplerate_and_channel_options)
+    return plot_options_to_object(samplerate_and_channel_options)
 
 
 def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_index):
@@ -91,7 +91,7 @@ def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_i
         if filter["type"] == "Conv" and parameters["type"] in {"Raw", "Wav"}:
             filename = parameters["filename"]
             samplerates_and_channels_for_filter[filter_name] = samplerate_and_channel_pairs_from_options(
-                filter_options(filter_file_names, filename),
+                filter_plot_options(filter_file_names, filename),
                 default_samplerate,
                 default_channels
             )
@@ -131,7 +131,7 @@ def set_of_samplerate_and_channel_options_available_for_all_filters(samplerate_a
     return options_available_for_all_filters
 
 
-def options_as_json(samplerate_and_channel_options):
+def plot_options_to_object(samplerate_and_channel_options):
     """
     Convert samplerate/channel options to an object suitable for conversion to json.
     """

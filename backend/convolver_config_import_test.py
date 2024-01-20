@@ -30,8 +30,8 @@ class Test(TestCase):
             0
             0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
-        self.assertEqual(json['devices'], {'samplerate': 96000})
+        conf = ConvolverConfig(convolver_config).to_object()
+        self.assertEqual(conf['devices'], {'samplerate': 96000})
 
     def test_delays_and_mixers_are_imported(self):
         convolver_config = clean_multi_line_string("""
@@ -39,22 +39,22 @@ class Test(TestCase):
             3
             0 4
         """)
-        json = ConvolverConfig(convolver_config).as_json()
+        conf = ConvolverConfig(convolver_config).to_object()
         self.assertEqual(
-            json['filters'],
+            conf['filters'],
             {'Delay3': {'type': 'Delay', 'parameters': {'delay': 3, 'unit': 'ms', 'subsample': False}},
              'Delay4': {'type': 'Delay', 'parameters': {'delay': 4, 'unit': 'ms', 'subsample': False}}}
         )
         self.assertEqual(
-            json['mixers']['Mixer in']['channels'],
+            conf['mixers']['Mixer in']['channels'],
             {'in': 2, 'out': 1}
         )
         self.assertEqual(
-            json['mixers']['Mixer out']['channels'],
+            conf['mixers']['Mixer out']['channels'],
             {'in': 1, 'out': 3}
         )
         self.assertEqual(
-            json['pipeline'],
+            conf['pipeline'],
             [{'type': 'Filter', 'channel': 0, 'names': ['Delay3'], 'bypassed': None, 'description': None},
              {'type': 'Mixer', 'name': 'Mixer in', 'description': None},
              {'type': 'Mixer', 'name': 'Mixer out', 'description': None},
@@ -71,15 +71,15 @@ class Test(TestCase):
             0.0
             0.0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
+        conf = ConvolverConfig(convolver_config).to_object()
         self.assertEqual(
-            json['filters'],
+            conf['filters'],
             {'IR.wav-0': {
                 'type': 'Conv',
                 'parameters': {'type': 'Wav', 'filename': 'IR.wav', 'channel': 0}}}
         )
         self.assertEqual(
-            json['pipeline'],
+            conf['pipeline'],
             [{'type': 'Mixer', 'name': 'Mixer in', 'description': None},
              {'type': 'Filter', 'channel': 0, 'names': ['IR.wav-0'], 'bypassed': None, 'description': None},
              {'type': 'Mixer', 'name': 'Mixer out', 'description': None}]
@@ -103,10 +103,10 @@ class Test(TestCase):
             0.0
             0.0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
-        self.assertEqual(json['filters']['IR1.wav-0']['parameters']['filename'], 'IR1.wav')
-        self.assertEqual(json['filters']['IR2.wav-0']['parameters']['filename'], 'IR2.wav')
-        self.assertEqual(json['filters']['IR3.wav-0']['parameters']['filename'], 'IR3.wav')
+        conf = ConvolverConfig(convolver_config).to_object()
+        self.assertEqual(conf['filters']['IR1.wav-0']['parameters']['filename'], 'IR1.wav')
+        self.assertEqual(conf['filters']['IR2.wav-0']['parameters']['filename'], 'IR2.wav')
+        self.assertEqual(conf['filters']['IR3.wav-0']['parameters']['filename'], 'IR3.wav')
 
     def test_wav_file_with_multiple_impulse_responses(self):
         convolver_config = clean_multi_line_string("""
@@ -122,9 +122,9 @@ class Test(TestCase):
             0.0
             0.0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
-        self.assertEqual(json['filters']['IR.wav-0']['parameters']['channel'], 0)
-        self.assertEqual(json['filters']['IR.wav-1']['parameters']['channel'], 1)
+        conf = ConvolverConfig(convolver_config).to_object()
+        self.assertEqual(conf['filters']['IR.wav-0']['parameters']['channel'], 0)
+        self.assertEqual(conf['filters']['IR.wav-1']['parameters']['channel'], 1)
 
     def test_impulse_responses_are_mapped_to_correct_channels(self):
         convolver_config = clean_multi_line_string("""
@@ -140,9 +140,9 @@ class Test(TestCase):
             0.0
             0.0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
+        conf = ConvolverConfig(convolver_config).to_object()
         self.assertEqual(
-            json['pipeline'],
+            conf['pipeline'],
             [{'type': 'Mixer', 'name': 'Mixer in', 'description': None},
              {'type': 'Filter', 'channel': 0, 'names': ['IR1.wav-0'], 'bypassed': None, 'description': None},
              {'type': 'Filter', 'channel': 1, 'names': ['IR2.wav-0'], 'bypassed': None, 'description': None},
@@ -167,9 +167,9 @@ class Test(TestCase):
             -1.5 -0.4
             0.0
         """)
-        json = ConvolverConfig(convolver_config).as_json()
+        conf = ConvolverConfig(convolver_config).to_object()
         self.assertEqual(
-            json['mixers']['Mixer in'],
+            conf['mixers']['Mixer in'],
             {'channels': {'in': 2, 'out': 3},
              'mapping': [
                  {'dest': 0,
@@ -206,9 +206,9 @@ class Test(TestCase):
             0.0
             -1.5 -0.4
         """)
-        json = ConvolverConfig(convolver_config).as_json()
+        conf = ConvolverConfig(convolver_config).to_object()
         self.assertEqual(
-            json['mixers']['Mixer out'],
+            conf['mixers']['Mixer out'],
             {'channels': {'in': 3, 'out': 2},
              'mapping': [
                  {'dest': 0,

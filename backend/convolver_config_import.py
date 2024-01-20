@@ -58,7 +58,7 @@ class ConvolverConfig:
         filter_count = int(len(filter_lines) / 4)
         self._filters = [Filter(n, filter_lines[n*4:n*4+4]) for n in range(filter_count)]
 
-    def as_json(self) -> dict:
+    def to_object(self) -> dict:
         return {
             'devices': {'samplerate': self._samplerate},
             'filters': self._delay_filter_definitions() | self._convolution_filter_definitions(),
