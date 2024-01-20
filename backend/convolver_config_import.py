@@ -38,6 +38,31 @@ def channels_factors_and_inversions_as_list(
     ]
 
 
+def make_filter_step(channel: int, names: list[str]) -> dict:
+    return {
+        "type": "Filter",
+        "channel": channel,
+        "names": names,
+        "bypassed": None,
+        "description": None,
+    }
+
+
+def make_mixer_mapping(input_channels: list[tuple], output_channel: int) -> dict:
+    return {
+        "dest": output_channel,
+        "sources": [
+            {
+                "channel": channel,
+                "gain": factor,
+                "scale": "linear",
+                "inverted": invert,
+            }
+            for (channel, factor, invert) in input_channels
+        ],
+    }
+
+
 class Filter:
     filename: str
     channel: int
@@ -128,13 +153,7 @@ class ConvolverConfig:
 
     def _delay_pipeline_steps(self, delays: list[int]) -> list[dict]:
         return [
-            {
-                "type": "Filter",
-                "channel": channel,
-                "names": [self._delay_name(delay)],
-                "bypassed": None,
-                "description": None,
-            }
+            make_filter_step(channel, [self._delay_name(delay)])
             for channel, delay in enumerate(delays)
             if delay != 0
         ]
@@ -150,18 +169,7 @@ class ConvolverConfig:
                     "out": max(1, len(self._filters)),
                 },
                 "mapping": [
-                    {
-                        "dest": f.channel,
-                        "sources": [
-                            {
-                                "channel": channel,
-                                "gain": factor,
-                                "scale": "linear",
-                                "inverted": invert,
-                            }
-                            for (channel, factor, invert) in f.input_channels
-                        ],
-                    }
+                    make_mixer_mapping(f.input_channels, f.channel)
                     for f in self._filters
                 ],
             }
@@ -175,20 +183,15 @@ class ConvolverConfig:
                     "out": self._output_channels,
                 },
                 "mapping": [
-                    {
-                        "dest": output_channel,
-                        "sources": [
-                            {
-                                "channel": f.channel,
-                                "gain": factor,
-                                "scale": "linear",
-                                "inverted": invert,
-                            }
+                    make_mixer_mapping(
+                        [
+                            (f.channel, factor, invert)
                             for f in self._filters
                             for (channel, factor, invert) in f.output_channels
                             if channel == output_channel
                         ],
-                    }
+                        output_channel,
+                    )
                     for output_channel in range(self._output_channels)
                 ],
             }
@@ -203,13 +206,4 @@ class ConvolverConfig:
         return [{"type": "Mixer", "name": "Mixer out", "description": None}]
 
     def _filter_pipeline_steps(self) -> list[dict]:
-        return [
-            {
-                "type": "Filter",
-                "channel": f.channel,
-                "names": [f.name()],
-                "bypassed": None,
-                "description": None,
-            }
-            for f in self._filters
-        ]
+        return [make_filter_step(f.channel, [f.name()]) for f in self._filters]
