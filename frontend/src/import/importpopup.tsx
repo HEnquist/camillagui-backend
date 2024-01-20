@@ -90,10 +90,12 @@ function FileList(props: {
     loadFilenames('config').then(files => setFileList(files))
   })
   function loadLocalCdspConfig(files: FileList): void {
-    importedYamlConfigAsJson(files).then(config => setImportConfig(files[0].name, config))
+    const file = files[0]
+    importedYamlConfigAsJson(files).then(config => setImportConfig(file.name, config))
   }
-  function loadLocalConvolverConfig(files: FileList): void {
-    importedConvolverConfigAsJson(files).then(config => setImportConfig(files[0].name, config))
+  function loadLocalConvolverConfig(files: FileList) {
+    const file = files[0]
+    importedConvolverConfigAsJson(files).then(config => setImportConfig(file.name, config))
   }
   function loadJsonConfigWithName(name: string): void {
     loadConfigJson(name).then(config => setImportConfig(name, config))
@@ -209,6 +211,7 @@ function margin(level: number): string {
 function collisionWarning(config: any, parentKey: string, valueKey: string): ReactNode {
   if (['filters', 'mixers', 'processors'].includes(parentKey)
       && parentKey in config
+      && config[parentKey] !== null
       && valueKey in config[parentKey]
   ) {
     const value = config[parentKey][valueKey]
