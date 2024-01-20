@@ -1,5 +1,5 @@
 import React, {ReactNode, useEffect, useState} from "react"
-import {Button, CheckBox, CloseButton, MdiIcon, UploadButton} from "../utilities/ui-components"
+import {Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton} from "../utilities/ui-components"
 import {loadConfigJson, loadFilenames} from "../utilities/files"
 import {Config} from "../camilladsp/config"
 import {isObject} from "lodash"
@@ -103,24 +103,28 @@ function FileList(props: {
   return <div className="tabpanel">
     {importDoneFromFile ?
         <div style={bottomMargin}>
-          Import from {importDoneFromFile} successful.<br/>
+          Import from {importDoneFromFile} was successful.<br/>
           <br/>
-          Would you like to import another file?
+          Close this dialog or select another file to import.
         </div>
-        : <div style={bottomMargin}>Select from which file to import</div>
+        : <div style={bottomMargin}>Select from which file to import.</div>
     }
-    <div style={bottomMargin} className="horizontally-spaced-content">
-      <UploadButton text="CamillaDSP Config" upload={loadLocalCdspConfig}/>
-      <UploadButton text="Convolver Config" upload={loadLocalConvolverConfig}/>
-    </div>
-    <div>
+    <Box title="Upload new config file" style={{display: 'grid',
+          alignItems: 'center',
+          gridTemplateColumns: '32% 32%',
+          columnGap: '2%'}}>
+      <UploadButton text="CamillaDSP Config" tooltip="Import selected parts from a<br>CamillaDSP config file" upload={loadLocalCdspConfig}/>
+      <UploadButton text="Convolver Config" tooltip="Translate a 'Convolver' config file<br>and import selected parts" upload={loadLocalConvolverConfig}/>
+    </Box>
+    <Box title="Existing config file">
       {fileList.map(file =>
           <div key={file}>
             <Button style={{marginBottom:'5px'}} text={file} onClick={() => loadJsonConfigWithName(file)}/>
             <br/>
           </div>
       )}
-    </div>
+    </Box>
+    <ReactTooltip multiline={true}/>
   </div>
 }
 
