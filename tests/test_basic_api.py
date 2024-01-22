@@ -7,6 +7,7 @@ from aiohttp import web
 
 import main
 from backend import views
+import camilladsp
 
 server_config = {
     "camilla_host": "127.0.0.1",
@@ -25,6 +26,7 @@ server_config = {
     "can_update_active_config": False,
 }
 
+
 @pytest.fixture
 def mock_request(mock_app):
     request = MagicMock
@@ -40,12 +42,30 @@ def mock_app():
     client.volume.main = MagicMock(side_effect=[-20.0])
     client.levels = MagicMock
     client.levels.capture_peak = MagicMock(side_effect=[[-2.0, -3.0]])
+    client.levels.levels = MagicMock(
+        side_effect=[
+            {
+                "capture_rms": [-5.0, -6.0],
+                "capture_peak": [-2.0, -3.0],
+                "playback_rms": [-7.0, -8.0],
+                "playback_peak": [-3.0, -4.0],
+            }
+        ]
+    )
+    client.rate = MagicMock()
+    client.rate.capture = MagicMock(side_effect=[44100])
+    client.general = MagicMock()
+    client.general.state = MagicMock(
+        side_effect=[camilladsp.camilladsp.ProcessingState.RUNNING]
+    )
+    client.status = MagicMock()
+    client.status.rate_adjust = MagicMock(side_effect=[1.01])
+    client.status.buffer_level = MagicMock(side_effect=[1234])
+    client.status.clipped_samples = MagicMock(side_effect=[12])
+    client.status.processing_load = MagicMock(side_effect=[0.5])
     with patch("camilladsp.CamillaClient", client_constructor):
-        print(client)
-        print(client.volume)
-        print(client.volume.main)
         app = main.build_app(server_config)
-        print(app["CAMILLA"])
+        app["STATUSCACHE"]["py_cdsp_version"] = "1.2.3"
         yield app
 
 
@@ -80,3 +100,11 @@ async def test_read_peaks(server):
     resp = await server.get("/api/getlistparam/capturesignalpeak")
     assert resp.status == 200
     assert await resp.json() == [-2.0, -3.0]
+
+
+@pytest.mark.asyncio
+async def test_read_status(server):
+    resp = await server.get("/api/status")
+    assert resp.status == 200
+    response = await resp.json()
+    assert response["cdsp_status"] == "RUNNING"
