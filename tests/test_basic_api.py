@@ -8,6 +8,22 @@ from aiohttp import web
 import main
 from backend import views
 
+server_config = {
+    "camilla_host": "127.0.0.1",
+    "camilla_port": 1234,
+    "bind_address": "0.0.0.0",
+    "port": 5005,
+    "config_dir": ".",
+    "coeff_dir": ".",
+    "default_config": "./default_config.yml",
+    "statefile_path": "./statefile.yml",
+    "log_file": None,
+    "on_set_active_config": None,
+    "on_get_active_config": None,
+    "supported_capture_types": None,
+    "supported_playback_types": None,
+    "can_update_active_config": False,
+}
 
 @pytest.fixture
 def mock_request(mock_app):
@@ -28,7 +44,7 @@ def mock_app():
         print(client)
         print(client.volume)
         print(client.volume.main)
-        app = main.build_app()
+        app = main.build_app(server_config)
         print(app["CAMILLA"])
         yield app
 
