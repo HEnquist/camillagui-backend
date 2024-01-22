@@ -47,10 +47,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'
-    - name: Set up pytest
-      run: python3 -m pip install pytest-aiohttp
-    - name: Run python tests
-      run: python3 -m pytest
 
     - name: Install template render dependencies
       run: |
@@ -62,6 +58,15 @@ jobs:
 
     - name: Clean up
       run: rm -rf release_automation
+
+    - name: Install requirements
+      run: python3 -m pip install -r requirements.txt
+
+    - name: Set up pytest
+      run: python3 -m pip install pytest-aiohttp
+
+    - name: Run python tests
+      run: python3 -m pytest
 
     - name: Download frontend
       uses: actions/download-artifact@v3
