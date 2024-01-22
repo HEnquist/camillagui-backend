@@ -1,7 +1,7 @@
 from aiohttp import web
 import logging
 import sys
-from camilladsp import CamillaClient
+import camilladsp
 from camilladsp_plot.validate_config import CamillaValidator
 
 from backend.version import VERSION
@@ -26,31 +26,39 @@ logging.getLogger("root").setLevel(level)
 #logging.warning("warning")
 #logging.error("error")
 
-app = web.Application(client_max_size=1024 ** 3)  # set max upload file size to 1GB
-app["config_dir"] = config["config_dir"]
-app["coeff_dir"] = config["coeff_dir"]
-app["default_config"] = config["default_config"]
-app["statefile_path"] = config["statefile_path"]
-app["log_file"] = config["log_file"]
-app["on_set_active_config"] = config["on_set_active_config"]
-app["on_get_active_config"] = config["on_get_active_config"]
-app["supported_capture_types"] = config["supported_capture_types"]
-app["supported_playback_types"] = config["supported_playback_types"]
-app["can_update_active_config"] = config["can_update_active_config"]
-setup_routes(app)
-setup_static_routes(app)
+def build_app():
+    app = web.Application(client_max_size=1024 ** 3)  # set max upload file size to 1GB
+    app["config_dir"] = config["config_dir"]
+    app["coeff_dir"] = config["coeff_dir"]
+    app["default_config"] = config["default_config"]
+    app["statefile_path"] = config["statefile_path"]
+    app["log_file"] = config["log_file"]
+    app["on_set_active_config"] = config["on_set_active_config"]
+    app["on_get_active_config"] = config["on_get_active_config"]
+    app["supported_capture_types"] = config["supported_capture_types"]
+    app["supported_playback_types"] = config["supported_playback_types"]
+    app["can_update_active_config"] = config["can_update_active_config"]
+    setup_routes(app)
+    setup_static_routes(app)
 
-app["CAMILLA"] = CamillaClient(config["camilla_host"], config["camilla_port"])
-app["RECONNECT_THREAD"] = None
-app["STATUSCACHE"] = {
-    "backend_version": version_string(VERSION),
-    "py_cdsp_version": version_string(app["CAMILLA"].versions.library())
-    }
-app["CACHETIME"] = 0
-camillavalidator = CamillaValidator()
-if config["supported_capture_types"] is not None:
-    camillavalidator.set_supported_capture_types(config["supported_capture_types"])
-if config["supported_playback_types"] is not None:
-    camillavalidator.set_supported_playback_types(config["supported_playback_types"])
-app["VALIDATOR"] = camillavalidator
-web.run_app(app, host=config["bind_address"], port=config["port"])
+    app["CAMILLA"] = camilladsp.CamillaClient(config["camilla_host"], config["camilla_port"])
+    app["RECONNECT_THREAD"] = None
+    app["STATUSCACHE"] = {
+        "backend_version": version_string(VERSION),
+        "py_cdsp_version": version_string(app["CAMILLA"].versions.library())
+        }
+    app["CACHETIME"] = 0
+    camillavalidator = CamillaValidator()
+    if config["supported_capture_types"] is not None:
+        camillavalidator.set_supported_capture_types(config["supported_capture_types"])
+    if config["supported_playback_types"] is not None:
+        camillavalidator.set_supported_playback_types(config["supported_playback_types"])
+    app["VALIDATOR"] = camillavalidator
+    return app
+
+def main():
+    app = build_app()
+    web.run_app(app, host=config["bind_address"], port=config["port"])
+
+if __name__ == "__main__":
+    main()
