@@ -82,9 +82,10 @@ def mock_app():
     client.status.processing_load = MagicMock(side_effect=[0.5])
     client.config = MagicMock()
     client.config.active = MagicMock(side_effect=[SAMPLE_CONFIG])
+    client.versions = MagicMock()
+    client.versions.library = MagicMock(side_effect=["1.2.3"])
     with patch("camilladsp.CamillaClient", client_constructor):
         app = main.build_app(server_config)
-        app["STATUSCACHE"]["py_cdsp_version"] = "1.2.3"
         yield app
 
 
