@@ -1,11 +1,12 @@
 import json
 import pytest
 from unittest.mock import MagicMock, patch
-import asyncio
 import pytest
-from aiohttp import web
+from aiohttp import web, FormData
 import os
 import yaml
+import random
+import string
 
 import main
 from backend import views
@@ -66,15 +67,13 @@ def mock_app():
     client.general.state = MagicMock(
         side_effect=[camilladsp.camilladsp.ProcessingState.RUNNING]
     )
-    client.general.list_capture_devices = MagicMock(side_effect=[[
-        ["hw:Aaaa,0,0", "Dev A"],
-        ["hw:Bbbb,0,0", "Dev B"]
-    ]])
-    client.general.list_playback_devices = MagicMock(side_effect=[[
-        ["hw:Cccc,0,0", "Dev C"],
-        ["hw:Dddd,0,0", "Dev D"]
-    ]])
-    client.general.supported_device_types = MagicMock(side_effect = [["Alsa", "Wasapi"]])
+    client.general.list_capture_devices = MagicMock(
+        side_effect=[[["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]]
+    )
+    client.general.list_playback_devices = MagicMock(
+        side_effect=[[["hw:Cccc,0,0", "Dev C"], ["hw:Dddd,0,0", "Dev D"]]]
+    )
+    client.general.supported_device_types = MagicMock(side_effect=[["Alsa", "Wasapi"]])
     client.status = MagicMock()
     client.status.rate_adjust = MagicMock(side_effect=[1.01])
     client.status.buffer_level = MagicMock(side_effect=[1234])
@@ -157,3 +156,40 @@ async def test_all_get_endpoints_ok(server, endpoint, parameters):
     else:
         resp = await server.get(endpoint)
     assert resp.status == 200
+
+
+@pytest.mark.parametrize(
+    "upload, delete, getfile",
+    [
+        ("/api/uploadconfigs", "/api/deleteconfigs", "/config/"),
+        ("/api/uploadcoeffs", "/api/deletecoeffs", "/coeff/"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_upload_and_delete(server, upload, delete, getfile):
+    filename = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+    filedata = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+
+    # try to get a file that does not exist
+    resp = await server.get(getfile + filename)
+    assert resp.status == 404
+
+    # generate and upload a file
+    data = FormData()
+    data.add_field("file0", filedata.encode(), filename=filename)
+    resp = await server.post(upload, data=data)
+    assert resp.status == 200
+
+    # fetch the file, check the content
+    resp = await server.get(getfile + filename)
+    assert resp.status == 200
+    response_data = await resp.read()
+    assert response_data == filedata.encode()
+
+    # delete the file
+    resp = await server.post(delete, json=[filename])
+    assert resp.status == 200
+
+    # try to download the deleted file
+    resp = await server.get(getfile + filename)
+    assert resp.status == 404
