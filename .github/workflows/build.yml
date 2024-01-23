@@ -51,23 +51,22 @@ jobs:
     - name: Install template render dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install jinja2 PyYAML
+        python -m pip install jinja2 PyYAML
 
     - name: Render scripts from templates
       run: python -m release_automation.render_env_files
 
     - name: Install requirements
-      run: python3 -m pip install -r requirements.txt
+      run: python -m pip install -r requirements.txt
 
     - name: Set up pytest
-      run: python3 -m pip install pytest-aiohttp
+      run: python -m pip install pytest-aiohttp
 
     - name: Run python tests
-      run: python3 -m pytest
+      run: python -Bm pytest
 
     - name: Clean up
       run: |
-        rm -rf backend/__pycache__
         rm -rf release_automation
         rm -rf tests
 
