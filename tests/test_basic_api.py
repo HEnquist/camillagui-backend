@@ -167,8 +167,8 @@ async def test_all_get_endpoints_ok(server, endpoint, parameters):
 )
 @pytest.mark.asyncio
 async def test_upload_and_delete(server, upload, delete, getfile):
-    filename = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-    filedata = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+    filename = "".join(random.choice(string.ascii_lowercase) for i in range(10))
+    filedata = "".join(random.choice(string.ascii_lowercase) for i in range(10))
 
     # try to get a file that does not exist
     resp = await server.get(getfile + filename)
