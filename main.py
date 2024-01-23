@@ -42,12 +42,14 @@ def build_app(backend_config):
     setup_static_routes(app)
 
     app["CAMILLA"] = camilladsp.CamillaClient(backend_config["camilla_host"], backend_config["camilla_port"])
-    app["RECONNECT_THREAD"] = None
     app["STATUSCACHE"] = {
         "backend_version": version_string(VERSION),
         "py_cdsp_version": version_string(app["CAMILLA"].versions.library())
         }
-    app["CACHETIME"] = 0
+    app["STORE"] = {}
+    app["STORE"]["reconnect_thread"] = None
+    app["STORE"]["cache_time"] = 0
+
     camillavalidator = CamillaValidator()
     if backend_config["supported_capture_types"] is not None:
         camillavalidator.set_supported_capture_types(backend_config["supported_capture_types"])

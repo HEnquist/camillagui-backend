@@ -38,7 +38,7 @@ jobs:
         name: build
         path: build
 
-  build_be:
+  build_and_test_be:
     runs-on: ubuntu-latest
     needs: build_fe
     steps:
@@ -56,9 +56,6 @@ jobs:
     - name: Render scripts from templates
       run: python -m release_automation.render_env_files
 
-    - name: Clean up
-      run: rm -rf release_automation
-
     - name: Install requirements
       run: python3 -m pip install -r requirements.txt
 
@@ -67,6 +64,12 @@ jobs:
 
     - name: Run python tests
       run: python3 -m pytest
+
+    - name: Clean up
+      run: |
+        rm -rf backend/__pycache__
+        rm -rf release_automation
+        rm -rf tests
 
     - name: Download frontend
       uses: actions/download-artifact@v3

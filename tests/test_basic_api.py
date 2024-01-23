@@ -4,26 +4,31 @@ from unittest.mock import MagicMock, patch
 import asyncio
 import pytest
 from aiohttp import web
+import os
+import yaml
 
 import main
 from backend import views
 import camilladsp
+
+TESTFILE_DIR = os.path.join(os.path.dirname(__file__), "testfiles")
+SAMPLE_CONFIG = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "config.yml")))
 
 server_config = {
     "camilla_host": "127.0.0.1",
     "camilla_port": 1234,
     "bind_address": "0.0.0.0",
     "port": 5005,
-    "config_dir": ".",
-    "coeff_dir": ".",
-    "default_config": "./default_config.yml",
-    "statefile_path": "./statefile.yml",
-    "log_file": None,
+    "config_dir": TESTFILE_DIR,
+    "coeff_dir": TESTFILE_DIR,
+    "default_config": os.path.join(TESTFILE_DIR, "config.yml"),
+    "statefile_path": os.path.join(TESTFILE_DIR, "statefile.yml"),
+    "log_file": os.path.join(TESTFILE_DIR, "log.txt"),
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
     "supported_playback_types": None,
-    "can_update_active_config": False,
+    "can_update_active_config": True,
 }
 
 
@@ -40,8 +45,11 @@ def mock_app():
     client_constructor = MagicMock(return_value=client)
     client.volume = MagicMock()
     client.volume.main = MagicMock(side_effect=[-20.0])
+    client.mute = MagicMock()
+    client.mute.main = MagicMock(side_effect=[False])
     client.levels = MagicMock
     client.levels.capture_peak = MagicMock(side_effect=[[-2.0, -3.0]])
+    client.levels.playback_peak = MagicMock(side_effect=[[-2.5, -3.5]])
     client.levels.levels = MagicMock(
         side_effect=[
             {
@@ -58,11 +66,22 @@ def mock_app():
     client.general.state = MagicMock(
         side_effect=[camilladsp.camilladsp.ProcessingState.RUNNING]
     )
+    client.general.list_capture_devices = MagicMock(side_effect=[[
+        ["hw:Aaaa,0,0", "Dev A"],
+        ["hw:Bbbb,0,0", "Dev B"]
+    ]])
+    client.general.list_playback_devices = MagicMock(side_effect=[[
+        ["hw:Cccc,0,0", "Dev C"],
+        ["hw:Dddd,0,0", "Dev D"]
+    ]])
+    client.general.supported_device_types = MagicMock(side_effect = [["Alsa", "Wasapi"]])
     client.status = MagicMock()
     client.status.rate_adjust = MagicMock(side_effect=[1.01])
     client.status.buffer_level = MagicMock(side_effect=[1234])
     client.status.clipped_samples = MagicMock(side_effect=[12])
     client.status.processing_load = MagicMock(side_effect=[0.5])
+    client.config = MagicMock()
+    client.config.active = MagicMock(side_effect=[SAMPLE_CONFIG])
     with patch("camilladsp.CamillaClient", client_constructor):
         app = main.build_app(server_config)
         app["STATUSCACHE"]["py_cdsp_version"] = "1.2.3"
@@ -108,3 +127,32 @@ async def test_read_status(server):
     assert resp.status == 200
     response = await resp.json()
     assert response["cdsp_status"] == "RUNNING"
+
+
+@pytest.mark.parametrize(
+    "endpoint, parameters",
+    [
+        ("/api/status", None),
+        ("/api/getparam/mute", None),
+        ("/api/getlistparam/playbacksignalpeak", None),
+        ("/api/getconfig", None),
+        ("/api/getactiveconfigfile", None),
+        ("/api/getdefaultconfigfile", None),
+        ("/api/storedconfigs", None),
+        ("/api/storedcoeffs", None),
+        ("/api/defaultsforcoeffs", {"file": "test.wav"}),
+        ("/api/guiconfig", None),
+        ("/api/getconfigfile", {"name": "config.yml"}),
+        ("/api/logfile", None),
+        ("/api/capturedevices/alsa", None),
+        ("/api/playbackdevices/alsa", None),
+        ("/api/backends", None),
+    ],
+)
+@pytest.mark.asyncio
+async def test_all_get_endpoints_ok(server, endpoint, parameters):
+    if parameters:
+        resp = await server.get(endpoint, params=parameters)
+    else:
+        resp = await server.get(endpoint)
+    assert resp.status == 200
