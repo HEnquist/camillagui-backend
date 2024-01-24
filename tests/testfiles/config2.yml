@@ -1,0 +1,12 @@
+---
+devices:
+  samplerate: 48000
+  chunksize: 1024
+  capture:
+    type: Stdin
+    channels: 2
+    format: S16LE
+  playback:
+    type: Stdout
+    channels: 2
+    format: S16LE
