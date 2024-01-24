@@ -13,12 +13,20 @@ from backend import views
 import camilladsp
 
 TESTFILE_DIR = os.path.join(os.path.dirname(__file__), "testfiles")
-SAMPLE_CONFIG = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "config.yml")))
+SAMPLE_CONFIG_PATH = os.path.join(TESTFILE_DIR, "config.yml")
+STATEFILE_PATH = os.path.join(TESTFILE_DIR, "statefile.yml")
+STATEFILE_TEMPLATE_PATH = os.path.join(TESTFILE_DIR, "statefile_template.yml")
+LOGFILE_PATH = os.path.join(TESTFILE_DIR, "log.txt")
+SAMPLE_CONFIG = yaml.safe_load(open(SAMPLE_CONFIG_PATH))
+
+
 @pytest.fixture
 def statefile():
-    statefile_data = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "statefile_template.yml")))
-    statefile_data["config_path"] = os.path.join(TESTFILE_DIR, statefile_data["config_path"])
-    with open(os.path.join(TESTFILE_DIR, "statefile.yml"), "w") as f:
+    statefile_data = yaml.safe_load(open(STATEFILE_TEMPLATE_PATH))
+    statefile_data["config_path"] = os.path.join(
+        TESTFILE_DIR, statefile_data["config_path"]
+    )
+    with open(STATEFILE_PATH, "w") as f:
         yaml.dump(statefile_data, f)
 
 
@@ -29,9 +37,9 @@ server_config = {
     "port": 5005,
     "config_dir": TESTFILE_DIR,
     "coeff_dir": TESTFILE_DIR,
-    "default_config": os.path.join(TESTFILE_DIR, "config.yml"),
-    "statefile_path": os.path.join(TESTFILE_DIR, "statefile.yml"),
-    "log_file": os.path.join(TESTFILE_DIR, "log.txt"),
+    "default_config": SAMPLE_CONFIG_PATH,
+    "statefile_path": STATEFILE_PATH,
+    "log_file": LOGFILE_PATH,
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
@@ -45,6 +53,7 @@ def mock_request(mock_app):
     request = MagicMock
     request.app = mock_app
     yield request
+
 
 @pytest.fixture
 def mock_camillaclient(statefile):
@@ -86,10 +95,11 @@ def mock_camillaclient(statefile):
     client.status.processing_load = MagicMock(return_value=0.5)
     client.config = MagicMock()
     client.config.active = MagicMock(return_value=SAMPLE_CONFIG)
-    client.config.file_path = MagicMock(return_value = os.path.join(TESTFILE_DIR, "config.yml"))
+    client.config.file_path = MagicMock(return_value=SAMPLE_CONFIG_PATH)
     client.versions = MagicMock()
     client.versions.library = MagicMock(return_value="1.2.3")
     yield client_constructor
+
 
 @pytest.fixture
 def mock_app(mock_camillaclient):
@@ -97,10 +107,13 @@ def mock_app(mock_camillaclient):
         app = main.build_app(server_config)
         yield app
 
+
 @pytest.fixture
 def mock_offline_app(mock_camillaclient):
-    mock_camillaclient._client.config.file_path =  MagicMock(return_value = None)
-    mock_camillaclient._client.general.state = MagicMock(side_effect = camilladsp.CamillaError)
+    mock_camillaclient._client.config.file_path = MagicMock(return_value=None)
+    mock_camillaclient._client.general.state = MagicMock(
+        side_effect=camilladsp.CamillaError
+    )
     with patch("camilladsp.CamillaClient", mock_camillaclient):
         app = main.build_app(server_config)
         yield app
@@ -110,9 +123,11 @@ def mock_offline_app(mock_camillaclient):
 def server(event_loop, aiohttp_client, mock_app):
     return event_loop.run_until_complete(aiohttp_client(mock_app))
 
+
 @pytest.fixture
 def offline_server(event_loop, aiohttp_client, mock_offline_app):
     return event_loop.run_until_complete(aiohttp_client(mock_offline_app))
+
 
 @pytest.mark.asyncio
 async def test_read_volume(mock_request):
@@ -224,6 +239,7 @@ async def test_active_config_online(server):
     print(content)
     assert content["configFileName"] == "config.yml"
     assert content["config"]["devices"]["samplerate"] == 44100
+
 
 @pytest.mark.asyncio
 async def test_active_config_offline(offline_server):
