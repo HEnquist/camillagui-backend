@@ -14,10 +14,13 @@ import camilladsp
 
 TESTFILE_DIR = os.path.join(os.path.dirname(__file__), "testfiles")
 SAMPLE_CONFIG = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "config.yml")))
-statefile_data = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "statefile_template.yml")))
-statefile_data["config_path"] = os.path.join(TESTFILE_DIR, "config2.yml")
-with open(os.path.join(TESTFILE_DIR, "statefile.yml"), "w") as f:
-    yaml.dump(statefile_data, f)
+@pytest.fixture
+def statefile():
+    statefile_data = yaml.safe_load(open(os.path.join(TESTFILE_DIR, "statefile_template.yml")))
+    statefile_data["config_path"] = os.path.join(TESTFILE_DIR, statefile_data["config_path"])
+    with open(os.path.join(TESTFILE_DIR, "statefile.yml"), "w") as f:
+        yaml.dump(statefile_data, f)
+
 
 server_config = {
     "camilla_host": "127.0.0.1",
@@ -44,7 +47,7 @@ def mock_request(mock_app):
     yield request
 
 @pytest.fixture
-def mock_camillaclient():
+def mock_camillaclient(statefile):
     client = MagicMock()
     client_constructor = MagicMock(return_value=client)
     client_constructor._client = client
