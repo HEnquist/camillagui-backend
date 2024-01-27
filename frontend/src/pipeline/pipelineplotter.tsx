@@ -81,6 +81,7 @@ interface Text {
 interface Link {
   source: number[]
   target: number[]
+  color: string
 }
 
 interface Point {
@@ -112,6 +113,7 @@ class PipelinePlot extends React.Component<Props, State> {
   private textColor?: string
   private borderColor?: string
   private arrowColor?: string
+  private arrowColors: string[]
   private arrowWidth?: string
   private backgroundColor?: string
   private frameBgColor?: string
@@ -123,6 +125,7 @@ class PipelinePlot extends React.Component<Props, State> {
 
   constructor(props: Props) {
     super(props)
+    this.arrowColors = []
     this.state = { height: this.height, width: this.width }
   }
 
@@ -131,6 +134,7 @@ class PipelinePlot extends React.Component<Props, State> {
     this.textColor = styles.getPropertyValue('--text-color')
     this.borderColor = styles.getPropertyValue('--box-border-color')
     this.arrowColor = styles.getPropertyValue('--arrow-color')
+    this.arrowColors = styles.getPropertyValue('--arrow-colors').split(',').map(c => c.trim());
     this.arrowWidth = styles.getPropertyValue('--arrow-width')
     this.backgroundColor = styles.getPropertyValue('--background-color')
     this.frameBgColor = styles.getPropertyValue('--frame-background-color')
@@ -227,10 +231,13 @@ class PipelinePlot extends React.Component<Props, State> {
     boxes.unshift(rect)
   }
 
-  private appendLink(links: Link[], labels: Text[], source: Point, dest: Point, label?: string) {
+  private appendLink(links: Link[], labels: Text[], source: Point, dest: Point, channel: number, label?: string) {
+    const colorIndex = channel % this.arrowColors.length
+    const arrowColor = this.arrowColors[colorIndex]
     const newlink = {
       source: [source.x, source.y],
-      target: [dest.x, dest.y]
+      target: [dest.x, dest.y],
+      color: arrowColor
     }
     if (label) {
       const position = dest.y <= source.y ?
@@ -358,7 +365,7 @@ class PipelinePlot extends React.Component<Props, State> {
               const srclen = stages[stages.length - 1][src_ch].length
               const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
               const dest_p = mixerchannels[dest_ch][0].input
-              this.appendLink(links, labels, src_p, dest_p, label)
+              this.appendLink(links, labels, src_p, dest_p, src_ch, label)
             }
           }
           stages.push(mixerchannels)
@@ -419,7 +426,7 @@ class PipelinePlot extends React.Component<Props, State> {
             const srclen = stages[stages.length - 1][m].length
             const src_p = stages[stages.length - 1][m][srclen - 1].output
             const dest_p = procchannels[m][0].input
-            this.appendLink(links, labels, src_p, dest_p)
+            this.appendLink(links, labels, src_p, dest_p, m)
           }
           stages.push(procchannels)
         }
@@ -472,7 +479,7 @@ class PipelinePlot extends React.Component<Props, State> {
               const src_p = src_list[src_list.length - 1].output
               const dest_p = io_points.input
               stages[stages.length - 1][ch_nbr].push(io_points)
-              this.appendLink(links, labels, src_p, dest_p)
+              this.appendLink(links, labels, src_p, dest_p, ch_nbr)
             }
           }
         }
@@ -520,7 +527,7 @@ class PipelinePlot extends React.Component<Props, State> {
             const src_p = src_list[src_list.length - 1].output
             const dest_p = io_points.input
             stages[stages.length - 1][ch_nbr].push(io_points)
-            this.appendLink(links, labels, src_p, dest_p)
+            this.appendLink(links, labels, src_p, dest_p, ch_nbr)
           }
         }
       }
@@ -554,7 +561,7 @@ class PipelinePlot extends React.Component<Props, State> {
       const srclen = stages[stages.length - 1][n].length
       const src_p = stages[stages.length - 1][n][srclen - 1].output
       const dest_p = io_points.input
-      this.appendLink(links, labels, src_p, dest_p)
+      this.appendLink(links, labels, src_p, dest_p, n)
     }
     stages.push(playbackchannels)
     return { labels, boxes, links, max_h, max_v }
@@ -604,22 +611,24 @@ class PipelinePlot extends React.Component<Props, State> {
       [0, markerBoxHeight],
       [markerBoxWidth, markerBoxHeight / 2],
     ]
-    d3.select(node)
-      .append("defs")
-      .append("marker")
-      .attr("id", "arrow")
-      // @ts-ignore
-      .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
-      .attr("refX", refX)
-      .attr("refY", refY)
-      .attr("markerWidth", markerBoxWidth)
-      .attr("markerHeight", markerBoxHeight)
-      .attr("orient", "auto-start-reverse")
-      .attr("fill", this.arrowColor!)
-      .attr("stroke", this.arrowColor!)
-      .append("path")
-      // @ts-ignore
-      .attr("d", d3.line()(arrowPoints))
+    for (const color of this.arrowColors) {
+      d3.select(node)
+        .append("defs")
+        .append("marker")
+        .attr("id", "arrow"+ color)
+        // @ts-ignore
+        .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
+        .attr("refX", refX)
+        .attr("refY", refY)
+        .attr("markerWidth", markerBoxWidth)
+        .attr("markerHeight", markerBoxHeight)
+        .attr("orient", "auto-start-reverse")
+        .attr("fill", color)
+        .attr("stroke", color)
+        .append("path")
+        // @ts-ignore
+        .attr("d", d3.line()(arrowPoints))
+    }
 
     // A div used to display tooltips
     var tooltip = d3.select(`#svg_pipeline_div`).append("div")
@@ -693,9 +702,9 @@ class PipelinePlot extends React.Component<Props, State> {
       .join("path")
       // @ts-ignore
       .attr("d", linkGen)
-      .attr("marker-end", "url(#arrow)")
+      .attr("marker-end", d => "url(#arrow" + d.color + ")")
       .attr("fill", "none")
-      .attr("stroke", this.arrowColor!)
+      .attr("stroke", d => d.color)
       .attr("stroke-width", this.arrowWidth!)
   }
 
