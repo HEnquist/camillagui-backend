@@ -112,9 +112,7 @@ class PipelinePlot extends React.Component<Props, State> {
 
   private textColor?: string
   private borderColor?: string
-  private arrowColor?: string
   private arrowColors: string[]
-  private arrowWidth?: string
   private backgroundColor?: string
   private frameBgColor?: string
   private blockBgColor?: string
@@ -133,9 +131,7 @@ class PipelinePlot extends React.Component<Props, State> {
     const styles = cssStyles()
     this.textColor = styles.getPropertyValue('--text-color')
     this.borderColor = styles.getPropertyValue('--box-border-color')
-    this.arrowColor = styles.getPropertyValue('--arrow-color')
     this.arrowColors = styles.getPropertyValue('--arrow-colors').split(',').map(c => c.trim());
-    this.arrowWidth = styles.getPropertyValue('--arrow-width')
     this.backgroundColor = styles.getPropertyValue('--background-color')
     this.frameBgColor = styles.getPropertyValue('--frame-background-color')
     this.blockBgColor = styles.getPropertyValue('--block-background-color')
@@ -705,7 +701,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("marker-end", d => "url(#arrow" + d.color + ")")
       .attr("fill", "none")
       .attr("stroke", d => d.color)
-      .attr("stroke-width", this.arrowWidth!)
+      .attr("stroke-width", yScale(0.03) - yScale(0) + "px")
   }
 
   render() {
