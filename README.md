@@ -41,7 +41,7 @@ The backend configuration is stored in `config/camillagui.yml`
 camilla_host: "0.0.0.0"
 camilla_port: 1234
 bind_address: "0.0.0.0"
-port: 5000
+port: 5005
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
@@ -52,7 +52,7 @@ on_get_active_config: null (*)
 supported_capture_types: null (*)
 supported_playback_types: null (*)
 ```
-The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5000. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
+The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5005. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
 
 **Warning**: By default the backend will bind to all network interfaces. This makes the gui available on all networks the system is connected to, which may be insecure. Make sure to change the `bind_address` if you want it to be reachable only on specific network interface(s) and/or to set your firewall to block external (internet) access to this backend.
 
@@ -143,7 +143,7 @@ Start the server with:
 python main.py
 ```
 
-The gui should now be available at: http://localhost:5000/gui/index.html
+The gui should now be available at: http://localhost:5005/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
 
