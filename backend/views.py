@@ -56,9 +56,9 @@ async def get_status(request):
     to the camilladsp process.
     """
     cdsp = request.app["CAMILLA"]
-    reconnect_thread = request.app["RECONNECT_THREAD"]
+    reconnect_thread = request.app["STORE"]["reconnect_thread"]
     cache = request.app["STATUSCACHE"]
-    cachetime = request.app["CACHETIME"]
+    cachetime = request.app["STORE"]["cache_time"]
     try:
         levels_since = float(request.query.get("since"))
     except:
@@ -81,7 +81,7 @@ async def get_status(request):
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
             if now - cachetime > 1.0:
-                request.app["CACHETIME"] = now
+                request.app["STORE"]["cache_time"] = now
                 cache.update({
                     "capturerate": cdsp.rate.capture(),
                     "rateadjust": cdsp.status.rate_adjust(),
@@ -97,7 +97,7 @@ async def get_status(request):
             cache.update(OFFLINE_CACHE)
             reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
             reconnect_thread.start()
-            request.app["RECONNECT_THREAD"] = reconnect_thread
+            request.app["STORE"]["reconnect_thread"] = reconnect_thread
     return web.json_response(cache)
 
 
