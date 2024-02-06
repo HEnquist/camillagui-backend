@@ -18,6 +18,7 @@ from .filemanagement import (
 from .filters import defaults_for_filter, filter_plot_options, pipeline_step_plot_options
 from .settings import get_gui_config_or_defaults
 from .convolver_config_import import ConvolverConfig
+from .legacy_config_import import migrate_legacy_config
 
 OFFLINE_CACHE = {
     "cdsp_status": "Offline",
@@ -380,11 +381,13 @@ async def parse_and_validate_yml_config_to_json(request):
 
 async def yaml_to_json(request):
     """
-    Parse a yaml string and return seralized as json.
+    Parse a yaml string and return serialized as json.
     This could also be just a partial config.
+    The config is migrated from older camilladsp versions if needed.
     """
     config_yaml = await request.text()
     loaded = yaml.safe_load(config_yaml)
+    migrate_legacy_config(loaded)
     return web.json_response(loaded)
 
 
