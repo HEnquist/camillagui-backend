@@ -1,6 +1,7 @@
 from copy import copy, deepcopy
 
-class EqAPO():
+
+class EqAPO:
     filter_types = {
         "PK": "Peaking",
         "PEQ": "Peaking",
@@ -14,10 +15,10 @@ class EqAPO():
         "LSC": "Lowshelf",
         "HS": "Highshelf",
         "HSC": "Highshelf",
-        "IIR": None, #TODO
+        "IIR": None,  # TODO
     }
     # TODO
-    # add support for 
+    # add support for
     # HSC x dB: High-shelf filter x dB per oct.
     # LSC x dB: Low-shelf filter x dB per oct.
     # LS 6dB: Low-shelf filter 6 dB per octave, with corner freq.
@@ -25,23 +26,16 @@ class EqAPO():
     # HS 6dB: High-shelf filter 6 dB per octave, with corner freq.
     # HS 12dB: High-shelf filter 12 dB per octave, with corner freq.
 
-
-    # Label to channel number, assuming 7.1
-    channel_map = {
-        "L": 0,
-        "R": 1,
-        "C": 2,
-        "LFE": 3,
-        "RL": 4,
-        "RR": 5,
-        "SL": 6,
-        "SR": 7
+    # Label to channel number
+    all_channel_maps = {
+        1: {"C": 1},
+        2: {"L": 0, "R": 1},
+        4: {"L": 0, "R": 1, "RL": 2, "RR": 3},
+        6: {"L": 0, "R": 1, "C": 2, "LFE": 3, "RL": 4, "RR": 5},
+        8: {"L": 0, "R": 1, "C": 2, "LFE": 3, "RL": 4, "RR": 5, "SL": 6, "SR": 7}
     }
 
-    delay_units = {
-        "ms": "ms",
-        "samples": "samples"
-    }
+    delay_units = {"ms": "ms", "samples": "samples"}
 
     def __init__(self, config_text, nbr_channels):
         self.lines = config_text.splitlines()
@@ -59,10 +53,11 @@ class EqAPO():
             "type": "Filter",
             "names": [],
             "description": "Default, all channels",
-            "channels": copy(self.selected_channels)
+            "channels": copy(self.selected_channels),
         }
         self.pipeline = [self.current_filterstep]
         self.nbr_channels = nbr_channels
+        self.channel_map = self.all_channel_maps.get(nbr_channels, self.all_channel_maps[8])
 
     def lookup_channel_index(self, label):
         if label in self.channel_map:
@@ -107,7 +102,10 @@ class EqAPO():
         params = param_str.split()
         enabled = params[0] == "ON"
         ftype = params[1]
-        ftype_c = self.filter_types[ftype]
+        ftype_c = self.filter_types.get(ftype)
+        if not ftype_c:
+            print(f"Unsupported filter type '{ftype}'")
+            return None
         param_dict = {"type": ftype_c}
         tokens = params[2:]
         while tokens:
@@ -122,26 +120,14 @@ class EqAPO():
         if params[1].lower() != "db":
             print("invalid preamp line:", param_str)
             return
-        return {
-            "type": "Gain",
-            "parameters": {
-                "gain": gain,
-                "scale": "dB"
-            }
-        }
+        return {"type": "Gain", "parameters": {"gain": gain, "scale": "dB"}}
 
     # Parse a Delay command to a filter
     def parse_delay(self, param_str):
         params = param_str.split()
         delay = float(params[0])
         unit = self.delay_units[params[1]]
-        return {
-            "type": "Delay",
-            "parameters": {
-                "delay": delay,
-                "unit": unit
-            }
-        }
+        return {"type": "Delay", "parameters": {"delay": delay, "unit": unit}}
 
     # Parse a Copy command into a Mixer
     def parse_copy(self, param_str):
@@ -151,7 +137,7 @@ class EqAPO():
                 "in": self.nbr_channels,
                 "out": self.nbr_channels,
             },
-            "mapping": []
+            "mapping": [],
         }
         params = param_str.strip().split(" ")
         for dest in params:
@@ -159,11 +145,7 @@ class EqAPO():
             dest_ch = self.lookup_channel_index(dest_ch)
             handled_channels.add(dest_ch)
             print("dest", dest_ch)
-            mapping = {
-                "dest": dest_ch,
-                "mute": False,
-                "sources": []
-            }
+            mapping = {"dest": dest_ch, "mute": False, "sources": []}
             mixer["mapping"].append(mapping)
             sources = expr.split("+")
             for source in sources:
@@ -206,11 +188,10 @@ class EqAPO():
                         "inverted": False,
                         "scale": "dB",
                     }
-                ]
+                ],
             }
             mixer["mapping"].append(mapping)
         return mixer
-
 
     # Parse a single line
     def parse_line(self, line):
@@ -219,21 +200,18 @@ class EqAPO():
         filtname = None
         command_name, params = line.split(":", 1)
         command = command_name.split()[0]
+        print("Parse command:", command)
         if command in ("Filter", "Convolution", "Preamp", "Delay"):
             if command == "Filter":
-                filter = self.parse_filter_params(params)
-                filter = {
-                    "type": "Biquad",
-                    "parameters": filter
-                }
+                filterparams = self.parse_filter_params(params)
+                if not filterparams:
+                    return
+                filter = {"type": "Biquad", "parameters": filterparams}
             elif command == "Convolution":
                 filename = params.strip()
                 filter = {
                     "type": "Conv",
-                    "parameters": {
-                        "filename": filename,
-                        "type": "wav"
-                    }
+                    "parameters": {"filename": filename, "type": "wav"},
                 }
             elif command == "Preamp":
                 filter = self.parse_gain(params)
@@ -248,7 +226,9 @@ class EqAPO():
             if params.strip() == "all":
                 self.selected_channels = None
             else:
-                self.selected_channels = [self.lookup_channel_index(c) for c in params.strip().split(" ")]
+                self.selected_channels = [
+                    self.lookup_channel_index(c) for c in params.strip().split(" ")
+                ]
             new_filterstep = {
                 "type": "Filter",
                 "names": [],
@@ -271,16 +251,29 @@ class EqAPO():
                 "type": "Filter",
                 "names": [],
                 "description": "Continued after mixer",
-                "channels": copy(self.selected_channels)
+                "channels": copy(self.selected_channels),
             }
             self.pipeline.append(step)
-        elif command in ("Device", "Include", "Eval", "If", "ElseIf", "Else", "EndIf", "Stage", "GraphicEQ"):
-            print("Skipping unsupported command:", command)
+        elif command in (
+            "Device",
+            "Include",
+            "Eval",
+            "If",
+            "ElseIf",
+            "Else",
+            "EndIf",
+            "Stage",
+            "GraphicEQ",
+        ):
+            print(f"Command '{command}' is not supported, skipping.")
+        else:
+            print(f"Skipping unrecognized command '{command}'")
 
     def postprocess(self):
         for idx, step in enumerate(list(self.pipeline)):
             if step["type"] == "Filter" and len(step["names"]) == 0:
-                self.pipeline.pop(idx)
+                print("remove", step)
+                self.pipeline.remove(step)
         for _, mixer in self.mixers.items():
             for idx, dest in enumerate(list(mixer["mapping"])):
                 if len(dest["sources"]) == 0:
@@ -305,7 +298,7 @@ class EqAPO():
         config = {
             "filters": self.filters,
             "mixers": self.mixers,
-            "pipeline": self.pipeline
+            "pipeline": self.pipeline,
         }
         return config
 
@@ -315,5 +308,3 @@ class EqAPO():
         self.postprocess()
         config = self.build_config()
         return config
-
-
