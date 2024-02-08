@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+import logging
 
 
 class EqAPO:
@@ -93,7 +94,7 @@ class EqAPO:
             value = float(params[2])
             parsed = {"bandwidth": value}
         else:
-            print("Skipping unknown token:", params[0])
+            logging.warning("Skipping unknown token:", params[0])
             return {}, params[1:]
         return parsed, params[nbr_tokens:]
 
@@ -104,7 +105,7 @@ class EqAPO:
         ftype = params[1]
         ftype_c = self.filter_types.get(ftype)
         if not ftype_c:
-            print(f"Unsupported filter type '{ftype}'")
+            logging.warning(f"Unsupported filter type '{ftype}'")
             return None
         param_dict = {"type": ftype_c}
         tokens = params[2:]
@@ -118,7 +119,7 @@ class EqAPO:
         params = param_str.split()
         gain = float(params[0])
         if params[1].lower() != "db":
-            print("invalid preamp line:", param_str)
+            logging.warning("invalid preamp line:", param_str)
             return
         return {"type": "Gain", "parameters": {"gain": gain, "scale": "dB"}}
 
@@ -144,7 +145,7 @@ class EqAPO:
             dest_ch, expr = dest.split("=")
             dest_ch = self.lookup_channel_index(dest_ch)
             handled_channels.add(dest_ch)
-            print("dest", dest_ch)
+            logging.debug("dest", dest_ch)
             mapping = {"dest": dest_ch, "mute": False, "sources": []}
             mixer["mapping"].append(mapping)
             sources = expr.split("+")
@@ -168,7 +169,7 @@ class EqAPO:
                 if channel is not None:
                     channel = self.lookup_channel_index(channel)
                     # TODO make a mixer config
-                    print("source", channel, gain, scale)
+                    logging.debug("source", channel, gain, scale)
                     source = {
                         "channel": channel,
                         "gain": gain,
@@ -177,7 +178,7 @@ class EqAPO:
                     }
                     mapping["sources"].append(source)
         for dest_ch in set(range(self.nbr_channels)) - handled_channels:
-            print("pass through", dest_ch)
+            logging.debug("pass through", dest_ch)
             mapping = {
                 "dest": dest_ch,
                 "mute": False,
@@ -200,7 +201,7 @@ class EqAPO:
         filtname = None
         command_name, params = line.split(":", 1)
         command = command_name.split()[0]
-        print("Parse command:", command)
+        logging.debug("Parse command:", command)
         if command in ("Filter", "Convolution", "Preamp", "Delay"):
             if command == "Filter":
                 filterparams = self.parse_filter_params(params)
@@ -265,14 +266,14 @@ class EqAPO:
             "Stage",
             "GraphicEQ",
         ):
-            print(f"Command '{command}' is not supported, skipping.")
+            logging.warning(f"Command '{command}' is not supported, skipping.")
         else:
-            print(f"Skipping unrecognized command '{command}'")
+            logging.warning(f"Skipping unrecognized command '{command}'")
 
     def postprocess(self):
         for idx, step in enumerate(list(self.pipeline)):
             if step["type"] == "Filter" and len(step["names"]) == 0:
-                print("remove", step)
+                logging.debug("remove", step)
                 self.pipeline.remove(step)
         for _, mixer in self.mixers.items():
             for idx, dest in enumerate(list(mixer["mapping"])):
