@@ -181,5 +181,15 @@ export async function importedConvolverConfigAsJson(files: FileList): Promise<Im
     const text = await response.text()
     return JSON.parse(text) as ImportedConfig
   }
-  throw new Error("Could extract filters from file")
+  throw new Error("Could not extract filters from file")
+}
+
+export async function importedEqAPOConfigAsJson(files: FileList, channels: number): Promise<ImportedConfig> {
+  const content = await fileContent(files)
+  const response = await fetch("/api/eqapotojson?channels=" + channels, {method: "POST", body: content})
+  if (response.ok) {
+    const text = await response.text()
+    return JSON.parse(text) as ImportedConfig
+  }
+  throw new Error("Could not translate file")
 }

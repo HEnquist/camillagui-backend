@@ -8,6 +8,7 @@ import {
   Import,
   ImportedConfig,
   importedConvolverConfigAsJson,
+  importedEqAPOConfigAsJson,
   importedYamlConfigAsJson,
   mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator
@@ -97,6 +98,10 @@ function FileList(props: {
     const file = files[0]
     importedConvolverConfigAsJson(files).then(config => setImportConfig(file.name, config))
   }
+  function loadLocalEqAPOConfig(files: FileList) {
+    const file = files[0]
+    importedEqAPOConfigAsJson(files, 2).then(config => setImportConfig(file.name, config))
+  }
   function loadJsonConfigWithName(name: string): void {
     loadConfigJson(name).then(config => setImportConfig(name, config))
   }
@@ -111,10 +116,11 @@ function FileList(props: {
     }
     <Box title="Upload new config file" style={{display: 'grid',
           alignItems: 'center',
-          gridTemplateColumns: '32% 32%',
+          gridTemplateColumns: '32% 32% 32%',
           columnGap: '2%'}}>
-      <UploadButton text="CamillaDSP Config" tooltip="Import selected parts from a<br>CamillaDSP config file" upload={loadLocalCdspConfig}/>
-      <UploadButton text="Convolver Config" tooltip="Translate a 'Convolver' config file<br>and import selected parts" upload={loadLocalConvolverConfig}/>
+      <UploadButton text="CamillaDSP Config" tooltip="Import selected parts from a<br>CamillaDSP config file.<br>Configs for CamillaDSP<br>v1 and v2 are supported." upload={loadLocalCdspConfig}/>
+      <UploadButton text="Convolver Config" tooltip="Translate a 'Convolver' config file<br>and import selected parts." upload={loadLocalConvolverConfig}/>
+      <UploadButton text="EqAPO Config" tooltip="Translate an 'Equalizer APO' config file<br>and import selected parts." upload={loadLocalEqAPOConfig}/>
     </Box>
     <Box title="Existing config file">
       {fileList.map(file =>
