@@ -33,7 +33,7 @@ class EqAPO:
         2: {"L": 0, "R": 1},
         4: {"L": 0, "R": 1, "RL": 2, "RR": 3},
         6: {"L": 0, "R": 1, "C": 2, "LFE": 3, "RL": 4, "RR": 5},
-        8: {"L": 0, "R": 1, "C": 2, "LFE": 3, "RL": 4, "RR": 5, "SL": 6, "SR": 7}
+        8: {"L": 0, "R": 1, "C": 2, "LFE": 3, "RL": 4, "RR": 5, "SL": 6, "SR": 7},
     }
 
     delay_units = {"ms": "ms", "samples": "samples"}
@@ -58,7 +58,9 @@ class EqAPO:
         }
         self.pipeline = [self.current_filterstep]
         self.nbr_channels = nbr_channels
-        self.channel_map = self.all_channel_maps.get(nbr_channels, self.all_channel_maps[8])
+        self.channel_map = self.all_channel_maps.get(
+            nbr_channels, self.all_channel_maps[8]
+        )
 
     def lookup_channel_index(self, label):
         if label in self.channel_map:
@@ -66,9 +68,20 @@ class EqAPO:
         elif label.isnumeric():
             channel = int(label) - 1
         else:
-            # TODO handle this
+            logging.warning(
+                f"Virtual channels are not supported, skipping channel {label}"
+            )
             channel = None
         return channel
+
+    def parse_number(self, value_str):
+        try:
+            return float(value_str)
+        except ValueError:
+            logging.warning(
+                f"Unable to parse '{value_str}' as number, inline expressions are not supported."
+            )
+            return None
 
     # Parse a single command parameter
     def parse_single_parameter(self, params):
@@ -77,21 +90,21 @@ class EqAPO:
         if params[0] == "Fc":
             nbr_tokens = 3
             assert params[2].lower() == "hz"
-            value = float(params[1])
+            value = self.parse_number(params[1])
             parsed = {"freq": value}
         elif params[0] == "Q":
             nbr_tokens = 2
-            value = float(params[1])
+            value = self.parse_number(params[1])
             parsed = {"q": value}
         elif params[0] == "Gain":
             nbr_tokens = 3
             assert params[2].lower() == "db"
-            value = float(params[1])
+            value = self.parse_number(params[1])
             parsed = {"gain": value}
         elif params[0] == "BW":
             nbr_tokens = 3
             assert params[1].lower() == "oct"
-            value = float(params[2])
+            value = self.parse_number(params[2])
             parsed = {"bandwidth": value}
         else:
             logging.warning("Skipping unknown token:", params[0])
@@ -117,7 +130,7 @@ class EqAPO:
     # Parse a Preamp command to a filter
     def parse_gain(self, param_str):
         params = param_str.split()
-        gain = float(params[0])
+        gain = self.parse_number(params[0])
         if params[1].lower() != "db":
             logging.warning("invalid preamp line:", param_str)
             return
@@ -126,7 +139,7 @@ class EqAPO:
     # Parse a Delay command to a filter
     def parse_delay(self, param_str):
         params = param_str.split()
-        delay = float(params[0])
+        delay = self.parse_number(params[0])
         unit = self.delay_units[params[1]]
         return {"type": "Delay", "parameters": {"delay": delay, "unit": unit}}
 
@@ -153,10 +166,10 @@ class EqAPO:
                 if "*" in source:
                     gain_str, channel = source.split("*")
                     if gain_str.endswith("dB"):
-                        gain = float(gain_str[:-2])
+                        gain = self.parse_number(gain_str[:-2])
                         scale = "dB"
                     else:
-                        gain = float(gain_str)
+                        gain = self.parse_number(gain_str)
                         scale = "linear"
                 elif source == "0.0":
                     # EqAPO supports setting channels to an arbitrary constant.
