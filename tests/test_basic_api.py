@@ -249,3 +249,28 @@ async def test_active_config_offline(offline_server):
     print(content)
     assert content["configFileName"] == "config2.yml"
     assert content["config"]["devices"]["samplerate"] == 48000
+
+
+@pytest.mark.asyncio
+async def test_translate_eqapo(server):
+    from test_eqapo_config_import import EXAMPLE
+
+    resp = await server.post("/api/eqapotojson?channels=2", data=EXAMPLE)
+    assert resp.status == 200
+    content = await resp.json()
+    assert "filters" in content
+
+
+@pytest.mark.asyncio
+async def test_translate_eqapo_bad(server):
+    resp = await server.post("/api/eqapotojson", data="blank")
+    assert resp.status == 400
+
+
+@pytest.mark.asyncio
+async def test_translate_convolver(server):
+    resp = await server.post("/api/convolvertojson", data="96000 1 2 0\n0\n0")
+    assert resp.status == 200
+    content = await resp.json()
+    assert "devices" in content
+    assert content["devices"]["samplerate"] == 96000

@@ -10,15 +10,23 @@ from backend.settings import config
 from backend.views import version_string
 
 
-level = logging.WARNING
-if len(sys.argv) > 1:
-    level_str = sys.argv[1].upper()
+def parse_logging_level(level):
+    level_str = level.upper()
     if level_str in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"):
-        level = getattr(logging, level_str)
-    else:
-        print(f"Unknown logging level {level_str}, using default WARNING")
+        return getattr(logging, level_str)
+    print(f"Unknown logging level {level_str}, using default WARNING")
+    return logging.WARNING
 
-logging.getLogger("aiohttp").setLevel(logging.WARNING)
+level = logging.WARNING
+level_aiohttp = logging.WARNING
+
+if len(sys.argv) > 1:
+    level = parse_logging_level(sys.argv[1])
+
+if len(sys.argv) > 2:
+    level_aiohttp = parse_logging_level(sys.argv[2])
+
+logging.getLogger("aiohttp").setLevel(level_aiohttp)
 logging.getLogger("root").setLevel(level)
 
 #logging.info("info")
