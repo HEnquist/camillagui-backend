@@ -273,7 +273,7 @@ async def set_config(request):
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors, headers=HEADERS)
-    return web.Response(text="OK")
+    return web.Response(text="OK", headers=HEADERS)
 
 
 async def get_default_config_file(request):
@@ -548,7 +548,7 @@ async def get_log_file(request):
         error_message = "Please configure CamillaDSP to log to: " + log_file_path
     else:
         error_message = "Please configure a valid 'log_file' path"
-    return web.Response(body=error_message)
+    return web.Response(body=error_message, headers=HEADERS)
 
 
 async def get_capture_devices(request):
