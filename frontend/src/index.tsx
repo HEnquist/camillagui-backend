@@ -221,6 +221,7 @@ class CamillaConfig extends React.Component<
               }}
               updateConfig={update => this.updateConfig(update, true)}
               disableCompactView={() => this.setCompactViewEnabled(false)}
+              guiConfig={this.state.guiConfig}
           />
           : <this.NormalContent/>
       }
@@ -345,6 +346,7 @@ class CamillaConfig extends React.Component<
                 this.applyConfigRequest(filename, config)
               }}
               updateConfig={update => this.updateConfig(update, true)}
+              shortcutSections={this.state.guiConfig.custom_shortcuts}
           />
         </TabPanel>
       </Tabs>

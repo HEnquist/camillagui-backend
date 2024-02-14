@@ -1,6 +1,6 @@
 import cloneDeep from "lodash/cloneDeep"
 import isEqual from "lodash/isEqual"
-import {isArray, isObject} from "lodash"
+import { isArray, isObject } from "lodash"
 
 export interface Update<T> {
   (value: T): void
@@ -40,14 +40,34 @@ export function asFormattedText(object: any, truncateAt: number): string {
 
 function asFormattedLines(object: any): string[] {
   return Object.entries(object)
-      .flatMap(([key, value]) => {
-        if (isArray(value) && value.every(item => typeof item === 'number'))
-          return [key + '=' + value.join(',')]
-        else if (isComplexObject(value))
-          return [key].concat(asFormattedLines(value).map(v => "  " + v))
-        else if (isArray(object))
-          return [(value as any).toString()]
-        else
-          return [`${key}=${value}`]
-      })
+    .flatMap(([key, value]) => {
+      if (isArray(value) && value.every(item => typeof item === 'number'))
+        return [key + '=' + value.join(',')]
+      else if (isComplexObject(value))
+        return [key].concat(asFormattedLines(value).map(v => "  " + v))
+      else if (isArray(object))
+        return [(value as any).toString()]
+      else
+        return [`${key}=${value}`]
+    })
+}
+
+export function numberValue(object: any, path: string[]): number | undefined {
+  let value = object
+  for (const property of path) {
+    value = value[property]
+    if (value === undefined)
+      return undefined
+  }
+  return value
+}
+
+export function setNumberValue(object: any, path: string[], value: number) {
+  let subObject = object
+  for (const property of path.slice(0, path.length - 1)) {
+    subObject = subObject[property]
+    if (subObject === undefined)
+      return undefined
+  }
+  subObject[path[path.length - 1]] = value
 }

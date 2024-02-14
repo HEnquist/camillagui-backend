@@ -216,19 +216,13 @@ div .popup-content {
 .horizontally-spaced-content {
   display: flex;
   flex-direction: row;
-}
-
-.horizontally-spaced-content > *:not(:last-child) {
-  margin-right: 5px;
+  gap: 5px;
 }
 
 .vertically-spaced-content {
   display: flex;
   flex-direction: column;
-}
-
-.vertically-spaced-content > *:not(:last-child) {
-  margin-bottom: 5px;
+  gap: 5px;
 }
 
 .two-column-grid {
@@ -421,4 +415,13 @@ div .popup-content {
   opacity: 1 !important;
   border-radius: var(--border-radius) !important;
   border: var(--box-border) !important;
+}
+
+.pipeline-tooltip {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  background-color: var(--background-color);
+  white-space: pre;
+  font-size: smaller;
+  border-radius: var(--border-radius);
+  padding: 5px 5px;
 }

@@ -767,7 +767,7 @@ class FilterParams extends React.Component<{
       },
       bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
       channel: {
-        type: "int",
+        type: "optional_int",
         desc: "channel",
         tooltip: "Index of channel to use, starting from 0",
       },
