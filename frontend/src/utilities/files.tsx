@@ -11,6 +11,10 @@ export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
       .then(response => {
         if (response.ok) return response.json()
         else throw Error(response.statusText)
+      },
+      err => {
+        console.log("Failed to fetch", err)
+        throw Error(err)
       })
       .then(json => {
         const files = json as CFile[]
@@ -18,12 +22,16 @@ export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
             file.lastModified = new Date(1000 * parseFloat(file.lastModified)).toDateString()
         )
         return files
+      },
+      err => {
+        console.log("Failed to get file list", err)
+        return []
       })
 }
 
 export function loadFilenames(type: "config" | "coeff"): Promise<string[]> {
   return loadFiles(type)
-      .then(files => fileNamesOf(files))
+      .then(files => fileNamesOf(files), _ => [])
 }
 
 export function fileNamesOf(files: CFile[]): string[] {

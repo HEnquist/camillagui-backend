@@ -74,8 +74,8 @@ class CamillaConfig extends React.Component<
 
   private async loadGuiConfig() {
     fetch("/api/guiconfig")
-        .then(data => data.json())
-        .then(json => this.setState({guiConfig: json}))
+        .then(data => data.json(), err => {console.log('Failed to fetch guiconfig', err)})
+        .then(json => this.setState({guiConfig: json}), err => {console.log('Failed to parse guiconfig as json', err)})
   }
 
   private async loadCurrentConfig() {
