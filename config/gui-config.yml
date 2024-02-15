@@ -6,3 +6,17 @@ hide_playback_device: false
 hide_rate_monitoring: false
 apply_config_automatically: false
 status_update_interval: 100
+custom_shortcuts:
+  - section: "Equalizer"
+    description: "To use the EQ, add filters named \"Bass\" and \"Treble\" to the pipeline.<br/>Recommented settings: <br/>Bass: Biquad Lowshelf freq=85 q=0.9<br/>Treble: Biquad Highshelf freq=6500 q=0.7"
+    shortcuts:
+      - name: "Treble (dB)"
+        path_in_config: ["filters", "Treble", "parameters", "gain"]
+        range_from: -12
+        range_to: 12
+        step: 0.5
+      - name: "Bass (dB)"
+        path_in_config: ["filters", "Bass", "parameters", "gain"]
+        range_from: -12
+        range_to: 12
+        step: 0.5
