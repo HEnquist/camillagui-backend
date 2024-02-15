@@ -19,7 +19,8 @@ Unzip the file and edit `config/camillagui.yml` as needed, see [Configuration](#
 The Python dependencies are listed in three different files,
 for use with different Python package/environment managers.
 - `cdsp_conda.yml` for [conda](https://conda.io/).
-- `requirements.txt` for [pip](https://pip.pypa.io/), often combined with an environment manager such as [venv](https://docs.python.org/3/library/venv.html).
+- `requirements.txt` for [pip](https://pip.pypa.io/), often combined with an environment manager
+  such as [venv](https://docs.python.org/3/library/venv.html).
 - `pyproject.toml` for [Poetry](https://python-poetry.org).
 
 
@@ -42,6 +43,8 @@ camilla_host: "0.0.0.0"
 camilla_port: 1234
 bind_address: "0.0.0.0"
 port: 5005
+ssl_certificate: null (*)
+ssl_private_key: null (*)
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
@@ -52,11 +55,33 @@ on_get_active_config: null (*)
 supported_capture_types: null (*)
 supported_playback_types: null (*)
 ```
-The options marked `(*)` are optional. If left out the default values listed above will be used. The included configuration has CamillaDSP running on the same machine as the backend, with the websocket server enabled at port 1234. The web interface will be served on port 5005. It is possible to run the gui and CamillaDSP on different machines, just point the `camilla_host` to the right address.
+The options marked `(*)` are optional. If left out the default values listed above will be used.
+The included configuration has CamillaDSP running on the same machine as the backend,
+with the websocket server enabled at port 1234.
+The web interface will be served on port 5005 using plain HTTP.
+It is possible to run the gui and CamillaDSP on different machines,
+just point the `camilla_host` to the right address.
 
-**Warning**: By default the backend will bind to all network interfaces. This makes the gui available on all networks the system is connected to, which may be insecure. Make sure to change the `bind_address` if you want it to be reachable only on specific network interface(s) and/or to set your firewall to block external (internet) access to this backend.
+**Warning**: By default the backend will bind to all network interfaces.
+This makes the gui available on all networks the system is connected to, which may be insecure.
+Make sure to change the `bind_address` if you want it to be reachable only on specific
+network interface(s) and/or to set your firewall to block external (internet) access to this backend.
 
-The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files. This is provided to enable uploading of coefficients and config files from the gui.
+The `ssl_certificate` and `ssl_private_key` options are used to configure SSL, to enable HTTPS.
+Both a certificate and a private key are required.
+The values for `ssl_certificate` and `ssl_private_key` should then be the paths to the files containing the certificate and key.
+It's also possible to keep both certificate and key in a single file.
+In that case, provide only `ssl_certificate`.
+See the [Python ssl documentation](https://docs.python.org/3/library/ssl.html#ssl-certificates)
+for more info on certificates.
+
+To generate a self-signed certificate and key pair, use openssl:
+```sh
+openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout my_private_key.key -out my_certificate.crt
+```
+
+The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files.
+This is provided to enable uploading of coefficients and config files from the gui.
 
 If you want to be able to view the log file in the GUI, configure CamillaDSP to log to `log_file`.
 
@@ -81,7 +106,8 @@ See also [Integrating with other software](#integrating-with-other-software)
 
 
 ### Limit device types
-By default, the config validator allows all the device types that CamillaDSP can support. To limit this to the types that are supported on a particular system, give the list of supported types as: 
+By default, the config validator allows all the device types that CamillaDSP can support.
+To limit this to the types that are supported on a particular system, give the list of supported types as:
 ```yaml
 supported_capture_types: ["Alsa", "File", "Stdin"]
 supported_playback_types: ["Alsa", "File", "Stdout"]
@@ -89,7 +115,7 @@ supported_playback_types: ["Alsa", "File", "Stdout"]
 
 ### Adding custom shortcut settings
 It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
-Here is an example config to set the gain of a filter called `MyFilter` within the range from 0 to 10 db in steps of 0.1 dB. 
+Here is an example config to set the gain of a filter called `MyFilter` within the range from 0 to 10 db in steps of 0.1 dB.
 ```
 custom_shortcuts:
   - section: "My custom section"
@@ -112,7 +138,8 @@ there are some options to customize the UI for your particular needs.
 #### Setting and getting the active config
 _NOTE: This functionality is experimental, there may be significant changes in future versions._
 
-The configuration options `on_set_active_config` and `on_get_active_config` can be used to customize the way the active config file path is stored.
+The configuration options `on_set_active_config` and `on_get_active_config` can be used to customize
+the way the active config file path is stored.
 These are shell commands that will be run to set and get the active config.
 Setting these options will override the normal way of getting and setting the active config path.
 Since the commands are run in the operating system shell, the syntax depends on which operating system is used.
@@ -123,9 +150,9 @@ This means it must contain an empty set of curly brackets, where the filename wi
 
 Examples:
 - Running a script: `on_set_active_config: my_updater_script.sh {}`
-  
+
   The backend will run the command: `my_updater_script.sh "/full/path/to/new_active_config.yml"`
-- Saving config filename to a text file: `on_set_active_config: echo {} > active_configname.txt` 
+- Saving config filename to a text file: `on_set_active_config: echo {} > active_configname.txt`
 
   The backend will run the command: `echo "/full/path/to/new_active_config.yml" > active_configname.txt`
 
@@ -152,7 +179,7 @@ hide_rate_monitoring: false
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
 To enable it by default, in `config/gui-config.yml` set `apply_config_automatically` to `true`.
 
-The update rate of the level meters can be adjusted by changing the `status_update_interval` setting. 
+The update rate of the level meters can be adjusted by changing the `status_update_interval` setting.
 The value is in milliseconds, and the default value is 100 ms.
 
 ## Running
@@ -163,19 +190,23 @@ python main.py
 
 The gui should now be available at: http://localhost:5005/gui/index.html
 
-If accessing the gui from a different machine, replace "localhost" by the IP or hostname of the machine running the gui server.
+If accessing the gui from a different machine, replace "localhost" by the IP
+or hostname of the machine running the gui server.
 
 
 ## Development
 ### Render the environment files
-This repository contains [jinja](https://palletsprojects.com/p/jinja/) templates used to create the Python environment files.
+This repository contains [jinja](https://palletsprojects.com/p/jinja/)
+templates used to create the Python environment files.
 The templates are stored in `release_automation/templates/`.
 
-To render the templates, install the dependencies `PyYAML` and `jinja2` and run the Python script `render_env_files.py`:
+To render the templates, install the dependencies `PyYAML` and `jinja2`
+and run the Python script `render_env_files.py`:
 ```sh
 python -m release_automation.render_env_files
 ```
-When rendering, the versions of the Python dependencies are taken from the file `release_automation/versions.yml`.
+When rendering, the versions of the Python dependencies are taken
+from the file `release_automation/versions.yml`.
 The backend version is read from `backend/version.py`.
 
 ### Running the tests
