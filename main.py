@@ -1,4 +1,5 @@
 from aiohttp import web
+import ssl
 import logging
 import sys
 import camilladsp
@@ -68,7 +69,12 @@ def build_app(backend_config):
 
 def main():
     app = build_app(config)
-    web.run_app(app, host=config["bind_address"], port=config["port"])
+    if config.get("ssl_certificate"):
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(config["ssl_certificate"], keyfile=config.get("ssl_private_key"))
+    else:
+        ssl_context = None
+    web.run_app(app, host=config["bind_address"], port=config["port"], ssl_context=ssl_context)
 
 if __name__ == "__main__":
     main()
