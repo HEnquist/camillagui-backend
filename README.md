@@ -179,7 +179,10 @@ When rendering, the versions of the Python dependencies are taken from the file 
 The backend version is read from `backend/version.py`.
 
 ### Running the tests
+Install the pytest plugin `pytest-aiohttp`.
+
+Execute the tests with:
 
 ```sh
-python -m unittest discover -p "*_test.py"
+python -m pytest
 ```

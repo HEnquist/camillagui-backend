@@ -1,0 +1,2 @@
+Log message 1
+Log message 2
