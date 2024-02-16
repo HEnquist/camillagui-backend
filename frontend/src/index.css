@@ -71,6 +71,13 @@ textarea.logfileviewer {
   border-bottom: var(--box-border);
 }
 
+.unselectable {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 .checkbox-area {
   cursor: pointer;
   display: inline-block;
@@ -402,6 +409,12 @@ div .popup-content {
   height: 200px;
   position: relative;
   padding: 5px 5px;
+}
+
+.import-tab-tooltip {
+  opacity: 1 !important;
+  border-radius: var(--border-radius) !important;
+  border: var(--box-border) !important;
 }
 
 .pipeline-tooltip {
