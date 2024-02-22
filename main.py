@@ -53,11 +53,15 @@ def build_app(backend_config):
     app["CAMILLA"] = camilladsp.CamillaClient(backend_config["camilla_host"], backend_config["camilla_port"])
     app["STATUSCACHE"] = {
         "backend_version": version_string(VERSION),
-        "py_cdsp_version": version_string(app["CAMILLA"].versions.library())
-        }
-    app["STORE"] = {}
-    app["STORE"]["reconnect_thread"] = None
-    app["STORE"]["cache_time"] = 0
+        "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
+        "backends": [],
+        "playback_devices": {},
+        "capture_devices": {},
+    }
+    app["STORE"] = {
+        "reconnect_thread": None,
+        "cache_time": 0,
+    }
 
     camillavalidator = CamillaValidator()
     if backend_config["supported_capture_types"] is not None:

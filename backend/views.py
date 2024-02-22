@@ -42,12 +42,28 @@ async def get_gui_index(request):
     """
     raise web.HTTPFound("/gui/index.html")
 
-def _reconnect(cdsp, cache):
+def _reconnect(cdsp, cache, validator):
     done = False
     while not done:
         try:
             cdsp.connect()
             cache["cdsp_version"] = version_string(cdsp.versions.camilladsp())
+            # Update backends
+            backends = cdsp.general.supported_device_types()
+            cache["backends"] = backends
+            pb_backends, cap_backends = backends
+            logging.debug(f"Updated backends: {backends}")
+            validator.set_supported_capture_types(cap_backends)
+            validator.set_supported_playback_types(pb_backends)
+            # Update playback and capture devices
+            for pb_backend in pb_backends:
+                pb_devs = cdsp.general.list_playback_devices(pb_backend)
+                logging.debug(f"Updated {pb_backend} playback devices: {pb_devs}")
+                cache["playback_devices"][pb_backend] = pb_devs
+            for cap_backend in cap_backends:
+                cap_devs = cdsp.general.list_capture_devices(cap_backend)
+                logging.debug(f"Updated {cap_backend} capture devices: {cap_devs}")
+                cache["capture_devices"][cap_backend] = cap_devs
             done = True
         except IOError:
             time.sleep(1)
@@ -62,6 +78,7 @@ async def get_status(request):
     reconnect_thread = request.app["STORE"]["reconnect_thread"]
     cache = request.app["STATUSCACHE"]
     cachetime = request.app["STORE"]["cache_time"]
+    validator = request.app["VALIDATOR"]
     try:
         levels_since = float(request.query.get("since"))
     except:
@@ -98,7 +115,7 @@ async def get_status(request):
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
             cache.update(OFFLINE_CACHE)
-            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache), daemon=True)
+            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache, validator), daemon=True)
             reconnect_thread.start()
             request.app["STORE"]["reconnect_thread"] = reconnect_thread
     return web.json_response(cache, headers=HEADERS)
@@ -554,27 +571,38 @@ async def get_log_file(request):
 async def get_capture_devices(request):
     """
     Get a list of available capture devices for a backend.
+    Return a cached list if CamillaDSP is offline.
     """
     backend = request.match_info["backend"]
     cdsp = request.app["CAMILLA"]
-    devs = cdsp.general.list_capture_devices(backend)
+    try:
+        devs = cdsp.general.list_capture_devices(backend)
+    except IOError:
+        logging.debug("CamillaDSP is offline, returning capture devices from cache")
+        devs = request.app["STATUSCACHE"]["capture_devices"].get(backend, [])
     return web.json_response(devs, headers=HEADERS)
 
 
 async def get_playback_devices(request):
     """
     Get a list of available playback devices for a backend.
+    Return a cached list if CamillaDSP is offline.
     """
     backend = request.match_info["backend"]
     cdsp = request.app["CAMILLA"]
-    devs = cdsp.general.list_playback_devices(backend)
+    try:
+        devs = cdsp.general.list_playback_devices(backend)
+    except IOError:
+        logging.debug("CamillaDSP is offline, returning playback devices from cache")
+        devs = request.app["STATUSCACHE"]["playback_devices"].get(backend, [])
     return web.json_response(devs, headers=HEADERS)
 
 
 async def get_backends(request):
     """
     Get lists of available playback and capture backends.
+    Since this can not change while CamillaDSP is running,
+    the response is taken from the cache.
     """
-    cdsp = request.app["CAMILLA"]
-    backends = cdsp.general.supported_device_types()
+    backends = request.app["STATUSCACHE"]["backends"]
     return web.json_response(backends, headers=HEADERS)
