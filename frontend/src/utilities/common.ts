@@ -53,10 +53,12 @@ function asFormattedLines(object: any): string[] {
 }
 
 export function numberValue(object: any, path: string[]): number | undefined {
+  if (object === undefined || object === null)
+      return undefined
   let value = object
   for (const property of path) {
     value = value[property]
-    if (value === undefined)
+    if (value === undefined || value === null)
       return undefined
   }
   return value
