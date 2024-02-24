@@ -2,7 +2,17 @@ import io
 import os
 import zipfile
 from copy import deepcopy
-from os.path import isfile, split, join, realpath, relpath, normpath, isabs, commonpath, getmtime
+from os.path import (
+    isfile,
+    split,
+    join,
+    realpath,
+    relpath,
+    normpath,
+    isabs,
+    commonpath,
+    getmtime,
+)
 import logging
 import traceback
 
@@ -18,11 +28,12 @@ DEFAULT_STATEFILE = {
     "volume": [0.0, 0.0, 0.0, 0.0, 0.0],
 }
 
+
 def file_in_folder(folder, filename):
     """
     Safely join a folder and filename.
     """
-    if '/' in filename or '\\' in filename:
+    if "/" in filename or "\\" in filename:
         raise IOError("Filename may not contain any slashes/backslashes")
     return os.path.abspath(os.path.join(folder, filename))
 
@@ -55,26 +66,24 @@ def list_of_files_in_directory(folder):
     """
     Return a list of files (name and modification date) in a folder.
     """
-    files = [file_in_folder(folder, file)
-             for file in os.listdir(folder)
-             if isfile(file_in_folder(folder, file))]
+    files = [
+        file_in_folder(folder, file)
+        for file in os.listdir(folder)
+        if isfile(file_in_folder(folder, file))
+    ]
     files_list = map(
         lambda file: {
             "name": (os.path.basename(file)),
-            "lastModified": (getmtime(file))
+            "lastModified": (getmtime(file)),
         },
-        files
+        files,
     )
     sorted_files = sorted(files_list, key=lambda x: x["name"].lower())
     return sorted_files
 
 
 def list_of_filenames_in_directory(folder):
-    return map(
-        lambda file: file["name"],
-        list_of_files_in_directory(folder)
-    )
-
+    return map(lambda file: file["name"], list_of_files_in_directory(folder))
 
 
 def delete_files(folder, files):
@@ -106,7 +115,7 @@ def zip_of_files(folder, files):
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         for file_name in files:
             file_path = file_in_folder(folder, file_name)
-            with open(file_path, 'r') as file:
+            with open(file_path, "r") as file:
                 zip_file.write(file_path, file_name)
     return zip_buffer.getvalue()
 
@@ -142,13 +151,17 @@ def get_active_config_path(request):
                 logging.debug(filename)
                 return filename
             else:
-                logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
+                logging.error(
+                    "CamillaDSP runs without state file and is unable to persistently store config file path"
+                )
                 return None
         elif statefile_path:
             confpath = _read_statefile_config_path(statefile_path)
             return _verify_path_in_config_dir(confpath, config_dir)
         else:
-            logging.error("The backend config has no state file and is unable to persistently store config file path")
+            logging.error(
+                "The backend config has no state file and is unable to persistently store config file path"
+            )
     else:
         try:
             logging.debug(f"Running command: {on_get}")
@@ -184,14 +197,18 @@ def set_path_as_active_config(request, filepath):
                 logging.error(f"Failed to update statefile at {statefile_path}")
                 traceback.print_exc()
         else:
-            logging.error("The backend config has no state file and is unable to persistently store config file path")
+            logging.error(
+                "The backend config has no state file and is unable to persistently store config file path"
+            )
     else:
         dsp_statefile_path = cdsp.general.state_file_path()
         if dsp_statefile_path:
             logging.debug(f"Send set config file path command with '{filepath}'")
             cdsp.config.set_file_path(filepath)
         else:
-            logging.error("CamillaDSP runs without state file and is unable to persistently store config file path")
+            logging.error(
+                "CamillaDSP runs without state file and is unable to persistently store config file path"
+            )
     if on_set:
         try:
             cmd = on_set.format(f'"{filepath}"')
@@ -200,6 +217,7 @@ def set_path_as_active_config(request, filepath):
         except Exception as e:
             logging.error(f"Failed to run on_set_active_config command")
             traceback.print_exc()
+
 
 def _verify_path_in_config_dir(path, config_dir):
     """
@@ -213,7 +231,9 @@ def _verify_path_in_config_dir(path, config_dir):
     if is_path_in_folder(canonical, config_dir):
         _head, tail = split(canonical)
         return tail
-    logging.error(f"The config file path '{path}' is not in the config dir '{config_dir}'")
+    logging.error(
+        f"The config file path '{path}' is not in the config dir '{config_dir}'"
+    )
     return None
 
 
@@ -233,7 +253,7 @@ def _update_statefile_config_path(statefile_path, new_config_path):
         logging.error(f"Details: {e}")
         state = deepcopy(DEFAULT_STATEFILE)
     state["config_path"] = new_config_path
-    yaml_state = yaml.dump(state).encode('utf-8')
+    yaml_state = yaml.dump(state).encode("utf-8")
     with open(statefile_path, "wb") as f:
         f.write(yaml_state)
 
@@ -254,12 +274,13 @@ def _read_statefile_config_path(statefile_path):
         logging.error(f"Details: {e}")
     return None
 
+
 def save_config_to_yaml_file(config_name, config_object, request):
     """
     Write a given config object to a yaml file.
     """
     config_file = path_of_configfile(request, config_name)
-    yaml_config = yaml.dump(config_object).encode('utf-8')
+    yaml_config = yaml.dump(config_object).encode("utf-8")
     with open(config_file, "wb") as f:
         f.write(yaml_config)
 
@@ -268,8 +289,10 @@ def coeff_dir_relative_to_config_dir(request):
     """
     Get the relative path of the coeff_dir with respect to config_dir.
     """
-    relative_coeff_dir = relpath(request.app["coeff_dir"], start=request.app["config_dir"])
-    coeff_dir_with_folder_separator_at_end = join(relative_coeff_dir, '')
+    relative_coeff_dir = relpath(
+        request.app["coeff_dir"], start=request.app["config_dir"]
+    )
+    coeff_dir_with_folder_separator_at_end = join(relative_coeff_dir, "")
     return coeff_dir_with_folder_separator_at_end
 
 
@@ -337,9 +360,11 @@ def replace_tokens_in_filter_config(filterconfig, samplerate, channels):
     ftype = filterconfig["type"]
     parameters = filterconfig["parameters"]
     if ftype == "Conv" and parameters["type"] in ["Raw", "Wav"]:
-        parameters["filename"] = parameters["filename"]\
-            .replace("$samplerate$", str(samplerate))\
+        parameters["filename"] = (
+            parameters["filename"]
+            .replace("$samplerate$", str(samplerate))
             .replace("$channels$", str(channels))
+        )
 
 
 def make_relative(path, base_dir):

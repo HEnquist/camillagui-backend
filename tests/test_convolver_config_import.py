@@ -11,7 +11,7 @@ def clean_multi_line_string(multiline_text: str):
     :param multiline_text:
     :return: the text without the first blank line and indentation
     """
-    return dedent(multiline_text.removeprefix("\n"))
+    return dedent(multiline_text.lstrip("\n"))
 
 
 def test_filename_of_path():

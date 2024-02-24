@@ -9,13 +9,29 @@ import logging
 import traceback
 
 from .filemanagement import (
-    path_of_configfile, store_files, list_of_files_in_directory, delete_files,
-    zip_response, zip_of_files, read_yaml_from_path_to_object, set_path_as_active_config, get_active_config_path, save_config_to_yaml_file,
-    make_config_filter_paths_absolute, coeff_dir_relative_to_config_dir,
-    replace_relative_filter_path_with_absolute_paths, make_config_filter_paths_relative,
-    make_absolute, replace_tokens_in_filter_config, list_of_filenames_in_directory
+    path_of_configfile,
+    store_files,
+    list_of_files_in_directory,
+    delete_files,
+    zip_response,
+    zip_of_files,
+    read_yaml_from_path_to_object,
+    set_path_as_active_config,
+    get_active_config_path,
+    save_config_to_yaml_file,
+    make_config_filter_paths_absolute,
+    coeff_dir_relative_to_config_dir,
+    replace_relative_filter_path_with_absolute_paths,
+    make_config_filter_paths_relative,
+    make_absolute,
+    replace_tokens_in_filter_config,
+    list_of_filenames_in_directory,
 )
-from .filters import defaults_for_filter, filter_plot_options, pipeline_step_plot_options
+from .filters import (
+    defaults_for_filter,
+    filter_plot_options,
+    pipeline_step_plot_options,
+)
 from .settings import get_gui_config_or_defaults
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
@@ -32,15 +48,17 @@ OFFLINE_CACHE = {
     "rateadjust": None,
     "bufferlevel": None,
     "clippedsamples": None,
-    "processingload": None
+    "processingload": None,
 }
 HEADERS = {"Cache-Control": "no-store"}
+
 
 async def get_gui_index(request):
     """
     Serve the static gui files.
     """
     raise web.HTTPFound("/gui/index.html")
+
 
 def _reconnect(cdsp, cache, validator):
     done = False
@@ -68,6 +86,7 @@ def _reconnect(cdsp, cache, validator):
         except IOError:
             time.sleep(1)
 
+
 async def get_status(request):
     """
     Get the state and singnal levels etc.
@@ -92,30 +111,36 @@ async def get_status(request):
                 levels = cdsp.levels.levels_since(levels_since)
             else:
                 levels = cdsp.levels.levels()
-            cache.update({
-                "capturesignalrms": levels["capture_rms"],
-                "capturesignalpeak": levels["capture_peak"],
-                "playbacksignalrms": levels["playback_rms"],
-                "playbacksignalpeak": levels["playback_peak"],
-            })
+            cache.update(
+                {
+                    "capturesignalrms": levels["capture_rms"],
+                    "capturesignalpeak": levels["capture_peak"],
+                    "playbacksignalrms": levels["playback_rms"],
+                    "playbacksignalpeak": levels["playback_peak"],
+                }
+            )
             now = time.time()
             # These values don't change that fast, let's update them only once per second.
             if now - cachetime > 1.0:
                 request.app["STORE"]["cache_time"] = now
-                cache.update({
-                    "capturerate": cdsp.rate.capture(),
-                    "rateadjust": cdsp.status.rate_adjust(),
-                    "bufferlevel": cdsp.status.buffer_level(),
-                    "clippedsamples": cdsp.status.clipped_samples(),
-                    "processingload": cdsp.status.processing_load()
-                })
+                cache.update(
+                    {
+                        "capturerate": cdsp.rate.capture(),
+                        "rateadjust": cdsp.status.rate_adjust(),
+                        "bufferlevel": cdsp.status.buffer_level(),
+                        "clippedsamples": cdsp.status.clipped_samples(),
+                        "processingload": cdsp.status.processing_load(),
+                    }
+                )
         except IOError as e:
             print("TODO safe to remove this try-except? error:", e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
             cache.update(OFFLINE_CACHE)
-            reconnect_thread = threading.Thread(target=_reconnect, args=(cdsp, cache, validator), daemon=True)
+            reconnect_thread = threading.Thread(
+                target=_reconnect, args=(cdsp, cache, validator), daemon=True
+            )
             reconnect_thread.start()
             request.app["STORE"]["reconnect_thread"] = reconnect_thread
     return web.json_response(cache, headers=HEADERS)
@@ -229,6 +254,7 @@ async def eval_filter_values(request):
     except Exception as e:
         raise web.HTTPBadRequest(text=str(e))
 
+
 async def eval_filterstep_values(request):
     """
     Evaluate a filter step consisting of one or several filters. Returns values for plotting.
@@ -261,6 +287,7 @@ async def eval_filterstep_values(request):
     except Exception as e:
         raise web.HTTPBadRequest(text=str(e))
 
+
 async def get_config(request):
     """
     Get running config.
@@ -279,13 +306,15 @@ async def set_config(request):
     config_dir = request.app["config_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
-    config_object_with_absolute_filter_paths = make_config_filter_paths_absolute(config_object, config_dir)
+    config_object_with_absolute_filter_paths = make_config_filter_paths_absolute(
+        config_object, config_dir
+    )
     if cdsp.is_connected():
         try:
             cdsp.config.set_active(config_object_with_absolute_filter_paths)
         except CamillaError as e:
             raise web.HTTPInternalServerError(text=str(e))
-    else: 
+    else:
         validator.validate_config(config_object_with_absolute_filter_paths)
         errors = validator.get_errors()
         if len(errors) > 0:
@@ -304,7 +333,9 @@ async def get_default_config_file(request):
     else:
         raise web.HTTPNotFound(text="No default config")
     try:
-        config_object = make_config_filter_paths_relative(read_yaml_from_path_to_object(request, config), config_dir)
+        config_object = make_config_filter_paths_relative(
+            read_yaml_from_path_to_object(request, config), config_dir
+        )
     except CamillaError as e:
         logging.error(f"Failed to get default config file, error: {e}")
         raise web.HTTPInternalServerError(text=str(e))
@@ -313,6 +344,7 @@ async def get_default_config_file(request):
         traceback.print_exc()
         raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(config_object, headers=HEADERS)
+
 
 async def get_active_config_file(request):
     """
@@ -329,7 +361,9 @@ async def get_active_config_file(request):
     else:
         raise web.HTTPNotFound(text="No active or default config")
     try:
-        config_object = make_config_filter_paths_relative(read_yaml_from_path_to_object(request, config), config_dir)
+        config_object = make_config_filter_paths_relative(
+            read_yaml_from_path_to_object(request, config), config_dir
+        )
     except CamillaError as e:
         logging.error(f"Failed to get active config from CamillaDSP, error: {e}")
         raise web.HTTPInternalServerError(text=str(e))
@@ -363,7 +397,9 @@ async def get_config_file(request):
     config_name = request.query["name"]
     config_file = path_of_configfile(request, config_name)
     try:
-        config_object = make_config_filter_paths_relative(read_yaml_from_path_to_object(request, config_file), config_dir)
+        config_object = make_config_filter_paths_relative(
+            read_yaml_from_path_to_object(request, config_file), config_dir
+        )
     except CamillaError as e:
         raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(config_object, headers=HEADERS)
@@ -426,7 +462,7 @@ async def translate_eqapo_to_json(request):
     as a CamillaDSP config serialized as json.
     """
     try:
-        channels = int(request.rel_url.query.get('channels', None))
+        channels = int(request.rel_url.query.get("channels", None))
     except (ValueError, TypeError) as e:
         raise web.HTTPBadRequest(reason=str(e))
     print(channels)
@@ -436,16 +472,19 @@ async def translate_eqapo_to_json(request):
     translated = converter.build_config()
     return web.json_response(translated, headers=HEADERS)
 
+
 async def validate_config(request):
     """
     Validate a config, returned a list of errors or OK.
     """
     config_dir = request.app["config_dir"]
     config = await request.json()
-    config_with_absolute_filter_paths = make_config_filter_paths_absolute(config, config_dir)
+    config_with_absolute_filter_paths = make_config_filter_paths_absolute(
+        config, config_dir
+    )
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
-    #print(yaml.dump(config_with_absolute_filter_paths, indent=2))
+    # print(yaml.dump(config_with_absolute_filter_paths, indent=2))
     errors = validator.get_errors()
     if len(errors) > 0:
         logging.debug(errors)

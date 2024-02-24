@@ -1,4 +1,5 @@
 from os.path import basename
+from typing import List, Tuple
 
 
 def filename_of_path(path: str) -> str:
@@ -18,7 +19,7 @@ def fraction_to_gain(fraction: str) -> float:
     return float(f"0.{fraction}")
 
 
-def parse_channel_and_fraction(channel: str, fraction: str) -> (int, float, bool):
+def parse_channel_and_fraction(channel: str, fraction: str) -> Tuple[int, float, bool]:
     int_channel = abs(int(channel))
     gain = fraction_to_gain(fraction)
     inverted = channel.startswith("-")
@@ -27,7 +28,7 @@ def parse_channel_and_fraction(channel: str, fraction: str) -> (int, float, bool
 
 def channels_factors_and_inversions_as_list(
     channels_and_factors: str,
-) -> list[tuple[int, float, bool]]:
+) -> List[Tuple[int, float, bool]]:
     channels_and_fractions = [
         channel_and_fraction.split(".")
         for channel_and_fraction in channels_and_factors.split(" ")
@@ -38,7 +39,7 @@ def channels_factors_and_inversions_as_list(
     ]
 
 
-def make_filter_step(channel: int, names: list[str]) -> dict:
+def make_filter_step(channel: int, names: List[str]) -> dict:
     return {
         "type": "Filter",
         "channel": channel,
@@ -48,7 +49,7 @@ def make_filter_step(channel: int, names: list[str]) -> dict:
     }
 
 
-def make_mixer_mapping(input_channels: list[tuple], output_channel: int) -> dict:
+def make_mixer_mapping(input_channels: List[tuple], output_channel: int) -> dict:
     return {
         "dest": output_channel,
         "sources": [
@@ -67,10 +68,10 @@ class Filter:
     filename: str
     channel: int
     channel_in_file: int
-    input_channels: list[tuple[int, float, bool]]
-    output_channels: list[tuple[int, float, bool]]
+    input_channels: List[Tuple[int, float, bool]]
+    output_channels: List[Tuple[int, float, bool]]
 
-    def __init__(self, channel, filter_text: list[str]):
+    def __init__(self, channel, filter_text: List[str]):
         self.channel = channel
         self.filename = filename_of_path(filter_text[0])
         self.channel_in_file = int(filter_text[1])
@@ -85,9 +86,9 @@ class ConvolverConfig:
     _samplerate: int
     _input_channels: int
     _output_channels: int
-    _input_delays: list[int]
-    _output_delays: list[int]
-    _filters: list[Filter]
+    _input_delays: List[int]
+    _output_delays: List[int]
+    _filters: List[Filter]
 
     def __init__(self, config_text: str):
         """
@@ -107,11 +108,14 @@ class ConvolverConfig:
         ]
 
     def to_object(self) -> dict:
+        filters = self._delay_filter_definitions()
+        filters.update(self._convolution_filter_definitions())
+        mixers = self._mixer_in()
+        mixers.update(self._mixer_out())
         return {
             "devices": {"samplerate": self._samplerate},
-            "filters": self._delay_filter_definitions()
-            | self._convolution_filter_definitions(),
-            "mixers": self._mixer_in() | self._mixer_out(),
+            "filters": filters,
+            "mixers": mixers,
             "pipeline": self._input_delay_pipeline_steps()
             + self._mixer_in_pipeline_step()
             + self._filter_pipeline_steps()
@@ -148,17 +152,17 @@ class ConvolverConfig:
             for f in self._filters
         }
 
-    def _input_delay_pipeline_steps(self) -> list[dict]:
+    def _input_delay_pipeline_steps(self) -> List[dict]:
         return self._delay_pipeline_steps(self._input_delays)
 
-    def _delay_pipeline_steps(self, delays: list[int]) -> list[dict]:
+    def _delay_pipeline_steps(self, delays: List[int]) -> List[dict]:
         return [
             make_filter_step(channel, [self._delay_name(delay)])
             for channel, delay in enumerate(delays)
             if delay != 0
         ]
 
-    def _output_delay_pipeline_steps(self) -> list[dict]:
+    def _output_delay_pipeline_steps(self) -> List[dict]:
         return self._delay_pipeline_steps(self._output_delays)
 
     def _mixer_in(self) -> dict:
@@ -198,12 +202,12 @@ class ConvolverConfig:
         }
 
     @staticmethod
-    def _mixer_in_pipeline_step() -> list[dict]:
+    def _mixer_in_pipeline_step() -> List[dict]:
         return [{"type": "Mixer", "name": "Mixer in", "description": None}]
 
     @staticmethod
-    def _mixer_out_pipeline_step() -> list[dict]:
+    def _mixer_out_pipeline_step() -> List[dict]:
         return [{"type": "Mixer", "name": "Mixer out", "description": None}]
 
-    def _filter_pipeline_steps(self) -> list[dict]:
+    def _filter_pipeline_steps(self) -> List[dict]:
         return [make_filter_step(f.channel, [f.name()]) for f in self._filters]

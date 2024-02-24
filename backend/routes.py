@@ -33,7 +33,7 @@ from .views import (
     get_log_file,
     get_capture_devices,
     get_playback_devices,
-    get_backends
+    get_backends,
 )
 
 
@@ -50,7 +50,9 @@ def setup_routes(app):
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
     app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)
-    app.router.add_post("/api/ymlconfigtojsonconfig", parse_and_validate_yml_config_to_json)
+    app.router.add_post(
+        "/api/ymlconfigtojsonconfig", parse_and_validate_yml_config_to_json
+    )
     app.router.add_post("/api/ymltojson", yaml_to_json)
     app.router.add_post("/api/convolvertojson", translate_convolver_to_json)
     app.router.add_post("/api/eqapotojson", translate_eqapo_to_json)

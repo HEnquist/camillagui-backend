@@ -8,8 +8,8 @@ from yaml.scanner import ScannerError
 import logging
 
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
-CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
-GUI_CONFIG_PATH = BASEPATH / 'config' / 'gui-config.yml'
+CONFIG_PATH = BASEPATH / "config" / "camillagui.yml"
+GUI_CONFIG_PATH = BASEPATH / "config" / "gui-config.yml"
 
 # Default values for the optional gui config.
 GUI_CONFIG_DEFAULTS = {
@@ -59,14 +59,10 @@ def get_config(path):
     config = _load_yaml(path)
     if config is None:
         sys.exit()
-    config["config_dir"] = os.path.abspath(
-        os.path.expanduser(config["config_dir"]))
-    config["coeff_dir"] = os.path.abspath(
-        os.path.expanduser(config["coeff_dir"]))
-    config["default_config"] = absolute_path_or_none_if_empty(
-        config["default_config"])
-    config["statefile_path"] = absolute_path_or_none_if_empty(
-        config["statefile_path"])
+    config["config_dir"] = os.path.abspath(os.path.expanduser(config["config_dir"]))
+    config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
+    config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
+    config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
@@ -90,7 +86,9 @@ def can_update_active_config(config):
         else:
             logging.error(f"The statefile {statefile} is not writable.")
     if config["on_set_active_config"] and config["on_get_active_config"]:
-        logging.debug("Both 'on_set_active_config' and 'on_get_active_config' options are set")
+        logging.debug(
+            "Both 'on_set_active_config' and 'on_get_active_config' options are set"
+        )
         external_supported = True
     return statefile_supported or external_supported
 
