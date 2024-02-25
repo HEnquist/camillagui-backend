@@ -113,24 +113,6 @@ supported_capture_types: ["Alsa", "File", "Stdin"]
 supported_playback_types: ["Alsa", "File", "Stdout"]
 ```
 
-### Adding custom shortcut settings
-It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
-Here is an example config to set the gain of a filter called `MyFilter` within the range from 0 to 10 db in steps of 0.1 dB.
-```
-custom_shortcuts:
-  - section: "My custom section"
-    description: "Optional description for the section. Omit the attribute, if unwanted"
-    shortcuts:
-      - name: "My filter gain"
-        description: "Optional description for the setting. Omit the attribute, if unwanted"
-        path_in_config: ["filters", "MyFilter", "parameters", "gain"]
-        range_from: 0
-        range_to: 10
-        step: 0.1
-      - name: "The next setting"
-        ...
-```
-
 ### Integrating with other software
 If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
@@ -159,12 +141,37 @@ Examples:
 The `on_get_active_config` command is expected to return a filename on stdout.
 As an example, read a filename from a text file: `on_get_active_config: "cat myconfig.txt"`.
 
-#### Styling the GUI
-The UI can be styled by editing `build/css-variables.css`.
-Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
 
-#### Hiding GUI Options
-Options can hidden from your users by editing `config/gui-config.yml`.
+
+## Customizing the GUI
+Some functionality of the GUI can be customized by editing `config/gui-config.yml`.
+The styling can be customized by editing `build/css-variables.css`.
+
+### Adding custom shortcut settings
+It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
+The included config file contains the default Bass and Treble filters.
+To add more, edit the file `config/gui-config.yml` to add
+the new shortcuts to the list under `custom_shortcuts`.
+
+Here is an example config to set the gain of a filter called `MyFilter`
+within the range from 0 to 10 db in steps of 0.1 dB.
+```yaml
+custom_shortcuts:
+  - section: "My custom section"
+    description: "Optional description for the section. Omit the attribute, if unwanted"
+    shortcuts:
+      - name: "My filter gain"
+        description: "Optional description for the setting. Omit the attribute, if unwanted"
+        path_in_config: ["filters", "MyFilter", "parameters", "gain"]
+        range_from: 0
+        range_to: 10
+        step: 0.1
+      - name: "The next setting"
+        ...
+```
+
+### Hiding GUI Options
+Options can be hidden from your users by editing `config/gui-config.yml`.
 Setting any of the options to `true` hides the corresponding option or section.
 These are all optional, and default to `false` if left out.
 ```yaml
@@ -175,7 +182,11 @@ hide_playback_device: false
 hide_rate_monitoring: false
 ```
 
-#### Other GUI Options
+### Styling the GUI
+The UI can be styled by editing `build/css-variables.css`.
+Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
+
+### Other GUI Options
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
 To enable it by default, in `config/gui-config.yml` set `apply_config_automatically` to `true`.
 
