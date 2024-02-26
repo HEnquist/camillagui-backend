@@ -170,6 +170,12 @@ custom_shortcuts:
         ...
 ```
 
+The gui config is checked when the backend starts, and any problems are logged.
+For example, `range_from` must be a number. If it is not, this results in a message such as this:
+```
+ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not of type 'number'
+```
+
 ### Hiding GUI Options
 Options can be hidden from your users by editing `config/gui-config.yml`.
 Setting any of the options to `true` hides the corresponding option or section.
