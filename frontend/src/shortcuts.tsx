@@ -1,10 +1,11 @@
 import * as React from "react"
+import {useEffect, useState} from "react"
 import {Box, Button, MdiIcon} from "./utilities/ui-components"
 import {mdiHelpCircleOutline} from "@mdi/js"
-import {Config, filterParameter, setFilterParameter} from "./camilladsp/config"
-import {Update} from "./utilities/common"
-import {useEffect, useState} from "react"
-import {loadConfigJson, loadFiles} from "./files"
+import {loadConfigJson, loadFilenames} from "./utilities/files"
+import {Config} from "./camilladsp/config"
+import {numberValue, setNumberValue, Update} from "./utilities/common"
+import {ShortcutSection} from "./guiconfig"
 
 
 export function Shortcuts(props: {
@@ -12,64 +13,86 @@ export function Shortcuts(props: {
     config: Config
     updateConfig: (update: Update<Config>) => void
     setConfig: (name: string, config: Config) => void
+    shortcutSections: ShortcutSection[]
 })
 {
-    const {currentConfigName, config, setConfig, updateConfig} = props
+    const {currentConfigName, config, setConfig, updateConfig, shortcutSections} = props
     return <div className="tabpanel" style={{margin: 'auto'}}>
-        <BassAndTreble config={config} updateConfig={updateConfig}/>
+        <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig}/>
         <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
     </div>
 }
 
-const BASS = "Bass"
-const TREBLE = "Treble"
-const BASS_PARAM = "gain"
-const TREBLE_PARAM = "gain"
-
-export function BassAndTreble(props: {
-  config: Config,
+export function ShortcutSections(props: {
+  sections: ShortcutSection[]
+  config: Config
   updateConfig: (update: Update<Config>) => void
 }) {
-  const {config, updateConfig} = props
-  const bass = filterParameter(config, BASS, BASS_PARAM)
-  const treble = filterParameter(config, TREBLE, TREBLE_PARAM)
+  const {sections, config, updateConfig} = props
+  return <>
+    {sections.map(section =>
+      <ShortcutSectionView key={section.section} section={section} config={config} updateConfig={updateConfig}/>
+    )}
+  </>
+}
+
+function ShortcutSectionView(props: {
+  section: ShortcutSection
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+}) {
+  const {config, updateConfig, section, section: {shortcuts}} = props
   return <Box title={
     <>
-      <div style={{marginRight: '5px'}}>Equalizer</div>
-      <MdiIcon icon={mdiHelpCircleOutline} tooltip={
-        `To use the EQ, add filters named "${BASS}" and "${TREBLE}" to the pipeline<br>
-            Recommented settings:<br>
-            ${BASS}: Biquad Lowshelf freq=85 q=0.9<br>
-            ${TREBLE}: Biquad Highshelf freq=6500 q=0.7`
-      }/>
+      {section.section}
+      {<DescriptionIcon description={section.description}/>}
     </>
   }>
-    <div className="two-column-grid">
-      <div>
-        {BASS} <span className="db-label">{bass}</span> dB
-        <EqSlider value={bass} setValue={value => updateConfig(cfg => setFilterParameter(cfg, BASS, BASS_PARAM, value))}/>
+    {shortcuts.map(s => {
+      let value = numberValue(config, s.path_in_config)
+      return <div key={s.name}>
+        <div className='horizontally-spaced-content'>
+          <div>{s.name}</div>
+          {<DescriptionIcon description={s.description}/>}
+          <div>:</div>
+          <div>{value}</div>
+          <br/>
+        </div>
+        <Slider
+            value={value}
+            setValue={v => updateConfig(cfg => setNumberValue(cfg, s.path_in_config, v))}
+            min={s.range_from}
+            max={s.range_to}
+            step={s.step}
+        />
       </div>
-      <div>
-        {TREBLE} <span className="db-label">{treble}</span> dB
-        <EqSlider value={treble} setValue={value => updateConfig(cfg => setFilterParameter(cfg, TREBLE, TREBLE_PARAM, value))}/>
-      </div>
-    </div>
+    })}
   </Box>
 }
 
-function EqSlider(props: {
+function DescriptionIcon(props: {description?: string}) {
+  const {description} = props
+  return description === undefined ?
+      null :
+      <MdiIcon icon={mdiHelpCircleOutline} tooltip={description}/>
+}
+
+function Slider(props: {
   value?: number
   setValue: (value: number) => void
+  min: number
+  max: number
+  step: number
 }) {
-  const value = props.value || 0
+  const value = props.value ?? 0
   const disabled = props.value === undefined
   return <input
       disabled={disabled}
       style={{width: '100%', margin: 0, padding: 0}}
       type="range"
-      min="-6"
-      max="6"
-      step="0.1"
+      min={props.min}
+      max={props.max}
+      step={props.step}
       value={value}
       onChange={e => props.setValue(e.target.valueAsNumber)}
   />
@@ -82,7 +105,7 @@ export function QuickConfigSwitch(props:{
   const {currentConfigName, setConfig} = props
   const [configFiles, setConfigFiles] = useState<string[]>([])
   useEffect(() => {
-    loadFiles("config").then(files => setConfigFiles(files[0]))
+    loadFilenames("config").then(files => setConfigFiles(files))
   }, [])
   return <Box title="Quick Config Switch">
     <div className="quick-config-switch">
@@ -92,8 +115,7 @@ export function QuickConfigSwitch(props:{
               text={configFile}
               onClick={() => {
                 loadConfigJson(configFile)
-                    .then(response => response.json())
-                    .then(json => setConfig(configFile, json as Config))
+                    .then(config => setConfig(configFile, config))
               }}
               highlighted={configFile === currentConfigName}/>
       )}

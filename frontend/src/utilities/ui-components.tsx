@@ -1,4 +1,4 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useState} from "react"
+import React, {ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
 import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline,} from "@mdi/js"
@@ -8,41 +8,6 @@ import {toMap} from "./arrays"
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
 }
-
-export function download(filename: string, blob: any) {
-    let a = document.createElement("a")
-    a.href = URL.createObjectURL(blob)
-    a.download = filename
-    a.hidden = true
-    document.body.appendChild(a)
-    a.innerHTML = "abcdefg"
-    a.click()
-}
-
-export async function doUpload(
-    type: 'config' | 'coeff',
-    files: FileList,
-    onSuccess: (filesnames: string[]) => void,
-    onError: (message: string) => void
-) {
-    const formData = new FormData()
-    const uploadedFiles: string[] = []
-    for (let index = 0; index < files.length; index++) {
-        const file = files[index]
-        uploadedFiles.push(file.name)
-        formData.append("file" + index, file, file.name)
-    }
-    try {
-        await fetch(`/api/upload${type}s`, {
-            method: "POST",
-            body: formData
-        })
-        onSuccess(uploadedFiles)
-    } catch (e) {
-        onError(e.message)
-    }
-}
-
 
 export function Box(props: {
     title: string | ReactNode
@@ -63,18 +28,39 @@ export function Box(props: {
 }
 
 export function CheckBox(props: {
-    tooltip: string,
-    checked: boolean,
-    onChange: (checked: boolean) => void,
+    text?: string
+    tooltip?: string
+    checked: boolean | "partially"
+    editable?: boolean
+    onChange: (checked: boolean) => void
     style?: CSSProperties
 }) {
     const { tooltip, checked, onChange, style } = props
+    const editable = props.editable !== false
+    const checkboxRef = useRef<HTMLInputElement>(null)
+    const checkbox = checkboxRef.current
+    useEffect(() => {
+        if (!checkbox)
+            return
+        if (checked === true) {
+            checkbox.checked = true
+            checkbox.indeterminate = false
+        } else if (checked === false) {
+            checkbox.checked = false
+            checkbox.indeterminate = false
+        } else if (checked === "partially") {
+            checkbox.checked = false
+            checkbox.indeterminate = true
+        }
+    }, [checked, checkbox])
     return <label data-tip={tooltip} className='checkbox-area' style={style}>
         <input
             type="checkbox"
             data-tip={tooltip}
-            checked={checked}
+            disabled={!editable}
+            ref={checkboxRef}
             onChange={(e) => onChange(e.target.checked)} />
+        {props.text && <span className="unselectable">{props.text}</span>}
     </label>
 }
 
@@ -164,9 +150,9 @@ export function PlotButton(props: {
         rotation={props.pipeline ? 270 : 0} />
 }
 
-export function UploadButton(props: {
-    icon: string
-    tooltip: string
+export function UploadButton(
+    props: ({ icon: string, tooltip: string } | { text: string })
+& {
     upload: (files: FileList) => void
     multiple?: boolean
     className?: string
@@ -179,17 +165,22 @@ export function UploadButton(props: {
         e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     }
     return (
-        <label data-tip={props.tooltip}>
+        <label data-tip={"tooltip" in props ? props.tooltip : ""}>
             <input style={{display: 'none'}}
                    type="file"
                    onChange={upload}
                    multiple={props.multiple} />
-            <MdiButton
-                buttonSize={props.smallButton ? "small" : "default"}
-                icon={props.icon}
-                tooltip={props.tooltip}
-                className={props.className}
-                style={style} />
+            {"icon" in props && "tooltip" in props &&
+                <MdiButton
+                    buttonSize={props.smallButton ? "small" : "default"}
+                    icon={props.icon}
+                    tooltip={props.tooltip}
+                    className={props.className}
+                    style={style}/>
+            }
+            {"text" in props &&
+                <Button text={props.text} onClick={() => {}}/>
+            }
         </label>
     )
 }
@@ -229,7 +220,7 @@ export function MdiButton(props: {
  */
 export function MdiIcon(props: {
     icon: string
-    tooltip: string
+    tooltip?: string
     style?: CSSProperties
 }) {
     return <span data-tip={props.tooltip} style={props.style}>

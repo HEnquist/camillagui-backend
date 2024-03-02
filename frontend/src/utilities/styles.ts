@@ -1,0 +1,1 @@
+export const bottomMargin = {marginBottom: '10px'}

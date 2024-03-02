@@ -4,8 +4,8 @@ import {clamp} from "lodash"
 import {cssStyles} from "../utilities/ui-components"
 import {Range} from "immutable"
 
-export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[], clipped: boolean}) {
-  const {title, levels, peaks, clipped} = props
+export function VuMeterGroup(props: { title: string, levels: number[], peaks: number[] }) {
+  const {title, levels, peaks} = props
   const canvasRef = useRef(null)
   const meters = <canvas
       width='184px'
@@ -17,22 +17,22 @@ export function VuMeterGroup(props: { title: string, levels: number[], peaks: nu
       return
     const context = canvas.getContext('2d')
     const width = context.canvas.width
-    const height = context.canvas.height
     const css = cssStyles()
-    context.clearRect(0,0,width, height)
+    context.clearRect(0,0,width, context.canvas.height)
     Range(0, levels.length).forEach(index => {
       const level = levels[index]
       const peak = peaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
-      fillBackground(context, css, width, height, index+1)
-      drawDbMarkers(context, css, width, height, index+1)
-      draw0dBmarker(context, css, width, height, index+1)
-      drawLevelBars(context, width, height, css, levelInPercent, peakInPercent, clipped, index+1)
+      const clipped = peak >= 0
+      fillBackground(context, css, width, index+1)
+      drawDbMarkers(context, css, width, index+1)
+      draw0DbMarker(context, css, width, index+1)
+      drawLevelBars(context, width, css, levelInPercent, peakInPercent, clipped, index+1)
     })
-    drawDbMarkerLabels(context, css, width, height, 0)
-    drawDbMarkerLabels(context, css, width, height, levels.length+1)
-  }, [levels, peaks, clipped])
+    drawDbMarkerLabels(context, css, width, 0)
+    drawDbMarkerLabels(context, css, width, levels.length+1)
+  }, [levels, peaks])
   if (levels.length === 0 || levels.length !== peaks.length)
     return null
   else
@@ -49,6 +49,7 @@ const gapHeightInPX = 5
 const dbMarkerLabelHeight = 10
 const dbMarkersAt = [6, 0, -6, -12, -24, -48, -72, -96]
 const dbMarkersWithTextLabel = [6, 0, -6, -12, -24, -48, -72, -96]
+
 /**
  * Converts volume level to percent
  * Piecewise linear with 24 dB per division at low level, 12 dB in between, and 6 dB per division at high level.
@@ -70,12 +71,12 @@ function meterYOffset(index: number): number {
   return index * (meterHeightInPX + gapHeightInPX)
 }
 
-function fillBackground(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+function fillBackground(context: any, css: CSSStyleDeclaration, width: number, index: number) {
   context.fillStyle = css.getPropertyValue('--button-background-color')
   context.fillRect(0, meterYOffset(index), width, meterHeightInPX)
 }
 
-function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
   dbMarkersAt.forEach(marker => {
     const x = width * levelAsPercent(marker) / 100 - 1
@@ -85,7 +86,7 @@ function drawDbMarkers(context: any, css: CSSStyleDeclaration, width: number, he
   })
 }
 
-function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, width: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
   const dbMarkerHeight = gapHeightInPX
   dbMarkersAt.forEach(marker => {
@@ -102,15 +103,20 @@ function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, width: numbe
   })
 }
 
-function draw0dBmarker(context: any, css: CSSStyleDeclaration, width: number, height: number, index: number) {
+function draw0DbMarker(context: any, css: CSSStyleDeclaration, width: number, index: number) {
   context.fillStyle = css.getPropertyValue('--text-color')
   context.fillRect((width * levelAsPercent(0) / 100) - 1, meterYOffset(index), 2, meterHeightInPX)
 }
 
-function drawLevelBars(context: any, width: number, height: number,
-                  css: CSSStyleDeclaration,
-                  levelInPercent: number, peakInPercent: number,
-                  clipped: boolean, index: number) {
+function drawLevelBars(
+    context: any,
+    width: number,
+    css: CSSStyleDeclaration,
+    levelInPercent: number,
+    peakInPercent: number,
+    clipped: boolean,
+    index: number
+) {
   context.fillStyle = css.getPropertyValue(clipped ? '--error-text-color' : '--success-text-color')
   const rmsBarWidth = Math.round(width * levelInPercent / 100)
   context.fillRect(0, meterYOffset(index), rmsBarWidth, meterHeightInPX) // draw rms bar

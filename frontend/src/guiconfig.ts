@@ -11,11 +11,27 @@ export interface GuiConfig {
     save_config_automatically: boolean
     status_update_interval: number
     can_update_active_config: boolean
+    custom_shortcuts: ShortcutSection[]
 }
 
 export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin' | 'Bluez'
 
 export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdout'
+
+export interface ShortcutSection {
+    section: string
+    description?: string
+    shortcuts: Shortcut[]
+}
+
+export interface Shortcut {
+    name: string
+    description?: string
+    path_in_config: string[]
+    range_from: number
+    range_to: number
+    step: number
+}
 
 export function defaultGuiConfig(): GuiConfig {
     return {
@@ -28,6 +44,7 @@ export function defaultGuiConfig(): GuiConfig {
         apply_config_automatically: false,
         save_config_automatically: false,
         status_update_interval: 100,
-        can_update_active_config: false
+        can_update_active_config: false,
+        custom_shortcuts: []
     }
 }

@@ -4,28 +4,29 @@ import "react-tabs/style/react-tabs.css"
 import "./index.css"
 
 import * as React from "react"
-import { createRoot } from 'react-dom/client';
+import {createRoot} from 'react-dom/client'
 import isEqual from "lodash/isEqual"
 import {FiltersTab} from "./filterstab"
 import {DevicesTab} from "./devicestab"
 import {MixersTab} from "./mixerstab"
-import { ProcessorsTab } from "./processorstab"
+import {ProcessorsTab} from "./processorstab"
 import {PipelineTab} from "./pipeline/pipelinetab"
-import { TitleTab } from "./titletab"
+import {TitleTab} from "./titletab"
 import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
 import ReactTooltip from "react-tooltip"
-import {Files, loadActiveConfig} from "./files"
+import {Files} from "./filestab"
 import {Config, defaultConfig} from "./camilladsp/config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
 import {delayedExecutor, MdiButton, MdiIcon} from "./utilities/ui-components"
 import {cloneDeep} from "lodash"
-import {mdiAlertCircle, mdiImageSizeSelectSmall, mdiArrowULeftTop, mdiArrowURightTop} from "@mdi/js"
+import {mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall} from "@mdi/js"
 import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
+import {loadActiveConfig} from "./utilities/files"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -73,8 +74,8 @@ class CamillaConfig extends React.Component<
 
   private async loadGuiConfig() {
     fetch("/api/guiconfig")
-        .then(data => data.json())
-        .then(json => this.setState({guiConfig: json}))
+        .then(data => data.json(), err => {console.log('Failed to fetch guiconfig', err)})
+        .then(json => this.setState({guiConfig: json}), err => {console.log('Failed to parse guiconfig as json', err)})
   }
 
   private async loadCurrentConfig() {
@@ -91,7 +92,7 @@ class CamillaConfig extends React.Component<
   private async fetchConfig() {
     const conf_req = await fetch("/api/getconfig")
     if (!conf_req.ok) {
-      const errorMessage = await conf_req.text();
+      const errorMessage = await conf_req.text()
       this.setState({message: errorMessage})
       throw new Error(errorMessage)
     }
@@ -220,6 +221,7 @@ class CamillaConfig extends React.Component<
               }}
               updateConfig={update => this.updateConfig(update, true)}
               disableCompactView={() => this.setCompactViewEnabled(false)}
+              guiConfig={this.state.guiConfig}
           />
           : <this.NormalContent/>
       }
@@ -227,12 +229,11 @@ class CamillaConfig extends React.Component<
   }
 
   private NormalContent() {
-    const errors = this.state.errors
-    const undoRedo = this.state.undoRedo
+    const {errors, undoRedo, currentConfigFile} = this.state
     const config = undoRedo.current()
     return <>
       <SidePanel
-          currentConfigFile={this.state.currentConfigFile}
+          currentConfigFile={currentConfigFile}
           config={config}
           guiConfig={this.state.guiConfig}
           applyConfig={this.applyConfig}
@@ -327,23 +328,25 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <Files
-              currentConfigFile={this.state.currentConfigFile}
+              currentConfigFile={currentConfigFile}
               config={config}
               setCurrentConfig={this.setCurrentConfig}
               setCurrentConfigFileName={this.setCurrentConfigFileName}
+              updateConfig={this.updateConfig}
               saveNotify={this.saveNotify}
               guiConfig={this.state.guiConfig}
           />
         </TabPanel>
         <TabPanel>
           <Shortcuts
-              currentConfigName={this.state.currentConfigFile}
+              currentConfigName={currentConfigFile}
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)
                 this.applyConfigRequest(filename, config)
               }}
               updateConfig={update => this.updateConfig(update, true)}
+              shortcutSections={this.state.guiConfig.custom_shortcuts}
           />
         </TabPanel>
       </Tabs>
@@ -353,11 +356,11 @@ class CamillaConfig extends React.Component<
 
 function ErrorIcon() {
   return <MdiIcon
-      icon={mdiAlertCircle}
+      icon={mdiAlert}
       tooltip="There are errors on this tab"
       style={{color: 'var(--error-text-color)'}}/>
 }
 
-const container = document.getElementById('root');
-const root = createRoot(container!);
+const container = document.getElementById('root')
+const root = createRoot(container!)
 root.render(<CamillaConfig/>)

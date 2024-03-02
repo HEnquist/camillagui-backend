@@ -23,7 +23,6 @@ import {
   Button,
   delayedExecutor,
   DeleteButton,
-  doUpload,
   EnumInput,
   EnumOption,
   ErrorMessage,
@@ -45,6 +44,7 @@ import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
+import {doUpload, loadFilenames} from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -151,10 +151,9 @@ export class FiltersTab extends React.Component<
   }
 
   private updateAvailableCoeffFiles() {
-    fetch("/api/storedcoeffs")
+    loadFilenames("coeff")
       .then(
-        result => result.json()
-          .then(coeffFiles => this.setState({ availableCoeffFiles: coeffFiles[0] })),
+        files => this.setState({ availableCoeffFiles: files }),
         error => console.log("Could not load stored coeffs", error)
       )
   }
@@ -768,7 +767,7 @@ class FilterParams extends React.Component<{
       },
       bits: { type: "int", desc: "bits", tooltip: "Target bit depth for dither" },
       channel: {
-        type: "int",
+        type: "optional_int",
         desc: "channel",
         tooltip: "Index of channel to use, starting from 0",
       },
