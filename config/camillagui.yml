@@ -3,6 +3,8 @@ camilla_host: "127.0.0.1"
 camilla_port: 1234
 bind_address: "0.0.0.0"
 port: 5005
+ssl_certificate: null
+ssl_private_key: null
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"

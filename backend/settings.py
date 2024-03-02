@@ -4,12 +4,15 @@ import sys
 
 import yaml
 from yaml.scanner import ScannerError
+from jsonschema import Draft202012Validator
 
 import logging
 
+from .settings_schemas import GUI_CONFIG_SCHEMA, BACKEND_CONFIG_SCHEMA
+
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
-CONFIG_PATH = BASEPATH / 'config' / 'camillagui.yml'
-GUI_CONFIG_PATH = BASEPATH / 'config' / 'gui-config.yml'
+CONFIG_PATH = BASEPATH / "config" / "camillagui.yml"
+GUI_CONFIG_PATH = BASEPATH / "config" / "gui-config.yml"
 
 # Default values for the optional gui config.
 GUI_CONFIG_DEFAULTS = {
@@ -24,6 +27,7 @@ GUI_CONFIG_DEFAULTS = {
 
 # Default values for the optional settings.
 BACKEND_CONFIG_DEFAULTS = {
+    "default_config": None,
     "statefile_path": None,
     "on_set_active_config": None,
     "on_get_active_config": None,
@@ -51,28 +55,44 @@ def _load_yaml(path):
     return None
 
 
+def _read_and_validate_file(path, schema):
+    config = _load_yaml(path)
+    if config is None:
+        return None
+    validator = Draft202012Validator(schema)
+    errors = list(validator.iter_errors(config))
+    if len(errors) > 0:
+        logging.error(f"Error in config file '{path}'")
+        for e in errors:
+            logging.error(f"Parameter '{'/'.join([str(p) for p in e.path])}': {e.message}")
+        return None
+    return config
+
 def get_config(path):
     """
     Get backend config.
     Exits if the config can't be read.
     """
-    config = _load_yaml(path)
+    config = _read_and_validate_file(path, BACKEND_CONFIG_SCHEMA)
     if config is None:
         sys.exit()
-    config["config_dir"] = os.path.abspath(
-        os.path.expanduser(config["config_dir"]))
-    config["coeff_dir"] = os.path.abspath(
-        os.path.expanduser(config["coeff_dir"]))
-    config["default_config"] = absolute_path_or_none_if_empty(
-        config["default_config"])
-    config["statefile_path"] = absolute_path_or_none_if_empty(
-        config["statefile_path"])
+    config["config_dir"] = os.path.abspath(os.path.expanduser(config["config_dir"]))
+    config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
+    config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
+    config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
     logging.debug("Backend configuration:")
     logging.debug(yaml.dump(config))
+    
     config["can_update_active_config"] = can_update_active_config(config)
+    
+    # Read the gui config.
+    # This is only to validate the file and log any problems.
+    # The result is not used. 
+    get_gui_config_or_defaults()
+
     return config
 
 
@@ -90,7 +110,9 @@ def can_update_active_config(config):
         else:
             logging.error(f"The statefile {statefile} is not writable.")
     if config["on_set_active_config"] and config["on_get_active_config"]:
-        logging.debug("Both 'on_set_active_config' and 'on_get_active_config' options are set")
+        logging.debug(
+            "Both 'on_set_active_config' and 'on_get_active_config' options are set"
+        )
         external_supported = True
     return statefile_supported or external_supported
 
@@ -134,7 +156,7 @@ def get_gui_config_or_defaults():
     Get the gui config from file if it exists,
     if not return the defaults.
     """
-    config = _load_yaml(GUI_CONFIG_PATH)
+    config = _read_and_validate_file(GUI_CONFIG_PATH, GUI_CONFIG_SCHEMA)
     if config is not None:
         for key, value in GUI_CONFIG_DEFAULTS.items():
             if key not in config:
