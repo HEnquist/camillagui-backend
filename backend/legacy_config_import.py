@@ -80,13 +80,16 @@ def _modify_devices(config):
     Update the options in the devices section
     """
     # New logic for setting sample format
-    dev = config["devices"]["capture"]
-    _modify_coreaudio_device(dev)
-    dev = config["devices"]["playback"]
-    _modify_coreaudio_device(dev)
+    if "devices" in config:
+        if "capture" in config["devices"]:
+            dev = config["devices"]["capture"]
+            _modify_coreaudio_device(dev)
+        if "playback" in config["devices"]:
+            dev = config["devices"]["playback"]
+            _modify_coreaudio_device(dev)
 
-    # Resampler
-    _modify_resampler(config)
+        # Resampler
+        _modify_resampler(config)
 
 
 def _modify_coreaudio_device(dev):

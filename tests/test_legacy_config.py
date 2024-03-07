@@ -145,3 +145,10 @@ def test_schema_validation(basic_config):
     validator.validate_config(basic_config)
     errors = validator.get_errors()
     assert len(errors) == 0
+
+def test_filters_only(basic_config):
+    # make a config containing only filters,
+    # to check that partial configs can be translated
+    filters_only = {"filters": basic_config["filters"]}
+    migrate_legacy_config(filters_only)
+    assert len(filters_only["filters"]) == 3
