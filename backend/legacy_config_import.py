@@ -117,11 +117,23 @@ def _modify_dither(config):
                     params["parameters"]["type"] = "Highpass"
 
 
+def _fix_rew_pipeline(config):
+    if "pipeline" in config:
+        pipeline = config["pipeline"]
+        if isinstance(pipeline, dict) and "names" in pipeline and "type" in pipeline:
+            # This config was exported from REW.
+            # Convert `pipeline` to a list of steps instead of a single step,
+            # and add the missing `channel` attribute.
+            if "channel" not in pipeline:
+                pipeline["channel"] = 0
+            config["pipeline"] = [pipeline]
+
 def migrate_legacy_config(config):
     """
     Modifies an older config file to the latest format.
     The modifications are done in-place.
     """
+    _fix_rew_pipeline(config)
     _remove_volume_filters(config)
     _modify_loundness_filters(config)
     _modify_dither(config)

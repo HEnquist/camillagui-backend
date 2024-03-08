@@ -152,3 +152,10 @@ def test_filters_only(basic_config):
     filters_only = {"filters": basic_config["filters"]}
     migrate_legacy_config(filters_only)
     assert len(filters_only["filters"]) == 3
+
+def test_rew_export(basic_config):
+    # REW exports a single pipeline step rather than a list.
+    # Check that this is handled ok.
+    basic_config["pipeline"] = basic_config["pipeline"][0]
+    migrate_legacy_config(basic_config)
+    assert len(basic_config["pipeline"]) == 1
