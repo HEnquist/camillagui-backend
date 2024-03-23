@@ -542,6 +542,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
         const parsedValue = props.parseValue(this.state.rawValue)
         const valid = parsedValue !== undefined
         return <input
+            spellCheck="false"
             type={props.withControls ? "number" : "text"}
             min={props.min}
             max={props.max}
@@ -626,6 +627,7 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
             valid = parsedValue !== undefined
         }
         return <input
+            spellCheck="false"
             placeholder={placeholder}
             type={props.withControls ? "number" : "text"}
             min={props.min}
@@ -887,6 +889,7 @@ export function OptionalTextInput(props: {
     placeholder?: string
 }) {
     return <input
+        spellCheck="false"
         placeholder={props.placeholder}
         type="text"
         value={props.value === null ? "": props.value}
@@ -905,6 +908,7 @@ export function TextInput(props: {
     placeholder?: string
 }) {
     return <input
+        spellCheck="false"
         placeholder={props.placeholder}
         type="text"
         value={props.value}

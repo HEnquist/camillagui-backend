@@ -337,6 +337,7 @@ class FileTable extends Component<
               <input type='text'
                      value={newFileName}
                      data-tip="Enter a name for the new config file"
+                     spellCheck='false'
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
               <FileStatusMessage filename={newFileName} fileStatus={fileStatus}/>
             </div>
