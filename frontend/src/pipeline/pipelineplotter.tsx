@@ -305,9 +305,51 @@ class PipelinePlot extends React.Component<Props, State> {
     stages.push(channels)
     max_v = active_channels / 2 + 1
 
+
     // loop through pipeline
     let total_length = 0
     let stage_start = 0
+
+    // resampler
+    if (conf.devices.resampler !== null) {
+      total_length += 1
+      let resampler_channels = []
+      this.appendFrame(
+        labels,
+        boxes,
+        "Resampler",
+        spacing_h * total_length,
+        0,
+        1.5,
+        spacing_v * active_channels,
+      )
+      let params = conf.devices.resampler
+      let tooltip = "<strong>Resampler</strong>"
+      for (const [key, value] of Object.entries(params)) {
+        tooltip = tooltip + "<br>" + key + ": " + value
+      }
+      for (let n = 0; n < active_channels; n++) {
+        const label = "ch " + n
+        const io_points = this.appendBlock(
+          labels,
+          boxes,
+          label,
+          tooltip,
+          spacing_h * total_length,
+          spacing_v * (-active_channels / 2 + 0.5 + n),
+          1,
+          false
+        )
+        resampler_channels.push([io_points])
+        const src_p = stages[0][n][0].output
+        const dest_p = io_points.input
+        this.appendLink(links, labels, src_p, dest_p, n)
+      }
+      stages.push(resampler_channels)
+      stage_start = total_length
+    }
+
+
     const pipeline = conf.pipeline ? conf.pipeline : []
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
