@@ -8,6 +8,7 @@ import { CaptureDevice, Config, PlaybackDevice } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
+import {Range} from "immutable"
 
 export function PipelinePopup(props: {
   config: Config,
@@ -471,7 +472,11 @@ class PipelinePlot extends React.Component<Props, State> {
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
-        for (const ch_nbr of step.channels) {
+        let _channels = step.channels
+        if (_channels === null) {
+          _channels = Array.from(Range(0, active_channels))
+        }
+        for (const ch_nbr of _channels) {
           if (ch_nbr >= active_channels && !disabled) {
             console.log("Invalid config, unable to plot")
             return { labels, boxes, links, max_h, max_v }

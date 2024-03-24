@@ -694,7 +694,7 @@ export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep { type: 'Mixer', name: string, description: string | null, bypassed: boolean | null }
 export interface ProcessorStep { type: 'Processor', name: string, description: string | null, bypassed: boolean | null }
-export interface FilterStep { type: 'Filter', channels: number[], names: string[], description: string | null, bypassed: boolean | null }
+export interface FilterStep { type: 'Filter', channels: number[] | null, names: string[], description: string | null, bypassed: boolean | null }
 
 export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
     var lastValidMixerStepBeforeIndex = null

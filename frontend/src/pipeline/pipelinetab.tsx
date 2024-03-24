@@ -421,10 +421,13 @@ function FilterStepView(props: {
 }
 
 function ChannelSelection(props: {
-  channels: number[]
+  channels: number[] | null
   maxChannelCount: number
-  setChannels: (channels: number[]) => void
+  setChannels: (channels: number[] | null) => void
 }) {
+  if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
+    props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
+  }
   //const simpleUiLimit = 10 //with maxChannelCount below the limit, a more intuitive UI is shown
   //return props.maxChannelCount > simpleUiLimit ?
   //    <TextBasedChannelSelection {...props}/>
@@ -451,19 +454,33 @@ function TextBasedChannelSelection(props: {
 }
 
 function ButtonBasedChannelSelection(props: {
-  channels: number[]
+  channels: number[] | null
   maxChannelCount: number
-  setChannels: (channels: number[]) => void
+  setChannels: (channels: number[] | null) => void
 }) {
   const {channels, maxChannelCount, setChannels} = props
+
   //const channelNumberTooHigh = channel >= maxChannelCount
   var _channels = channels
   const toggleChannel = (idx: number) => {
-    if (!_channels.includes(idx)) {
-      _channels.push(idx)
+    if (idx === -1) {
+      if (_channels === null) {
+        _channels = []
+      }
+      else {
+        _channels = null
+      }
     }
     else {
-      _channels = _channels.filter((n: number) => n !== idx)
+      if (_channels === null) {
+        _channels = []
+      }
+      if (!_channels.includes(idx)) {
+        _channels.push(idx)
+      }
+      else {
+        _channels = _channels.filter((n: number) => n !== idx)
+      }
     }
     setChannels(_channels)
   }
@@ -472,7 +489,7 @@ function ButtonBasedChannelSelection(props: {
     <span style={{marginRight: '5px'}}>channel</span>
     <ChannelButton key={-1} channel='all' selected={channels === null} onClick={() => toggleChannel(-1)}/>
     {Range(0, props.maxChannelCount).map(index =>
-        <ChannelButton key={index} channel={index} selected={channels.includes(index)} onClick={() => toggleChannel(index)}/>
+        <ChannelButton key={index} channel={index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)}/>
     )}
   </div>
 }
