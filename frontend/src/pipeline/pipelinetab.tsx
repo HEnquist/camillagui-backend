@@ -353,9 +353,9 @@ function FilterStepView(props: {
     <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order"/>
     {typeSelect}
     <ChannelSelection
-        channel={filterStep.channel}
+        channels={filterStep.channels}
         maxChannelCount={maxChannelCount}
-        setChannel={channel => update(step => step.channel = channel)}/>
+        setChannels={channels => update(step => step.channels = channels)}/>
     <OptionalBoolOption
             value={filterStep.bypassed}
             desc="bypassed"
@@ -421,14 +421,15 @@ function FilterStepView(props: {
 }
 
 function ChannelSelection(props: {
-  channel: number
+  channels: number[]
   maxChannelCount: number
-  setChannel: (channel: number) => void
+  setChannels: (channels: number[]) => void
 }) {
-  const simpleUiLimit = 10 //with maxChannelCount below the limit, a more intuitive UI is shown
-  return props.maxChannelCount > simpleUiLimit ?
-      <TextBasedChannelSelection {...props}/>
-      : <ButtonBasedChannelSelection {...props}/>
+  //const simpleUiLimit = 10 //with maxChannelCount below the limit, a more intuitive UI is shown
+  //return props.maxChannelCount > simpleUiLimit ?
+  //    <TextBasedChannelSelection {...props}/>
+  //    : <ButtonBasedChannelSelection {...props}/>
+  return <ButtonBasedChannelSelection {...props}/>
 }
 
 function TextBasedChannelSelection(props: {
@@ -450,30 +451,43 @@ function TextBasedChannelSelection(props: {
 }
 
 function ButtonBasedChannelSelection(props: {
-  channel: number
+  channels: number[]
   maxChannelCount: number
-  setChannel: (channel: number) => void
+  setChannels: (channels: number[]) => void
 }) {
-  const {channel, maxChannelCount, setChannel} = props
-  const channelNumberTooHigh = channel >= maxChannelCount
+  const {channels, maxChannelCount, setChannels} = props
+  //const channelNumberTooHigh = channel >= maxChannelCount
+  var _channels = channels
+  const toggleChannel = (idx: number) => {
+    if (!_channels.includes(idx)) {
+      _channels.push(idx)
+    }
+    else {
+      _channels = _channels.filter((n: number) => n !== idx)
+    }
+    setChannels(_channels)
+  }
+
   return <div style={{marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline'}}>
     <span style={{marginRight: '5px'}}>channel</span>
+    <ChannelButton key={-1} channel='all' selected={channels === null} onClick={() => toggleChannel(-1)}/>
     {Range(0, props.maxChannelCount).map(index =>
-        <ChannelButton key={index} channel={index} selected={index === channel} onClick={() => setChannel(index)}/>
+        <ChannelButton key={index} channel={index} selected={channels.includes(index)} onClick={() => toggleChannel(index)}/>
     )}
-    {channelNumberTooHigh &&
-      <ChannelButton
-        channel={channel}
-        onClick={() => {
-        }}
-        selected={false}
-        erroneousChannel={channelNumberTooHigh}/>
-    }
   </div>
 }
 
+    // {channelNumberTooHigh &&
+    //   <ChannelButton
+    //     channel={channel}
+    //     onClick={() => {
+    //     }}
+    //     selected={false}
+    //     erroneousChannel={channelNumberTooHigh}/>
+    // }
+
 function ChannelButton(props: {
-  channel: number
+  channel: number | string
   selected: boolean
   onClick: () => void
   erroneousChannel?: boolean
