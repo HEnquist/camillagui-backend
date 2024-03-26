@@ -494,7 +494,7 @@ function ChannelSelection(props: {
       <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
       <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
         <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
-        {expanded ? makeDropdown() : null}
+        {expanded && makeDropdown()}
       </div>
     </div>
   }
