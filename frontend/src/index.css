@@ -207,6 +207,16 @@ div .popup-content {
   border-radius: var(--border-radius);
 }
 
+.dropdown-menu {
+  position: absolute;
+  background-color: var(--background-color);
+  border: var(--box-border);
+  border-radius: var(--border-radius);
+  z-index: 1;
+  top: 20%;
+  left: 35%;
+}
+
 @media (max-width: 1023px) {
   div .popup-content {
     width: 80%;

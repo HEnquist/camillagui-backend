@@ -9,7 +9,6 @@ import {
   EnumInput,
   ERROR_BACKGROUND_STYLE,
   ErrorMessage,
-  IntOption,
   MdiButton,
   OptionalBoolOption,
   OptionalTextInput,
@@ -471,7 +470,7 @@ function ButtonBasedChannelSelection(props: {
 
   const rows = Math.floor(maxChannelCount / 10) + 1
 
-  if (rows == 1) {
+  if (rows === 1) {
     return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
       <span style={{ marginRight: '5px' }}>channel</span>
       <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
@@ -481,30 +480,20 @@ function ButtonBasedChannelSelection(props: {
     </div>
   }
   else {
-    // TODO math last row
     // container
     // positioning
-    
+
     return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
       <span style={{ marginRight: '5px' }}>channel</span>
-      <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
-      <ChannelButton key={0} channel='▼' selected={expanded} onClick={toggleExpanded} />
-      {expanded ? <div className="popup-content" title='channels' style={{ position: 'absolute', zIndex: 1, top: '20%', left: '35%' }}><table>{Range(0, rows).map(row => (
-        <tr>{Range(0, 10).map(col => (
+      <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
+      <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+      {expanded ? <div className="dropdown-menu" title='channels' ><table>{Range(0, rows).map(row => (
+        <tr>{Range(0, Math.min(10, maxChannelCount - 10*row)).map(col => (
           <td><ChannelButton key={10 * row + col} channel={10 * row + col} selected={channels !== null && channels.includes(10 * row + col)} onClick={() => toggleChannel(10 * row + col)} /></td>
         ))}</tr>))}</table></div> : <div></div>}
     </div>
   }
 }
-
-// {channelNumberTooHigh &&
-//   <ChannelButton
-//     channel={channel}
-//     onClick={() => {
-//     }}
-//     selected={false}
-//     erroneousChannel={channelNumberTooHigh}/>
-// }
 
 function ChannelButton(props: {
   channel: number | string
