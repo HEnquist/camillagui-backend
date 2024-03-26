@@ -466,7 +466,7 @@ function ChannelSelection(props: {
       <table>
         {Range(0, rows).map(row => (
           <tr>
-            {Range(0, Math.min(rowSize, maxChannelCount - rowSize*row)).map(col => (
+            {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
               <td>
                 <ChannelButton key={rowSize * row + col} channel={rowSize * row + col} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
               </td>
