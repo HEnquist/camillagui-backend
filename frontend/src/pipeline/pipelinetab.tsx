@@ -424,23 +424,12 @@ function ChannelSelection(props: {
   maxChannelCount: number
   setChannels: (channels: number[] | null) => void
 }) {
+  const { channels, maxChannelCount, setChannels } = props
+  let [expanded, setExpanded] = useState(false)
+
   if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
     props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
   }
-  //const simpleUiLimit = 10 //with maxChannelCount below the limit, a more intuitive UI is shown
-  //return props.maxChannelCount > simpleUiLimit ?
-  //    <TextBasedChannelSelection {...props}/>
-  //    : <ButtonBasedChannelSelection {...props}/>
-  return <ButtonBasedChannelSelection {...props} />
-}
-
-function ButtonBasedChannelSelection(props: {
-  channels: number[] | null
-  maxChannelCount: number
-  setChannels: (channels: number[] | null) => void
-}) {
-  const { channels, maxChannelCount, setChannels } = props
-  let [expanded, setExpanded] = useState(false)
 
   const rowSize = 8
 
