@@ -1,10 +1,10 @@
-import React, { ReactNode, useState } from "react"
+import React, { ReactNode } from "react"
 import "../index.css"
 import { PipelinePopup } from './pipelineplotter'
 import {
   AddButton,
   Box,
-  Button,
+  ChannelSelection,
   DeleteButton,
   EnumInput,
   ERROR_BACKGROUND_STYLE,
@@ -39,7 +39,6 @@ import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/
 import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
 import { Update } from "../utilities/common"
 import { ChartData, ChartPopup } from "../utilities/chart"
-import { Range } from "immutable"
 
 export class PipelineTab extends React.Component<{
   config: Config
@@ -354,6 +353,7 @@ function FilterStepView(props: {
     <ChannelSelection
       channels={filterStep.channels}
       maxChannelCount={maxChannelCount}
+      label='channels'
       setChannels={channels => update(step => step.channels = channels)} />
     <OptionalBoolOption
       value={filterStep.bypassed}
@@ -417,107 +417,6 @@ function FilterStepView(props: {
       </div>
     </Box>
   </DndSortable>
-}
-
-function ChannelSelection(props: {
-  channels: number[] | null
-  maxChannelCount: number
-  setChannels: (channels: number[] | null) => void
-}) {
-  const { channels, maxChannelCount, setChannels } = props
-  let [expanded, setExpanded] = useState(false)
-
-  if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
-    props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
-  }
-
-  const rowSize = 8
-
-  var _channels = channels
-  const toggleAllChannels = () => {
-    if (_channels === null) {
-      _channels = []
-    }
-    else {
-      _channels = null
-    }
-    setChannels(_channels)
-  }
-  const toggleChannel = (idx: number) => {
-    if (_channels === null) {
-      _channels = []
-    }
-    if (!_channels.includes(idx)) {
-      _channels.push(idx)
-    }
-    else {
-      _channels = _channels.filter((n: number) => n !== idx)
-    }
-    setChannels(_channels)
-  }
-  const toggleExpanded = () => {
-    setExpanded(!expanded)
-  }
-
-  const rows = Math.floor(maxChannelCount / rowSize) + 1
-
-  const makeDropdown = () => {
-    return <div className="dropdown-menu" title='channels' >
-      <table>
-        {Range(0, rows).map(row => (
-          <tr>
-            {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
-              <td>
-                <ChannelButton key={rowSize * row + col} channel={rowSize * row + col} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
-              </td>
-            ))}
-          </tr>
-        ))}
-      </table>
-    </div>
-  }
-
-  if (rows === 1) {
-    return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
-      <span style={{ marginRight: '5px' }}>channel</span>
-      <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
-      {Range(0, maxChannelCount).map(index =>
-        <ChannelButton key={index} channel={index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
-      )}
-    </div>
-  }
-  else {
-    // TODO make this a reusable component
-    // TODO add some compact display?
-    return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
-      <span style={{ marginRight: '5px' }}>channel</span>
-      <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
-      <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
-        <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
-        {expanded && makeDropdown()}
-      </div>
-    </div>
-  }
-}
-
-function ChannelButton(props: {
-  channel: number | string
-  selected: boolean
-  onClick: () => void
-  erroneousChannel?: boolean
-}) {
-  const { channel, selected, onClick, erroneousChannel } = props
-  return <Button
-    text={channel.toString()}
-    onClick={onClick}
-    highlighted={selected}
-    className='setting-button'
-    style={{
-      height: '28px',
-      marginRight: '5px',
-      backgroundColor: erroneousChannel ? 'var(--error-field-background-color)' : undefined
-    }}
-  />
 }
 
 function FilterStepFilter(props: {
