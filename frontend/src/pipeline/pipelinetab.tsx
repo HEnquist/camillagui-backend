@@ -489,7 +489,7 @@ function ButtonBasedChannelSelection(props: {
       {expanded ? <div className="dropdown-menu" title='channels' ><table>{Range(0, rows).map(row => (
         <tr>{Range(0, Math.min(10, maxChannelCount - 10*row)).map(col => (
           <td><ChannelButton key={10 * row + col} channel={10 * row + col} selected={channels !== null && channels.includes(10 * row + col)} onClick={() => toggleChannel(10 * row + col)} /></td>
-        ))}</tr>))}</table></div> : <div></div>}
+        ))}</tr>))}</table></div> : null}
     </div></div>
   }
 }
