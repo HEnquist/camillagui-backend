@@ -442,6 +442,8 @@ function ButtonBasedChannelSelection(props: {
   const { channels, maxChannelCount, setChannels } = props
   let [expanded, setExpanded] = useState(false)
 
+  const rowSize = 8
+
   var _channels = channels
   const toggleAllChannels = () => {
     if (_channels === null) {
@@ -468,7 +470,23 @@ function ButtonBasedChannelSelection(props: {
     setExpanded(!expanded)
   }
 
-  const rows = Math.floor(maxChannelCount / 10) + 1
+  const rows = Math.floor(maxChannelCount / rowSize) + 1
+
+  const makeDropdown = () => {
+    return <div className="dropdown-menu" title='channels' >
+      <table>
+        {Range(0, rows).map(row => (
+          <tr>
+            {Range(0, Math.min(rowSize, maxChannelCount - rowSize*row)).map(col => (
+              <td>
+                <ChannelButton key={rowSize * row + col} channel={rowSize * row + col} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </table>
+    </div>
+  }
 
   if (rows === 1) {
     return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
@@ -485,12 +503,11 @@ function ButtonBasedChannelSelection(props: {
     return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
       <span style={{ marginRight: '5px' }}>channel</span>
       <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
-      <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}><ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
-      {expanded ? <div className="dropdown-menu" title='channels' ><table>{Range(0, rows).map(row => (
-        <tr>{Range(0, Math.min(10, maxChannelCount - 10*row)).map(col => (
-          <td><ChannelButton key={10 * row + col} channel={10 * row + col} selected={channels !== null && channels.includes(10 * row + col)} onClick={() => toggleChannel(10 * row + col)} /></td>
-        ))}</tr>))}</table></div> : null}
-    </div></div>
+      <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+        <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+        {expanded ? makeDropdown() : null}
+      </div>
+    </div>
   }
 }
 
