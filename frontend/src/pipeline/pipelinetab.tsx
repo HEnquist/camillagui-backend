@@ -480,18 +480,17 @@ function ButtonBasedChannelSelection(props: {
     </div>
   }
   else {
-    // container
-    // positioning
-
+    // TODO make this a reusable component
+    // TODO add some compact display?
     return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
       <span style={{ marginRight: '5px' }}>channel</span>
       <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
-      <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+      <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}><ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
       {expanded ? <div className="dropdown-menu" title='channels' ><table>{Range(0, rows).map(row => (
         <tr>{Range(0, Math.min(10, maxChannelCount - 10*row)).map(col => (
           <td><ChannelButton key={10 * row + col} channel={10 * row + col} selected={channels !== null && channels.includes(10 * row + col)} onClick={() => toggleChannel(10 * row + col)} /></td>
         ))}</tr>))}</table></div> : <div></div>}
-    </div>
+    </div></div>
   }
 }
 
