@@ -8,6 +8,7 @@ import { CaptureDevice, Config, PlaybackDevice } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
+import {Range} from "immutable"
 
 export function PipelinePopup(props: {
   config: Config,
@@ -66,7 +67,7 @@ interface Rect {
   fill: string
   stroke: string
   "stroke-width": number
-  tooltip: string|null
+  tooltip: string | null
 }
 
 interface Text {
@@ -146,7 +147,7 @@ class PipelinePlot extends React.Component<Props, State> {
       this.createPipelinePlot()
   }
 
-  private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string|null, x: number, y: number, width: number, disabled: boolean): Block {
+  private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string | null, x: number, y: number, width: number, disabled: boolean): Block {
     const rect = {
       x: x - 0.5 * width,
       y: y - 0.35,
@@ -471,29 +472,71 @@ class PipelinePlot extends React.Component<Props, State> {
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
-        const ch_nbr = step.channel
-        if (ch_nbr >= active_channels && !disabled) {
-          console.log("Invalid config, unable to plot")
-          return { labels, boxes, links, max_h, max_v }
+        let _channels = step.channels
+        if (_channels === null) {
+          _channels = Array.from(Range(0, active_channels))
         }
-        if (expand_filters) {
-          for (let m = 0; m < step.names.length; m++) {
-            const name = step.names[m]
-            let params = conf.filters ? conf.filters[name] : null
-            let tooltip = "<strong>Filter</strong>"
-            if (params !== null) {
-              for (const [key, value] of Object.entries(params)) {
-                if (key !== "parameters") {
-                  tooltip = tooltip + "<br>" + key + ": " + value
+        for (const ch_nbr of _channels) {
+          if (ch_nbr >= active_channels && !disabled) {
+            console.log("Invalid config, unable to plot")
+            return { labels, boxes, links, max_h, max_v }
+          }
+          if (expand_filters) {
+            for (let m = 0; m < step.names.length; m++) {
+              const name = step.names[m]
+              let params = conf.filters ? conf.filters[name] : null
+              let tooltip = "<strong>Filter</strong>"
+              if (params !== null) {
+                for (const [key, value] of Object.entries(params)) {
+                  if (key !== "parameters") {
+                    tooltip = tooltip + "<br>" + key + ": " + value
+                  }
+                }
+                if (params.hasOwnProperty("parameters")) {
+                  let fparams = params.parameters
+                  tooltip = tooltip + "<br>parameters:"
+                  for (const [key, value] of Object.entries(fparams)) {
+                    tooltip = tooltip + "<br>  " + key + ": " + value
+                  }
                 }
               }
-              if (params.hasOwnProperty("parameters")) {
-                let fparams = params.parameters
-                tooltip = tooltip + "<br>parameters:"
-                for (const [key, value] of Object.entries(fparams)) {
-                  tooltip = tooltip + "<br>  " + key + ": " + value
-                }
+              let ch_step: number
+              if (ch_nbr < stages[stages.length - 1].length) {
+                ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+              } else {
+                ch_step = stage_start + stages[stages.length - 1][0].length
               }
+              total_length = Math.max(total_length, ch_step)
+              const io_points = this.appendBlock(
+                labels,
+                boxes,
+                name,
+                tooltip,
+                ch_step * spacing_h,
+                spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
+                2.5,
+                disabled
+              )
+              if (!disabled) {
+                const src_list = stages[stages.length - 1][ch_nbr]
+                const src_p = src_list[src_list.length - 1].output
+                const dest_p = io_points.input
+                stages[stages.length - 1][ch_nbr].push(io_points)
+                this.appendLink(links, labels, src_p, dest_p, ch_nbr)
+              }
+            }
+          }
+          else {
+            let name = "(empty)"
+            let tooltip = "<strong>Filters</strong>"
+            if (step.names.length > 0) {
+              name = step.names[0]
+              if (step.names.length > 1) {
+                name = name + " (+" + (step.names.length - 1) + ")"
+              }
+            }
+            for (const filtname of step.names) {
+              tooltip = tooltip + "<br>" + filtname
             }
             let ch_step: number
             if (ch_nbr < stages[stages.length - 1].length) {
@@ -502,6 +545,16 @@ class PipelinePlot extends React.Component<Props, State> {
               ch_step = stage_start + stages[stages.length - 1][0].length
             }
             total_length = Math.max(total_length, ch_step)
+            this.appendBlock(
+              labels,
+              boxes,
+              "",
+              null,
+              ch_step * spacing_h - 0.04,
+              spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
+              2.5,
+              disabled
+            )
             const io_points = this.appendBlock(
               labels,
               boxes,
@@ -519,53 +572,6 @@ class PipelinePlot extends React.Component<Props, State> {
               stages[stages.length - 1][ch_nbr].push(io_points)
               this.appendLink(links, labels, src_p, dest_p, ch_nbr)
             }
-          }
-        }
-        else {
-          let name = "(empty)"
-          let tooltip = "<strong>Filters</strong>"
-          if (step.names.length > 0) {
-            name = step.names[0]
-            if (step.names.length > 1) {
-              name = name + " (+" + (step.names.length - 1) + ")"
-            }
-          }
-          for (const filtname of step.names) {
-            tooltip = tooltip + "<br>" + filtname
-          }
-          let ch_step: number
-          if (ch_nbr < stages[stages.length - 1].length) {
-            ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
-          } else {
-            ch_step = stage_start + stages[stages.length - 1][0].length
-          }
-          total_length = Math.max(total_length, ch_step)
-          this.appendBlock(
-            labels,
-            boxes,
-            "",
-            null,
-            ch_step * spacing_h - 0.04,
-            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
-            2.5,
-            disabled
-          )
-          const io_points = this.appendBlock(
-            labels,
-            boxes,
-            name,
-            tooltip,
-            ch_step * spacing_h,
-            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-            2.5,
-            disabled
-          )
-          if (!disabled) {
-            const src_list = stages[stages.length - 1][ch_nbr]
-            const src_p = src_list[src_list.length - 1].output
-            const dest_p = io_points.input
-            stages[stages.length - 1][ch_nbr].push(io_points)
-            this.appendLink(links, labels, src_p, dest_p, ch_nbr)
           }
         }
       }
@@ -653,7 +659,7 @@ class PipelinePlot extends React.Component<Props, State> {
       d3.select(node)
         .append("defs")
         .append("marker")
-        .attr("id", "arrow"+ color)
+        .attr("id", "arrow" + color)
         // @ts-ignore
         .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
         .attr("refX", refX)
@@ -693,7 +699,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("fill", d => d.fill)
       .style("stroke", d => d.stroke)
       .style("stroke-width", d => d["stroke-width"])
-      .on("mouseover", (event,d) => {
+      .on("mouseover", (event, d) => {
         if (d.tooltip !== null) {
           // This element has a tooltip, add the content and display the tooltip div.
           tooltip.html(d.tooltip)
@@ -708,15 +714,15 @@ class PipelinePlot extends React.Component<Props, State> {
             .style("opacity", 0)
         }
       })
-      .on("mousemove", (event,d) => {
+      .on("mousemove", (event, d) => {
         // Move the tooltip with the cursor.
         const tt_node = tooltip.node()
         const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
-        const tt_height = tt_node ? tt_node.getBoundingClientRect().height: 0
+        const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
         tooltip
-          .style("left", event.pageX - tt_width/2 + "px")
+          .style("left", event.pageX - tt_width / 2 + "px")
           .style("top", event.pageY - tt_height - 10 + "px")
-        })
+      })
 
     const text = d3
       .select(node)

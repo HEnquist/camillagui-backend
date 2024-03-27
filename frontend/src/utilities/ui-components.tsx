@@ -1,9 +1,10 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState} from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline,} from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline, } from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
-import {toMap} from "./arrays"
+import { toMap } from "./arrays"
+import { Range } from "immutable"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -18,7 +19,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{alignItems: 'center'}}>
+                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{ alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>
@@ -152,13 +153,13 @@ export function PlotButton(props: {
 
 export function UploadButton(
     props: ({ icon: string, tooltip: string } | { text: string })
-& {
-    upload: (files: FileList) => void
-    multiple?: boolean
-    className?: string
-    style?: CSSProperties
-    smallButton?: boolean
-}): JSX.Element {
+        & {
+            upload: (files: FileList) => void
+            multiple?: boolean
+            className?: string
+            style?: CSSProperties
+            smallButton?: boolean
+        }): JSX.Element {
     const style = Object.assign({ verticalAlign: 'bottom' }, props.style)
     const upload = (e: ChangeEvent<HTMLInputElement>) => {
         props.upload(e.target.files!)
@@ -166,20 +167,20 @@ export function UploadButton(
     }
     return (
         <label data-tip={"tooltip" in props ? props.tooltip : ""}>
-            <input style={{display: 'none'}}
-                   type="file"
-                   onChange={upload}
-                   multiple={props.multiple} />
+            <input style={{ display: 'none' }}
+                type="file"
+                onChange={upload}
+                multiple={props.multiple} />
             {"icon" in props && "tooltip" in props &&
                 <MdiButton
                     buttonSize={props.smallButton ? "small" : "default"}
                     icon={props.icon}
                     tooltip={props.tooltip}
                     className={props.className}
-                    style={style}/>
+                    style={style} />
             }
             {"text" in props &&
-                <Button text={props.text} onClick={() => {}}/>
+                <Button text={props.text} onClick={() => { }} />
             }
         </label>
     )
@@ -261,7 +262,7 @@ export function IntOption(props: {
     max?: number
     style?: CSSProperties
 }) {
-    const {error, desc, small, style} = props
+    const { error, desc, small, style } = props
     return <>
         <OptionLine desc={desc} data-tip={props["data-tip"]} small={small} style={style}>
             <IntInput
@@ -274,7 +275,7 @@ export function IntOption(props: {
 }
 
 export function OptionalIntOption(props: {
-    value: number|null
+    value: number | null
     error?: string
     desc: string
     'data-tip': string
@@ -337,9 +338,9 @@ export function OptionalIntInput(props: {
     return <OptionalParsedInput
         {...props}
         immediate={true}
-        asString={(int: number | null) => int !== null ? int.toString(): ""}
+        asString={(int: number | null) => int !== null ? int.toString() : ""}
         parseValue={(rawValue: string | undefined) => {
-            const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN 
+            const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN
             if (isNaN(parsedvalue)
                 || (min !== undefined && parsedvalue < min)
                 || (max !== undefined && parsedvalue > max))
@@ -393,11 +394,11 @@ export function FloatInput(props: {
 }
 
 export function OptionalFloatOption(props: {
-    value: number|null
+    value: number | null
     error?: string
     desc: string
     'data-tip': string
-    onChange: (value: number|null) => void
+    onChange: (value: number | null) => void
     placeholder?: string
 }) {
     return <>
@@ -414,10 +415,10 @@ export function OptionalFloatOption(props: {
 }
 
 export function OptionalFloatInput(props: {
-    value: number|null
+    value: number | null
     error?: boolean
     'data-tip': string
-    onChange: (value: number|null) => void
+    onChange: (value: number | null) => void
     className?: string
     style?: CSSProperties
     placeholder?: string
@@ -428,11 +429,11 @@ export function OptionalFloatInput(props: {
         data-tip={props["data-tip"]}
         onChange={props.onChange}
         placeholder={props.placeholder}
-        asString={(float?: number|null) => (float === undefined || float === null) ? "" : float.toString()}
+        asString={(float?: number | null) => (float === undefined || float === null) ? "" : float.toString()}
         parseValue={(rawValue: string | undefined) => {
             if (rawValue === "")
                 return null
-            const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN 
+            const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN
             if (isNaN(parsedvalue))
                 return undefined
             else
@@ -682,12 +683,12 @@ export function BoolOption(props: {
 }
 
 export function OptionalBoolOption(props: {
-    value: boolean|null
+    value: boolean | null
     error?: string
     desc: string
     'data-tip': string
     small?: boolean
-    onChange: (value: boolean|null) => void
+    onChange: (value: boolean | null) => void
 }) {
     const small = props.small
     return <>
@@ -721,27 +722,27 @@ export function add_default_option<OPTION extends string>(options: OPTION[], def
     options.unshift(defaultValue as OPTION)
 }
 
-export function null_to_default<OPTION extends string>(value: OPTION|null, defaultValue: string): OPTION {
+export function null_to_default<OPTION extends string>(value: OPTION | null, defaultValue: string): OPTION {
     if (value === null)
         return defaultValue as OPTION
     return value
 }
 
-export function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION|null {
+export function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION | null {
     if (value === defaultValue)
         return null
     return value
 }
 
 export function OptionalEnumOption<OPTION extends string>(props: {
-    value: OPTION|null
+    value: OPTION | null
     options: OPTION[]
     error?: string
     desc: string
     'data-tip': string
     className?: string
     placeholder?: string
-    onChange: (value: OPTION|null) => void
+    onChange: (value: OPTION | null) => void
 }) {
     const defaultValue = props.placeholder ? props.placeholder : "default"
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
@@ -784,14 +785,14 @@ export function EnumInput<OPTION extends string>(props: {
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
-        className={value === "default" ? props.className+"-default": props.className}
+        className={value === "default" ? props.className + "-default" : props.className}
     >
         {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
     </select>
 }
 
-function string_to_bool(valuestr: string): boolean|null {
-    switch(valuestr) {
+function string_to_bool(valuestr: string): boolean | null {
+    switch (valuestr) {
         case "default":
             return null
         case "yes":
@@ -802,8 +803,8 @@ function string_to_bool(valuestr: string): boolean|null {
     return null
 }
 
-function bool_to_string(value: boolean|null): string {
-    switch(value) {
+function bool_to_string(value: boolean | null): string {
+    switch (value) {
         case null:
             return "default"
         case true:
@@ -814,12 +815,12 @@ function bool_to_string(value: boolean|null): string {
 }
 
 export function OptionalBoolInput(props: {
-    value: boolean|null
+    value: boolean | null
     desc: string
     'data-tip': string
     style?: CSSProperties
     className?: string
-    onChange: (value: boolean|null) => void
+    onChange: (value: boolean | null) => void
 }) {
     let valuestring = bool_to_string(props.value)
 
@@ -830,7 +831,7 @@ export function OptionalBoolInput(props: {
         data-tip={props["data-tip"]}
         onChange={e => props.onChange(string_to_bool(e.target.value))}
         style={props.style}
-        className={valuestring === "default" ? props.className+"-default": props.className}
+        className={valuestring === "default" ? props.className + "-default" : props.className}
     >
         <option key="default">default</option>
         <option key="yes">yes</option>
@@ -859,11 +860,11 @@ export function TextOption(props: {
 }
 
 export function OptionalTextOption(props: {
-    value: string|null
+    value: string | null
     error?: string
     desc: string
     'data-tip': string
-    onChange: (value: string|null) => void
+    onChange: (value: string | null) => void
     placeholder?: string
 }) {
     return <>
@@ -881,18 +882,18 @@ export function OptionalTextOption(props: {
 }
 
 export function OptionalTextInput(props: {
-    value: string|null
+    value: string | null
     'data-tip': string
     className?: string
     style?: CSSProperties
-    onChange: (value: string|null) => void
+    onChange: (value: string | null) => void
     placeholder?: string
 }) {
     return <input
         spellCheck="false"
         placeholder={props.placeholder}
         type="text"
-        value={props.value === null ? "": props.value}
+        value={props.value === null ? "" : props.value}
         data-tip={props["data-tip"]}
         className={props.className}
         style={props.style}
@@ -968,7 +969,7 @@ export function ListSelectPopup(props: {
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
         <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
             {items.map(item =>
                 <Button
                     key={item}
@@ -992,14 +993,116 @@ export function KeyValueSelectPopup(props: {
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
         <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
             {items.map(item =>
                 <Button
                     key={item[0]}
-                    text={ item[0] === item[1] ? item[1] : item[0] + ": " + item[1] }
+                    text={item[0] === item[1] ? item[1] : item[0] + ": " + item[1]}
                     style={{ justifyContent: 'flex-start' }}
                     onClick={() => selectItem(item[0])} />
             )}
         </div>
     </Popup>
+}
+
+
+export function ChannelSelection(props: {
+    channels: number[] | null
+    maxChannelCount: number
+    label: string | null
+    setChannels: (channels: number[] | null) => void
+}) {
+    const { channels, maxChannelCount, setChannels, label } = props
+    let [expanded, setExpanded] = useState(false)
+
+    if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
+        props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
+    }
+
+    const rowSize = 8
+
+    var _channels = channels
+    const toggleAllChannels = () => {
+        if (_channels === null) {
+            _channels = []
+        }
+        else {
+            _channels = null
+        }
+        setChannels(_channels)
+    }
+    const toggleChannel = (idx: number) => {
+        if (_channels === null) {
+            _channels = []
+        }
+        if (!_channels.includes(idx)) {
+            _channels.push(idx)
+        }
+        else {
+            _channels = _channels.filter((n: number) => n !== idx)
+        }
+        setChannels(_channels)
+    }
+    const toggleExpanded = () => {
+        setExpanded(!expanded)
+    }
+
+    const rows = Math.ceil(maxChannelCount / rowSize)
+
+    const makeDropdown = () => {
+        return <div className="dropdown-menu" title='channels' >
+            <table>
+                {Range(0, rows).map(row => (
+                    <tr>
+                        {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
+                            <td>
+                                <ChannelButton key={rowSize * row + col} channel={rowSize * row + col} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
+                            </td>
+                        ))}
+                    </tr>
+                ))}
+            </table>
+        </div>
+    }
+
+    if (rows === 1) {
+        return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+            {label && <span style={{ marginRight: '5px' }}>{label}</span>}
+            <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            {Range(0, maxChannelCount).map(index =>
+                <ChannelButton key={index} channel={index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
+            )}
+        </div>
+    }
+    else {
+        // TODO add some compact display?
+        return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+            {label && <span style={{ marginRight: '5px' }}>{label}</span>}
+            <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+                <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+                {expanded && makeDropdown()}
+            </div>
+        </div>
+    }
+}
+
+function ChannelButton(props: {
+    channel: number | string
+    selected: boolean
+    onClick: () => void
+    erroneousChannel?: boolean
+}) {
+    const { channel, selected, onClick, erroneousChannel } = props
+    return <Button
+        text={channel.toString()}
+        onClick={onClick}
+        highlighted={selected}
+        className='setting-button'
+        style={{
+            height: '28px',
+            marginRight: '5px',
+            backgroundColor: erroneousChannel ? 'var(--error-field-background-color)' : undefined
+        }}
+    />
 }

@@ -24,14 +24,14 @@ test('removeFilter', () => {
     config.filters['to be removed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
-        channel: 0,
+        channels: [0],
         description: null,
         bypassed: null,
         names: ['to be removed', 'filter1', 'to be removed', 'filter2', 'to be removed']
     }
     config.pipeline[1] = {
         type: 'Filter',
-        channel: 1,
+        channels: [1],
         description: null,
         bypassed: null,
         names: ['filter3', 'to be removed', 'filter4']
@@ -49,14 +49,14 @@ test('renameFilter', () => {
     config.filters['to be renamed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
-        channel: 0,
+        channels: [0],
         description: null,
         bypassed: null,
         names: ['to be renamed', 'filter1', 'to be renamed', 'filter2', 'to be renamed']
     }
     config.pipeline[1] = {
         type: 'Filter',
-        channel: 1,
+        channels: [1],
         description: null,
         bypassed: null,
         names: ['filter3', 'to be renamed', 'filter4']
@@ -139,7 +139,7 @@ test('maxChannelCount', () => {
     config.pipeline = [
         { type: 'Mixer', name: 'mixer1', description: null, bypassed: null },
         { type: 'Processor', name: '', description: null, bypassed: null },
-        { type: 'Filter', channel: 0, names: [], description: null, bypassed: null },
+        { type: 'Filter', channels: [0], names: [], description: null, bypassed: null },
         { type: 'Mixer', name: 'mixer2', description: null, bypassed: null },
         { type: 'Mixer', name: '', description: null, bypassed: null }
     ]
