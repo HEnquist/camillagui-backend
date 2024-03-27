@@ -433,8 +433,8 @@ class PipelinePlot extends React.Component<Props, State> {
           procchannels.push([])
           let label = m.toString()
           if (procconf.type === "Compressor") {
-            const is_m = procconf.parameters.monitor_channels.includes(m)
-            const is_p = procconf.parameters.process_channels.includes(m)
+            const is_m = procconf.parameters.monitor_channels === null || procconf.parameters.monitor_channels.includes(m)
+            const is_p = procconf.parameters.process_channels === null || procconf.parameters.process_channels.includes(m)
             if (is_m && is_p) {
               label = label + ": M+P"
             }
