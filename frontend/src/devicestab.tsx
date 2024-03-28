@@ -464,8 +464,9 @@ function CaptureOptions(props: {
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
     Jack: { type: 'Jack', channels: 2, device: 'default'},
     Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null },
-    File: { type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file',
+    RawFile: { type: 'RawFile', channels: 2, format: 'S32LE', filename: '/path/to/file',
       extra_samples: null, skip_bytes: null, read_bytes: null },
+    WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null },
     Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2}
   }
 
@@ -478,6 +479,7 @@ function CaptureOptions(props: {
     // The selected type isn't available, change to one that is
     props.onChange(devices => devices.capture= defaults[captureTypes[0]])
   }
+  // TODO alsa device is mandatory
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
@@ -497,6 +499,7 @@ function CaptureOptions(props: {
         desc="type"
         data-tip="Audio backend for capture"
         onChange={captureType => onChange(devices => devices.capture = defaults[captureType])}/>
+    {(capture.type !== 'WavFile') &&
     <IntOption
         value={capture.channels}
         error={errors({path: ['channels']})}
@@ -504,8 +507,10 @@ function CaptureOptions(props: {
         data-tip="Number of channels"
         withControls={true}
         min={1}
+        // @ts-ignore
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
-    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio') &&
+    }
+    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio' && capture.type !== 'WavFile') &&
     <EnumOption
         value={capture.format}
         error={errors({path: ['format']})}
@@ -572,7 +577,7 @@ function CaptureOptions(props: {
             )}/>
         </>
     }
-    {capture.type === 'File' &&
+    {(capture.type === 'RawFile' || capture.type === 'WavFile') &&
     <TextOption
         value={capture.filename}
         error={errors({path: ['filename']})}
@@ -582,7 +587,7 @@ function CaptureOptions(props: {
             devices.capture.filename = filename
         )}/>
     }
-    {(capture.type === 'File' || capture.type === 'Stdin') && <>
+    {(capture.type === 'RawFile' || capture.type === 'Stdin' || capture.type === 'WavFile') &&
       <OptionalIntOption
           value={capture.extra_samples}
           error={errors({path: ['extra_samples']})}
@@ -591,6 +596,8 @@ function CaptureOptions(props: {
           onChange={extra_samples => onChange(devices => // @ts-ignore
               devices.capture.extra_samples = extra_samples
           )}/>
+      }
+      {(capture.type === 'RawFile' || capture.type === 'Stdin') && <>
       <OptionalIntOption
           value={capture.skip_bytes}
           error={errors({path: ['skip_bytes']})}
@@ -649,7 +656,7 @@ function PlaybackOptions(props: {
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
-    File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file'},
+    File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file', wav_header: false},
   }
   const {onChange, playback, errors, supported_playback_types} = props
   const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[]
@@ -744,7 +751,7 @@ function PlaybackOptions(props: {
             devices.playback.exclusive = exclusive
         )}/>
     }
-    {playback.type === 'File' &&
+    {playback.type === 'File' && <>
     <TextOption
         value={playback.filename}
         error={errors({path: ['filename']})}
@@ -753,6 +760,15 @@ function PlaybackOptions(props: {
         onChange={filename => onChange(devices => // @ts-ignore
             devices.playback.filename = filename
         )}/>
+    <OptionalBoolOption
+        value={playback.wav_header}
+        error={errors({path: ['device']})}
+        desc="wav_header"
+        data-tip="Write output as a wav file"
+        onChange={wav_header => onChange(devices => // @ts-ignore
+            devices.playback.wav_header = wav_header
+        )}/>
+      </>
     }
   </Box>
 }

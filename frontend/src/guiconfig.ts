@@ -14,7 +14,7 @@ export interface GuiConfig {
     custom_shortcuts: ShortcutSection[]
 }
 
-export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin' | 'Bluez'
+export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
 
 export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdout'
 

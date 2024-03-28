@@ -4,11 +4,11 @@ import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
 import { CloseButton, cssStyles } from "../utilities/ui-components"
-import { CaptureDevice, Config, PlaybackDevice } from "../camilladsp/config"
+import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import ReactTooltip from "react-tooltip"
-import {Range} from "immutable"
+import { Range } from "immutable"
 
 export function PipelinePopup(props: {
   config: Config,
@@ -103,7 +103,8 @@ type Props = {
 
 type State = {
   width: number,
-  height: number
+  height: number,
+  capture_channels: number
 }
 
 class PipelinePlot extends React.Component<Props, State> {
@@ -125,7 +126,7 @@ class PipelinePlot extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props)
     this.arrowColors = []
-    this.state = { height: this.height, width: this.width }
+    this.state = { height: this.height, width: this.width, capture_channels: 2 }
   }
 
   componentDidMount() {
@@ -139,12 +140,20 @@ class PipelinePlot extends React.Component<Props, State> {
     this.disabledBlockBgColor = styles.getPropertyValue('--disabled-block-background-color')
     this.blockTextColor = styles.getPropertyValue('--block-text-color')
     this.disabledBlockTextColor = styles.getPropertyValue('--disabled-block-text-color')
+    getCaptureChannelCount(this.props.config).then(channels => {
+      console.log('channels', channels)
+      this.setState({ capture_channels: channels })
+    })
     this.createPipelinePlot()
   }
 
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
-    if (this.state.width !== prevState.width || this.state.height !== prevState.height || this.props.expand_filters !== prevProps.expand_filters)
+    if (this.state.width !== prevState.width ||
+      this.state.height !== prevState.height ||
+      this.props.expand_filters !== prevProps.expand_filters ||
+      this.state.capture_channels !== prevState.capture_channels) {
       this.createPipelinePlot()
+    }
   }
 
   private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string | null, x: number, y: number, width: number, disabled: boolean): Block {
@@ -278,7 +287,8 @@ class PipelinePlot extends React.Component<Props, State> {
     const stages = []
     const channels = []
     const capture = conf["devices"]["capture"]
-    let active_channels = capture["channels"]
+    let active_channels = this.state.capture_channels
+    console.log('start channels', active_channels)
     const capturename = PipelinePlot.deviceText(capture)
     this.appendFrame(
       labels,
@@ -306,13 +316,14 @@ class PipelinePlot extends React.Component<Props, State> {
     stages.push(channels)
     max_v = active_channels / 2 + 1
 
-
+    console.log('resampler')
     // loop through pipeline
     let total_length = 0
     let stage_start = 0
 
     // resampler
-    if (conf.devices.resampler !== null) {
+    if (conf.devices.resampler !== null && conf.devices.resampler !== undefined) {
+      console.log(conf.devices.resampler)
       total_length += 1
       let resampler_channels = []
       this.appendFrame(
@@ -328,6 +339,7 @@ class PipelinePlot extends React.Component<Props, State> {
       let tooltip = "<strong>Resampler</strong>"
       for (const [key, value] of Object.entries(params)) {
         tooltip = tooltip + "<br>" + key + ": " + value
+        console.log(key, value)
       }
       for (let n = 0; n < active_channels; n++) {
         const label = "ch " + n
@@ -350,7 +362,7 @@ class PipelinePlot extends React.Component<Props, State> {
       stage_start = total_length
     }
 
-
+    console.log('pipeline')
     const pipeline = conf.pipeline ? conf.pipeline : []
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
@@ -360,7 +372,7 @@ class PipelinePlot extends React.Component<Props, State> {
         const mixername = step.name
         const mixconf = conf["mixers"][mixername]
         if (active_channels !== mixconf.channels.in && !disabled) {
-          console.log("Invalid config, unable to plot")
+          console.log("Invalid config, unable to complete plot")
           return { labels, boxes, links, max_h, max_v }
         }
         if (!disabled) {
@@ -576,6 +588,7 @@ class PipelinePlot extends React.Component<Props, State> {
         }
       }
     }
+    console.log('playback')
     const playbackchannels = []
     total_length = total_length + 1
     max_h = (total_length + 1) * spacing_h

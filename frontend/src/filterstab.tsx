@@ -7,7 +7,6 @@ import {
   defaultFilter,
   DefaultFilterParameters,
   Filter,
-  Filters,
   newFilterName,
   removeFilter,
   renameFilter,
@@ -53,9 +52,9 @@ import {doUpload, loadFilenames} from "./utilities/files"
 
 export class FiltersTab extends React.Component<
   {
-    filters: Filters
+    config: Config
     samplerate: number
-    channels: number
+    channels: Promise<number>
     coeffDir: string
     updateConfig: (update: Update<Config>) => void
     errors: ErrorsForPath
@@ -91,7 +90,7 @@ export class FiltersTab extends React.Component<
   //private timer = delayedExecutor(2000)
 
   private filterNames(): string[] {
-    return sortedFilterNamesOf(this.props.filters, this.state.sortBy, this.state.sortReverse)
+    return sortedFilterNamesOf(this.props.config.filters, this.state.sortBy, this.state.sortReverse)
   }
 
   private changeSortBy(key: string) {
@@ -159,7 +158,7 @@ export class FiltersTab extends React.Component<
   }
 
   render() {
-    let { filters, errors } = this.props
+    let { config, errors } = this.props
     return <div>
       <div className="horizontally-spaced-content" style={{ width: '700px' }}>
         <EnumOption
@@ -181,7 +180,8 @@ export class FiltersTab extends React.Component<
             <FilterView
               key={this.state.filterKeys[name]}
               name={name}
-              filter={filters[name]}
+              // @ts-ignore
+              filter={config.filters[name]}
               errors={errorsForSubpath(errors, name)}
               availableCoeffFiles={this.state.availableCoeffFiles}
               updateFilter={update => this.updateFilter(name, update)}
@@ -227,7 +227,7 @@ interface FilterViewProps {
   updateAvailableCoeffFiles: () => void
   coeffDir: string
   samplerate: number
-  channels: number
+  channels: Promise<number>
 }
 
 interface FilterViewState {
@@ -238,6 +238,7 @@ interface FilterViewState {
   data?: ChartData
   filterDefaults: FilterDefaults
   showDefaults: boolean
+  channels: number
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
@@ -258,7 +259,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       showFilterPlot: false,
       expandPlot: false,
       showDefaults: false,
-      filterDefaults: {}
+      filterDefaults: {},
+      channels: 2
     }
     if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
@@ -314,6 +316,13 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     })
   }
 
+  componentDidMount() {
+    this.props.channels.then(ch => {
+      console.log('channels', ch)
+      this.setState({ channels: ch })
+    })
+  }
+
   componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>, snapshot?: any) {
     if (this.state.showFilterPlot) {
       const prevFilter = prevProps.filter
@@ -353,7 +362,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         name: this.props.name,
         config: this.props.filter,
         samplerate: samplerate || this.props.samplerate,
-        channels: channels || this.props.channels
+        channels: channels || this.state.channels
       }),
     }).then(
       result => result.json()

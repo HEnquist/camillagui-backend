@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react"
+import React, { ReactNode, useEffect, useState } from "react"
 import "../index.css"
 import { PipelinePopup } from './pipelineplotter'
 import {
@@ -23,6 +23,7 @@ import {
   filterNamesOf,
   Filters,
   FilterStep,
+  getCaptureChannelCount,
   maxChannelCount,
   mixerNamesOf,
   Mixers,
@@ -49,6 +50,7 @@ export class PipelineTab extends React.Component<{
   plotFilterStep: boolean
   stepIndex?: number
   data: ChartData
+  capture_channels: number
 }> {
   constructor(props: any) {
     super(props)
@@ -60,8 +62,12 @@ export class PipelineTab extends React.Component<{
         f: [],
         time: [],
         options: [{ name: "" }]
-      }
+      },
+      capture_channels: 2
     }
+  }
+  componentDidMount() {
+    getCaptureChannelCount(this.props.config).then(channels => this.setState({ capture_channels: channels }))
   }
 
   updatePipeline = (update: Update<Pipeline>) =>
@@ -97,7 +103,7 @@ export class PipelineTab extends React.Component<{
         index: index,
         config: config,
         samplerate: samplerate || config.devices.samplerate,
-        channels: channels || config.devices.capture.channels
+        channels: channels || this.state.capture_channels
       }),
     }).then(
       result => result.json()
@@ -119,7 +125,7 @@ export class PipelineTab extends React.Component<{
       <div className="tabpanel" style={{ width: '700px' }}>
         <ErrorMessage message={errors({ path: [] })} />
         <div className="pipeline-channel">
-          Capture: {config.devices.capture.channels} channels in
+          Capture: {this.state.capture_channels} channels in
         </div>
         {pipeline?.map((step: PipelineStep, index: number) => {
           const stepErrors = errorsForSubpath(errors, index)
@@ -315,7 +321,7 @@ function ProcessorStepView(props: {
 
 function FilterStepView(props: {
   stepIndex: number
-  maxChannelCount: number
+  maxChannelCount: Promise<number>
   typeSelect: ReactNode
   filterStep: FilterStep
   filters: Filters
@@ -327,6 +333,10 @@ function FilterStepView(props: {
   const {
     stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls, maxChannelCount
   } = props
+  const [maxChannels, setMaxChannels] = useState(2)
+  useEffect(() => {
+    maxChannelCount.then(chans => setMaxChannels(chans))
+  }, [maxChannelCount])
   const options = [EMPTY].concat(filterNamesOf(filters))
   const update = (update: Update<FilterStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as FilterStep))
   const addFilter = () => update(step => step.names.push(options[0]))
@@ -352,7 +362,7 @@ function FilterStepView(props: {
     {typeSelect}
     <ChannelSelection
       channels={filterStep.channels}
-      maxChannelCount={maxChannelCount}
+      maxChannelCount={maxChannels}
       label='channels'
       setChannels={channels => update(step => step.channels = channels)} />
     <OptionalBoolOption

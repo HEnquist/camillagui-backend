@@ -1,5 +1,6 @@
 import { sortedAlphabetically } from "../utilities/arrays"
 import {List} from "immutable"
+import { errorsForSubpath } from "../utilities/errors"
 
 export function defaultConfig(): Config {
     return {
@@ -619,9 +620,10 @@ export type CaptureDevice =
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | {
-        type: 'File', channels: number, format: Format, filename: '/path/to/file',
+        type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
     }
+    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null }
     | {
         type: 'Stdin', channels: number, format: Format,
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
@@ -636,7 +638,7 @@ export type PlaybackDevice =
     | { type: 'Alsa', channels: number, format: Format, device: string | null }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
-    | { type: 'File', channels: number, format: Format, filename: string }
+    | { type: 'File', channels: number, format: Format, filename: string, wav_header: boolean | null }
     | { type: 'Stdout', channels: number, format: Format }
 
 export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
@@ -696,7 +698,7 @@ export interface MixerStep { type: 'Mixer', name: string, description: string | 
 export interface ProcessorStep { type: 'Processor', name: string, description: string | null, bypassed: boolean | null }
 export interface FilterStep { type: 'Filter', channels: number[] | null, names: string[], description: string | null, bypassed: boolean | null }
 
-export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
+export async function maxChannelCount(config: Config, pipelineStepIndex: number): Promise<number> {
     var lastValidMixerStepBeforeIndex = null
     if (config.pipeline) {
         lastValidMixerStepBeforeIndex = List(config.pipeline)
@@ -709,6 +711,38 @@ export function maxChannelCount(config: Config, pipelineStepIndex: number): numb
     if (lastValidMixerStepBeforeIndex && config.mixers) {
         const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
         return mixer.channels.out
+    }
+    return getCaptureChannelCount(config)
+}
+
+export interface WavInfo {
+    dataoffset: number,
+    datalength: number,
+    sampleformat: string,
+    bitspersample: number,
+    channels: number,
+    byterate: number,
+    samplerate: number,
+    bytesperframe: number,
+}
+
+async function getWavInfo(filename: string): Promise<WavInfo | null> {
+    let info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
+    if (info_resp.ok) {
+        const info = await info_resp.json()
+        return info == null ? null: info as WavInfo
+    } 
+    return null
+}
+
+export async function getCaptureChannelCount(config: Config): Promise<number> {
+    if (config.devices.capture.type === 'WavFile') {
+        const wavInfo = await getWavInfo(config.devices.capture.filename)
+        if (wavInfo !== null)
+            return wavInfo.channels
+        else
+            console.log("Cannot get info for wav file, assuming stereo. File:", config.devices.capture.filename)
+            return 2
     }
     return config.devices.capture.channels
 }

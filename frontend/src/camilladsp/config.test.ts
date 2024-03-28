@@ -130,6 +130,7 @@ test('renameMixer throws on name collision', () => {
 test('maxChannelCount', () => {
     const config = defaultConfig()
     config.mixers = {}
+    // @ts-ignore
     config.devices.capture.channels = 1
     config.devices.playback.channels = 9999
     config.mixers.mixer1 = defaultMixer()
