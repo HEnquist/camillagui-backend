@@ -39,7 +39,8 @@
     --disabled-button-background-color: var(--button-background-color);
     --disabled-button-border: var(--button-border);
     --highlighted-button-background-color: #242;
-    --highlighted-button-border: 2px solid #4b4;
+    --highlighted-button-border-color: #4b4;
+    --highlighted-button-border: 2px solid var(--highlighted-button-border-color);
 
     /* Links */
     --link-color: #77f;
@@ -99,7 +100,8 @@
     --disabled-button-background-color: #aaa;
     --disabled-button-border: var(--button-border);
     --highlighted-button-background-color: #cfc;
-    --highlighted-button-border: var(--button-border);
+    --highlighted-button-border-color: var(--button-border);
+    --highlighted-button-border: 2px solid var(--highlighted-button-border-color);
 
     /* Links */
     --link-color: #44f;

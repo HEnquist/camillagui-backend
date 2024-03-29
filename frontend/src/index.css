@@ -440,3 +440,18 @@ div .popup-content {
   border-radius: var(--border-radius);
   padding: 5px 5px;
 }
+
+.channel-indicator {
+  width: 4px;
+  height: 12px;
+  margin-right: 1px;
+  margin-left: 1px;
+}
+
+.channel-indicator-field {
+  display: flex;
+  flex-direction: row;
+  margin-right: 4px;
+  margin-left: 2px;
+  vertical-align: middle;
+}

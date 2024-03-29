@@ -1078,6 +1078,7 @@ export function ChannelSelection(props: {
         // TODO add some compact display?
         return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
+            <CompactChannelIndicator channels={channels} channelCount={maxChannelCount} />
             <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
             <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
                 <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
@@ -1085,6 +1086,19 @@ export function ChannelSelection(props: {
             </div>
         </div>
     }
+}
+
+function CompactChannelIndicator(props: {
+    channelCount: number,
+    channels: number[] | null
+}) {
+    return <div className='channel-indicator-field'>
+        {Range(0, props.channelCount).map(ch =>
+            <div className='channel-indicator' style={{
+                backgroundColor: (props.channels === null || props.channels.includes(ch)) ? 'var(--highlighted-button-border-color)' : 'var(--button-background-color)'
+            }}></div>)
+    }
+    </div>
 }
 
 function ChannelButton(props: {
