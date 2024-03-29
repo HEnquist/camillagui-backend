@@ -5,6 +5,7 @@ import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
+from camilladsp_plot.audiofileread import read_wav_header
 import logging
 import traceback
 
@@ -491,6 +492,14 @@ async def validate_config(request):
         return web.json_response(status=406, data=errors)
     return web.Response(text="OK", headers=HEADERS)
 
+
+async def get_wav_info(request):
+    """
+    Read the header of a wav file and return the info.
+    """
+    filename = request.query["filename"]
+    wav_info = read_wav_header(filename)
+    return web.json_response(wav_info, headers=HEADERS)
 
 async def store_coeffs(request):
     """

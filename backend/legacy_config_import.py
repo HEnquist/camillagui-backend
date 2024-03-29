@@ -122,11 +122,20 @@ def _fix_rew_pipeline(config):
         pipeline = config["pipeline"]
         if isinstance(pipeline, dict) and "names" in pipeline and "type" in pipeline:
             # This config was exported from REW.
-            # Convert `pipeline` to a list of steps instead of a single step,
-            # and add the missing `channel` attribute.
-            if "channel" not in pipeline:
-                pipeline["channel"] = 0
+            # The `pipeline` property consists of a single step instead of a list of steps.
+            # Convert `pipeline` to a list of steps, and add the missing `channels` attribute,
+            # but check before in case a new version of REW adds the channel(s).
+            if "channel" not in pipeline and "channels" not in pipeline:
+                pipeline["channels"] = None
             config["pipeline"] = [pipeline]
+
+
+def _modify_pipeline_filter_steps(config):
+    for step in config.get("pipeline", []):
+        if step["type"] == "Filter":
+            step["channels"] = [step["channel"]]
+            del step["channel"]
+
 
 def migrate_legacy_config(config):
     """
@@ -138,3 +147,4 @@ def migrate_legacy_config(config):
     _modify_loundness_filters(config)
     _modify_dither(config)
     _modify_devices(config)
+    _modify_pipeline_filter_steps(config)

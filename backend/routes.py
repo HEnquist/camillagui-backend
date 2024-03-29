@@ -34,6 +34,7 @@ from .views import (
     get_capture_devices,
     get_playback_devices,
     get_backends,
+    get_wav_info,
 )
 
 
@@ -57,6 +58,7 @@ def setup_routes(app):
     app.router.add_post("/api/convolvertojson", translate_convolver_to_json)
     app.router.add_post("/api/eqapotojson", translate_eqapo_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
+    app.router.add_get("/api/wavinfo", get_wav_info)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
     app.router.add_get("/api/defaultsforcoeffs", get_defaults_for_coeffs)
