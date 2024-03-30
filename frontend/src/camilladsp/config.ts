@@ -1,6 +1,5 @@
 import { sortedAlphabetically } from "../utilities/arrays"
 import {List} from "immutable"
-import { errorsForSubpath } from "../utilities/errors"
 
 export function defaultConfig(): Config {
     return {

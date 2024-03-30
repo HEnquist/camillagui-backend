@@ -127,7 +127,7 @@ test('renameMixer throws on name collision', () => {
     expect(() => renameMixer(config, 'to be renamed', 'collision')).toThrow("Mixer 'collision' already exists")
 })
 
-test('maxChannelCount', () => {
+test('maxChannelCount', async () => {
     const config = defaultConfig()
     config.mixers = {}
     // @ts-ignore
@@ -144,10 +144,10 @@ test('maxChannelCount', () => {
         { type: 'Mixer', name: 'mixer2', description: null, bypassed: null },
         { type: 'Mixer', name: '', description: null, bypassed: null }
     ]
-    expect(maxChannelCount(config, 0)).toBe(1)
-    expect(maxChannelCount(config, 1)).toBe(2)
-    expect(maxChannelCount(config, 2)).toBe(2)
-    expect(maxChannelCount(config, 3)).toBe(2)
-    expect(maxChannelCount(config, 4)).toBe(3)
-    expect(maxChannelCount(config, 5)).toBe(3)
+    expect(await maxChannelCount(config, 0)).toBe(1)
+    expect(await maxChannelCount(config, 1)).toBe(2)
+    expect(await maxChannelCount(config, 2)).toBe(2)
+    expect(await maxChannelCount(config, 3)).toBe(2)
+    expect(await maxChannelCount(config, 4)).toBe(3)
+    expect(await maxChannelCount(config, 5)).toBe(3)
 })
