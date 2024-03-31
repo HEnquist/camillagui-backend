@@ -78,7 +78,7 @@ export class SidePanel extends React.Component<
 
   render() {
     return (
-      <section className="tabpanel" style={{width: '250px'}}>
+      <section className="sidepanel">
         <img src={camillalogo} alt="graph" width="100%" height="100%"/>
         {isCdspOnline(this.state.cdspStatus)
             && <VolumeBox

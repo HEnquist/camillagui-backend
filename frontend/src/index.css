@@ -4,6 +4,8 @@ body {
   color: var(--text-color);
   background-color: var(--background-color);
   margin: 0;
+  height: 100vh;
+  width: 100vw;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -84,8 +86,22 @@ textarea.logfileviewer {
   padding: 2px;
 }
 
+.sidepanel {
+  border: 4px;
+  text-align: left;
+  padding: 10px 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  height: 95vh;
+  width: 250px;
+}
+
 .tabpanel {
   border: 4px;
+  border-right: var(--box-border);
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
@@ -98,6 +114,7 @@ textarea.logfileviewer {
 
 .tabpanel-with-header {
   border: 4px;
+  border-right: var(--box-border);
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
@@ -110,6 +127,7 @@ textarea.logfileviewer {
 
 .wide-tabpanel {
   border: 4px;
+  border-right: var(--box-border);
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
@@ -129,7 +147,6 @@ textarea.logfileviewer {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  height: 98vh;
 }
 
 .configapp > :last-child {
