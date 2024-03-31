@@ -140,7 +140,7 @@ export class ProcessorsTab extends React.Component<
                     data-tip="Reverse display order"
                     onChange={this.changeSortOrder} />
             </div>
-            <div className="tabpanel" style={{ width: '700px' }}>
+            <div className="tabpanel-with-header" style={{ width: '700px' }}>
                 <ErrorMessage message={errors({ path: [] })} />
                 {this.processorNames()
                     .map(name =>

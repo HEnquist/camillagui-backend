@@ -173,7 +173,7 @@ export class FiltersTab extends React.Component<
           data-tip="Reverse display order"
           onChange={this.changeSortOrder} />
       </div>
-      <div className="tabpanel" style={{ width: '700px' }}>
+      <div className="tabpanel-with-header" style={{ width: '700px' }}>
         <ErrorMessage message={errors({ path: [] })} />
         {this.filterNames()
           .map(name =>
@@ -369,8 +369,10 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         .then(data => {
           if (this.state.showFilterPlot)
             this.setState({ data: data as ChartData })
-        }),
-      error => console.log("Failed", error)
+        },
+        error => console.log("JSON parse failed", error)
+      ),
+      error => console.log("api call failed", error)
     )
   }
 

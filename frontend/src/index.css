@@ -87,21 +87,37 @@ textarea.logfileviewer {
 .tabpanel {
   border: 4px;
   text-align: left;
-  padding: 10px 0;
+  padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
+  overflow: scroll;
+  height: 90vh;
+}
+
+.tabpanel-with-header {
+  border: 4px;
+  text-align: left;
+  padding: 10px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 450px;
+  overflow: scroll;
+  height: 86vh;
 }
 
 .wide-tabpanel {
   border: 4px;
   text-align: left;
-  padding: 10px 0;
+  padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 550px;
+  overflow: scroll;
+  height: 90vh;
 }
 
 .tabpanel > * {
@@ -113,6 +129,7 @@ textarea.logfileviewer {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
+  height: 98vh;
 }
 
 .configapp > :last-child {
@@ -122,7 +139,7 @@ textarea.logfileviewer {
 .configtabs {
   float: left;
   text-align: left;
-  padding: 10px;
+  padding: 2px;
   display: flex;
   flex-direction: column;
 }
