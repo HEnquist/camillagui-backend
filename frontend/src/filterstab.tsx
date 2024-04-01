@@ -840,6 +840,11 @@ class FilterParams extends React.Component<{
         desc: "length",
         tooltip: "Number of coefficients to generate",
       },
+      limit: {
+        type: "optional_float",
+        desc: "limit",
+        tooltip: "Volume upper limit in dB",
+      },
       low_boost: {
         type: "float",
         desc: "low_boost",

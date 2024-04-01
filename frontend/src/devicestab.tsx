@@ -443,6 +443,12 @@ function RateMonitoringOptions(props: {
             desc="volume_ramp_time"
             data-tip="Ramp time for main volume control, in milliseconds"
             onChange={volumeRampTime => props.onChange(devices => devices.volume_ramp_time = volumeRampTime)}/>
+        <OptionalFloatOption
+            value={props.devices.volume_limit}
+            error={props.errors({path: ['volume_limit']})}
+            desc="volume_limit"
+            data-tip="Upper limit for main volume control, in dB"
+            onChange={volumeLimit => props.onChange(devices => devices.volume_limit = volumeLimit)}/>
     </Box>
   }
 

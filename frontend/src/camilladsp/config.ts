@@ -28,6 +28,7 @@ export function defaultConfig(): Config {
             rate_measure_interval: null,
 
             volume_ramp_time: null,
+            volume_limit: null,
 
             capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
@@ -259,7 +260,7 @@ function newName(prefix: string, existingNames: string[]): string {
 export const DefaultFilterParameters: {
     [type: string]: {
         [subtype: string]: {
-            [parameter: string]: string | number | number[] | boolean
+            [parameter: string]: string | number | number[] | boolean | null
         }
     }
 } = {
@@ -302,7 +303,7 @@ export const DefaultFilterParameters: {
         Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
     },
     Volume: {
-        Default: { ramp_time: 200, fader: "Aux1" },
+        Default: { ramp_time: 200, limit: null, fader: "Aux1" },
     },
     Loudness: {
         Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },
@@ -550,6 +551,7 @@ export interface Devices {
 
     //Volume control settings
     volume_ramp_time: number | null,
+    volume_limit: number | null,
 
     capture: CaptureDevice,
     playback: PlaybackDevice,
