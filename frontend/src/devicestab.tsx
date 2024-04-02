@@ -37,6 +37,7 @@ import {
   OptionalIntOption,
   OptionalTextInput,
   OptionalTextOption,
+  TextInput,
   TextOption,
 } from "./utilities/ui-components"
 import {mdiMagnify} from '@mdi/js'
@@ -464,7 +465,7 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
@@ -539,8 +540,23 @@ function CaptureOptions(props: {
         )}
         />
     }
-    {(capture.type === 'CoreAudio' || capture.type === 'Alsa' || capture.type === 'Wasapi') &&
+    {(capture.type === 'Alsa') &&
     <DeviceOption
+        value={capture.device}
+        error={errors({path: ['device']})}
+        desc="device"
+        onChange={device => onChange(devices => // @ts-ignore
+            devices.capture.device = device
+        )}
+        onButtonClick={() => {
+          fetch("/api/capturedevices/" + capture.type)
+            .then(devices => devices.json())
+            .then(names => setAvailableDevices(names))
+          setPopupState(true)
+        }} />
+    }
+    {(capture.type === 'CoreAudio' || capture.type === 'Wasapi') &&
+    <OptionalDeviceOption
         value={capture.device}
         error={errors({path: ['device']})}
         desc="device"
@@ -656,7 +672,7 @@ function PlaybackOptions(props: {
   if (props.hide_playback_device)
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
-    Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: null},
+    Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0"},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
     Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null},
@@ -722,8 +738,23 @@ function PlaybackOptions(props: {
           devices.playback.format = format
         )}/>
     }
-    {(playback.type === 'CoreAudio' || playback.type === 'Alsa' || playback.type === 'Wasapi') &&
+    {(playback.type === 'Alsa') &&
       <DeviceOption
+        value={playback.device}
+        desc="device"
+        onChange={device => onChange(devices => // @ts-ignore
+            devices.playback.device = device
+        )}
+        error={errors({path: ['device']})}
+        onButtonClick={() => {
+          fetch("/api/playbackdevices/" + playback.type)
+            .then(devices => devices.json())
+            .then(names => setAvailableDevices(names))
+          setPopupState(true)
+        }} />
+    }
+    {(playback.type === 'CoreAudio' || playback.type === 'Wasapi') &&
+      <OptionalDeviceOption
         value={playback.device}
         desc="device"
         onChange={device => onChange(devices => // @ts-ignore
@@ -780,6 +811,33 @@ function PlaybackOptions(props: {
 }
 
 function DeviceOption(props: {
+  value: string
+  error?: string
+  desc: string
+  onChange: (device: string) => void
+  onButtonClick: () => void
+}) {
+  return <div className="setting" data-tip="Name of device">
+    <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
+    <TextInput
+        value={props.value}
+        data-tip="Name of device"
+        className="setting-input"
+        style={{width: '87%'}}
+        onChange={props.onChange}/>
+    <MdiButton
+        icon={mdiMagnify}
+        tooltip="Pick a device"
+        onClick={props.onButtonClick}
+        className='setting-button'
+        style={{width: '13%'}}
+        buttonSize="small"
+    />
+    <ErrorMessage message={props.error}/>
+  </div>
+}
+
+function OptionalDeviceOption(props: {
   value: string | null
   error?: string
   desc: string
