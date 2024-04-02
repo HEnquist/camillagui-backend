@@ -303,7 +303,7 @@ export const DefaultFilterParameters: {
         Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
     },
     Volume: {
-        Default: { ramp_time: 200, limit: null, fader: "Aux1" },
+        Default: { ramp_time: null, limit: null, fader: "Aux1" },
     },
     Loudness: {
         Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },

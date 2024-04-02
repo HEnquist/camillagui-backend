@@ -866,7 +866,7 @@ class FilterParams extends React.Component<{
       q_p: { type: "float", desc: "Q pole", tooltip: "Pole Q-value" },
       q_target: { type: "float", desc: "Q target", tooltip: "Target Q-value" },
       ramp_time: {
-        type: "float",
+        type: "optional_float",
         desc: "ramp_time",
         tooltip: "Volume change ramp time in ms",
       },
