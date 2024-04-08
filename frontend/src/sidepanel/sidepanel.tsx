@@ -3,6 +3,7 @@ import "../index.css"
 import isEqual from "lodash/isEqual"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
+import { AuxFadersBox } from "./auxfaderbox"
 import {Box, Button, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
 import {Config} from "../camilladsp/config"
 import {GuiConfig} from "../guiconfig"
@@ -84,6 +85,9 @@ export class SidePanel extends React.Component<
             && <VolumeBox
                     vuMeterStatus={this.state.cdspStatus}
                     setMessage={message => this.setState({msg: message})}/>
+        }
+        {isCdspOnline(this.state.cdspStatus)
+            && <AuxFadersBox />
         }
         {this.cdspStateBox()}
         {this.configBox()}
