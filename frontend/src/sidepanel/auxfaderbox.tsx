@@ -4,6 +4,7 @@ import { Box, MdiButton } from "../utilities/ui-components"
 import { mdiVolumeOff } from "@mdi/js"
 import { throttle } from "lodash"
 import {Range} from "immutable"
+import cloneDeep from "lodash/cloneDeep"
 
 type Props = {}
 
@@ -37,12 +38,12 @@ export class FadersPoller {
     private async updateFaders() {
         this.timerId = undefined
         try {
-            let fadersreq = fetch("/api/getfaders")
-            let faders = await (await fadersreq).json()
+            let fadersreq = fetch("/api/getparamjson/faders")
+            let faders = await (await fadersreq).json() as Fader[]
             // Only update if the timer hasn't been restarted
             // while we were reading the volume and mute settings.
             if (this.timerId === undefined) {
-                this.onUpdate(faders)
+                this.onUpdate(faders.slice(1))
             }
         } catch (err) { console.log(err) }
         if (this.timerId === undefined) {
@@ -74,6 +75,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
     constructor(props: Props) {
         super(props)
         this.toggleMute = this.toggleMute.bind(this)
+        this.moveFader = this.moveFader.bind(this)
         this.setDspFadersDebounced = throttle(this.setDspFaders, 250)
         this.state = {
             faders: [
@@ -86,34 +88,26 @@ export class AuxFadersBox extends React.Component<Props, State> {
         }
     }
 
-    didVolumeChange(faders: Fader[], prevState: Readonly<State>) {
+    didFadersChange(faders: Fader[], prevState: Readonly<State>) {
         for (const [idx, fader] of faders.entries()) {
-            if (Math.round(fader.volume * 10) !== Math.round(prevState.faders[idx].volume * 10))
+            if (Math.round(fader.volume * 10) !== Math.round(prevState.faders[idx].volume * 10) || fader.mute !== prevState.faders[idx].mute)
                 return true
         }
         return false
     }
 
-    didMuteChange(faders: Fader[], prevState: Readonly<State>) {
-        for (const [idx, fader] of faders.entries()) {
-            if (fader.mute !== prevState.faders[idx].mute)
-                return true
-        }
-        return false
-    }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
         const { faders, send_to_dsp } = this.state
         // Let's ignore any change smaller than 0.1 dB.
-        let vol_changed = this.didVolumeChange(faders, prevState)
-        let mute_changed = this.didMuteChange(faders, prevState)
+        let changed = this.didFadersChange(faders, prevState)
         if (send_to_dsp) {
-            if (vol_changed || mute_changed) {
+            if (changed) {
                 // The volume or mute state was changed from this gui instance.
                 this.fadersPoller.restart_timer()
                 this.setDspFadersDebounced(faders, prevState.faders)
-                this.setState({ send_to_dsp: false })
             }
+            this.setState({ send_to_dsp: false })
         }
     }
 
@@ -124,20 +118,41 @@ export class AuxFadersBox extends React.Component<Props, State> {
     private toggleMute(idx: number) {
         this.fadersPoller.restart_timer()
         this.setState(({ faders }) => {
-            faders[idx].mute = !faders[idx].mute
-            return { faders: faders, send_to_dsp: true }
+            let new_faders = cloneDeep(faders)
+            new_faders[idx].mute = !faders[idx].mute
+            return { faders: new_faders, send_to_dsp: true }
         })
     }
 
     private moveFader(idx: number, value: number) {
         this.fadersPoller.restart_timer()
         this.setState(({ faders }) => {
-            faders[idx].volume = value
-            return { faders: faders, send_to_dsp: true }
+            let new_faders = cloneDeep(faders)
+            new_faders[idx].volume = value
+            return { faders: new_faders, send_to_dsp: true }
         })
     }
 
     private async setDspFaders(faders: Fader[], prevFaders: Fader[]) {
+        console.log("change", faders, prevFaders)
+        for (const [idx, fader] of faders.entries()) {
+            if (Math.round(fader.volume * 10) !== Math.round(prevFaders[idx].volume * 10)) {
+                console.log("update vol", idx, fader.volume)
+                const vol_req = await fetch("/api/setparamindex/volume/"+(idx+1), {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain; charset=us-ascii" },
+                    body: fader.volume.toString(),
+                })
+            }
+            if (fader.mute !== prevFaders[idx].mute) {
+                console.log("update mute", idx, fader.mute)
+                const vol_req = await fetch("/api/setparamindex/mute/"+(idx+1), {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain; charset=us-ascii" },
+                    body: fader.mute.toString(),
+                })
+            }
+        }
         // Compare and update what was changed
         //const vol_req = await fetch("/api/setparam/volume", {
         //    method: "POST",
@@ -170,8 +185,6 @@ export class AuxFadersBox extends React.Component<Props, State> {
                     onClick={() => (this.toggleMute(index))} />
             </div>
         })
-        console.log(sliders)
-        console.log(faders)
         return <Box title="Aux faders">
             {sliders}
         </Box>
