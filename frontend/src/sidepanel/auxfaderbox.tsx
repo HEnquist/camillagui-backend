@@ -1,16 +1,18 @@
 import React from "react"
 import "../index.css"
 import { Box, MdiButton } from "../utilities/ui-components"
-import { mdiVolumeOff } from "@mdi/js"
+import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { throttle } from "lodash"
-import {Range} from "immutable"
+import { Range } from "immutable"
 import cloneDeep from "lodash/cloneDeep"
+import ReactTooltip from "react-tooltip"
 
 type Props = {}
 
 type State = {
     faders: Fader[]
     send_to_dsp: boolean
+    visible: boolean
 }
 
 export const minVolume = -51
@@ -45,7 +47,7 @@ export class FadersPoller {
             if (this.timerId === undefined) {
                 this.onUpdate(faders.slice(1))
             }
-        } catch (err) { console.log(err) }
+        } catch (err) { console.log("unable to read faders", err) }
         if (this.timerId === undefined) {
             this.timerId = setTimeout(this.updateFaders.bind(this), this.update_interval)
         }
@@ -79,12 +81,13 @@ export class AuxFadersBox extends React.Component<Props, State> {
         this.setDspFadersDebounced = throttle(this.setDspFaders, 250)
         this.state = {
             faders: [
-                {volume: -99, mute: false},
-                {volume: -99, mute: false},
-                {volume: -99, mute: false},
-                {volume: -99, mute: false},
+                { volume: -99, mute: false },
+                { volume: -99, mute: false },
+                { volume: -99, mute: false },
+                { volume: -99, mute: false },
             ],
-            send_to_dsp: false
+            send_to_dsp: false,
+            visible: false
         }
     }
 
@@ -109,6 +112,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
             }
             this.setState({ send_to_dsp: false })
         }
+        ReactTooltip.rebuild()
     }
 
     componentWillUnmount() {
@@ -134,38 +138,33 @@ export class AuxFadersBox extends React.Component<Props, State> {
     }
 
     private async setDspFaders(faders: Fader[], prevFaders: Fader[]) {
-        console.log("change", faders, prevFaders)
+        //console.log("change", faders, prevFaders)
         for (const [idx, fader] of faders.entries()) {
             if (Math.round(fader.volume * 10) !== Math.round(prevFaders[idx].volume * 10)) {
-                console.log("update vol", idx, fader.volume)
-                const vol_req = await fetch("/api/setparamindex/volume/"+(idx+1), {
+                //console.log("update vol", idx, fader.volume)
+                await fetch("/api/setparamindex/volume/" + (idx + 1), {
                     method: "POST",
                     headers: { "Content-Type": "text/plain; charset=us-ascii" },
                     body: fader.volume.toString(),
                 })
             }
             if (fader.mute !== prevFaders[idx].mute) {
-                console.log("update mute", idx, fader.mute)
-                const vol_req = await fetch("/api/setparamindex/mute/"+(idx+1), {
+                //console.log("update mute", idx, fader.mute)
+                await fetch("/api/setparamindex/mute/" + (idx + 1), {
                     method: "POST",
                     headers: { "Content-Type": "text/plain; charset=us-ascii" },
                     body: fader.mute.toString(),
                 })
             }
         }
-        // Compare and update what was changed
-        //const vol_req = await fetch("/api/setparam/volume", {
-        //    method: "POST",
-        //    headers: { "Content-Type": "text/plain; charset=us-ascii" },
-        //    body: value.toString(),
-        //})
     }
-//<div className={faders[index].mute ? "db-label-muted" : "db-label"}>
-//    {faders[index].volume.toFixed(1)}dB
-//</div>
+
+    //<div className={faders[index].mute ? "db-label-muted" : "db-label"}>
+    //    {faders[index].volume.toFixed(1)}dB
+    //</div>
 
     render() {
-        const { faders } = this.state
+        const { faders, visible } = this.state
         const sliders = Range(0, faders.length).map(index => {
             return <div style={{ display: 'flex', flexDirection: 'row' }}>
                 <input
@@ -174,10 +173,12 @@ export class AuxFadersBox extends React.Component<Props, State> {
                     min={10.0 * minVolume}
                     max="0"
                     value={10.0 * faders[index].volume}
-                    id="volume"
+                    key={"vol" + index}
                     onChange={e => this.moveFader(index, e.target.valueAsNumber / 10.0)}
+                    data-tip={"Aux" + (index + 1) + " " + faders[index].volume.toFixed(1) + "dB"}
                 />
                 <MdiButton
+                    key={"mute" + index}
                     icon={mdiVolumeOff}
                     tooltip={faders[index].mute ? "Un-Mute" : "Mute"}
                     buttonSize="small"
@@ -185,8 +186,18 @@ export class AuxFadersBox extends React.Component<Props, State> {
                     onClick={() => (this.toggleMute(index))} />
             </div>
         })
-        return <Box title="Aux faders">
-            {sliders}
+        return <Box title={
+            <>
+                <MdiButton
+                    icon={mdiChevronDown}
+                    tooltip={visible ? "Hide Aux volume controls" : "Show Aux volume controls"}
+                    buttonSize="small"
+                    highlighted={visible}
+                    onClick={() => { this.setState({ visible: !visible }) }} />
+                Aux faders
+            </>
+        }>
+            {visible && sliders}
         </Box>
     }
 }
