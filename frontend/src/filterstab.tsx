@@ -165,12 +165,12 @@ export class FiltersTab extends React.Component<
           value={this.state.sortBy}
           options={FilterSortKeys}
           desc="Sort filters by"
-          data-tip="Property used to sort filters"
+          tooltip="Property used to sort filters"
           onChange={this.changeSortBy} />
         <BoolOption
           value={this.state.sortReverse}
           desc="Reverse order"
-          data-tip="Reverse display order"
+          tooltip="Reverse display order"
           onChange={this.changeSortOrder} />
       </div>
       <div className="tabpanel-with-header" style={{ width: '700px' }}>
@@ -391,7 +391,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         value={name}
         asString={x => x}
         parseValue={newName => isValidFilterName(newName) ? newName : undefined}
-        data-tip="Filter name, must be unique"
+        tooltip="Filter name, must be unique"
         onChange={newName => this.props.rename(newName)}
         immediate={false}
       />
@@ -575,7 +575,7 @@ class FilterParams extends React.Component<{
         error={errors({ path: ['type'] })}
         options={Object.keys(DefaultFilterParameters)}
         desc="type"
-        data-tip="Filter type"
+        tooltip="Filter type"
         onChange={this.onTypeChange} />
       {subtypeOptions[0] !== 'Default' &&
         <EnumOption
@@ -583,7 +583,7 @@ class FilterParams extends React.Component<{
           error={errors({ path: ['parameters', 'type'] })}
           options={subtypeOptions}
           desc="subtype"
-          data-tip="Filter subtype"
+          tooltip="Filter subtype"
           onChange={this.onSubtypeChange} />
       }
       <ErrorMessage message={errors({ path: ['parameters'] })} />
@@ -595,7 +595,7 @@ class FilterParams extends React.Component<{
         placeholder="none"
         value={filter.description}
         desc="description"
-        data-tip="Filter description"
+        tooltip="Filter description"
         onChange={this.onDescChange} />
       {isGraphicEqualizer(filter) &&
         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
@@ -635,7 +635,7 @@ class FilterParams extends React.Component<{
         value: parameters[parameter],
         error: errors({ path: [parameter] }),
         desc: info.desc,
-        'data-tip': info.tooltip,
+        tooltip: info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
         onChange: (value: any) => this.props.updateFilter(filter => filter.parameters[parameter] = value)
       }
@@ -685,7 +685,7 @@ class FilterParams extends React.Component<{
     filename: string,
     props: {
       onChange: (value: any) => void
-      "data-tip": string
+      "tooltip": string
       value: any
       key: string
       desc: string
@@ -935,7 +935,7 @@ class FilterParams extends React.Component<{
     desc: string
     value: number
     error?: string
-    'data-tip': string
+    tooltip: string
     onDescChange: (option: string) => void
     onChange: (value: number) => void
   }) {
@@ -948,20 +948,20 @@ class FilterParams extends React.Component<{
     else
       return <ErrorMessage message={error} />
     return <>
-      <label className="setting" style={{ textAlign: 'right' }} data-tip={props['data-tip']}>
+      <label className="setting" style={{ textAlign: 'right' }} data-tooltip-content={props.tooltip}>
         <EnumInput
           value={parameter}
           options={descOptions}
           desc={desc}
           style={{ display: 'table-cell', width: 'min-content', textAlign: 'right', marginRight: '5px' }}
-          data-tip={props["data-tip"]}
+          tooltip={props.tooltip}
           onChange={onDescChange} />
         <FloatInput
           className="setting-input"
           error={error !== undefined}
           value={value}
           style={{ width: '55%' }}
-          data-tip={props["data-tip"]}
+          tooltip={props.tooltip}
           onChange={onChange} />
         <ErrorMessage message={error} />
       </label>

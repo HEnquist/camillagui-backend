@@ -14,7 +14,7 @@ import {
   mdiUpload
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from 'react-tooltip'
 import {
   CFile,
   doUpload, download,
@@ -118,7 +118,7 @@ class FileTable extends Component<
   }
 
   componentDidUpdate() {
-    ReactTooltip.rebuild()
+    //Tooltip.rebuild()
   }
 
   componentDidMount() {
@@ -336,7 +336,8 @@ class FileTable extends Component<
             <div>
               <input type='text'
                      value={newFileName}
-                     data-tip="Enter a name for the new config file"
+                     data-tooltip-content="Enter a name for the new config file"
+                     data-tooltip-id="main-tooltip"
                      spellCheck='false'
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
               <FileStatusMessage filename={newFileName} fileStatus={fileStatus}/>
@@ -473,7 +474,7 @@ function FileDownloadButton(props: { type: string, filename: string, isCurrentCo
   const classNames = 'file-link'
   return <a className={classNames}
             style={{width: 'max-content'}}
-            data-tip={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
+            data-tooltip-content={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
             download={filename}
             target="_blank"
             rel="noopener noreferrer"
@@ -521,7 +522,7 @@ class NewConfig extends Component<
   }
 
   componentDidUpdate() {
-    ReactTooltip.rebuild()
+    //ReactTooltip.rebuild()
   }
 
   private async loadDefaultConfig() {
@@ -567,19 +568,19 @@ class NewConfig extends Component<
             text="New config from default"
             onClick={() => this.loadDefaultConfig()}
             enabled={true}
-            data-tip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
+            tooltip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
           />
           <Button
             text="New blank config"
             onClick={() => this.loadBlankConfig()}
             enabled={true}
-            data-tip="Create and load a new blank config.<br>Any unsaved changes will be lost."
+            tooltip="Create and load a new blank config.<br>Any unsaved changes will be lost."
           />
           <Button
             text="Import config"
             onClick={() => this.openImportConfigPopup()}
             enabled={true}
-            data-tip="Import items from another config into this one."
+            tooltip="Import items from another config into this one."
           />
         </div>
         <ImportPopup {...this.state.importPopupProps}/>

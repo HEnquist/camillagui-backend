@@ -130,7 +130,7 @@ function Samplerate(props: {
       samplerate={props.devices.samplerate}
       error={props.errors({path: ['samplerate']})}
       desc="samplerate"
-      data-tip="Sample rate for processing and output"
+      tooltip="Sample rate for processing and output"
       onChange={samplerate => props.onChange(devices => { devices.samplerate = samplerate })}
       extraPadding={true}
   />
@@ -140,7 +140,7 @@ function SamplerateOption(props: {
   samplerate: number
   error?: string
   desc: string
-  'data-tip': string
+  tooltip: string
   onChange: (samplerate: number) => void
   extraPadding?: boolean
 }) {
@@ -151,13 +151,13 @@ function SamplerateOption(props: {
   const other = 'Other'
   const samplerate = props.samplerate
   const padding = props.extraPadding ? '0 12px' : '0'
-  return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
+  return <div className="setting" data-tooltip-content-={props.tooltip} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={isNonDefaultSamplerate(samplerate) ? other : samplerate.toString()}
         options={defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])}
         desc={props.desc}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         style={{width: isNonDefaultSamplerate(samplerate) ? '40%' : '100%'}}
         className="setting-input"
         onChange={value => {
@@ -168,7 +168,7 @@ function SamplerateOption(props: {
     {isNonDefaultSamplerate(samplerate) &&
     <IntInput
         value={samplerate}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         className="setting-input"
         style={{width: '60%'}}
         onChange={samplerate => props.onChange(samplerate)}/>
@@ -181,7 +181,7 @@ function OptionalSamplerateOption(props: {
   samplerate: number | null
   error?: string
   desc: string
-  'data-tip': string
+  tooltip: string
   onChange: (samplerate: number|null) => void
   extraPadding?: boolean
 }) {
@@ -201,13 +201,13 @@ function OptionalSamplerateOption(props: {
     value = samplerate.toString()
   const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
   add_default_option(options, "default")
-  return <div className="setting" data-tip={props["data-tip"]} style={{padding: padding}}>
+  return <div className="setting" data-tooltip-content={props.tooltip} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={null_to_default(value, "default")}
         options={options}
         desc={props.desc}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         style={{width: isNonDefaultSamplerate(samplerate) ? '40%' : '100%'}}
         className="setting-input"
         onChange={(value: string) => {
@@ -218,7 +218,7 @@ function OptionalSamplerateOption(props: {
     {isNonDefaultSamplerate(samplerate) &&
     <OptionalIntInput
         value={samplerate}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         className="setting-input"
         style={{width: '60%'}}
         onChange={(samplerate: number | null) => props.onChange(samplerate)}/>
@@ -237,13 +237,13 @@ function BufferOptions(props: {
         value={props.devices.chunksize}
         error={props.errors({path: ['chunksize']})}
         desc="chunksize"
-        data-tip="Chunksize for the processing"
+        tooltip="Chunksize for the processing"
         onChange={chunksize => props.onChange(devices => devices.chunksize = chunksize)}/>
     <OptionalIntOption
         value={props.devices.queuelimit}
         error={props.errors({path: ['queuelimit']})}
         desc="queuelimit"
-        data-tip="Length limit for internal queues"
+        tooltip="Length limit for internal queues"
         onChange={queuelimit => props.onChange(devices => devices.queuelimit = queuelimit)}/>
   </Box>
 }
@@ -261,13 +261,13 @@ function SilenceOptions(props: {
         value={props.devices.silence_threshold}
         error={props.errors({path: ['silence_threshold']})}
         desc="silence_threshold"
-        data-tip="Threshold for silence in dB"
+        tooltip="Threshold for silence in dB"
         onChange={silenceThreshold => props.onChange(devices => devices.silence_threshold = silenceThreshold)}/>
     <OptionalFloatOption
         value={props.devices.silence_timeout}
         error={props.errors({path: ['silence_timeout']})}
         desc="silence_timeout"
-        data-tip="Pause processing after this many seconds of silence"
+        tooltip="Pause processing after this many seconds of silence"
         onChange={silenceTimeout => props.onChange(devices => devices.silence_timeout = silenceTimeout)}/>
   </Box>
 }
@@ -285,19 +285,19 @@ function RateAdjustOptions(props: {
         value={props.devices.enable_rate_adjust}
         error={props.errors({path: ['enable_rate_adjust']})}
         desc="enable_rate_adjust"
-        data-tip="Enable rate adjust"
+        tooltip="Enable rate adjust"
         onChange={enableRateAdjust => props.onChange(devices => devices.enable_rate_adjust = enableRateAdjust)}/>
     <OptionalIntOption
         value={props.devices.adjust_period}
         error={props.errors({path: ['adjust_period']})}
         desc="adjust_period"
-        data-tip="Delay in seconds between rate adjustments"
+        tooltip="Delay in seconds between rate adjustments"
         onChange={adjustPeriod => props.onChange(devices => devices.adjust_period = adjustPeriod)}/>
     <OptionalIntOption
         value={props.devices.target_level}
         error={props.errors({path: ['target_level']})}
         desc="target_level"
-        data-tip="Target output buffer fill level for rate adjust"
+        tooltip="Target output buffer fill level for rate adjust"
         onChange={targetLevel => props.onChange(devices => devices.target_level = targetLevel)}/>
   </Box>
 }
@@ -327,7 +327,7 @@ function ResamplingOptions(props: {
         error={errors({path: ['resampler.type']})}
         options={ResamplerTypes}
         desc="resampler_type"
-        data-tip="Resampler type"
+        tooltip="Resampler type"
         placeholder="none"
         onChange={resamplerType => props.onChange(devices => devices.resampler = changeResamplerType(resamplerType))}/>
     {devices.resampler && devices.resampler.type === 'AsyncSinc' &&
@@ -337,7 +337,7 @@ function ResamplingOptions(props: {
         error={errors({path: ['resampler.type']})}
         options={AsyncSincProfiles}
         desc="profile"
-        data-tip="AsyncSinc resampler profile"
+        tooltip="AsyncSinc resampler profile"
         onChange={profile => props.onChange(devices => devices.resampler = changeResamplerProfile(profile))}/>
     }
     {devices.resampler && devices.resampler.type === 'AsyncSinc' && !devices.resampler.hasOwnProperty("profile") &&
@@ -348,7 +348,7 @@ function ResamplingOptions(props: {
         error={errors({path: ['interpolation']})}
         options={AsyncSincInterpolations}
         desc="interpolation"
-        data-tip="Interpolation order"
+        tooltip="Interpolation order"
         // @ts-ignore
         onChange={interp => props.onChange(devices => devices.resampler.interpolation = interp)}/>
       <IntOption
@@ -356,7 +356,7 @@ function ResamplingOptions(props: {
         value={devices.resampler.sinc_len}
         error={errors({path: ['resampler', 'sinc_len']})}
         desc="sinc_len"
-        data-tip="Length of sinc interpolation filter"
+        tooltip="Length of sinc interpolation filter"
         // @ts-ignore
         onChange={len => props.onChange(devices => devices.resampler.sinc_len = len)}/>
       <IntOption
@@ -364,7 +364,7 @@ function ResamplingOptions(props: {
         value={devices.resampler.oversampling_factor}
         error={errors({path: ['resampler', 'oversampling_factor']})}
         desc="oversampling_factor"
-        data-tip="Oversampling factor"
+        tooltip="Oversampling factor"
         // @ts-ignore
         onChange={factor => props.onChange(devices => devices.resampler.oversampling_factor = factor)}/>
       <OptionalFloatOption
@@ -372,7 +372,7 @@ function ResamplingOptions(props: {
         value={devices.resampler.f_cutoff}
         error={errors({path: ['f_cutoff']})}
         desc="f_cutoff"
-        data-tip="Relative cutoff frequency of interpolation filter"
+        tooltip="Relative cutoff frequency of interpolation filter"
         // @ts-ignore
         onChange={cutoff => props.onChange(devices => devices.resampler.f_cutoff = cutoff)}/>
       <EnumOption
@@ -381,7 +381,7 @@ function ResamplingOptions(props: {
         error={errors({path: ['window']})}
         options={AsyncSincWindows}
         desc="window"
-        data-tip="Window function for interpolation filter"
+        tooltip="Window function for interpolation filter"
         // @ts-ignore
         onChange={window => props.onChange(devices => devices.resampler.window = window)}/>
     </>}
@@ -392,7 +392,7 @@ function ResamplingOptions(props: {
       error={errors({path: ['interpolation']})}
       options={AsyncPolyInterpolations}
       desc="interpolation"
-      data-tip="Interpolation order"
+      tooltip="Interpolation order"
       // @ts-ignore
       onChange={interp => props.onChange(devices => devices.resampler.interpolation = interp)}/> }
     {!props.hide_capture_samplerate && devices.resampler !== null &&
@@ -400,7 +400,7 @@ function ResamplingOptions(props: {
         samplerate={devices.capture_samplerate}
         error={errors({path: ['capture_samplerate']})}
         desc="capture_samplerate"
-        data-tip="Sample rate for capture device.<br>If different from 'samplerate' then resampling must be enabled"
+        tooltip="Sample rate for capture device.<br>If different from 'samplerate' then resampling must be enabled"
         onChange={captureSamplerate => props.onChange(devices => devices.capture_samplerate = captureSamplerate)}/>
     }
   </Box>
@@ -420,13 +420,13 @@ function RateMonitoringOptions(props: {
             value={props.devices.rate_measure_interval}
             error={props.errors({path: ['rate_measure_interval']})}
             desc="rate_measure_interval"
-            data-tip="Interval for rate measurements, in seconds"
+            tooltip="Interval for rate measurements, in seconds"
             onChange={rateMeasureInterval => props.onChange(devices => devices.rate_measure_interval = rateMeasureInterval)}/>
         <OptionalBoolOption
             value={props.devices.stop_on_rate_change}
             error={props.errors({path: ['stop_on_rate_change']})}
             desc="stop_on_rate_change"
-            data-tip="Stop processing when a sample rate change is detected"
+            tooltip="Stop processing when a sample rate change is detected"
             onChange={stopOnRateChange => props.onChange(devices => devices.stop_on_rate_change = stopOnRateChange)}/>
     </Box>
   }
@@ -442,13 +442,13 @@ function RateMonitoringOptions(props: {
             value={props.devices.volume_ramp_time}
             error={props.errors({path: ['volume_ramp_time']})}
             desc="volume_ramp_time"
-            data-tip="Ramp time for main volume control, in milliseconds"
+            tooltip="Ramp time for main volume control, in milliseconds"
             onChange={volumeRampTime => props.onChange(devices => devices.volume_ramp_time = volumeRampTime)}/>
         <OptionalFloatOption
             value={props.devices.volume_limit}
             error={props.errors({path: ['volume_limit']})}
             desc="volume_limit"
-            data-tip="Upper limit for main volume control, in dB"
+            tooltip="Upper limit for main volume control, in dB"
             onChange={volumeLimit => props.onChange(devices => devices.volume_limit = volumeLimit)}/>
     </Box>
   }
@@ -504,14 +504,14 @@ function CaptureOptions(props: {
         error={errors({path: ['type']})}
         options={captureTypes}
         desc="type"
-        data-tip="Audio backend for capture"
+        tooltip="Audio backend for capture"
         onChange={captureType => onChange(devices => devices.capture = defaults[captureType])}/>
     {(capture.type !== 'WavFile') &&
     <IntOption
         value={capture.channels}
         error={errors({path: ['channels']})}
         desc="channels"
-        data-tip="Number of channels"
+        tooltip="Number of channels"
         withControls={true}
         min={1}
         // @ts-ignore
@@ -523,7 +523,7 @@ function CaptureOptions(props: {
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
-        data-tip="Sample format"
+        tooltip="Sample format"
         onChange={format => onChange(devices => // @ts-ignore
             devices.capture.format = format
         )}/>
@@ -534,7 +534,7 @@ function CaptureOptions(props: {
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
-        data-tip="Sample format"
+        tooltip="Sample format"
         onChange={format => onChange(devices => // @ts-ignore
             devices.capture.format = format
         )}
@@ -575,7 +575,7 @@ function CaptureOptions(props: {
         value={capture.device}
         error={errors({path: ['device']})}
         desc="device"
-        data-tip="Name of device"
+        tooltip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.capture.device = device
         )}/>
@@ -585,7 +585,7 @@ function CaptureOptions(props: {
             value={capture.exclusive}
             error={errors({path: ['exclusive']})}
             desc="exclusive"
-            data-tip="Use exclusive mode"
+            tooltip="Use exclusive mode"
             onChange={exclusive => onChange(devices => // @ts-ignore
                 devices.capture.exclusive = exclusive
             )}/>
@@ -593,7 +593,7 @@ function CaptureOptions(props: {
             value={capture.loopback}
             error={errors({path: ['loopback']})}
             desc="loopback"
-            data-tip="Use loopback capture mode to capture from a playback device"
+            tooltip="Use loopback capture mode to capture from a playback device"
             onChange={loopback => onChange(devices => // @ts-ignore
                 devices.capture.loopback = loopback
             )}/>
@@ -604,7 +604,7 @@ function CaptureOptions(props: {
         value={capture.filename}
         error={errors({path: ['filename']})}
         desc="filename"
-        data-tip="Filename including path"
+        tooltip="Filename including path"
         onChange={filename => onChange(devices => // @ts-ignore
             devices.capture.filename = filename
         )}/>
@@ -614,7 +614,7 @@ function CaptureOptions(props: {
           value={capture.extra_samples}
           error={errors({path: ['extra_samples']})}
           desc="extra_samples"
-          data-tip="Number of extra samples to insert after end of file"
+          tooltip="Number of extra samples to insert after end of file"
           onChange={extra_samples => onChange(devices => // @ts-ignore
               devices.capture.extra_samples = extra_samples
           )}/>
@@ -624,7 +624,7 @@ function CaptureOptions(props: {
           value={capture.skip_bytes}
           error={errors({path: ['skip_bytes']})}
           desc="skip_bytes"
-          data-tip="Number of bytes to skip at beginning of file"
+          tooltip="Number of bytes to skip at beginning of file"
           onChange={skip_bytes => onChange(devices => // @ts-ignore
               devices.capture.skip_bytes = skip_bytes
           )}/>
@@ -632,7 +632,7 @@ function CaptureOptions(props: {
           value={capture.read_bytes}
           error={errors({path: ['read_bytes']})}
           desc="read_bytes"
-          data-tip="Read up to this number of bytes"
+          tooltip="Read up to this number of bytes"
           onChange={read_bytes => onChange(devices => // @ts-ignore
               devices.capture.read_bytes = read_bytes
           )}/>
@@ -643,7 +643,7 @@ function CaptureOptions(props: {
           value={capture.service}
           error={errors({path: ['service']})}
           desc="service"
-          data-tip="Name of d-bus service"
+          tooltip="Name of d-bus service"
           onChange={service => onChange(devices => // @ts-ignore
               devices.capture.service = service
           )}/>
@@ -651,7 +651,7 @@ function CaptureOptions(props: {
           value={capture.dbus_path}
           error={errors({path: ['dbus_path']})}
           desc="dbus_path"
-          data-tip="d-bus path to Bluez"
+          tooltip="d-bus path to Bluez"
           onChange={dbus_path => onChange(devices => // @ts-ignore
               devices.capture.dbus_path = dbus_path
           )}/>
@@ -705,14 +705,14 @@ function PlaybackOptions(props: {
         value={props.playback.type}
         error={errors({path: ['type']})}
         options={playbackDeviceTypes}
-        data-tip="Audio backend for playback"
+        tooltip="Audio backend for playback"
         desc="type"
         onChange={playbackType => props.onChange(devices => devices.playback = defaults[playbackType])}/>
     <IntOption
         value={playback.channels}
         error={errors({path: ['channels']})}
         desc="channels"
-        data-tip="Number of channels"
+        tooltip="Number of channels"
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
@@ -722,7 +722,7 @@ function PlaybackOptions(props: {
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
-        data-tip="Sample format"
+        tooltip="Sample format"
         onChange={format => onChange(devices =>  // @ts-ignore
           devices.playback.format = format
         )}/>
@@ -733,7 +733,7 @@ function PlaybackOptions(props: {
         error={errors({path: ['format']})}
         options={Formats}
         desc="sampleformat"
-        data-tip="Sample format"
+        tooltip="Sample format"
         onChange={format => onChange(devices =>  // @ts-ignore
           devices.playback.format = format
         )}/>
@@ -773,7 +773,7 @@ function PlaybackOptions(props: {
         value={playback.device}
         error={errors({path: ['device']})}
         desc="device"
-        data-tip="Name of device"
+        tooltip="Name of device"
         onChange={device => onChange(devices => // @ts-ignore
             devices.playback.device = device
         )}/>
@@ -783,7 +783,7 @@ function PlaybackOptions(props: {
         value={playback.exclusive}
         error={errors({path: ['device']})}
         desc="exclusive"
-        data-tip="Use exclusive mode"
+        tooltip="Use exclusive mode"
         onChange={exclusive => onChange(devices => // @ts-ignore
             devices.playback.exclusive = exclusive
         )}/>
@@ -793,7 +793,7 @@ function PlaybackOptions(props: {
         value={playback.filename}
         error={errors({path: ['filename']})}
         desc="filename"
-        data-tip="Filename including path"
+        tooltip="Filename including path"
         onChange={filename => onChange(devices => // @ts-ignore
             devices.playback.filename = filename
         )}/>
@@ -801,7 +801,7 @@ function PlaybackOptions(props: {
         value={playback.wav_header}
         error={errors({path: ['device']})}
         desc="wav_header"
-        data-tip="Write output as a wav file"
+        tooltip="Write output as a wav file"
         onChange={wav_header => onChange(devices => // @ts-ignore
             devices.playback.wav_header = wav_header
         )}/>
@@ -817,11 +817,11 @@ function DeviceOption(props: {
   onChange: (device: string) => void
   onButtonClick: () => void
 }) {
-  return <div className="setting" data-tip="Name of device">
+  return <div className="setting" data-tooltip-content="Name of device">
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <TextInput
         value={props.value}
-        data-tip="Name of device"
+        tooltip="Name of device"
         className="setting-input"
         style={{width: '87%'}}
         onChange={props.onChange}/>
@@ -844,11 +844,11 @@ function OptionalDeviceOption(props: {
   onChange: (device: string | null) => void
   onButtonClick: () => void
 }) {
-  return <div className="setting" data-tip="Name of device">
+  return <div className="setting" data-tooltip-content="Name of device">
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <OptionalTextInput
         value={props.value}
-        data-tip="Name of device"
+        tooltip="Name of device"
         className="setting-input"
         style={{width: '87%'}}
         onChange={props.onChange}/>

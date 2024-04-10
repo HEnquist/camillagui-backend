@@ -133,7 +133,7 @@ export class PipelineTab extends React.Component<{
             value={step.type}
             options={['Mixer', 'Filter', 'Processor']}
             desc="type"
-            data-tip="Step type"
+            tooltip="Step type"
             style={{ marginRight: '15px' }}
             onChange={type => this.setStepType(index, type)} />
           const controls = <>
@@ -245,7 +245,7 @@ function MixerStepView(props: {
         <OptionalBoolOption
           value={mixerStep.bypassed}
           desc="bypassed"
-          data-tip="Bypass this pipeline step"
+          tooltip="Bypass this pipeline step"
           onChange={bp => update(step => step.bypassed = bp)} />
       </>
     }>
@@ -256,7 +256,7 @@ function MixerStepView(props: {
           value={mixerStep.name}
           options={options}
           desc="name"
-          data-tip="Mixer name"
+          tooltip="Mixer name"
           style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
           onChange={name => update(step => step.name = name)} />
         <ErrorMessage message={nameError} />
@@ -264,7 +264,7 @@ function MixerStepView(props: {
         <OptionalTextInput
           placeholder="description"
           value={mixerStep.description}
-          data-tip="Pipeline step description"
+          tooltip="Pipeline step description"
           onChange={desc => update(step => step.description = desc)} />
       </div>
     </Box>
@@ -293,7 +293,7 @@ function ProcessorStepView(props: {
         <OptionalBoolOption
           value={processorStep.bypassed}
           desc="bypassed"
-          data-tip="Bypass this pipeline step"
+          tooltip="Bypass this pipeline step"
           onChange={bp => update(step => step.bypassed = bp)} />
       </>
     }>
@@ -304,7 +304,7 @@ function ProcessorStepView(props: {
           value={processorStep.name}
           options={options}
           desc="name"
-          data-tip="Processor name"
+          tooltip="Processor name"
           style={nameError ? ERROR_BACKGROUND_STYLE : undefined}
           onChange={name => update(step => step.name = name)} />
         <ErrorMessage message={nameError} />
@@ -312,7 +312,7 @@ function ProcessorStepView(props: {
         <OptionalTextInput
           placeholder="description"
           value={processorStep.description}
-          data-tip="Pipeline step description"
+          tooltip="Pipeline step description"
           onChange={desc => update(step => step.description = desc)} />
       </div>
     </Box>
@@ -368,7 +368,7 @@ function FilterStepView(props: {
     <OptionalBoolOption
       value={filterStep.bypassed}
       desc="bypassed"
-      data-tip="Bypass this pipeline step"
+      tooltip="Bypass this pipeline step"
       onChange={bp => update(step => step.bypassed = bp)} />
   </>
   return <DndSortable {...dndProps}>
@@ -422,7 +422,7 @@ function FilterStepView(props: {
         <OptionalTextInput
           placeholder="description"
           value={filterStep.description}
-          data-tip="Pipeline step description"
+          tooltip="Pipeline step description"
           onChange={desc => update(step => step.description = desc)} />
       </div>
     </Box>
@@ -453,7 +453,7 @@ function FilterStepFilter(props: {
         value={name}
         options={options}
         desc={`step${stepIndex}-filter${index}`}
-        data-tip="Filter name"
+        tooltip="Filter name"
         style={{
           width: '100%',
           ...(errors ? ERROR_BACKGROUND_STYLE : {})

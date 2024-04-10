@@ -5,7 +5,7 @@ import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { throttle } from "lodash"
 import { Range } from "immutable"
 import cloneDeep from "lodash/cloneDeep"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from 'react-tooltip'
 
 type Props = {}
 
@@ -112,7 +112,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
             }
             this.setState({ send_to_dsp: false })
         }
-        ReactTooltip.rebuild()
+        //Tooltip.rebuild()
     }
 
     componentWillUnmount() {
@@ -175,7 +175,8 @@ export class AuxFadersBox extends React.Component<Props, State> {
                     value={10.0 * faders[index].volume}
                     key={"vol" + index}
                     onChange={e => this.moveFader(index, e.target.valueAsNumber / 10.0)}
-                    data-tip={"Aux" + (index + 1) + " " + faders[index].volume.toFixed(1) + "dB"}
+                    data-tooltip-content={"Aux" + (index + 1) + " " + faders[index].volume.toFixed(1) + "dB"}
+                    data-tooltip-id="main-tooltip"
                 />
                 <MdiButton
                     key={"mute" + index}

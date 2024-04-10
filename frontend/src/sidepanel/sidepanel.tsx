@@ -150,26 +150,26 @@ export class SidePanel extends React.Component<
         <SuccessFailureButton
             enabled={fetchEnabled}
             text="Fetch from DSP"
-            data-tip="Fetch active config from<br>the running CamillaDSP process"
+            data-tooltip-content="Fetch active config from<br>the running CamillaDSP process"
             onClick={this.props.fetchConfig}/>
         <SuccessFailureButton
             enabled={applyEnabled}
             text='Apply to DSP'
-            data-tip='Apply config to the running<br>CamillaDSP process'
+            data-tooltip-content='Apply config to the running<br>CamillaDSP process'
             onClick={this.props.applyConfig}/>
         <SuccessFailureButton
             enabled={saveEnabled}
             text="Save to file"
-            data-tip={saveButtonTooltip}
+            data-tooltip-content={saveButtonTooltip}
             onClick={this.props.saveConfig}/>
         <SuccessFailureButton
             enabled={applyAndSaveEnabled}
             text='Apply and save'
-            data-tip="Apply to DSP and save to file"
+            data-tooltip-content="Apply to DSP and save to file"
             onClick={this.props.saveAndApplyConfig}/>
       </div>
       <div className="setting">
-      <div data-tip="Apply config to DSP automatically<br>after each change" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
+      <div data-tooltip-content="Apply config to DSP automatically<br>after each change" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
         <div className="setting-label-wide">Apply automatically</div>
         <input
           className = "setting-input"
@@ -177,7 +177,7 @@ export class SidePanel extends React.Component<
           checked={this.state.applyConfigAutomatically}
           onChange={(e) => this.setState({applyConfigAutomatically: e.target.checked})}/>
       </div>
-      <div data-tip="Save config to file automatically<br>after each change" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
+      <div data-tooltip-content="Save config to file automatically<br>after each change" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
         <div className="setting-label-wide">Save automatically</div>
         <input
           className = "setting-input"
@@ -187,10 +187,10 @@ export class SidePanel extends React.Component<
       </div>
       </div>
       <div className="two-column-grid">
-        <div data-tip={unsaved ? "GUI has changes that have<br>not been saved to file": "All changes have been saved to file"} style={{textAlign: 'center', marginTop: '5px'}}>
+        <div data-tooltip-content={unsaved ? "GUI has changes that have<br>not been saved to file": "All changes have been saved to file"} style={{textAlign: 'center', marginTop: '5px'}}>
           {unsaved ? "All saved: ⚠️": "All saved: ✔️"}
         </div>
-        <div data-tip={unapplied ? "GUI has changes that have<br>not been applied to the DSP": "All changes have been applied to the DSP"}style={{textAlign: 'center', marginTop: '5px'}}>
+        <div data-tooltip-content={unapplied ? "GUI has changes that have<br>not been applied to the DSP": "All changes have been applied to the DSP"}style={{textAlign: 'center', marginTop: '5px'}}>
           {unapplied ? "All applied: ⚠️": "All applied: ✔️"}
         </div>
       </div>
