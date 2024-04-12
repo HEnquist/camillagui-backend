@@ -1,6 +1,7 @@
 /* The CSS files have to be imported in exactly this order.
    Otherwise the custom react-tabs styles in index.css don't work */
 import "react-tabs/style/react-tabs.css"
+import 'react-tooltip/dist/react-tooltip.css'
 import "./index.css"
 
 import * as React from "react"
@@ -15,7 +16,7 @@ import {TitleTab} from "./titletab"
 import {Shortcuts} from "./shortcuts"
 import {ErrorsForPath, errorsForSubpath, noErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
-import ReactTooltip from "react-tooltip"
+import {Tooltip} from 'react-tooltip'
 import {Files} from "./filestab"
 import {Config, defaultConfig, getCaptureChannelCount} from "./camilladsp/config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
@@ -201,7 +202,7 @@ class CamillaConfig extends React.Component<
   }
 
   componentDidUpdate(prevProps: unknown) {
-    ReactTooltip.rebuild()
+    //ReactTooltip.rebuild()
   }
 
   private switchTab(index: number) {
@@ -210,7 +211,7 @@ class CamillaConfig extends React.Component<
 
   render() {
     return <div className="configapp">
-      <ReactTooltip multiline={true}/>
+      <Tooltip id="main-tooltip" className="tooltip"/>
       {this.state.compactView ?
           <CompactView
               currentConfigName={this.state.currentConfigFile}

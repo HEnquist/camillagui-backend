@@ -61,6 +61,6 @@ export function DragHandle(props: {
   tooltip: string
 }) {
   return <span ref={props.drag} style={{display: "flex", alignItems: 'center'}}>
-    <Icon path={mdiDrag} size={'24px'} className="drag-handle" data-tip={props.tooltip}/>
+    <Icon path={mdiDrag} size={'24px'} className="drag-handle" data-tooltip-html={props.tooltip}/>
   </span>
 }

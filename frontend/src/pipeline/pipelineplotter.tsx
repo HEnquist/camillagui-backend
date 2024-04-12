@@ -7,7 +7,6 @@ import { CloseButton, cssStyles } from "../utilities/ui-components"
 import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
-import ReactTooltip from "react-tooltip"
 import { Range } from "immutable"
 
 export function PipelinePopup(props: {
@@ -51,7 +50,6 @@ export function PipelinePopup(props: {
       icon={expandVertical ? mdiArrowCollapse : mdiArrowExpand}
       tooltip={expandVertical ? "Zoom out to display entire plot height" : "Enlarge plot"}
       onClick={toggleExpandVertical} />
-    <ReactTooltip />
   </Popup>
 
 }

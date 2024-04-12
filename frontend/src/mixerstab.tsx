@@ -149,7 +149,7 @@ function MixerView(props: {
       <ParsedInput
           value={name}
           style={{width: '300px'}}
-          data-tip="Mixer name, must be unique"
+          tooltip="Mixer name, must be unique"
           onChange={rename}
           asString={name => name}
           parseValue={name => isValidMixerName(name) ? name : undefined}
@@ -166,7 +166,7 @@ function MixerView(props: {
       <IntOption
           value={mixer.channels.in}
           desc="in"
-          data-tip="Number of channels in (source channels)"
+          tooltip="Number of channels in (source channels)"
           small={true}
           withControls={true}
           min={1}
@@ -174,7 +174,7 @@ function MixerView(props: {
       <IntOption
           value={mixer.channels.out}
           desc="out"
-          data-tip="Number of channels out (destination channels)"
+          tooltip="Number of channels out (destination channels)"
           small={true}
           withControls={true}
           min={1}
@@ -204,7 +204,7 @@ function MixerView(props: {
       <OptionalTextInput
         placeholder="description"
         value={mixer.description}
-        data-tip="Mixer description"
+        tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
     </div>
   </Box>
@@ -223,7 +223,7 @@ function MappingView(props: {
       <IntOption
           value={mapping.dest}
           desc="destination"
-          data-tip="Destination channel number"
+          tooltip="Destination channel number"
           small={true}
           withControls={true}
           min={0}
@@ -280,7 +280,7 @@ function SourceView(props: {
         <IntOption
             value={source.channel}
             desc="source"
-            data-tip="Source channel number"
+            tooltip="Source channel number"
             small={true}
             withControls={true}
             min={0}
@@ -291,7 +291,7 @@ function SourceView(props: {
         <FloatOption
             value={source.gain ? source.gain : 0.0}
             desc="gain"
-            data-tip="Gain in dB for this source channel"
+            tooltip="Gain in dB for this source channel"
             onChange={gain => update(source => source.gain = gain)}/>
       </div>
       <div style={{flexGrow: 1}}>
@@ -300,7 +300,7 @@ function SourceView(props: {
             error={errors({path: ['scale']})}
             options={GainScales}
             desc="scale"
-            data-tip="Scale for gain"
+            tooltip="Scale for gain"
             onChange={scale => update(source => source.scale = scale )}/>
       </div>
       <MdiButton

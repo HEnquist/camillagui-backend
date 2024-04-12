@@ -132,12 +132,12 @@ export class ProcessorsTab extends React.Component<
                     value={this.state.sortBy}
                     options={ProcessorSortKeys}
                     desc="Sort processors by"
-                    data-tip="Property used to sort processors"
+                    tooltip="Property used to sort processors"
                     onChange={this.changeSortBy} />
                 <BoolOption
                     value={this.state.sortReverse}
                     desc="Reverse order"
-                    data-tip="Reverse display order"
+                    tooltip="Reverse display order"
                     onChange={this.changeSortOrder} />
             </div>
             <div className="tabpanel-with-header" style={{ width: '700px' }}>
@@ -195,7 +195,7 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
                 value={name}
                 asString={x => x}
                 parseValue={newName => isValidProcessorName(newName) ? newName : undefined}
-                data-tip="Processor name, must be unique"
+                tooltip="Processor name, must be unique"
                 onChange={newName => this.props.rename(newName)}
                 immediate={false}
             />
@@ -293,7 +293,7 @@ class ProcessorParams extends React.Component<{
                 error={errors({ path: ['type'] })}
                 options={Object.keys(defaultParameters)}
                 desc="type"
-                data-tip="Processor type"
+                tooltip="Processor type"
                 onChange={this.onTypeChange} />
             <ErrorMessage message={errors({ path: ['parameters'] })} />
             {this.renderProcessorParams(processor.parameters, errorsForSubpath(errors, 'parameters'))}
@@ -301,19 +301,19 @@ class ProcessorParams extends React.Component<{
                 placeholder="none"
                 value={processor.description}
                 desc="description"
-                data-tip="Processor description"
+                tooltip="Processor description"
                 onChange={this.onDescChange} />
             {isCompressor(processor) &&
                 <div>
                 <label className="setting">
                     <span className="setting-label">
-                        <div data-tip="Channels to monitor">monitor_channels</div>
+                        <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
                     </span>
                     <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} />
                 </label>
                 <label className="setting">
                     <span className="setting-label">
-                        <div data-tip="Channels to process">process_channels</div>
+                        <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
                     </span>
                     <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} />
                 </label>
@@ -338,7 +338,7 @@ class ProcessorParams extends React.Component<{
                 value: parameters[parameter],
                 error: errors({ path: [parameter] }),
                 desc: info.desc,
-                'data-tip': info.tooltip,
+                tooltip: info.tooltip,
                 onChange: (value: any) => this.onParamChange(parameter, value)
             }
             if (info.type === 'text')

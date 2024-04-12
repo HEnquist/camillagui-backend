@@ -15,7 +15,7 @@ import {
 } from "./configimport"
 import { mdiAlert, mdiInformation } from "@mdi/js"
 import { bottomMargin } from "../utilities/styles"
-import ReactTooltip from "react-tooltip"
+import { Tooltip } from 'react-tooltip'
 import Popup from "reactjs-popup"
 
 export type ImportPopupProps = {} | {
@@ -134,7 +134,6 @@ function FileList(props: {
         </div>
       )}
     </Box>
-    <ReactTooltip multiline={true} />
   </div>
 }
 
@@ -145,7 +144,7 @@ function ConfigItemSelection(props: {
   import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
-  useEffect(() => { ReactTooltip.rebuild() })
+  useEffect(() => {}) //Tooltip.rebuild() })
   const { currentConfig } = props
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
@@ -207,11 +206,11 @@ function valueAppended(value: any, tooltipId?: string): ReactNode {
   if (!isComplexObject(value))
     return <span style={{ color: 'var(--disabled-text-color)' }}>: {value.toString()}</span>
   if (isComplexObject(value) && tooltipId) {
-    return <span data-tip={true} data-for={tooltipId}>
+    return <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
       <MdiIcon icon={mdiInformation} />
-      <ReactTooltip id={tooltipId} className="import-tab-tooltip" arrowColor="var(--box-border-color)">
+      <Tooltip id={tooltipId} className="import-tab-tooltip">
         <pre>{asFormattedText(value, 20)}</pre>
-      </ReactTooltip>
+      </Tooltip>
     </span>
   }
   else
@@ -231,13 +230,13 @@ function collisionWarning(config: any, parentKey: string, valueKey: string): Rea
     const value = config[parentKey][valueKey]
     const tooltipId = `${parentKey}-${valueKey}-warning`
     if (isObject(value))
-      return <span data-tip={true} data-for={tooltipId}>
+      return <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
         <MdiIcon
           icon={mdiAlert}
           style={{ color: 'var(--error-text-color)' }} />
-        <ReactTooltip id={tooltipId}>
+        <Tooltip id={tooltipId} className="tooltip">
           {`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
-        </ReactTooltip>
+        </Tooltip>
       </span>
   }
   return null

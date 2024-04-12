@@ -461,9 +461,16 @@ div .popup-content {
 }
 
 .import-tab-tooltip {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   opacity: 1 !important;
-  border-radius: var(--border-radius) !important;
-  border: var(--box-border) !important;
+  font-size: smaller;
+  z-index: 1000;
+}
+
+.tooltip {
+  opacity: 1 !important;
+  text-align: center;
+  z-index: 1000;
 }
 
 .pipeline-tooltip {

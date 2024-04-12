@@ -157,7 +157,7 @@ export async function importedYamlConfigAsJson(files: FileList): Promise<Importe
     const text = await response.text()
     return JSON.parse(text) as ImportedConfig
   }
-  throw new Error("Could extract filters from file")
+  throw new Error("Could not extract filters from file")
 }
 
 function fileContent(files: FileList): Promise<string> {
