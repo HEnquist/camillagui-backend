@@ -297,13 +297,19 @@ class PipelinePlot extends React.Component<Props, State> {
       1.5,
       spacing_v * active_channels,
     )
+    let cap_params = conf.devices.capture
+    let cap_tooltip = "<strong>Capture device</strong>"
+    for (const [key, value] of Object.entries(cap_params)) {
+      cap_tooltip = cap_tooltip + "<br>" + key + ": " + value
+      console.log(key, value)
+    }
     for (let n = 0; n < active_channels; n++) {
       const label = "ch " + n
       const io_points = this.appendBlock(
         labels,
         boxes,
         label,
-        null,
+        cap_tooltip,
         0,
         spacing_v * (-active_channels / 2 + 0.5 + n),
         1,
@@ -333,10 +339,10 @@ class PipelinePlot extends React.Component<Props, State> {
         1.5,
         spacing_v * active_channels,
       )
-      let params = conf.devices.resampler
-      let tooltip = "<strong>Resampler</strong>"
-      for (const [key, value] of Object.entries(params)) {
-        tooltip = tooltip + "<br>" + key + ": " + value
+      let res_params = conf.devices.resampler
+      let res_tooltip = "<strong>Resampler</strong>"
+      for (const [key, value] of Object.entries(res_params)) {
+        res_tooltip = res_tooltip + "<br>" + key + ": " + value
         console.log(key, value)
       }
       for (let n = 0; n < active_channels; n++) {
@@ -345,7 +351,7 @@ class PipelinePlot extends React.Component<Props, State> {
           labels,
           boxes,
           label,
-          tooltip,
+          res_tooltip,
           spacing_h * total_length,
           spacing_v * (-active_channels / 2 + 0.5 + n),
           1,
@@ -359,6 +365,38 @@ class PipelinePlot extends React.Component<Props, State> {
       stages.push(resampler_channels)
       stage_start = total_length
     }
+
+    // volume control
+    total_length += 1
+    let vol_channels = []
+    this.appendFrame(
+      labels,
+      boxes,
+      "Volume",
+      spacing_h * total_length,
+      0,
+      1.5,
+      spacing_v * active_channels,
+    )
+    for (let n = 0; n < active_channels; n++) {
+      const label = "ch " + n
+      const io_points = this.appendBlock(
+        labels,
+        boxes,
+        label,
+        "Default volume control",
+        spacing_h * total_length,
+        spacing_v * (-active_channels / 2 + 0.5 + n),
+        1,
+        false
+      )
+      vol_channels.push([io_points])
+      const src_p = stages[total_length-1][n][0].output
+      const dest_p = io_points.input
+      this.appendLink(links, labels, src_p, dest_p, n)
+    }
+    stages.push(vol_channels)
+    stage_start = total_length
 
     console.log('pipeline')
     const pipeline = conf.pipeline ? conf.pipeline : []
@@ -600,13 +638,19 @@ class PipelinePlot extends React.Component<Props, State> {
       1.5,
       spacing_v * active_channels
     )
+    let pb_params = conf.devices.playback
+    let pb_tooltip = "<strong>Playback device</strong>"
+    for (const [key, value] of Object.entries(pb_params)) {
+      pb_tooltip = pb_tooltip + "<br>" + key + ": " + value
+      console.log(key, value)
+    }
     for (let n = 0; n < active_channels; n++) {
       const label = "ch " + n
       const io_points = this.appendBlock(
         labels,
         boxes,
         label,
-        null,
+        pb_tooltip,
         spacing_h * total_length,
         spacing_v * (-active_channels / 2 + 0.5 + n),
         1,
