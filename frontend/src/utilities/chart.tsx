@@ -441,7 +441,8 @@ export function Chart(props: {
     <div style={{textAlign: 'center'}}>
       {props.data.options.length > 0 && <select
         value={selected}
-        data-tooltip-content="Select filter file"
+        data-tooltip-html="Select filter file"
+        data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(e.target.value)}
       >
         {sampleRateOptions}

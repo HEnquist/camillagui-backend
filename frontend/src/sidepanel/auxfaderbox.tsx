@@ -5,7 +5,6 @@ import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { throttle } from "lodash"
 import { Range } from "immutable"
 import cloneDeep from "lodash/cloneDeep"
-import { Tooltip } from 'react-tooltip'
 
 type Props = {}
 
@@ -138,10 +137,8 @@ export class AuxFadersBox extends React.Component<Props, State> {
     }
 
     private async setDspFaders(faders: Fader[], prevFaders: Fader[]) {
-        //console.log("change", faders, prevFaders)
         for (const [idx, fader] of faders.entries()) {
             if (Math.round(fader.volume * 10) !== Math.round(prevFaders[idx].volume * 10)) {
-                //console.log("update vol", idx, fader.volume)
                 await fetch("/api/setparamindex/volume/" + (idx + 1), {
                     method: "POST",
                     headers: { "Content-Type": "text/plain; charset=us-ascii" },
@@ -149,7 +146,6 @@ export class AuxFadersBox extends React.Component<Props, State> {
                 })
             }
             if (fader.mute !== prevFaders[idx].mute) {
-                //console.log("update mute", idx, fader.mute)
                 await fetch("/api/setparamindex/mute/" + (idx + 1), {
                     method: "POST",
                     headers: { "Content-Type": "text/plain; charset=us-ascii" },
@@ -158,10 +154,6 @@ export class AuxFadersBox extends React.Component<Props, State> {
             }
         }
     }
-
-    //<div className={faders[index].mute ? "db-label-muted" : "db-label"}>
-    //    {faders[index].volume.toFixed(1)}dB
-    //</div>
 
     render() {
         const { faders, visible } = this.state
@@ -175,7 +167,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
                     value={10.0 * faders[index].volume}
                     key={"vol" + index}
                     onChange={e => this.moveFader(index, e.target.valueAsNumber / 10.0)}
-                    data-tooltip-content={"Aux" + (index + 1) + " " + faders[index].volume.toFixed(1) + "dB"}
+                    data-tooltip-html={"Aux" + (index + 1) + " " + faders[index].volume.toFixed(1) + "dB"}
                     data-tooltip-id="main-tooltip"
                 />
                 <MdiButton

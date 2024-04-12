@@ -307,13 +307,13 @@ class ProcessorParams extends React.Component<{
                 <div>
                 <label className="setting">
                     <span className="setting-label">
-                        <div data-tooltip-content="Channels to monitor">monitor_channels</div>
+                        <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
                     </span>
                     <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} />
                 </label>
                 <label className="setting">
                     <span className="setting-label">
-                        <div data-tooltip-content="Channels to process">process_channels</div>
+                        <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
                     </span>
                     <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} />
                 </label>

@@ -948,7 +948,7 @@ class FilterParams extends React.Component<{
     else
       return <ErrorMessage message={error} />
     return <>
-      <label className="setting" style={{ textAlign: 'right' }} data-tooltip-content={props.tooltip}>
+      <label className="setting" style={{ textAlign: 'right' }} data-tooltip-html={props.tooltip}>
         <EnumInput
           value={parameter}
           options={descOptions}

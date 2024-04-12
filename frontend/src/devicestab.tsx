@@ -151,7 +151,7 @@ function SamplerateOption(props: {
   const other = 'Other'
   const samplerate = props.samplerate
   const padding = props.extraPadding ? '0 12px' : '0'
-  return <div className="setting" data-tooltip-content-={props.tooltip} style={{padding: padding}}>
+  return <div className="setting" data-tooltip-html-={props.tooltip} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={isNonDefaultSamplerate(samplerate) ? other : samplerate.toString()}
@@ -201,7 +201,7 @@ function OptionalSamplerateOption(props: {
     value = samplerate.toString()
   const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
   add_default_option(options, "default")
-  return <div className="setting" data-tooltip-content={props.tooltip} style={{padding: padding}}>
+  return <div className="setting" data-tooltip-html={props.tooltip} style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={null_to_default(value, "default")}
@@ -817,7 +817,7 @@ function DeviceOption(props: {
   onChange: (device: string) => void
   onButtonClick: () => void
 }) {
-  return <div className="setting" data-tooltip-content="Name of device">
+  return <div className="setting" data-tooltip-html="Name of device">
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <TextInput
         value={props.value}
@@ -844,7 +844,7 @@ function OptionalDeviceOption(props: {
   onChange: (device: string | null) => void
   onButtonClick: () => void
 }) {
-  return <div className="setting" data-tooltip-content="Name of device">
+  return <div className="setting" data-tooltip-html="Name of device">
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <OptionalTextInput
         value={props.value}

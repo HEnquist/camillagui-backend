@@ -14,7 +14,6 @@ import {
   mdiUpload
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
-import { Tooltip } from 'react-tooltip'
 import {
   CFile,
   doUpload, download,
@@ -336,7 +335,7 @@ class FileTable extends Component<
             <div>
               <input type='text'
                      value={newFileName}
-                     data-tooltip-content="Enter a name for the new config file"
+                     data-tooltip-html="Enter a name for the new config file"
                      data-tooltip-id="main-tooltip"
                      spellCheck='false'
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
@@ -474,7 +473,7 @@ function FileDownloadButton(props: { type: string, filename: string, isCurrentCo
   const classNames = 'file-link'
   return <a className={classNames}
             style={{width: 'max-content'}}
-            data-tooltip-content={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
+            data-tooltip-html={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
             download={filename}
             target="_blank"
             rel="noopener noreferrer"

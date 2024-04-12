@@ -19,7 +19,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div data-tooltip-content={props.tooltip} className="horizontally-spaced-content" style={{ alignItems: 'center' }}>
+                <div data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" className="horizontally-spaced-content" style={{ alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>
@@ -54,10 +54,11 @@ export function CheckBox(props: {
             checkbox.indeterminate = true
         }
     }, [checked, checkbox])
-    return <label data-tooltip-content={tooltip} className='checkbox-area' style={style}>
+    return <label data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" className='checkbox-area' style={style}>
         <input
             type="checkbox"
-            data-tooltip-content={tooltip}
+            data-tooltip-html={tooltip}
+            data-tooltip-id="main-tooltip"
             disabled={!editable}
             ref={checkboxRef}
             onChange={(e) => onChange(e.target.checked)} />
@@ -80,7 +81,7 @@ export function Button(props: {
     if (props.highlighted === true) classNames += ' highlighted-button'
     if (props.className) classNames += ' ' + props.className
     return <div
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
         className={classNames}
         style={props.style}
@@ -167,7 +168,7 @@ export function UploadButton(
         e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     }
     return (
-        <label data-tooltip-content={"tooltip" in props ? props.tooltip : ""}>
+        <label data-tooltip-html={"tooltip" in props ? props.tooltip : ""} data-tooltip-id="main-tooltip">
             <input style={{ display: 'none' }}
                 type="file"
                 onChange={upload}
@@ -212,7 +213,7 @@ export function MdiButton(props: {
     let rot = {}
     if (props.rotation && props.rotation !== 0)
         rot = { transform: "rotate(" + props.rotation + "deg)" }
-    return <div onClick={clickhandler} data-tooltip-content={tooltip} data-tooltip-id="main-tooltip" className={buttonClass} style={props.style}>
+    return <div onClick={clickhandler} data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" className={buttonClass} style={props.style}>
         <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
     </div>
 }
@@ -225,7 +226,7 @@ export function MdiIcon(props: {
     tooltip?: string
     style?: CSSProperties
 }) {
-    return <span data-tooltip-content={props.tooltip} data-tooltip-id="main-tooltip" style={props.style}>
+    return <span data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={props.style}>
         <Icon path={props.icon} size={'15px'} />
     </span>
 }
@@ -245,7 +246,7 @@ export function OptionLine(props: {
 }) {
     const settingStyle = props.small ? { width: 'min-content' } : {}
     const combinedStyle = Object.assign(settingStyle, props.style)
-    return <label className="setting" data-tooltip-content={props.tooltip} data-tooltip-id="main-tooltip" style={combinedStyle}>
+    return <label className="setting" data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={combinedStyle}>
         <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
@@ -550,7 +551,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
             max={props.max}
             value={this.state.rawValue}
             placeholder={props.placeholder}
-            data-tooltip-content={props.tooltip}
+            data-tooltip-html={props.tooltip}
             data-tooltip-id="main-tooltip"
             className={props.className}
             style={this.getStyle(valid)}
@@ -636,7 +637,7 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
             min={props.min}
             max={props.max}
             value={this.state.rawValue}
-            data-tooltip-content={props.tooltip}
+            data-tooltip-html={props.tooltip}
             data-tooltip-id="main-tooltip"
             className={props.className}
             style={this.getStyle(valid)}
@@ -671,13 +672,14 @@ export function BoolOption(props: {
     return <>
         <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
             <div className={"setting-input" + (small ? " small-setting-input" : "")}
-                data-tooltip-content={props.tooltip}
+                data-tooltip-html={props.tooltip}
+                data-tooltip-id="main-tooltip"
                 style={{ cursor: 'pointer' }}>
                 <input
                     style={{ marginLeft: 0, marginTop: '8px', marginBottom: '8px' }}
                     type="checkbox"
                     checked={props.value}
-                    data-tooltip-content={props.tooltip}
+                    data-tooltip-html={props.tooltip}
                     data-tooltip-id="main-tooltip"
                     onChange={(e) => props.onChange(e.target.checked)} />
             </div>
@@ -786,7 +788,7 @@ export function EnumInput<OPTION extends string>(props: {
         id={props.desc}
         name={props.desc}
         value={value}
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
@@ -833,7 +835,8 @@ export function OptionalBoolInput(props: {
         id={props.desc}
         name={props.desc}
         value={valuestring}
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(string_to_bool(e.target.value))}
         style={props.style}
         className={valuestring === "default" ? props.className + "-default" : props.className}
@@ -899,7 +902,7 @@ export function OptionalTextInput(props: {
         placeholder={props.placeholder}
         type="text"
         value={props.value === null ? "" : props.value}
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}
@@ -919,7 +922,7 @@ export function TextInput(props: {
         placeholder={props.placeholder}
         type="text"
         value={props.value}
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}
@@ -939,7 +942,7 @@ export function MultilineTextInput(props: {
         placeholder={props.placeholder}
         rows={props.rows}
         value={props.value}
-        data-tooltip-content={props.tooltip}
+        data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}

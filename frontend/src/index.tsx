@@ -1,6 +1,7 @@
 /* The CSS files have to be imported in exactly this order.
    Otherwise the custom react-tabs styles in index.css don't work */
 import "react-tabs/style/react-tabs.css"
+import 'react-tooltip/dist/react-tooltip.css'
 import "./index.css"
 
 import * as React from "react"
@@ -210,7 +211,7 @@ class CamillaConfig extends React.Component<
 
   render() {
     return <div className="configapp">
-      <Tooltip id="main-tooltip"/>
+      <Tooltip id="main-tooltip" className="tooltip"/>
       {this.state.compactView ?
           <CompactView
               currentConfigName={this.state.currentConfigFile}

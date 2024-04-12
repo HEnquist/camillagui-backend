@@ -134,7 +134,6 @@ function FileList(props: {
         </div>
       )}
     </Box>
-    <Tooltip />
   </div>
 }
 
@@ -207,9 +206,9 @@ function valueAppended(value: any, tooltipId?: string): ReactNode {
   if (!isComplexObject(value))
     return <span style={{ color: 'var(--disabled-text-color)' }}>: {value.toString()}</span>
   if (isComplexObject(value) && tooltipId) {
-    return <span data-tooltip-content={""} data-tooltip-id={tooltipId}>
+    return <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
       <MdiIcon icon={mdiInformation} />
-      <Tooltip id={tooltipId} className="import-tab-tooltip" arrowColor="var(--box-border-color)">
+      <Tooltip id={tooltipId} className="import-tab-tooltip">
         <pre>{asFormattedText(value, 20)}</pre>
       </Tooltip>
     </span>
@@ -231,11 +230,11 @@ function collisionWarning(config: any, parentKey: string, valueKey: string): Rea
     const value = config[parentKey][valueKey]
     const tooltipId = `${parentKey}-${valueKey}-warning`
     if (isObject(value))
-      return <span data-tooltip-content={""} data-tooltip-id={tooltipId}>
+      return <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
         <MdiIcon
           icon={mdiAlert}
           style={{ color: 'var(--error-text-color)' }} />
-        <Tooltip id={tooltipId}>
+        <Tooltip id={tooltipId} className="tooltip">
           {`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
         </Tooltip>
       </span>
