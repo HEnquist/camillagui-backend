@@ -61,9 +61,8 @@ def mock_camillaclient(statefile):
     client_constructor = MagicMock(return_value=client)
     client_constructor._client = client
     client.volume = MagicMock()
-    client.volume.main = MagicMock(return_value=-20.0)
-    client.mute = MagicMock()
-    client.mute.main = MagicMock(return_value=False)
+    client.volume.main_volume = MagicMock(return_value=-20.0)
+    client.volume.main_mute = MagicMock(return_value=False)
     client.levels = MagicMock
     client.levels.capture_peak = MagicMock(return_value=[-2.0, -3.0])
     client.levels.playback_peak = MagicMock(return_value=[-2.5, -3.5])
