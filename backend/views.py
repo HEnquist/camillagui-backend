@@ -161,9 +161,9 @@ async def get_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        result = cdsp.volume.main()
+        result = cdsp.volume.main_volume()
     elif name == "mute":
-        result = cdsp.mute.main()
+        result = cdsp.volume.main_mute()
     elif name == "signalrange":
         result = cdsp.levels.range()
     elif name == "signalrangedb":
@@ -182,6 +182,17 @@ async def get_param(request):
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result), headers=HEADERS)
 
+async def get_param_json(request):
+    """
+    Combined getter for several parameters, returns json.
+    """
+    name = request.match_info["name"]
+    cdsp = request.app["CAMILLA"]
+    if name == "faders":
+        result = cdsp.volume.all()
+    else:
+        raise web.HTTPNotFound(text=f"Unknown parameter {name}")
+    return web.json_response(result, headers=HEADERS)
 
 async def get_list_param(request):
     """
@@ -206,12 +217,12 @@ async def set_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        cdsp.volume.set_main(value)
+        cdsp.volume.set_main_volume(value)
     elif name == "mute":
         if value.lower() == "true":
-            cdsp.mute.set_main(True)
+            cdsp.volume.set_main_mute(True)
         elif value.lower() == "false":
-            cdsp.mute.set_main(False)
+            cdsp.volume.set_main_mute(False)
         else:
             raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
@@ -222,6 +233,25 @@ async def set_param(request):
         cdsp.config.set_active_raw(value)
     return web.Response(text="OK", headers=HEADERS)
 
+
+async def set_param_index(request):
+    """
+    Combined setter for various parameters taking an additional index parameter
+    """
+    value = await request.text()
+    name = request.match_info["name"]
+    index = request.match_info["index"]
+    cdsp = request.app["CAMILLA"]
+    if name == "volume":
+        cdsp.volume.set_volume(int(index), value)
+    elif name == "mute":
+        if value.lower() == "true":
+            cdsp.volume.set_mute(int(index), True)
+        elif value.lower() == "false":
+            cdsp.volume.set_mute(int(index), False)
+        else:
+            raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
+    return web.Response(text="OK", headers=HEADERS)
 
 async def eval_filter_values(request):
     """
