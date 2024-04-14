@@ -12,6 +12,7 @@ from os.path import (
     isabs,
     commonpath,
     getmtime,
+    getsize,
 )
 import logging
 import traceback
@@ -73,8 +74,9 @@ def list_of_files_in_directory(folder):
     ]
     files_list = map(
         lambda file: {
-            "name": (os.path.basename(file)),
-            "lastModified": (getmtime(file)),
+            "name": os.path.basename(file),
+            "lastModified": getmtime(file),
+            "size": getsize(file),
         },
         files,
     )
