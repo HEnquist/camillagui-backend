@@ -1,6 +1,5 @@
 import React, {Component} from "react"
-import {Set} from "immutable"
-import {Box, Button, CheckBox, MdiButton, UploadButton} from "./utilities/ui-components"
+import {Box, Button, MdiButton, UploadButton} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -25,6 +24,7 @@ import {
 } from "./utilities/files"
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
+import DataTable from 'react-data-table-component'
 
 export function Files(props: {
   guiConfig: GuiConfig
@@ -35,7 +35,7 @@ export function Files(props: {
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
-  return <div className="wide-tabpanel">
+  return <div className="wide-tabpanel" style={{ width: '700px' }}>
     <NewConfig currentConfig={props.config}
                setCurrentConfig={props.setCurrentConfig}
                updateConfig={props.updateConfig}/>
@@ -81,7 +81,7 @@ class FileTable extends Component<
     FileTableProps,
     {
       files: CFile[]
-      selectedFiles: Set<string>
+      selectedFiles: any[]
       activeConfigFileName: string
       newFileName: string
       fileStatus: FileStatus | null
@@ -96,19 +96,17 @@ class FileTable extends Component<
     this.update = this.update.bind(this)
     this.loadActiveConfigName = this.loadActiveConfigName.bind(this)
     this.setActiveConfig = this.setActiveConfig.bind(this)
-    this.toggleAllFileSelection = this.toggleAllFileSelection.bind(this)
-    this.toggleFileSelection = this.toggleFileSelection.bind(this)
-    this.areAllFilesSelected = this.areAllFilesSelected.bind(this)
     this.upload = this.upload.bind(this)
     this.delete = this.delete.bind(this)
     this.downloadAsZip = this.downloadAsZip.bind(this)
     this.overwriteConfig = this.overwriteConfig.bind(this)
     this.saveConfig = this.saveConfig.bind(this)
     this.loadConfig = this.loadConfig.bind(this)
+    this.setSelected = this.setSelected.bind(this)
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.state = {
       files: [],
-      selectedFiles: Set(),
+      selectedFiles: [],
       activeConfigFileName: '',
       newFileName: 'New config.yml',
       fileStatus: null,
@@ -136,19 +134,18 @@ class FileTable extends Component<
         .then(files => {
           return this.setState(prevState => ({
             files: files,
-            selectedFiles: prevState.selectedFiles.intersect(fileNamesOf(files))
           }));
         })
   }
 
   private async delete() {
-    const del = window.confirm("Delete?\n" + this.state.selectedFiles.join('\n'))
+    const del = window.confirm("Delete?\n" + this.state.selectedFiles.map(f => f.name).join('\n'))
     if (!del)
       return
     await fetch(`/api/delete${this.type}s`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(this.state.selectedFiles),
+      body: JSON.stringify(this.state.selectedFiles.map(f => f.name)),
     })
     this.setState({fileStatus: null})
     this.update()
@@ -158,7 +155,7 @@ class FileTable extends Component<
     const response = await fetch(`/api/download${this.type}szip`, {
       method: "POST",
       headers: { "Content-Type": "application/json", },
-      body: JSON.stringify(this.state.selectedFiles),
+      body: JSON.stringify(this.state.selectedFiles.map(f => f.name)),
     })
     const zipFile = await response.blob()
     download(this.type + 's.zip', zipFile)
@@ -222,6 +219,10 @@ class FileTable extends Component<
     this.saveConfig(name)
   }
 
+  private setSelected(selected: any) {
+    this.setState({selectedFiles: selected.selectedRows})
+  }
+
   private async saveConfig(name: string) {
     const { config, setCurrentConfig } = this.props
     try {
@@ -245,94 +246,102 @@ class FileTable extends Component<
     }
   }
 
-  private toggleAllFileSelection() {
-    this.setState(prevState => {
-      let files = fileNamesOf(prevState.files)
-      const newSelection = this.areAllFilesSelected() ? Set<string>() : Set(files)
-      return Object.assign({}, prevState, {selectedFiles: newSelection})
-    })
-  }
-
-  private toggleFileSelection(filename: string) {
-    this.setState(prevState => {
-      const selection = prevState.selectedFiles
-      const newSelection = selection.has(filename) ? selection.delete(filename) : selection.add(filename)
-      return Object.assign({}, prevState, {selectedFiles: newSelection})
-    })
-  }
-
-  private areAllFilesSelected(): boolean {
-    const { files, selectedFiles } = this.state
-    return files.length > 1 && selectedFiles.isSuperset(fileNamesOf(files))
-  }
 
   render() {
     const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
+    var columns: any= [
+      {
+        name: 'Filename',
+        selector: (row: any) => row.name,
+        cell: (row: any, index: number, column: number, id: any) => (
+          FileDownloadButton({
+              type: this.props.type,
+              filename: row.name,
+              isCurrentConfig: false
+          })),
+        sortable: true
+      },
+      {
+        name: 'Date',
+        selector: (row: any) => row.lastModified,
+        sortable: true
+      },
+      {
+        name: 'Size',
+        selector: (row: any) => row.size,
+        sortable: true
+      }
+    ]
+    if (this.canLoadAndSave) {
+      columns = [
+        {
+          name: '',
+          cell: (row: any, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
+            <SetActiveButton
+                key={id}
+                active={row.name === activeConfigFileName}
+                onClick={() => this.setActiveConfig(row.name)}
+                enabled={this.props.canUpdateActiveConfig}/>
+            <SaveButton
+                key={id}
+                filename={row.name}
+                fileStatus={fileStatus}
+                saveConfig={this.overwriteConfig}/>
+            <LoadButton
+                key={id}
+                filename={row.name}
+                fileStatus={fileStatus}
+                loadConfig={this.loadConfig}/>
+            </div>),
+          sortable: false
+        },
+        {
+          name: 'Filename',
+          selector: (row: any) => row.name,
+          cell: (row: any, index: number, column: number, id: any) => (
+            FileDownloadButton({
+                type: this.props.type,
+                filename: row.name,
+                isCurrentConfig: row.name === activeConfigFileName
+            })),
+          sortable: true
+        },
+        {
+          name: 'Date',
+          selector: (row: any) => row.lastModified,
+          sortable: true
+        },
+        {
+          name: 'Size',
+          selector: (row: any) => row.size,
+          sortable: true
+        }
+      ]
+    }
     return (
       <Box title={this.props.title}>
-        <div style={{
-          display: 'grid',
-          alignItems: 'center',
-          gridTemplateColumns: 'min-content min-content min-content min-content 100%',
-          gap: '5px 5px'
-        }}>
+        <div>
 
           {/* Header row */}
-          <FileCheckBox
-              filename={"all files"}
-              checked={this.areAllFilesSelected()}
-              onChange={this.toggleAllFileSelection}/>
-          <DownloadFilesAsZipButton selectedFiles={selectedFiles} downloadAsZip={this.downloadAsZip}/>
-          <DeleteFilesButton selectedFiles={selectedFiles} delete={this.delete}/>
+          <div>
+          <DownloadFilesAsZipButton selectedFiles={selectedFiles.map(f => f.name)} downloadAsZip={this.downloadAsZip}/>
+          <DeleteFilesButton selectedFiles={selectedFiles.map(f => f.name)} delete={this.delete}/>
           <UploadFilesButton fileStatus={fileStatus} upload={this.upload}/>
+          </div>
           <div>
             <FileStatusMessage filename={EMPTY_FILENAME} fileStatus={fileStatus}/>
           </div>
 
-          { // File rows
-            files.flatMap(({name, lastModified}) => [
-                  <FileCheckBox
-                      key={name+'(1)'}
-                      filename={name}
-                      checked={selectedFiles.has(name)}
-                      onChange={() => this.toggleFileSelection(name)}/>,
-                  !this.canLoadAndSave ? null : <SetActiveButton
-                      key={name+'(2)'}
-                      active={name === activeConfigFileName}
-                      onClick={() => this.setActiveConfig(name)}
-                      enabled={this.props.canUpdateActiveConfig}/>,
-                  !this.canLoadAndSave ? null : <SaveButton
-                      key={name+'(3)'}
-                      filename={name}
-                      fileStatus={fileStatus}
-                      saveConfig={this.overwriteConfig}/>,
-                  !this.canLoadAndSave ? null : <LoadButton
-                      key={name+'(4)'}
-                      filename={name}
-                      fileStatus={fileStatus}
-                      loadConfig={this.loadConfig}/>,
-                  <div key={name+'(5)'} style={this.canLoadAndSave ? {} : {gridColumn: '2 / span 4'}}>
-                    <FileDownloadButton type={this.type}
-                                        filename={name}
-                                        isCurrentConfig={this.props.currentConfigFile === name}/>
-                    <FileStatusMessage filename={name} fileStatus={fileStatus}/>
-                    {' - ' + lastModified}
-                  </div>
-                ]
-            )
-          }
+          <DataTable columns={columns} data={files} selectableRows theme='dark' onSelectedRowsChange={this.setSelected}/>
 
           { // "Save to new config" row
             this.canLoadAndSave && <>
-            <div/>
-            <div/>
-            <SaveButton
+            <div>
+              <SaveButton
                 disableReason={reasonToDisableSaveNewFileButton(newFileName, files)}
                 filename={newFileName}
                 fileStatus={fileStatus}
                 saveConfig={this.saveConfig}/>
-            <div/>
-            <div>
               <input type='text'
                      value={newFileName}
                      data-tooltip-html="Enter a name for the new config file"
@@ -349,33 +358,27 @@ class FileTable extends Component<
   }
 }
 
-function FileCheckBox(props: {checked: boolean, filename: string, onChange: (checked: boolean) => void}) {
-  const {checked, filename, onChange} = props
-  let tooltip = (checked ? "Unselect " : "Select ") + filename
-  return <CheckBox tooltip={tooltip} checked={checked} onChange={onChange}/>
-}
-
-function DownloadFilesAsZipButton(props: { selectedFiles: Set<string>, downloadAsZip: () => {} }) {
+function DownloadFilesAsZipButton(props: { selectedFiles: string[], downloadAsZip: () => {} }) {
   const {selectedFiles, downloadAsZip} = props
-  const fileOrFiles = selectedFiles.size > 1 ? 'files' : 'file'
+  const fileOrFiles = selectedFiles.length > 1 ? 'files' : 'file'
   return <MdiButton
       icon={mdiDownload}
-      tooltip={selectedFiles.isEmpty()
+      tooltip={selectedFiles.length === 0
           ? 'Download selected files<br>Select at least one file first!'
-          : `Download ${selectedFiles.size} ${fileOrFiles} as zip file`}
-      enabled={!selectedFiles.isEmpty()}
+          : `Download ${selectedFiles.length} ${fileOrFiles} as zip file`}
+      enabled={selectedFiles.length > 0}
       onClick={downloadAsZip}/>
 }
 
-function DeleteFilesButton(props: { selectedFiles: Set<string>, delete: () => {} }) {
+function DeleteFilesButton(props: { selectedFiles: string[], delete: () => {} }) {
   const selectedFiles = props.selectedFiles
-  const fileOrFiles = selectedFiles.size > 1 ? 'files' : 'file'
+  const fileOrFiles = selectedFiles.length > 1 ? 'files' : 'file'
   return <MdiButton
       icon={mdiDelete}
-      tooltip={selectedFiles.isEmpty()
+      tooltip={selectedFiles.length === 0
           ? 'Delete selected files<br>Select at least one file first!'
-          : `Delete ${selectedFiles.size} ${fileOrFiles}`}
-      enabled={!selectedFiles.isEmpty()}
+          : `Delete ${selectedFiles.length} ${fileOrFiles}`}
+      enabled={selectedFiles.length > 0}
       onClick={props.delete}/>
 }
 
