@@ -3,7 +3,9 @@ import {Config} from "../camilladsp/config"
 /** Cannot be named File, because that is already a built-in type */
 export interface CFile {
   name: string,
-  lastModified: string
+  lastModified: number,
+  formattedDate: string,
+  size: number
 }
 
 export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
@@ -19,7 +21,7 @@ export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
       .then(json => {
         const files = json as CFile[]
         files.forEach(file =>
-            file.lastModified = new Date(1000 * parseFloat(file.lastModified)).toDateString()
+            file.formattedDate = new Date(1000 * file.lastModified).toDateString()
         )
         return files
       },

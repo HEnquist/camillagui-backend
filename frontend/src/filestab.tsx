@@ -25,6 +25,38 @@ import {
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
 import DataTable from 'react-data-table-component'
+import { isEqual } from "lodash"
+
+const caseInsensitiveSort = (rowA: CFile, rowB: CFile) => {
+	const a = rowA.name.toLowerCase();
+	const b = rowB.name.toLowerCase();
+
+	if (a > b) {
+		return 1
+	}
+
+	if (b > a) {
+		return -1
+	}
+
+	return 0
+}
+
+
+const dateSort = (rowA: CFile, rowB: CFile) => {
+	const a = rowA.lastModified;
+	const b = rowB.lastModified;
+
+	if (a > b) {
+		return 1
+	}
+
+	if (b > a) {
+		return -1
+	}
+
+	return 0
+}
 
 export function Files(props: {
   guiConfig: GuiConfig
@@ -81,7 +113,7 @@ class FileTable extends Component<
     FileTableProps,
     {
       files: CFile[]
-      selectedFiles: any[]
+      selectedFiles: CFile[]
       activeConfigFileName: string
       newFileName: string
       fileStatus: FileStatus | null
@@ -132,9 +164,12 @@ class FileTable extends Component<
   private update() {
     loadFiles(this.type)
         .then(files => {
-          return this.setState(prevState => ({
-            files: files,
-          }));
+          if (!isEqual(files, this.state.files)) {
+            console.log("Files changed!", files, this.state.files)
+            return this.setState(prevState => ({
+              files: files,
+            }));
+          }
         })
   }
 
@@ -252,23 +287,24 @@ class FileTable extends Component<
     var columns: any= [
       {
         name: 'Filename',
-        selector: (row: any) => row.name,
-        cell: (row: any, index: number, column: number, id: any) => (
+        cell: (row: CFile, index: number, column: number, id: any) => (
           FileDownloadButton({
               type: this.props.type,
               filename: row.name,
               isCurrentConfig: false
           })),
+        sortFunction: caseInsensitiveSort,
         sortable: true
       },
       {
         name: 'Date',
-        selector: (row: any) => row.lastModified,
+        selector: (row: CFile) => row.formattedDate,
+        sortFunction: dateSort,
         sortable: true
       },
       {
         name: 'Size',
-        selector: (row: any) => row.size,
+        selector: (row: CFile) => row.size,
         sortable: true
       }
     ]
@@ -276,7 +312,7 @@ class FileTable extends Component<
       columns = [
         {
           name: '',
-          cell: (row: any, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
+          cell: (row: CFile, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
             <SetActiveButton
                 key={id}
                 active={row.name === activeConfigFileName}
@@ -297,23 +333,24 @@ class FileTable extends Component<
         },
         {
           name: 'Filename',
-          selector: (row: any) => row.name,
-          cell: (row: any, index: number, column: number, id: any) => (
+          cell: (row: CFile, index: number, column: number, id: any) => (
             FileDownloadButton({
                 type: this.props.type,
                 filename: row.name,
                 isCurrentConfig: row.name === activeConfigFileName
             })),
+          sortFunction: caseInsensitiveSort,
           sortable: true
         },
         {
           name: 'Date',
-          selector: (row: any) => row.lastModified,
+          selector: (row: CFile) => row.formattedDate,
+          sortFunction: dateSort,
           sortable: true
         },
         {
           name: 'Size',
-          selector: (row: any) => row.size,
+          selector: (row: CFile) => row.size,
           sortable: true
         }
       ]
