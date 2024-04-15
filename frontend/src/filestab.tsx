@@ -89,6 +89,7 @@ class FileTable extends Component<
       newFileName: string
       fileStatus: FileStatus | null
       stopTimer: () => void
+      filterText: string
     }> {
 
   private readonly type: "config" | "coeff" = this.props.type
@@ -113,7 +114,8 @@ class FileTable extends Component<
       activeConfigFileName: '',
       newFileName: 'New config.yml',
       fileStatus: null,
-      stopTimer: () => {}
+      stopTimer: () => {},
+      filterText: ''
     }
   }
 
@@ -253,7 +255,7 @@ class FileTable extends Component<
 
 
   render() {
-    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName} = this.state
+    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName, filterText} = this.state
     var columns: any= [
       {
         name: 'Filename',
@@ -278,6 +280,9 @@ class FileTable extends Component<
         sortable: true
       }
     ]
+    const filteredFiles = files.filter(
+      item => item.name.toLowerCase().includes(filterText.toLowerCase()),
+    );
     if (this.canLoadAndSave) {
       columns.unshift({
         name: '',
@@ -306,20 +311,26 @@ class FileTable extends Component<
         <div>
 
           {/* Header row */}
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
           <DownloadFilesAsZipButton selectedFiles={selectedFiles.map(f => f.name)} downloadAsZip={this.downloadAsZip}/>
           <DeleteFilesButton selectedFiles={selectedFiles.map(f => f.name)} delete={this.delete}/>
           <UploadFilesButton fileStatus={fileStatus} upload={this.upload}/>
+          <input type="search" placeholder="Filter on name.."
+            value={filterText}
+            data-tooltip-html="Enter a search string to filter files on name"
+            data-tooltip-id="main-tooltip"
+            spellCheck='false'
+            onChange={(e) => this.setState({filterText: e.target.value})}/>
           </div>
           <div>
             <FileStatusMessage filename={EMPTY_FILENAME} fileStatus={fileStatus}/>
           </div>
 
-          <DataTable columns={columns} data={files} selectableRows theme='camilla' onSelectedRowsChange={this.setSelected}/>
+          <DataTable columns={columns} data={filteredFiles} selectableRows theme='camilla' onSelectedRowsChange={this.setSelected}/>
 
           { // "Save to new config" row
             this.canLoadAndSave && <>
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
               <SaveButton
                 disableReason={reasonToDisableSaveNewFileButton(newFileName, files)}
                 filename={newFileName}
