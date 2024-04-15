@@ -24,7 +24,7 @@ import {
 } from "./utilities/files"
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
-import DataTable from 'react-data-table-component'
+import DataTable, { createTheme } from 'react-data-table-component'
 import { isEqual } from "lodash"
 
 const caseInsensitiveSort = (rowA: CFile, rowB: CFile) => {
@@ -144,6 +144,36 @@ class FileTable extends Component<
       fileStatus: null,
       stopTimer: () => {}
     }
+
+    createTheme(
+      'camilla',
+      {
+        text: {
+          primary: 'var(--text-color)',
+          secondary: 'var(--text-color)',
+        },
+        background: {
+          default: 'var(--background-color)',
+        },
+        context: {
+          background: '#cb4b16',
+          text: '#FFFFFF',
+        },
+        divider: {
+          default: 'var(--box-border-color)',
+        },
+        //button: {
+        //  default: '#2aa198',
+        //  hover: 'rgba(0,0,0,.08)',
+        //  focus: 'rgba(255,255,255,.12)',
+        //  disabled: 'rgba(255, 255, 255, .34)',
+        //},
+        sortFocus: {
+          default: 'var(--focused-input-border)',
+        },
+      },
+      'dark',
+    );
   }
 
   componentDidUpdate() {
@@ -288,7 +318,7 @@ class FileTable extends Component<
       {
         name: 'Filename',
         cell: (row: CFile, index: number, column: number, id: any) => (
-          FileDownloadButton({
+          FileDownloadLink({
               type: this.props.type,
               filename: row.name,
               isCurrentConfig: false
@@ -309,51 +339,27 @@ class FileTable extends Component<
       }
     ]
     if (this.canLoadAndSave) {
-      columns = [
-        {
-          name: '',
-          cell: (row: CFile, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
-            <SetActiveButton
-                key={id}
-                active={row.name === activeConfigFileName}
-                onClick={() => this.setActiveConfig(row.name)}
-                enabled={this.props.canUpdateActiveConfig}/>
-            <SaveButton
-                key={id}
-                filename={row.name}
-                fileStatus={fileStatus}
-                saveConfig={this.overwriteConfig}/>
-            <LoadButton
-                key={id}
-                filename={row.name}
-                fileStatus={fileStatus}
-                loadConfig={this.loadConfig}/>
-            </div>),
-          sortable: false
-        },
-        {
-          name: 'Filename',
-          cell: (row: CFile, index: number, column: number, id: any) => (
-            FileDownloadButton({
-                type: this.props.type,
-                filename: row.name,
-                isCurrentConfig: row.name === activeConfigFileName
-            })),
-          sortFunction: caseInsensitiveSort,
-          sortable: true
-        },
-        {
-          name: 'Date',
-          selector: (row: CFile) => row.formattedDate,
-          sortFunction: dateSort,
-          sortable: true
-        },
-        {
-          name: 'Size',
-          selector: (row: CFile) => row.size,
-          sortable: true
-        }
-      ]
+      columns.unshift({
+        name: '',
+        cell: (row: CFile, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
+          <SetActiveButton
+              key={id}
+              active={row.name === activeConfigFileName}
+              onClick={() => this.setActiveConfig(row.name)}
+              enabled={this.props.canUpdateActiveConfig}/>
+          <SaveButton
+              key={id}
+              filename={row.name}
+              fileStatus={fileStatus}
+              saveConfig={this.overwriteConfig}/>
+          <LoadButton
+              key={id}
+              filename={row.name}
+              fileStatus={fileStatus}
+              loadConfig={this.loadConfig}/>
+          </div>),
+        sortable: false
+      })
     }
     return (
       <Box title={this.props.title}>
@@ -369,7 +375,7 @@ class FileTable extends Component<
             <FileStatusMessage filename={EMPTY_FILENAME} fileStatus={fileStatus}/>
           </div>
 
-          <DataTable columns={columns} data={files} selectableRows theme='dark' onSelectedRowsChange={this.setSelected}/>
+          <DataTable columns={columns} data={files} selectableRows theme='camilla' onSelectedRowsChange={this.setSelected}/>
 
           { // "Save to new config" row
             this.canLoadAndSave && <>
@@ -508,12 +514,11 @@ function LoadButton(
       onClick={() => loadConfig(filename)}/>
 }
 
-function FileDownloadButton(props: { type: string, filename: string, isCurrentConfig: boolean }) {
+function FileDownloadLink(props: { type: string, filename: string, isCurrentConfig: boolean }) {
   const { type, filename, isCurrentConfig } = props
-  const classNames = 'file-link'
-  return <a className={classNames}
+  return <a className='file-link'
             style={{width: 'max-content'}}
-            data-tooltip-html={'Download '+filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
+            data-tooltip-html={'Download ' + filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
             download={filename}
             target="_blank"
             rel="noopener noreferrer"
