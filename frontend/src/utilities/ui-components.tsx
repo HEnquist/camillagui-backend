@@ -1062,9 +1062,7 @@ export function KeyValueSelectPopup(props: {
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
         <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
-            <DataTable columns={columns} data={items} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
-        </div>
+        <DataTable columns={columns} data={items} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
     </Popup>
 }
 
