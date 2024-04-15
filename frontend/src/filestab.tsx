@@ -1,5 +1,5 @@
 import React, {Component} from "react"
-import {Box, Button, MdiButton, UploadButton} from "./utilities/ui-components"
+import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -24,39 +24,10 @@ import {
 } from "./utilities/files"
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
-import DataTable, { createTheme } from 'react-data-table-component'
+import DataTable from 'react-data-table-component'
 import { isEqual } from "lodash"
 
-const caseInsensitiveSort = (rowA: CFile, rowB: CFile) => {
-	const a = rowA.name.toLowerCase();
-	const b = rowB.name.toLowerCase();
 
-	if (a > b) {
-		return 1
-	}
-
-	if (b > a) {
-		return -1
-	}
-
-	return 0
-}
-
-
-const dateSort = (rowA: CFile, rowB: CFile) => {
-	const a = rowA.lastModified;
-	const b = rowB.lastModified;
-
-	if (a > b) {
-		return 1
-	}
-
-	if (b > a) {
-		return -1
-	}
-
-	return 0
-}
 
 export function Files(props: {
   guiConfig: GuiConfig
@@ -144,36 +115,6 @@ class FileTable extends Component<
       fileStatus: null,
       stopTimer: () => {}
     }
-
-    createTheme(
-      'camilla',
-      {
-        text: {
-          primary: 'var(--text-color)',
-          secondary: 'var(--text-color)',
-        },
-        background: {
-          default: 'var(--background-color)',
-        },
-        context: {
-          background: '#cb4b16',
-          text: '#FFFFFF',
-        },
-        divider: {
-          default: 'var(--box-border-color)',
-        },
-        //button: {
-        //  default: '#2aa198',
-        //  hover: 'rgba(0,0,0,.08)',
-        //  focus: 'rgba(255,255,255,.12)',
-        //  disabled: 'rgba(255, 255, 255, .34)',
-        //},
-        sortFocus: {
-          default: 'var(--focused-input-border)',
-        },
-      },
-      'dark',
-    )
   }
 
   componentDidUpdate() {
@@ -322,13 +263,13 @@ class FileTable extends Component<
               filename: row.name,
               isCurrentConfig: false
           })),
-        sortFunction: caseInsensitiveSort,
+        sortFunction: fileNameSort,
         sortable: true
       },
       {
         name: 'Date',
         selector: (row: CFile) => row.formattedDate,
-        sortFunction: dateSort,
+        sortFunction: fileDateSort,
         sortable: true
       },
       {
