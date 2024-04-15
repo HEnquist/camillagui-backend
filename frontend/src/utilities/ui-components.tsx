@@ -5,6 +5,8 @@ import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
 import { Range } from "immutable"
+import DataTable, { createTheme } from 'react-data-table-component'
+import { CFile } from "./files"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -968,27 +970,92 @@ export function delayedExecutor(delay: number): (action: Action) => void {
     }
 }
 
-export function ListSelectPopup(props: {
+const caseInsensitiveSort = (rowA: CFile, rowB: CFile) => {
+	const a = rowA.name.toLowerCase();
+	const b = rowB.name.toLowerCase();
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+
+const dateSort = (rowA: CFile, rowB: CFile) => {
+	const a = rowA.lastModified;
+	const b = rowB.lastModified;
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+export function FileSelectPopup(props: {
     open: boolean
     header?: ReactNode
-    items: string[]
+    files: CFile[]
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const { open, items, onSelect, onClose } = props
-    const selectItem = (item: string) => { onSelect(item); onClose() }
+    createTheme(
+        'camilla',
+        {
+            text: {
+                primary: 'var(--text-color)',
+                secondary: 'var(--text-color)',
+            },
+            background: {
+                default: 'var(--background-color)',
+            },
+            context: {
+                background: '#cb4b16',
+                text: '#FFFFFF',
+            },
+            divider: {
+                default: 'var(--box-border-color)',
+            },
+            //button: {
+            //  default: '#2aa198',
+            //  hover: 'rgba(0,0,0,.08)',
+            //  focus: 'rgba(255,255,255,.12)',
+            //  disabled: 'rgba(255, 255, 255, .34)',
+            //},
+            sortFocus: {
+                default: 'var(--focused-input-border)',
+            },
+        },
+        'dark',
+    )
+    const { open, files, onSelect, onClose } = props
+    const selectItem = (item: CFile) => { onSelect(item.name); onClose() }
+    var columns: any= [
+        {
+          name: 'Filename',
+          selector: (row: CFile) => row.name,
+          sortFunction: caseInsensitiveSort,
+          sortable: true
+        },
+        {
+          name: 'Date',
+          selector: (row: CFile) => row.formattedDate,
+          sortFunction: dateSort,
+          sortable: true
+        },
+        {
+          name: 'Size',
+          selector: (row: CFile) => row.size,
+          sortable: true
+        }
+      ]
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
         <CloseButton onClick={onClose} />
         {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
-            {items.map(item =>
-                <Button
-                    key={item}
-                    text={item}
-                    style={{ justifyContent: 'flex-start' }}
-                    onClick={() => selectItem(item)} />
-            )}
-        </div>
+        <DataTable columns={columns} data={files} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
     </Popup>
 }
 
@@ -1108,7 +1175,7 @@ function CompactChannelIndicator(props: {
             <div className='channel-indicator' style={{
                 backgroundColor: (props.channels === null || props.channels.includes(ch)) ? 'var(--highlighted-button-border-color)' : 'var(--button-background-color)'
             }}></div>)
-    }
+        }
     </div>
 }
 

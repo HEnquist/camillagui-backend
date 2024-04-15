@@ -29,7 +29,7 @@ import {
   FloatListOption,
   FloatOption,
   IntOption,
-  ListSelectPopup,
+  FileSelectPopup,
   MdiButton,
   OptionalBoolOption,
   OptionalTextOption,
@@ -43,7 +43,7 @@ import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
-import {doUpload, loadFilenames} from "./utilities/files"
+import {doUpload, loadFiles, CFile} from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -61,7 +61,7 @@ export class FiltersTab extends React.Component<
   },
   {
     filterKeys: { [name: string]: number }
-    availableCoeffFiles: string[]
+    availableCoeffFiles: CFile[]
     sortBy: string
     sortReverse: boolean
   }
@@ -150,7 +150,7 @@ export class FiltersTab extends React.Component<
   }
 
   private updateAvailableCoeffFiles() {
-    loadFilenames("coeff")
+    loadFiles("coeff")
       .then(
         files => this.setState({ availableCoeffFiles: files }),
         error => console.log("Could not load stored coeffs", error)
@@ -219,7 +219,7 @@ interface FilterViewProps {
   name: string
   filter: Filter
   errors: ErrorsForPath
-  availableCoeffFiles: string[]
+  availableCoeffFiles: CFile[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
@@ -424,7 +424,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       </div>
 
 
-      <ListSelectPopup
+      <FileSelectPopup
         key="filter select popup"
         open={this.state.filterFilePopupOpen}
         header={
@@ -438,7 +438,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             <div style={{ margin: '10px 0' }}>For Raw filters, only single channel files are supported.</div>
           </>
         }
-        items={this.props.availableCoeffFiles}
+        files={this.props.availableCoeffFiles}
         onClose={() => this.setState({ filterFilePopupOpen: false })}
         onSelect={this.pickFilterFile}
       />
@@ -472,7 +472,7 @@ class FilterParams extends React.Component<{
   filter: Filter
   errors: ErrorsForPath
   updateFilter: (update: Update<Filter>) => void
-  availableCoeffFiles: string[]
+  availableCoeffFiles: CFile[]
   coeffDir: string
   filterDefaults: FilterDefaults
   setShowDefaults: () => void

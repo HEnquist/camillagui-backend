@@ -173,11 +173,10 @@ class FileTable extends Component<
         },
       },
       'dark',
-    );
+    )
   }
 
   componentDidUpdate() {
-    //Tooltip.rebuild()
   }
 
   componentDidMount() {
