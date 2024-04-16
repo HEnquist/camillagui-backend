@@ -43,7 +43,7 @@ import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
-import {doUpload, loadFiles, CFile} from "./utilities/files"
+import {doUpload, loadFiles, FileInfo} from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -61,7 +61,7 @@ export class FiltersTab extends React.Component<
   },
   {
     filterKeys: { [name: string]: number }
-    availableCoeffFiles: CFile[]
+    availableCoeffFiles: FileInfo[]
     sortBy: string
     sortReverse: boolean
   }
@@ -219,7 +219,7 @@ interface FilterViewProps {
   name: string
   filter: Filter
   errors: ErrorsForPath
-  availableCoeffFiles: CFile[]
+  availableCoeffFiles: FileInfo[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
@@ -473,7 +473,7 @@ class FilterParams extends React.Component<{
   filter: Filter
   errors: ErrorsForPath
   updateFilter: (update: Update<Filter>) => void
-  availableCoeffFiles: CFile[]
+  availableCoeffFiles: FileInfo[]
   coeffDir: string
   filterDefaults: FilterDefaults
   setShowDefaults: () => void

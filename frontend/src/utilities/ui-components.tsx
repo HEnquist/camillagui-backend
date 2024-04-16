@@ -6,7 +6,7 @@ import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
 import { Range } from "immutable"
 import DataTable from 'react-data-table-component'
-import { CFile } from "./files"
+import { FileInfo } from "./files"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -970,7 +970,7 @@ export function delayedExecutor(delay: number): (action: Action) => void {
     }
 }
 
-export const fileNameSort = (rowA: CFile, rowB: CFile) => {
+export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
 	const a = rowA.name.toLowerCase();
 	const b = rowB.name.toLowerCase();
 	if (a > b) {
@@ -995,7 +995,7 @@ const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) 
 }
 
 
-export const fileDateSort = (rowA: CFile, rowB: CFile) => {
+export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
 	const a = rowA.lastModified;
 	const b = rowB.lastModified;
 	if (a > b) {
@@ -1010,29 +1010,29 @@ export const fileDateSort = (rowA: CFile, rowB: CFile) => {
 export function FileSelectPopup(props: {
     open: boolean
     header?: ReactNode
-    files: CFile[]
+    files: FileInfo[]
     onSelect: (value: string) => void
     onClose: () => void
 }) {
     const { open, files, onSelect, onClose } = props
-    const selectItem = (item: CFile) => { onSelect(item.name); onClose() }
+    const selectItem = (item: FileInfo) => { onSelect(item.name); onClose() }
     const [filterText, setFilterText] = React.useState('');
     var columns: any= [
         {
           name: 'Filename',
-          selector: (row: CFile) => row.name,
+          selector: (row: FileInfo) => row.name,
           sortFunction: fileNameSort,
           sortable: true
         },
         {
           name: 'Date',
-          selector: (row: CFile) => row.formattedDate,
+          selector: (row: FileInfo) => row.formattedDate,
           sortFunction: fileDateSort,
           sortable: true
         },
         {
           name: 'Size',
-          selector: (row: CFile) => row.size,
+          selector: (row: FileInfo) => row.size,
           sortable: true
         }
       ]

@@ -14,7 +14,7 @@ import {
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
 import {
-  CFile,
+  FileInfo,
   doUpload, download,
   fileNamesOf,
   loadActiveConfig,
@@ -83,8 +83,8 @@ type FileStatus =
 class FileTable extends Component<
     FileTableProps,
     {
-      files: CFile[]
-      selectedFiles: CFile[]
+      files: FileInfo[]
+      selectedFiles: FileInfo[]
       activeConfigFileName: string
       newFileName: string
       fileStatus: FileStatus | null
@@ -259,7 +259,7 @@ class FileTable extends Component<
     var columns: any= [
       {
         name: 'Filename',
-        cell: (row: CFile, index: number, column: number, id: any) => (
+        cell: (row: FileInfo, index: number, column: number, id: any) => (
           FileDownloadLink({
               type: this.props.type,
               filename: row.name,
@@ -270,13 +270,13 @@ class FileTable extends Component<
       },
       {
         name: 'Date',
-        selector: (row: CFile) => row.formattedDate,
+        selector: (row: FileInfo) => row.formattedDate,
         sortFunction: fileDateSort,
         sortable: true
       },
       {
         name: 'Size',
-        selector: (row: CFile) => row.size,
+        selector: (row: FileInfo) => row.size,
         sortable: true
       }
     ]
@@ -286,7 +286,7 @@ class FileTable extends Component<
     if (this.canLoadAndSave) {
       columns.unshift({
         name: '',
-        cell: (row: CFile, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
+        cell: (row: FileInfo, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
           <SetActiveButton
               key={id}
               active={row.name === activeConfigFileName}
@@ -489,7 +489,7 @@ function FileStatusMessage(props: { filename: string, fileStatus: FileStatus | n
     return null
 }
 
-function reasonToDisableSaveNewFileButton(newFileName: string, files: CFile[]): string | undefined {
+function reasonToDisableSaveNewFileButton(newFileName: string, files: FileInfo[]): string | undefined {
   if (!isValidFilename(newFileName))
     return 'Please enter a valid file name.'
   else if (fileNamesOf(files).includes(newFileName))
