@@ -491,7 +491,7 @@ function CaptureOptions(props: {
     <KeyValueSelectPopup
           key="capture select popup"
           open={popupState}
-          header="Available capture devices:"
+          header="Select capture device"
           items={availableDevices}
           onClose={() => setPopupState(false)}
           onSelect={device => onChange(devices => // @ts-ignore
@@ -693,7 +693,7 @@ function PlaybackOptions(props: {
     <KeyValueSelectPopup
       key="playback select popup"
       open={popupState}
-      header="Available playback devices:"
+      header="Select playback device"
       items={availableDevices}
       onClose={() => setPopupState(false)}
       onSelect={device => onChange(devices => // @ts-ignore

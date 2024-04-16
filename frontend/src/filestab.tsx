@@ -282,7 +282,7 @@ class FileTable extends Component<
     ]
     const filteredFiles = files.filter(
       item => item.name.toLowerCase().includes(filterText.toLowerCase()),
-    );
+    )
     if (this.canLoadAndSave) {
       columns.unshift({
         name: '',

@@ -1016,6 +1016,7 @@ export function FileSelectPopup(props: {
 }) {
     const { open, files, onSelect, onClose } = props
     const selectItem = (item: CFile) => { onSelect(item.name); onClose() }
+    const [filterText, setFilterText] = React.useState('');
     var columns: any= [
         {
           name: 'Filename',
@@ -1035,10 +1036,23 @@ export function FileSelectPopup(props: {
           sortable: true
         }
       ]
+    const filteredFiles = files.filter(
+        item => item.name.toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <DataTable columns={columns} data={files} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '60vw', height: '80vh', overflowY: 'scroll'}}>
+        <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredFiles} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
+        </div>
     </Popup>
 }
 
@@ -1050,6 +1064,7 @@ export function KeyValueSelectPopup(props: {
     onClose: () => void
 }) {
     const { open, items, onSelect, onClose } = props
+    const [filterText, setFilterText] = React.useState('');
     var columns: any = [
         {
           name: 'Name',
@@ -1059,10 +1074,23 @@ export function KeyValueSelectPopup(props: {
         }
       ]
     const selectItem = (item: [string, string]) => { onSelect(item[0]); onClose() }
+    const filteredItems = items.filter(
+        item => item[1].toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <DataTable columns={columns} data={items} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '30vw', height: '80vh', overflowY: 'scroll'}}>
+            <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredItems} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
+        </div>
     </Popup>
 }
 

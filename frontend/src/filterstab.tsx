@@ -428,15 +428,16 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         key="filter select popup"
         open={this.state.filterFilePopupOpen}
         header={
-          <>
+          <div style={{ margin: '5px', display: 'flex', flexDirection: 'column'}}>
+            <span>Select a file containing filter coefficients.</span>
+            <span>For Raw filters, only single channel files are supported.</span>
             <UploadButton
               icon={uploadIcon.icon}
               className={uploadIcon.className}
               tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
               upload={this.uploadCoeffs}
               multiple={true} />
-            <div style={{ margin: '10px 0' }}>For Raw filters, only single channel files are supported.</div>
-          </>
+          </div>
         }
         files={this.props.availableCoeffFiles}
         onClose={() => this.setState({ filterFilePopupOpen: false })}
