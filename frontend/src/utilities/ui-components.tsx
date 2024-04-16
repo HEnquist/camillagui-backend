@@ -1028,12 +1028,14 @@ export function FileSelectPopup(props: {
           name: 'Date',
           selector: (row: FileInfo) => row.formattedDate,
           sortFunction: fileDateSort,
-          sortable: true
+          sortable: true,
+          maxWidth: '200px'
         },
         {
           name: 'Size',
           selector: (row: FileInfo) => row.size,
-          sortable: true
+          sortable: true,
+          maxWidth: '100px'
         }
       ]
     const filteredFiles = files.filter(
