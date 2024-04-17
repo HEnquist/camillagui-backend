@@ -5,6 +5,8 @@ import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
 import { Range } from "immutable"
+import DataTable from 'react-data-table-component'
+import { FileInfo } from "./files"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -968,26 +970,90 @@ export function delayedExecutor(delay: number): (action: Action) => void {
     }
 }
 
-export function ListSelectPopup(props: {
+export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.name.toLowerCase();
+	const b = rowB.name.toLowerCase();
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) => {
+	const a = rowA[1].toLowerCase();
+	const b = rowB[1].toLowerCase();
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+
+export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.lastModified;
+	const b = rowB.lastModified;
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+export function FileSelectPopup(props: {
     open: boolean
     header?: ReactNode
-    items: string[]
+    files: FileInfo[]
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const { open, items, onSelect, onClose } = props
-    const selectItem = (item: string) => { onSelect(item); onClose() }
+    const { open, files, onSelect, onClose } = props
+    const selectItem = (item: FileInfo) => { onSelect(item.name); onClose() }
+    const [filterText, setFilterText] = React.useState('');
+    var columns: any= [
+        {
+          name: 'Filename',
+          selector: (row: FileInfo) => row.name,
+          sortFunction: fileNameSort,
+          sortable: true
+        },
+        {
+          name: 'Date',
+          selector: (row: FileInfo) => row.formattedDate,
+          sortFunction: fileDateSort,
+          sortable: true,
+          maxWidth: '200px'
+        },
+        {
+          name: 'Size',
+          selector: (row: FileInfo) => row.size,
+          sortable: true,
+          maxWidth: '100px'
+        }
+      ]
+    const filteredFiles = files.filter(
+        item => item.name.toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
-            {items.map(item =>
-                <Button
-                    key={item}
-                    text={item}
-                    style={{ justifyContent: 'flex-start' }}
-                    onClick={() => selectItem(item)} />
-            )}
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '60vw', height: '80vh', overflowY: 'scroll'}}>
+        <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredFiles} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
         </div>
     </Popup>
 }
@@ -1000,18 +1066,32 @@ export function KeyValueSelectPopup(props: {
     onClose: () => void
 }) {
     const { open, items, onSelect, onClose } = props
-    const selectItem = (item: string) => { onSelect(item); onClose() }
+    const [filterText, setFilterText] = React.useState('');
+    var columns: any = [
+        {
+          name: 'Name',
+          selector: (row: [String, String]) => row[1],
+          sortFunction: caseInsensitiveRowSort,
+          sortable: true
+        }
+      ]
+    const selectItem = (item: [string, string]) => { onSelect(item[0]); onClose() }
+    const filteredItems = items.filter(
+        item => item[1].toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto' }}>
-            {items.map(item =>
-                <Button
-                    key={item[0]}
-                    text={item[0] === item[1] ? item[1] : item[0] + ": " + item[1]}
-                    style={{ justifyContent: 'flex-start' }}
-                    onClick={() => selectItem(item[0])} />
-            )}
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '30vw', height: '80vh', overflowY: 'scroll'}}>
+            <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredItems} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
         </div>
     </Popup>
 }
@@ -1108,7 +1188,7 @@ function CompactChannelIndicator(props: {
             <div className='channel-indicator' style={{
                 backgroundColor: (props.channels === null || props.channels.includes(ch)) ? 'var(--highlighted-button-border-color)' : 'var(--button-background-color)'
             }}></div>)
-    }
+        }
     </div>
 }
 

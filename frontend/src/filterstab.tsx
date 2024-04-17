@@ -29,7 +29,7 @@ import {
   FloatListOption,
   FloatOption,
   IntOption,
-  ListSelectPopup,
+  FileSelectPopup,
   MdiButton,
   OptionalBoolOption,
   OptionalTextOption,
@@ -43,7 +43,7 @@ import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
-import {doUpload, loadFilenames} from "./utilities/files"
+import {doUpload, loadFiles, FileInfo} from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -61,7 +61,7 @@ export class FiltersTab extends React.Component<
   },
   {
     filterKeys: { [name: string]: number }
-    availableCoeffFiles: string[]
+    availableCoeffFiles: FileInfo[]
     sortBy: string
     sortReverse: boolean
   }
@@ -150,7 +150,7 @@ export class FiltersTab extends React.Component<
   }
 
   private updateAvailableCoeffFiles() {
-    loadFilenames("coeff")
+    loadFiles("coeff")
       .then(
         files => this.setState({ availableCoeffFiles: files }),
         error => console.log("Could not load stored coeffs", error)
@@ -219,7 +219,7 @@ interface FilterViewProps {
   name: string
   filter: Filter
   errors: ErrorsForPath
-  availableCoeffFiles: string[]
+  availableCoeffFiles: FileInfo[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
@@ -424,21 +424,22 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       </div>
 
 
-      <ListSelectPopup
+      <FileSelectPopup
         key="filter select popup"
         open={this.state.filterFilePopupOpen}
         header={
-          <>
+          <div style={{ margin: '5px', display: 'flex', flexDirection: 'column'}}>
+            <span>Select a file containing filter coefficients.</span>
+            <span>For Raw filters, only single channel files are supported.</span>
             <UploadButton
               icon={uploadIcon.icon}
               className={uploadIcon.className}
               tooltip={uploadIcon.errorMessage ? uploadIcon.errorMessage : "Upload filter files"}
               upload={this.uploadCoeffs}
               multiple={true} />
-            <div style={{ margin: '10px 0' }}>For Raw filters, only single channel files are supported.</div>
-          </>
+          </div>
         }
-        items={this.props.availableCoeffFiles}
+        files={this.props.availableCoeffFiles}
         onClose={() => this.setState({ filterFilePopupOpen: false })}
         onSelect={this.pickFilterFile}
       />
@@ -472,7 +473,7 @@ class FilterParams extends React.Component<{
   filter: Filter
   errors: ErrorsForPath
   updateFilter: (update: Update<Filter>) => void
-  availableCoeffFiles: string[]
+  availableCoeffFiles: FileInfo[]
   coeffDir: string
   filterDefaults: FilterDefaults
   setShowDefaults: () => void

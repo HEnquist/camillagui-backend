@@ -1,12 +1,13 @@
 import {Config} from "../camilladsp/config"
 
-/** Cannot be named File, because that is already a built-in type */
-export interface CFile {
+export interface FileInfo {
   name: string,
-  lastModified: string
+  lastModified: number,
+  formattedDate: string,
+  size: number
 }
 
-export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
+export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
   return fetch(`/api/stored${type}s`)
       .then(response => {
         if (response.ok) return response.json()
@@ -17,9 +18,9 @@ export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
         throw Error(err)
       })
       .then(json => {
-        const files = json as CFile[]
+        const files = json as FileInfo[]
         files.forEach(file =>
-            file.lastModified = new Date(1000 * parseFloat(file.lastModified)).toDateString()
+            file.formattedDate = new Date(1000 * file.lastModified).toDateString()
         )
         return files
       },
@@ -34,7 +35,7 @@ export function loadFilenames(type: "config" | "coeff"): Promise<string[]> {
       .then(files => fileNamesOf(files), _ => [])
 }
 
-export function fileNamesOf(files: CFile[]): string[] {
+export function fileNamesOf(files: FileInfo[]): string[] {
   return files.map(f => f.name)
 }
 

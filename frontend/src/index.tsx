@@ -28,6 +28,7 @@ import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
 import {loadActiveConfig} from "./utilities/files"
+import { createTheme } from 'react-data-table-component'
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -71,6 +72,32 @@ class CamillaConfig extends React.Component<
     }
     this.loadGuiConfig()
     this.loadCurrentConfig()
+    createTheme(
+      'camilla',
+      {
+          text: {
+              primary: 'var(--text-color)',
+              secondary: 'var(--text-color)',
+          },
+          background: {
+              default: 'var(--background-color)',
+          },
+          context: {
+              background: '#cb4b16',
+              text: '#FFFFFF',
+          },
+          divider: {
+              default: 'var(--box-border-color)',
+          },
+          highlightOnHover: {
+              default: 'var(--active-button-background-color)'
+          },
+          sortFocus: {
+              default: 'var(--success-text-color)',
+          },
+      },
+      'dark',
+  )
   }
 
   private async loadGuiConfig() {
