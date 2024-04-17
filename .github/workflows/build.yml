@@ -27,7 +27,7 @@ jobs:
         repository: HEnquist/camillagui
         ref: ${{ needs.read_fe_tag.outputs.fe_tag }}
     - name: Build and publish
-      uses: actions/setup-node@v
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
     - run: npm install
