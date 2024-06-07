@@ -30,7 +30,7 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
         },
         filters: {},
@@ -615,7 +615,7 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format, device: string }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null }
     | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
     | { type: 'Jack', channels: number, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
@@ -636,7 +636,7 @@ export type CaptureDevice =
 export type PlaybackDevice =
     { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa', channels: number, format: Format, device: string }
+    | { type: 'Alsa', channels: number, format: Format | null, device: string }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
     | { type: 'File', channels: number, format: Format, filename: string, wav_header: boolean | null }

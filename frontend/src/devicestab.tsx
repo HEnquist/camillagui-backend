@@ -465,7 +465,7 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
@@ -486,7 +486,6 @@ function CaptureOptions(props: {
     // The selected type isn't available, change to one that is
     props.onChange(devices => devices.capture= defaults[captureTypes[0]])
   }
-  // TODO alsa device is mandatory
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
@@ -517,7 +516,7 @@ function CaptureOptions(props: {
         // @ts-ignore
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
     }
-    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio' && capture.type !== 'WavFile') &&
+    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio' && capture.type !== 'WavFile' && capture.type !== 'Alsa') &&
     <EnumOption
         value={capture.format}
         error={errors({path: ['format']})}
@@ -528,7 +527,7 @@ function CaptureOptions(props: {
             devices.capture.format = format
         )}/>
     }
-    {(capture.type === 'CoreAudio') &&
+    {(capture.type === 'CoreAudio' || capture.type === 'Alsa') &&
     <OptionalEnumOption
         value={capture.format}
         error={errors({path: ['format']})}
@@ -540,8 +539,8 @@ function CaptureOptions(props: {
         )}
         />
     }
-    {(capture.type === 'Alsa') &&
-    <DeviceOption
+    {(capture.type === 'Alsa') &&  <>
+      <DeviceOption
         value={capture.device}
         error={errors({path: ['device']})}
         desc="device"
@@ -554,6 +553,23 @@ function CaptureOptions(props: {
             .then(names => setAvailableDevices(names))
           setPopupState(true)
         }} />
+      <OptionalTextOption
+          value={capture.follow_volume_control}
+          error={errors({path: ['follow_volume_control']})}
+          desc="follow_volume_control"
+          tooltip="Name of volume control to follow"
+          onChange={follow_volume_control => onChange(devices => // @ts-ignore
+              devices.capture.follow_volume_control = follow_volume_control
+          )}/>
+      <OptionalBoolOption
+            value={capture.stop_on_inactive}
+            error={errors({path: ['stop_on_inactive']})}
+            desc="stop_on_inactive"
+            tooltip="Stop if gadget or loopback capture device becomes inactive"
+            onChange={stop_on_inactive => onChange(devices => // @ts-ignore
+                devices.capture.stop_on_inactive = stop_on_inactive
+            )}/>
+      </>
     }
     {(capture.type === 'CoreAudio' || capture.type === 'Wasapi') &&
     <OptionalDeviceOption
@@ -716,7 +732,7 @@ function PlaybackOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
-    {(playback.type !== 'Jack' && playback.type !== 'CoreAudio') &&
+    {(playback.type !== 'Jack' && playback.type !== 'CoreAudio' && playback.type !== 'Alsa') &&
     <EnumOption
         value={playback.format}
         error={errors({path: ['format']})}
@@ -727,7 +743,7 @@ function PlaybackOptions(props: {
           devices.playback.format = format
         )}/>
     }
-    {(playback.type === 'CoreAudio') &&
+    {(playback.type === 'CoreAudio' || playback.type === 'Alsa') &&
     <OptionalEnumOption
         value={playback.format}
         error={errors({path: ['format']})}
