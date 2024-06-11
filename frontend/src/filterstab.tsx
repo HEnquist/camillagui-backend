@@ -239,6 +239,7 @@ interface FilterViewState {
   filterDefaults: FilterDefaults
   showDefaults: boolean
   channels: number
+  plot_at_volume: number
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
@@ -251,6 +252,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
     this.toggleExpand = this.toggleExpand.bind(this)
+    this.setPlotVolume = this.setPlotVolume.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
 
@@ -260,7 +262,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       expandPlot: false,
       showDefaults: false,
       filterDefaults: {},
-      channels: 2
+      channels: 2,
+      plot_at_volume: 0.0
     }
     if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
@@ -327,7 +330,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     if (this.state.showFilterPlot) {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
-      if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters))
+      if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters) || this.state.plot_at_volume !== prevState.plot_at_volume)
         this.timer(() => this.plotFilter())
     }
   }
@@ -339,6 +342,10 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       this.plotFilter()
     else
       this.setState({ data: undefined })
+  }
+
+  private setPlotVolume(volume: number) {
+    this.setState({ plot_at_volume: volume })
   }
 
   private toggleExpand() {
@@ -362,7 +369,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         name: this.props.name,
         config: this.props.filter,
         samplerate: samplerate || this.props.samplerate,
-        channels: channels || this.state.channels
+        channels: channels || this.state.channels,
+        volume: this.state.plot_at_volume
       }),
     }).then(
       result => result.json()
@@ -445,6 +453,21 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       />
       {this.state.showFilterPlot && this.state.data ?
         <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1200px' : '670px' }}>
+          {this.props.filter.type === "Loudness" ?
+            <div>
+              <input
+                type="range"
+                min={-50}
+                max={20}
+                value={this.state.plot_at_volume}
+                onBlur={e => this.setPlotVolume(e.target.valueAsNumber)}
+                onChange={e => this.setPlotVolume(e.target.valueAsNumber)}
+                data-tooltip-html="Volume setting to evaluate filter at"
+                data-tooltip-id="main-tooltip"
+              />
+              {this.state.plot_at_volume} dB
+            </div>
+          : null}
           <Chart data={this.state.data} onChange={this.plotFilterInitially} />
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
