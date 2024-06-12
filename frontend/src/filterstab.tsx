@@ -173,7 +173,7 @@ export class FiltersTab extends React.Component<
           tooltip="Reverse display order"
           onChange={this.changeSortOrder} />
       </div>
-      <div className="tabpanel-with-header" style={{ width: '700px' }}>
+      <div className="tabpanel-with-header" style={{ width: '100%'}}>
         <ErrorMessage message={errors({ path: [] })} />
         {this.filterNames()
           .map(name =>
@@ -393,7 +393,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       { icon: mdiUpload }
     if (uploadState !== undefined && !uploadState.success)
       uploadIcon = { icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message }
-    return <Box title={
+    return <Box style={{width: '700px' }} title={
       <ParsedInput
         style={{ width: '300px' }}
         value={name}
@@ -404,7 +404,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         immediate={false}
       />
     }>
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', width: '670px' }}>
         <div
           className="vertically-spaced-content"
           style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -452,27 +452,29 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
-        <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1200px' : '670px' }}>
-          {this.props.filter.type === "Loudness" ?
-            <div>
-              <input
-                type="range"
-                min={-50}
-                max={20}
-                value={this.state.plot_at_volume}
-                onBlur={e => this.setPlotVolume(e.target.valueAsNumber)}
-                onChange={e => this.setPlotVolume(e.target.valueAsNumber)}
-                data-tooltip-html="Volume setting to evaluate filter at"
-                data-tooltip-id="main-tooltip"
-              />
-              {this.state.plot_at_volume} dB
-            </div>
-          : null}
+        <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1100px' : '670px' }}>
           <Chart data={this.state.data} onChange={this.plotFilterInitially} />
+          <div style={{ display: 'inline-flex', flexDirection: 'row'}}>
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
             tooltip={this.state.expandPlot ? "Collapse plot" : "Expand plot"}
-            onClick={this.toggleExpand} /></div>
+            onClick={this.toggleExpand} />
+          {this.props.filter.type === "Loudness" ?
+            <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center'}}>
+              <input
+                type="range"
+                min={-500}
+                max={200}
+                value={this.state.plot_at_volume * 10.0}
+                onBlur={e => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
+                onChange={e => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
+                data-tooltip-html="Volume setting to evaluate filter at"
+                data-tooltip-id="main-tooltip"
+              />
+              <div>{this.state.plot_at_volume} dB</div>
+            </div>
+          : null}
+          </div></div>
         : null}
     </Box>
   }
