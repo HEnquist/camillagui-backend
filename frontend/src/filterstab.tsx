@@ -173,7 +173,7 @@ export class FiltersTab extends React.Component<
           tooltip="Reverse display order"
           onChange={this.changeSortOrder} />
       </div>
-      <div className="tabpanel-with-header" style={{ width: '700px' }}>
+      <div className="tabpanel-with-header" style={{ width: '100%'}}>
         <ErrorMessage message={errors({ path: [] })} />
         {this.filterNames()
           .map(name =>
@@ -239,6 +239,7 @@ interface FilterViewState {
   filterDefaults: FilterDefaults
   showDefaults: boolean
   channels: number
+  plot_at_volume: number
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
@@ -251,6 +252,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
     this.toggleExpand = this.toggleExpand.bind(this)
+    this.setPlotVolume = this.setPlotVolume.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
 
@@ -260,7 +262,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       expandPlot: false,
       showDefaults: false,
       filterDefaults: {},
-      channels: 2
+      channels: 2,
+      plot_at_volume: 0.0
     }
     if (isConvolutionFileFilter(this.props.filter))
       this.updateDefaults(this.props.filter.parameters.filename)
@@ -327,7 +330,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     if (this.state.showFilterPlot) {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
-      if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters))
+      if (prevFilter.type !== currentFilter.type || !isEqual(prevFilter.parameters, currentFilter.parameters) || this.state.plot_at_volume !== prevState.plot_at_volume)
         this.timer(() => this.plotFilter())
     }
   }
@@ -339,6 +342,10 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       this.plotFilter()
     else
       this.setState({ data: undefined })
+  }
+
+  private setPlotVolume(volume: number) {
+    this.setState({ plot_at_volume: volume })
   }
 
   private toggleExpand() {
@@ -362,7 +369,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         name: this.props.name,
         config: this.props.filter,
         samplerate: samplerate || this.props.samplerate,
-        channels: channels || this.state.channels
+        channels: channels || this.state.channels,
+        volume: this.state.plot_at_volume
       }),
     }).then(
       result => result.json()
@@ -385,7 +393,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       { icon: mdiUpload }
     if (uploadState !== undefined && !uploadState.success)
       uploadIcon = { icon: mdiAlertCircle, className: 'error-text', errorMessage: uploadState.message }
-    return <Box title={
+    return <Box style={{width: '700px' }} title={
       <ParsedInput
         style={{ width: '300px' }}
         value={name}
@@ -396,7 +404,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         immediate={false}
       />
     }>
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', width: '670px' }}>
         <div
           className="vertically-spaced-content"
           style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -444,12 +452,29 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         onSelect={this.pickFilterFile}
       />
       {this.state.showFilterPlot && this.state.data ?
-        <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1200px' : '670px' }}>
+        <div style={{ width: this.state.expandPlot && this.state.showFilterPlot ? '1100px' : '670px' }}>
           <Chart data={this.state.data} onChange={this.plotFilterInitially} />
+          <div style={{ display: 'inline-flex', flexDirection: 'row'}}>
           <MdiButton
             icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
             tooltip={this.state.expandPlot ? "Collapse plot" : "Expand plot"}
-            onClick={this.toggleExpand} /></div>
+            onClick={this.toggleExpand} />
+          {this.props.filter.type === "Loudness" ?
+            <div style={{ display: 'inline-flex', flexDirection: 'row', alignItems: 'center'}}>
+              <input
+                type="range"
+                min={-500}
+                max={200}
+                value={this.state.plot_at_volume * 10.0}
+                onBlur={e => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
+                onChange={e => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
+                data-tooltip-html="Volume setting to evaluate filter at"
+                data-tooltip-id="main-tooltip"
+              />
+              <div>{this.state.plot_at_volume} dB</div>
+            </div>
+          : null}
+          </div></div>
         : null}
     </Box>
   }

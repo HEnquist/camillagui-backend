@@ -140,7 +140,7 @@ export class ProcessorsTab extends React.Component<
                     tooltip="Reverse display order"
                     onChange={this.changeSortOrder} />
             </div>
-            <div className="tabpanel-with-header" style={{ width: '700px' }}>
+            <div className="tabpanel-with-header" style={{ width: '100%' }}>
                 <ErrorMessage message={errors({ path: [] })} />
                 {this.processorNames()
                     .map(name =>
@@ -189,7 +189,7 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
         const { name, processor } = this.props
         const isValidProcessorName = (newName: string) =>
             name === newName || (newName.trim().length > 0 && this.props.isFreeProcessorName(newName))
-        return <Box title={
+        return <Box style={{width: '700px' }} title={
             <ParsedInput
                 style={{ width: '300px' }}
                 value={name}
