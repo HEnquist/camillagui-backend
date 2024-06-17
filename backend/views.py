@@ -263,6 +263,7 @@ async def eval_filter_values(request):
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
     channels = content["channels"]
     samplerate = content["samplerate"]
+    volume = content.get("volume", 0.0)
     filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     if "filename" in config["parameters"]:
         filename = config["parameters"]["filename"]
@@ -276,6 +277,7 @@ async def eval_filter_values(request):
             name=(content["name"]),
             samplerate=samplerate,
             npoints=1000,
+            volume=volume
         )
         data["channels"] = channels
         data["options"] = options
