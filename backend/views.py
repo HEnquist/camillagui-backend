@@ -134,7 +134,7 @@ async def get_status(request):
                     }
                 )
         except IOError as e:
-            print("TODO safe to remove this try-except? error:", e)
+            #print("TODO safe to remove this try-except? error:", e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
@@ -498,7 +498,6 @@ async def translate_eqapo_to_json(request):
         channels = int(request.rel_url.query.get("channels", None))
     except (ValueError, TypeError) as e:
         raise web.HTTPBadRequest(reason=str(e))
-    print(channels)
     config = await request.text()
     converter = EqAPO(config, channels)
     converter.translate_file()
@@ -520,8 +519,10 @@ async def validate_config(request):
     # print(yaml.dump(config_with_absolute_filter_paths, indent=2))
     errors = validator.get_errors()
     if len(errors) > 0:
+        logging.debug("Config has errors")
         logging.debug(errors)
         return web.json_response(status=406, data=errors)
+    logging.debug("Validated config, ok")
     return web.Response(text="OK", headers=HEADERS)
 
 
