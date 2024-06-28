@@ -161,8 +161,8 @@ export class ProcessorsTab extends React.Component<
     }
 }
 
-function isCompressor(processor: Processor): boolean {
-    return processor.type === 'Compressor'
+function hasChannelSelectors(processor: Processor): boolean {
+    return processor.type === 'Compressor' || processor.type === 'NoiseGate'
 }
 
 
@@ -226,6 +226,9 @@ const defaultParameters: {
 } = {
     Compressor: {
         Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, factor: 5.0, makeup_gain: 15.0, soft_clip: false, enable_clip: false, clip_limit: 0.0 },
+    },
+    NoiseGate: {
+        Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, attenuation: 20.0 },
     },
 }
 
@@ -303,7 +306,7 @@ class ProcessorParams extends React.Component<{
                 desc="description"
                 tooltip="Processor description"
                 onChange={this.onDescChange} />
-            {isCompressor(processor) &&
+            {hasChannelSelectors(processor) &&
                 <div>
                 <label className="setting">
                     <span className="setting-label">
@@ -369,6 +372,11 @@ class ProcessorParams extends React.Component<{
                 type: "float",
                 desc: "attack",
                 tooltip: "Attack time in seconds",
+            },
+            attenuation: {
+                type: "float",
+                desc: "attenuation",
+                tooltip: "Attenuation in dB to apply when gate is closed",
             },
             channels: {
                 type: "int",

@@ -344,7 +344,7 @@ class CamillaConfig extends React.Component<
           <ProcessorsTab
               processors={config.processors ? config.processors : {}}
               updateConfig={this.updateConfig}
-              errors={errorsForSubpath(errors, 'mixers')}
+              errors={errorsForSubpath(errors, 'processors')}
           />
         </TabPanel>
         <TabPanel>
