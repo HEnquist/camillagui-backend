@@ -286,6 +286,7 @@ class PipelinePlot extends React.Component<Props, State> {
     const channels = []
     const capture = conf["devices"]["capture"]
     let active_channels = this.state.capture_channels
+    let channel_labels = []
     console.log('start channels', active_channels)
     const capturename = PipelinePlot.deviceText(capture)
     this.appendFrame(
@@ -304,7 +305,17 @@ class PipelinePlot extends React.Component<Props, State> {
       console.log(key, value)
     }
     for (let n = 0; n < active_channels; n++) {
-      const label = "ch " + n
+      var label = "ch " + n
+      if ('labels' in cap_params) {
+        const labels = cap_params.labels
+        if (labels !== null && labels.length > n) {
+          label = labels[n]
+        }
+      }
+      channel_labels.push(label)
+    }
+    for (let n = 0; n < active_channels; n++) {
+      var label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
@@ -346,7 +357,7 @@ class PipelinePlot extends React.Component<Props, State> {
         console.log(key, value)
       }
       for (let n = 0; n < active_channels; n++) {
-        const label = "ch " + n
+        const label = channel_labels[n]
         const io_points = this.appendBlock(
           labels,
           boxes,
@@ -379,7 +390,7 @@ class PipelinePlot extends React.Component<Props, State> {
       spacing_v * active_channels,
     )
     for (let n = 0; n < active_channels; n++) {
-      const label = "ch " + n
+      const label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
@@ -424,9 +435,20 @@ class PipelinePlot extends React.Component<Props, State> {
           1.5,
           spacing_v * mixconf.channels.out
         )
+        if (!((mixconf.labels == null || mixconf.labels.length === 0) && mixconf.channels.out == mixconf.channels.in)) {
+          channel_labels = []
+          const labels = mixconf.labels
+          for (let n = 0; n < mixconf.channels.out; n++) {
+            var label = "ch " + n
+            if (labels !== null && labels.length > n) {
+              label = labels[n]
+            }
+            channel_labels.push(label)
+          }
+        }
         for (let m = 0; m < mixconf.channels.out; m++) {
           mixerchannels.push([])
-          const label = "ch " + m
+          const label = channel_labels[m]
           const io_points = this.appendBlock(
             labels,
             boxes,
@@ -645,7 +667,7 @@ class PipelinePlot extends React.Component<Props, State> {
       console.log(key, value)
     }
     for (let n = 0; n < active_channels; n++) {
-      const label = "ch " + n
+      const label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,

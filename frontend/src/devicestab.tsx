@@ -37,6 +37,7 @@ import {
   OptionalIntOption,
   OptionalTextInput,
   OptionalTextOption,
+  StringListOption,
   TextInput,
   TextOption,
 } from "./utilities/ui-components"
@@ -465,7 +466,7 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
@@ -672,6 +673,16 @@ function CaptureOptions(props: {
               devices.capture.dbus_path = dbus_path
           )}/>
     </>
+    }
+    {(capture.type === 'Alsa') &&
+    <StringListOption
+        value={capture.labels}
+        error={errors({path: ['device']})}
+        desc="labels"
+        tooltip="Labels for channels"
+        onChange={labels => onChange(devices => // @ts-ignore
+            devices.capture.labels = labels
+        )}/>
     }
   </Box>
 }

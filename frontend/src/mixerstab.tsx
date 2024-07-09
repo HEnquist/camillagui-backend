@@ -10,7 +10,8 @@ import {
   MdiButton,
   ParsedInput,
   OptionalTextInput,
-  OptionalEnumOption
+  OptionalEnumOption,
+  StringListOption
 } from "./utilities/ui-components"
 import {
   Config,
@@ -206,6 +207,12 @@ function MixerView(props: {
         value={mixer.description}
         tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
+      <StringListOption
+        value={mixer.labels}
+        error={errors({path: ['labels']})}
+        desc="labels"
+        tooltip="Labels for channels"
+        onChange={labels => update(mixer => mixer.labels = labels)}/>
     </div>
   </Box>
 }

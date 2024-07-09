@@ -30,7 +30,7 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
         },
         filters: {},
@@ -462,7 +462,8 @@ export function defaultMixer(): Mixer {
     return {
         description: null,
         channels: { in: 2, out: 2 },
-        mapping: [defaultMapping(2, [])]
+        mapping: [defaultMapping(2, [])],
+        labels: null
     }
 }
 
@@ -615,7 +616,7 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: string[] | null }
     | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
     | { type: 'Jack', channels: number, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
@@ -677,6 +678,7 @@ export interface Mixer {
         out: number
     }
     mapping: Mapping[]
+    labels: string[] | null
 }
 
 export interface Mapping {
