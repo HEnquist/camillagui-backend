@@ -749,3 +749,78 @@ export async function getCaptureChannelCount(config: Config): Promise<number> {
     }
     return config.devices.capture.channels
 }
+
+export function getChannelLabels(config: Config, index: number, capturedev_channels: number): string[] {
+    // Capture device labels
+    let cap_params = config.devices.capture
+    let active_channels = capturedev_channels
+    let channel_labels = []
+    for (let n = 0; n < active_channels; n++) {
+        var label = n.toString()
+        if ('labels' in cap_params) {
+          const labels = cap_params.labels
+          if (labels !== null && labels.length > n) {
+            label = labels[n]
+          }
+        }
+        channel_labels.push(label)
+    }
+    let pipeline = config.pipeline ? config.pipeline : []
+    for (let idx = 0; idx < index; idx++) {
+        const step = pipeline[idx]
+        const disabled = step.bypassed === true
+        if (step.type === "Mixer" && config.mixers && !disabled) {
+            const mixername = step.name
+            const mixconf = config["mixers"][mixername]
+            if (!((mixconf.labels === null || mixconf.labels.length === 0) && mixconf.channels.out === mixconf.channels.in)) {
+                channel_labels = []
+                const labels = mixconf.labels
+                for (let n = 0; n < mixconf.channels.out; n++) {
+                    var temp_label = idx.toString()
+                    if (labels !== null && labels.length > n) {
+                        temp_label = labels[n]
+                    }
+                    channel_labels.push(temp_label)
+                }
+            }
+        }
+    }
+    return channel_labels
+}
+
+export function getLabelForChannel(labels: string[] | null, channel: number): string {
+    if (labels === null || labels.length <= channel) {
+        return channel.toString()
+    }
+    const label = labels[channel]
+    if (label) {
+        return label
+    }
+    return channel.toString()
+}
+
+export function getMixerInputLabels(config: Config, mixername: string): string[] {
+    const mixers = config.mixers ? config.mixers : {}
+    const mixconf = mixers[mixername]
+    if (mixconf === undefined || mixconf === null) {
+        return []
+    }
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Mixer' && step.name === mixername) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at, mixconf.channels.in)
+    }
+    else {
+        let channel_labels = []
+        for (let n = 0; n < mixconf.channels.in; n++) {
+            channel_labels.push(n.toString())
+        }
+        return channel_labels
+    }
+}

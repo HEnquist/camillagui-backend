@@ -24,6 +24,7 @@ import {
   Filters,
   FilterStep,
   getCaptureChannelCount,
+  getChannelLabels,
   maxChannelCount,
   mixerNamesOf,
   Mixers,
@@ -128,6 +129,7 @@ export class PipelineTab extends React.Component<{
           Capture: {this.state.capture_channels} channels in
         </div>
         {pipeline?.map((step: PipelineStep, index: number) => {
+          const channel_labels = getChannelLabels(config, index, this.state.capture_channels)
           const stepErrors = errorsForSubpath(errors, index)
           const typeSelect = <EnumInput
             value={step.type}
@@ -160,7 +162,8 @@ export class PipelineTab extends React.Component<{
               updatePipeline={this.updatePipeline}
               plot={() => this.plotFilterStep(index)}
               errors={stepErrors}
-              controls={controls} />
+              controls={controls}
+              labels={channel_labels} />
           if (step.type === 'Mixer')
             return <MixerStepView
               key={index}
@@ -329,6 +332,7 @@ function FilterStepView(props: {
   plot: () => void
   errors: ErrorsForPath
   controls: ReactNode
+  labels: string[]
 }) {
   const {
     stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls, maxChannelCount
@@ -364,7 +368,8 @@ function FilterStepView(props: {
       channels={filterStep.channels}
       maxChannelCount={maxChannels}
       label='channels'
-      setChannels={channels => update(step => step.channels = channels)} />
+      setChannels={channels => update(step => step.channels = channels)}
+      labels={props.labels} />
     <OptionalBoolOption
       value={filterStep.bypassed}
       desc="bypassed"

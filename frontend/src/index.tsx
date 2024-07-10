@@ -335,7 +335,7 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <MixersTab
-              mixers={config.mixers ? config.mixers : {}}
+              config={config}
               updateConfig={this.updateConfig}
               errors={errorsForSubpath(errors, 'mixers')}
           />

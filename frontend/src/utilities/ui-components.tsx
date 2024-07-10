@@ -498,7 +498,7 @@ export function StringListOption(props: {
                 tooltip={props.tooltip}
                 asString={(value: string[]) => value.join(",")}
                 parseValue={(rawValue: string) => {
-                    if (rawValue == "") {
+                    if (rawValue === "") {
                         return []
                     }
                     const parsedvalue = []
@@ -1138,6 +1138,7 @@ export function ChannelSelection(props: {
     maxChannelCount: number
     label: string | null
     setChannels: (channels: number[] | null) => void
+    labels?: string[] | null
 }) {
     const { channels, maxChannelCount, setChannels, label } = props
     let [expanded, setExpanded] = useState(false)
@@ -1197,7 +1198,7 @@ export function ChannelSelection(props: {
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
             <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
             {Range(0, maxChannelCount).map(index =>
-                <ChannelButton key={index} channel={index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
+                <ChannelButton key={index} channel={props.labels ? props.labels[index] : index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
             )}
         </div>
     }
