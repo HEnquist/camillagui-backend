@@ -245,7 +245,7 @@ function MappingView(props: {
           min={0}
           max={channels.out-1}
           onChange={dest => update(mapping => mapping.dest = dest)}/>
-      <div  style={{float: 'left'}}>
+      <div  style={{width: 'fit-content'}}>
         {getLabelForChannel(output_labels, mapping.dest)}
       </div>
       <MdiButton
@@ -308,7 +308,7 @@ function SourceView(props: {
             max={channelsIn - 1}
             onChange={channel => update(source => source.channel = channel)}/>
       </div>
-      <div style={{float: 'left'}}>
+      <div style={{width: 'fit-content'}}>
         {getLabelForChannel(input_labels, source.channel)}
       </div>
       <div style={{flexGrow: 1}}>
