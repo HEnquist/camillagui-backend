@@ -1,12 +1,13 @@
 import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState } from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline, } from "@mdi/js"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline, mdiMenuDown } from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
 import { toMap } from "./arrays"
 import { Range } from "immutable"
 import DataTable from 'react-data-table-component'
 import { FileInfo } from "./files"
+import { getLabelForChannel } from "../camilladsp/config"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -481,6 +482,33 @@ export function FloatListOption(props: {
         <ErrorMessage message={props.error} />
     </>
 }
+
+export function LabelListOption(props: {
+    value: string | null
+    error?: string
+    desc: string
+    onChange: (device: string | null) => void
+    onButtonClick: () => void
+  }) {
+    return <div className="setting" data-tooltip-html="Name of device">
+      <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
+      <OptionalTextInput
+          value={props.value}
+          tooltip="Name of device"
+          className="setting-input"
+          style={{width: '87%'}}
+          onChange={props.onChange}/>
+      <MdiButton
+          icon={mdiMenuDown}
+          tooltip="Pick a device"
+          onClick={props.onButtonClick}
+          className='setting-button'
+          style={{width: '13%'}}
+          buttonSize="small"
+      />
+      <ErrorMessage message={props.error}/>
+    </div>
+  }
 
 export function StringListOption(props: {
     value: string[] | null
@@ -1138,9 +1166,9 @@ export function ChannelSelection(props: {
     maxChannelCount: number
     label: string | null
     setChannels: (channels: number[] | null) => void
-    labels?: string[] | null
+    labels?: (string|null)[] | null
 }) {
-    const { channels, maxChannelCount, setChannels, label } = props
+    const { channels, maxChannelCount, setChannels, label, labels } = props
     let [expanded, setExpanded] = useState(false)
 
     if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
@@ -1198,7 +1226,7 @@ export function ChannelSelection(props: {
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
             <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
             {Range(0, maxChannelCount).map(index =>
-                <ChannelButton key={index} channel={props.labels ? props.labels[index] : index} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
+                <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
             )}
         </div>
     }
@@ -1229,7 +1257,7 @@ function CompactChannelIndicator(props: {
     </div>
 }
 
-function ChannelButton(props: {
+export function ChannelButton(props: {
     channel: number | string
     selected: boolean
     onClick: () => void

@@ -129,7 +129,7 @@ export class PipelineTab extends React.Component<{
           Capture: {this.state.capture_channels} channels in
         </div>
         {pipeline?.map((step: PipelineStep, index: number) => {
-          const channel_labels = getChannelLabels(config, index, this.state.capture_channels)
+          const channel_labels = getChannelLabels(config, index)
           const stepErrors = errorsForSubpath(errors, index)
           const typeSelect = <EnumInput
             value={step.type}
@@ -332,7 +332,7 @@ function FilterStepView(props: {
   plot: () => void
   errors: ErrorsForPath
   controls: ReactNode
-  labels: string[]
+  labels: (string|null)[] | null
 }) {
   const {
     stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls, maxChannelCount

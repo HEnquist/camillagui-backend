@@ -21,6 +21,7 @@ import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   add_default_option,
   Box,
+  ChannelButton,
   default_to_null,
   EnumInput,
   EnumOption,
@@ -28,6 +29,7 @@ import {
   IntInput,
   IntOption,
   KeyValueSelectPopup,
+  LabelListOption,
   MdiButton,
   null_to_default,
   OptionalBoolOption,
@@ -42,6 +44,7 @@ import {
   TextOption,
 } from "./utilities/ui-components"
 import {mdiMagnify} from '@mdi/js'
+import { Range } from "immutable"
 
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
@@ -463,6 +466,7 @@ function CaptureOptions(props: {
 }) {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
+  let [expanded, setExpanded] = useState(false)
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
@@ -487,6 +491,45 @@ function CaptureOptions(props: {
     // The selected type isn't available, change to one that is
     props.onChange(devices => devices.capture= defaults[captureTypes[0]])
   }
+
+
+  const toggleExpanded = () => {
+    setExpanded(!expanded)
+  }
+
+  const updateChannelLabel = (channel: number, label: string | null) => {
+    if (!("labels" in capture)) {
+      return null
+    }
+    let existing = capture.labels // @ts-ignore 
+    if (existing === null) {
+      existing = []
+    }
+    while (existing.length <= channel) {
+      existing.push(null)
+    }
+    existing[channel] = label
+    console.log("Update label for channel", channel, label)
+    onChange(devices => // @ts-ignore
+      devices.capture.labels = existing)
+  }
+
+  const makeDropdown = () =>
+  {
+    if (!("labels" in capture)) {
+      return null
+    }
+    return <div>
+      {Range(0, 2).map(row => (
+                <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
+                error={errors({path: ['labels']})}
+                desc={row.toString()}
+                tooltip={'Label for channel '+ row}
+                onChange={new_label => updateChannelLabel(row, new_label)}/>
+            ))}
+    </div>
+}
+
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
@@ -674,15 +717,19 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
-    {(capture.type === 'Alsa') &&
-    <StringListOption
-        value={capture.labels}
-        error={errors({path: ['device']})}
-        desc="labels"
-        tooltip="Labels for channels"
-        onChange={labels => onChange(devices => // @ts-ignore
-            devices.capture.labels = labels
-        )}/>
+    {(capture.type === 'Alsa') && <>
+    <LabelListOption 
+      value="asad" 
+      error={errors({path: ['labels']})} 
+      desc="labels"
+      onChange={value => onChange(devices => // @ts-ignore
+              devices.capture.labels = value
+          )}
+      onButtonClick={toggleExpanded}
+      />
+    {expanded && makeDropdown()}
+
+    </>
     }
   </Box>
 }

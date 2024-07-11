@@ -616,7 +616,7 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: string[] | null }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: (string|null)[] | null }
     | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
     | { type: 'Jack', channels: number, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
@@ -678,7 +678,7 @@ export interface Mixer {
         out: number
     }
     mapping: Mapping[]
-    labels: string[] | null
+    labels: (string|null)[] | null
 }
 
 export interface Mapping {
@@ -750,20 +750,12 @@ export async function getCaptureChannelCount(config: Config): Promise<number> {
     return config.devices.capture.channels
 }
 
-export function getChannelLabels(config: Config, index: number, capturedev_channels: number): string[] {
+export function getChannelLabels(config: Config, index: number): (string|null)[]|null {
     // Capture device labels
     let cap_params = config.devices.capture
-    let active_channels = capturedev_channels
-    let channel_labels = []
-    for (let n = 0; n < active_channels; n++) {
-        var label = n.toString()
-        if ('labels' in cap_params) {
-          const labels = cap_params.labels
-          if (labels !== null && labels.length > n) {
-            label = labels[n]
-          }
-        }
-        channel_labels.push(label)
+    let channel_labels = null
+    if ('labels' in cap_params) {
+        channel_labels = cap_params.labels
     }
     let pipeline = config.pipeline ? config.pipeline : []
     for (let idx = 0; idx < index; idx++) {
@@ -772,24 +764,14 @@ export function getChannelLabels(config: Config, index: number, capturedev_chann
         if (step.type === "Mixer" && config.mixers && !disabled) {
             const mixername = step.name
             const mixconf = config["mixers"][mixername]
-            if (!((mixconf.labels === null || mixconf.labels.length === 0) && mixconf.channels.out === mixconf.channels.in)) {
-                channel_labels = []
-                const labels = mixconf.labels
-                for (let n = 0; n < mixconf.channels.out; n++) {
-                    var temp_label = idx.toString()
-                    if (labels !== null && labels.length > n) {
-                        temp_label = labels[n]
-                    }
-                    channel_labels.push(temp_label)
-                }
-            }
+            channel_labels = mixconf.labels
         }
     }
     return channel_labels
 }
 
-export function getLabelForChannel(labels: string[] | null, channel: number): string {
-    if (labels === null || labels.length <= channel) {
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
+    if (labels === undefined || labels === null || labels.length <= channel) {
         return channel.toString()
     }
     const label = labels[channel]
@@ -799,12 +781,7 @@ export function getLabelForChannel(labels: string[] | null, channel: number): st
     return channel.toString()
 }
 
-export function getMixerInputLabels(config: Config, mixername: string): string[] {
-    const mixers = config.mixers ? config.mixers : {}
-    const mixconf = mixers[mixername]
-    if (mixconf === undefined || mixconf === null) {
-        return []
-    }
+export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {
     const pipeline = config.pipeline ? config.pipeline : []
     let found_at = -1
     for (const [idx, step] of pipeline.entries()) {
@@ -814,13 +791,9 @@ export function getMixerInputLabels(config: Config, mixername: string): string[]
         }
     }
     if (found_at >= 0) {
-        return getChannelLabels(config, found_at, mixconf.channels.in)
+        return getChannelLabels(config, found_at)
     }
     else {
-        let channel_labels = []
-        for (let n = 0; n < mixconf.channels.in; n++) {
-            channel_labels.push(n.toString())
-        }
-        return channel_labels
+        return null
     }
 }

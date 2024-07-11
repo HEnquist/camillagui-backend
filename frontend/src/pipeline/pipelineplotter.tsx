@@ -4,7 +4,7 @@ import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
 import { CloseButton, cssStyles } from "../utilities/ui-components"
-import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount } from "../camilladsp/config"
+import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount, getLabelForChannel } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import { Range } from "immutable"
@@ -308,9 +308,7 @@ class PipelinePlot extends React.Component<Props, State> {
       var label = "ch " + n
       if ('labels' in cap_params) {
         const labels = cap_params.labels
-        if (labels !== null && labels.length > n) {
-          label = labels[n]
-        }
+        label = getLabelForChannel(labels, n)
       }
       channel_labels.push(label)
     }
@@ -439,10 +437,7 @@ class PipelinePlot extends React.Component<Props, State> {
           channel_labels = []
           const labels = mixconf.labels
           for (let n = 0; n < mixconf.channels.out; n++) {
-            var label = "ch " + n
-            if (labels !== null && labels.length > n) {
-              label = labels[n]
-            }
+            label = getLabelForChannel(labels, n)
             channel_labels.push(label)
           }
         }

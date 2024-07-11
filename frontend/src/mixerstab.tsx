@@ -230,8 +230,8 @@ function MappingView(props: {
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mapping>) => void
-  input_labels: string[] | null
-  output_labels: string[] | null
+  input_labels: (string|null)[] | null
+  output_labels: (string|null)[] | null
 }) {
   const {mapping, errors, channels, remove, update, input_labels, output_labels} = props
   return <Box style={{marginTop: '5px'}} title={
@@ -292,7 +292,7 @@ function SourceView(props: {
   channelsIn: number
   update: (update: Update<Source>) => void
   remove: () => void
-  input_labels: string[] | null
+  input_labels: (string|null)[] | null
 }) {
   const {source, errors, channelsIn, update, remove, input_labels} = props
   return <>
