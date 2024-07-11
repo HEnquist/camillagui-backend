@@ -93,7 +93,7 @@ textarea.logfileviewer {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   height: 95vh;
   width: 250px;
@@ -108,7 +108,7 @@ textarea.logfileviewer {
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
-  overflow: scroll;
+  overflow: auto;
   height: 90vh;
 }
 
@@ -121,7 +121,7 @@ textarea.logfileviewer {
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
-  overflow: scroll;
+  overflow: auto;
   height: 86vh;
 }
 
@@ -134,7 +134,7 @@ textarea.logfileviewer {
   flex-direction: column;
   align-items: flex-start;
   width: 550px;
-  overflow: scroll;
+  overflow: auto;
   height: 90vh;
 }
 
