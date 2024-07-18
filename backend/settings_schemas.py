@@ -11,6 +11,7 @@ BACKEND_CONFIG_SCHEMA = {
         },
         "ssl_certificate": {"type": ["string", "null"], "minLength": 1},
         "ssl_private_key": {"type": ["string", "null"], "minLength": 1},
+        "gui_config_file": {"type": ["string", "null"], "minLength": 1},
         "config_dir": {"type": "string", "minLength": 1},
         "coeff_dir": {"type": "string", "minLength": 1},
         "default_config": {"type": ["string", "null"], "minLength": 1},

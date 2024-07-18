@@ -33,7 +33,7 @@ from .filters import (
     filter_plot_options,
     pipeline_step_plot_options,
 )
-from .settings import get_gui_config_or_defaults
+from .settings import get_gui_config_or_defaults, GUI_CONFIG_PATH
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
 from .legacy_config_import import migrate_legacy_config
@@ -612,7 +612,10 @@ async def get_gui_config(request):
     """
     Get the gui configuration.
     """
-    gui_config = get_gui_config_or_defaults()
+    gui_config_path = request.app["gui_config_file"]
+    if gui_config_path is None:
+        gui_config_path = GUI_CONFIG_PATH
+    gui_config = get_gui_config_or_defaults(gui_config_path)
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]

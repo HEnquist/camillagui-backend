@@ -35,7 +35,7 @@ for more information.
 
 ## Configuration
 
-The backend configuration is stored in `config/camillagui.yml`
+The backend configuration is stored in `config/camillagui.yml` by default.
 
 ```yaml
 ---
@@ -45,6 +45,7 @@ bind_address: "0.0.0.0"
 port: 5005
 ssl_certificate: null (*)
 ssl_private_key: null (*)
+gui_config_file: null (*)
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
@@ -61,6 +62,8 @@ with the websocket server enabled at port 1234.
 The web interface will be served on port 5005 using plain HTTP.
 It is possible to run the gui and CamillaDSP on different machines,
 just point the `camilla_host` to the right address.
+
+The optional `gui_config_file` can be used to override the default path to the gui config file.
 
 **Warning**: By default the backend will bind to all network interfaces.
 This makes the gui available on all networks the system is connected to, which may be insecure.
@@ -209,6 +212,31 @@ The gui should now be available at: http://localhost:5005/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP
 or hostname of the machine running the gui server.
+
+### Command line options
+The logging level for the backend itself as well as the AIOHTTP framework are set to `WARNING` by default.
+These can both be changed with command line arguments, which may be useful when debugging some problem.
+
+The backend norally reads its configuration from a default location.
+This can be changed by providing a different path as a command line argument.
+
+Use the `-h` or `--help` argument to view the built-in help:
+```
+> python main.py --help
+usage: python main.py [-h] [-c CONFIG] [-l {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}]
+                      [-a {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}]
+
+Backend for the CamillaDSP web GUI
+
+options:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        Provide a path to a backend config file to use instead of the default
+  -l {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}, --log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}
+                        Logging level
+  -a {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}, --aiohttp-log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}
+                        AIOHTTP logging level
+```
 
 
 ## Development
