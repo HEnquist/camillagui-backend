@@ -21,7 +21,6 @@ import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
   add_default_option,
   Box,
-  ChannelButton,
   default_to_null,
   EnumInput,
   EnumOption,
@@ -39,7 +38,6 @@ import {
   OptionalIntOption,
   OptionalTextInput,
   OptionalTextOption,
-  StringListOption,
   TextInput,
   TextOption,
 } from "./utilities/ui-components"
@@ -511,19 +509,9 @@ function CaptureOptions(props: {
       devices.capture.labels = existing)
   }
 
-  const updateChannelLabels = (labels_str: string | null) => {
-    let labels: (string|null)[] = []
-    if (labels_str === null) {
-      onChange(devices =>
-        devices.capture.labels = [])
-      return
-    }
-    for (let label of labels_str.split(",")) {
-      let cleaned_label = label === "" ? null : label.trim()
-      labels.push(cleaned_label)
-    }
+  const updateChannelLabels = (labels: (string | null)[] | null) => {
     let channels = "channels" in props.capture ? props.capture.channels : 2
-    if (labels.length > channels) {
+    if (labels !== null && labels.length > channels) {
       labels = labels.slice(0, channels)
     }
     console.log("Update labels to", labels)

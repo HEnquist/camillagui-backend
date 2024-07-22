@@ -487,9 +487,24 @@ export function LabelListOption(props: {
     value: string | null
     error?: string
     desc: string
-    onChange: (labels_str: string|null) => void
+    onChange: (labels: (string|null)[] | null) => void
     onButtonClick: () => void
   }) {
+
+    const updateChannelLabels = (labels_str: string | null) => {
+        let labels: (string|null)[] = []
+        if (labels_str === null) {
+          props.onChange(null)
+          return
+        }
+        for (let label of labels_str.split(",")) {
+          let cleaned_label = label === "" ? null : label.trim()
+          labels.push(cleaned_label)
+        }
+        console.log("Update labels to", labels)
+        props.onChange(labels)
+      }
+
     return <div className="setting" data-tooltip-html="Name of device">
       <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
       <OptionalTextInput
@@ -497,7 +512,7 @@ export function LabelListOption(props: {
           tooltip="Name of device"
           className="setting-input"
           style={{width: '87%'}}
-          onChange={props.onChange}/>
+          onChange={updateChannelLabels}/>
       <MdiButton
           icon={mdiMenuDown}
           tooltip="Pick a device"
