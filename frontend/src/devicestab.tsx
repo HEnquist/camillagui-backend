@@ -471,15 +471,15 @@ function CaptureOptions(props: {
     return null
   const defaults: { [type: string]: CaptureDevice } = {
     Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
-    Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
-    Jack: { type: 'Jack', channels: 2, device: 'default'},
-    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
+    Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something', labels: null },
+    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false, labels: null},
+    Jack: { type: 'Jack', channels: 2, device: 'default', labels: null},
+    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
     RawFile: { type: 'RawFile', channels: 2, format: 'S32LE', filename: '/path/to/file',
-      extra_samples: null, skip_bytes: null, read_bytes: null },
-    WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null },
-    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2}
+      extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
+    WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null, labels: null },
+    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2, labels: null}
   }
 
   const {capture, onChange, errors, supported_capture_types} = props
@@ -498,10 +498,7 @@ function CaptureOptions(props: {
   }
 
   const updateChannelLabel = (channel: number, label: string | null) => {
-    if (!("labels" in capture)) {
-      return null
-    }
-    let existing = capture.labels // @ts-ignore 
+    let existing = capture.labels
     if (existing === null) {
       existing = []
     }
@@ -510,15 +507,32 @@ function CaptureOptions(props: {
     }
     existing[channel] = label
     console.log("Update label for channel", channel, label)
-    onChange(devices => // @ts-ignore
+    onChange(devices =>
       devices.capture.labels = existing)
+  }
+
+  const updateChannelLabels = (labels_str: string | null) => {
+    let labels: (string|null)[] = []
+    if (labels_str === null) {
+      onChange(devices =>
+        devices.capture.labels = [])
+      return
+    }
+    for (let label of labels_str.split(",")) {
+      let cleaned_label = label === "" ? null : label.trim()
+      labels.push(cleaned_label)
+    }
+    let channels = "channels" in props.capture ? props.capture.channels : 2
+    if (labels.length > channels) {
+      labels = labels.slice(0, channels)
+    }
+    console.log("Update labels to", labels)
+    onChange(devices =>
+      devices.capture.labels = labels)
   }
 
   const makeDropdown = () =>
   {
-    if (!("labels" in capture)) {
-      return null
-    }
     return <div>
       {Range(0, 2).map(row => (
                 <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
@@ -717,20 +731,14 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
-    {(capture.type === 'Alsa') && <>
     <LabelListOption 
-      value="asad" 
+      value={capture.labels ? capture.labels.map(lab => lab ? lab : "").join(",") : ""} 
       error={errors({path: ['labels']})} 
       desc="labels"
-      onChange={value => onChange(devices => // @ts-ignore
-              devices.capture.labels = value
-          )}
+      onChange={updateChannelLabels} // TODO split string and update the list
       onButtonClick={toggleExpanded}
       />
     {expanded && makeDropdown()}
-
-    </>
-    }
   </Box>
 }
 

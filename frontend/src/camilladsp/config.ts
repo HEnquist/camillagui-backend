@@ -617,21 +617,24 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: (string|null)[] | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
-    | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
-    | { type: 'Pulse', channels: number, format: Format, device: string }
+    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
+    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
+    | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
     | {
         type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     }
-    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null }
+    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null, labels: (string|null)[] | null }
     | {
         type: 'Stdin', channels: number, format: Format,
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     } | {
         type: 'Bluez', channels: number, format: Format,
-        service: string | null, dbus_path: string
+        service: string | null, dbus_path: string,
+        labels: (string|null)[] | null
     }
 
 export type PlaybackDevice =

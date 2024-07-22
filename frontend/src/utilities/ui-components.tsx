@@ -487,7 +487,7 @@ export function LabelListOption(props: {
     value: string | null
     error?: string
     desc: string
-    onChange: (device: string | null) => void
+    onChange: (labels_str: string|null) => void
     onButtonClick: () => void
   }) {
     return <div className="setting" data-tooltip-html="Name of device">

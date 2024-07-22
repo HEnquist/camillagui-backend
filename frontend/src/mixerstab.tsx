@@ -214,7 +214,7 @@ function MixerView(props: {
         value={mixer.description}
         tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
-      <StringListOption
+      <StringListOption // TODO copy from devices tab
         value={mixer.labels}
         error={errors({path: ['labels']})}
         desc="labels"
