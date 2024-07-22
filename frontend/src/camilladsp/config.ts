@@ -800,3 +800,20 @@ export function getMixerInputLabels(config: Config, mixername: string): (string|
         return null
     }
 }
+
+export function getProcessorChannelLabels(config: Config, procname: string): (string|null)[] | null {
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Processor' && step.name === procname) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at)
+    }
+    else {
+        return null
+    }
+}

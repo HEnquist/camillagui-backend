@@ -719,11 +719,11 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
-    <LabelListOption 
-      value={capture.labels ? capture.labels.map(lab => lab ? lab : "").join(",") : ""} 
-      error={errors({path: ['labels']})} 
+    <LabelListOption
+      value={capture.labels ? capture.labels.map(lab => lab ? lab : "").join(",") : ""}
+      error={errors({path: ['labels']})}
       desc="labels"
-      onChange={updateChannelLabels} // TODO split string and update the list
+      onChange={updateChannelLabels}
       onButtonClick={toggleExpanded}
       />
     {expanded && makeDropdown()}

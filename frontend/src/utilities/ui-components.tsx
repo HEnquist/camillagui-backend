@@ -525,41 +525,6 @@ export function LabelListOption(props: {
     </div>
   }
 
-export function StringListOption(props: {
-    value: string[] | null
-    error?: string
-    desc: string
-    tooltip: string
-    onChange: (value: string[]) => void
-}) {
-    return <>
-        <OptionLine desc={props.desc} tooltip={props.tooltip}>
-            <ParsedInput
-                className="setting-input"
-                immediate={true}
-                value={props.value ? props.value : [] }
-                tooltip={props.tooltip}
-                asString={(value: string[]) => value.join(",")}
-                parseValue={(rawValue: string) => {
-                    if (rawValue === "") {
-                        return []
-                    }
-                    const parsedvalue = []
-                    const values = rawValue.split(",")
-                    for (let value of values) {
-                        //if (value) {
-                            parsedvalue.push(value.trim())
-                        //}
-                    }
-                    return parsedvalue
-                }}
-                onChange={props.onChange}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-            />
-        </OptionLine>
-        <ErrorMessage message={props.error} />
-    </>
-}
 
 type ParsedInputProps<TYPE> = {
     style?: CSSProperties

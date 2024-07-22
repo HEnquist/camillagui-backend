@@ -1,4 +1,4 @@
-import React from "react"
+import React, {useState} from "react"
 import "./index.css"
 import {
   AddButton,
@@ -7,11 +7,12 @@ import {
   ErrorMessage,
   IntOption,
   FloatOption,
+  LabelListOption,
   MdiButton,
   ParsedInput,
   OptionalTextInput,
-  OptionalEnumOption,
-  StringListOption
+  OptionalTextOption,
+  OptionalEnumOption
 } from "./utilities/ui-components"
 import {
   Config,
@@ -32,6 +33,7 @@ import {
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
+import { Range } from "immutable"
 
 export class MixersTab extends React.Component<{
   config: Config
@@ -147,9 +149,51 @@ function MixerView(props: {
   update: (update: Update<Mixer>) => void
 }) {
   const {name, mixer, config, errors, rename, remove, update} = props
+  let [expanded, setExpanded] = useState(false)
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
   const input_labels = getMixerInputLabels(config, name)
+
+  const toggleExpanded = () => {
+    setExpanded(!expanded)
+  }
+
+  const updateChannelLabel = (channel: number, label: string | null) => {
+    let existing = props.mixer.labels
+    if (existing === null) {
+      existing = []
+    }
+    while (existing.length <= channel) {
+      existing.push(null)
+    }
+    existing[channel] = label
+    console.log("Update label for channel", channel, label)
+    update(mixer =>
+      mixer.labels = existing)
+  }
+
+  const updateChannelLabels = (labels: (string | null)[] | null) => {
+    if (labels !== null && labels.length > props.mixer.channels.out) {
+      labels = labels.slice(0, props.mixer.channels.out)
+    }
+    console.log("Update labels to", labels)
+    update(mixer =>
+      mixer.labels = labels)
+  }
+
+  const makeDropdown = () =>
+  {
+    return <div>
+      {Range(0, 2).map(row => (
+                <OptionalTextOption value={mixer.labels && mixer.labels.length > row ? mixer.labels[row] : null } 
+                error={errors({path: ['labels']})}
+                desc={row.toString()}
+                tooltip={'Label for channel '+ row}
+                onChange={new_label => updateChannelLabel(row, new_label)}/>
+            ))}
+    </div>
+}
+
   return <Box title={
     <>
       <ParsedInput
@@ -214,12 +258,14 @@ function MixerView(props: {
         value={mixer.description}
         tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
-      <StringListOption // TODO copy from devices tab
-        value={mixer.labels}
+      <LabelListOption
+        value={mixer.labels ? mixer.labels.map(lab => lab ? lab : "").join(",") : ""}
         error={errors({path: ['labels']})}
         desc="labels"
-        tooltip="Labels for channels"
-        onChange={labels => update(mixer => mixer.labels = labels)}/>
+        onChange={updateChannelLabels}
+        onButtonClick={toggleExpanded}
+      />
+      {expanded && makeDropdown()}
     </div>
   </Box>
 }
