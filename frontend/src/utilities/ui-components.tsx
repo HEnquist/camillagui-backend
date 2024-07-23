@@ -1192,7 +1192,7 @@ export function ChannelSelection(props: {
                     <tr>
                         {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
                             <td>
-                                <ChannelButton key={rowSize * row + col} channel={rowSize * row + col} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
+                                <ChannelButton key={rowSize * row + col} channel={getLabelForChannel(labels, rowSize * row + col)} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
                             </td>
                         ))}
                     </tr>
