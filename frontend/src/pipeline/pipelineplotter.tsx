@@ -95,14 +95,15 @@ interface Block {
 
 type Props = {
   config: Config,
-  expand_filters: boolean
-  expand_vertical: boolean
+  expand_filters: boolean,
+  expand_vertical: boolean,
 }
 
 type State = {
   width: number,
   height: number,
-  capture_channels: number
+  capture_channels: number,
+  zoomTransform: any
 }
 
 class PipelinePlot extends React.Component<Props, State> {
@@ -120,11 +121,13 @@ class PipelinePlot extends React.Component<Props, State> {
   private blockTextColor?: string
   private disabledBlockTextColor?: string
   private node?: any
+  private zoom: any
 
   constructor(props: Props) {
     super(props)
     this.arrowColors = []
-    this.state = { height: this.height, width: this.width, capture_channels: 2 }
+    this.state = { height: this.height, width: this.width, capture_channels: 2, zoomTransform: null}
+    this.zoom = d3.zoom().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this));
   }
 
   componentDidMount() {
@@ -143,15 +146,27 @@ class PipelinePlot extends React.Component<Props, State> {
       this.setState({ capture_channels: channels })
     })
     this.createPipelinePlot()
+    d3.select('#svg_pipeline_div').call(this.zoom);
   }
 
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
     if (this.state.width !== prevState.width ||
       this.state.height !== prevState.height ||
       this.props.expand_filters !== prevProps.expand_filters ||
-      this.state.capture_channels !== prevState.capture_channels) {
+      this.state.capture_channels !== prevState.capture_channels ||
+      this.state.zoomTransform !== prevState.zoomTransform
+    ) {
       this.createPipelinePlot()
     }
+    //d3.select('#svg_pipeline_div').call(this.zoom);
+  }
+
+
+  zoomed(event: any) {
+    console.log('zoom', event)
+    this.setState({
+      zoomTransform: event.transform,
+    });
   }
 
   private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string | null, x: number, y: number, width: number, disabled: boolean): Block {
@@ -683,6 +698,8 @@ class PipelinePlot extends React.Component<Props, State> {
     return { labels, boxes, links, max_h, max_v }
   }
 
+
+
   createPipelinePlot() {
     d3.select(`#svg_pipeline`).selectAll('*').remove()
 
@@ -795,6 +812,7 @@ class PipelinePlot extends React.Component<Props, State> {
           .style("left", event.pageX - tt_width / 2 + "px")
           .style("top", event.pageY - tt_height - 10 + "px")
       })
+      //.attr("transform", this.state.zoomTransform)
 
     const text = d3
       .select(node)
@@ -822,7 +840,10 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("fill", "none")
       .attr("stroke", d => d.color)
       .attr("stroke-width", yScale(0.03) - yScale(0) + "px")
+
+    d3.select('#svg_pipeline').attr("transform", this.state.zoomTransform)
   }
+
 
   render() {
     return <div id="svg_pipeline_div" style={{ width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto' }}>
