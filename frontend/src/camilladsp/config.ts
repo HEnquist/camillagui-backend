@@ -756,10 +756,7 @@ export async function getCaptureChannelCount(config: Config): Promise<number> {
 export function getChannelLabels(config: Config, index: number): (string|null)[]|null {
     // Capture device labels
     let cap_params = config.devices.capture
-    let channel_labels = null
-    if ('labels' in cap_params) {
-        channel_labels = cap_params.labels
-    }
+    let channel_labels = cap_params.labels
     let pipeline = config.pipeline ? config.pipeline : []
     for (let idx = 0; idx < index; idx++) {
         const step = pipeline[idx]

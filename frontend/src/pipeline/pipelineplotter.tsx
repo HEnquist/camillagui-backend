@@ -330,12 +330,8 @@ class PipelinePlot extends React.Component<Props, State> {
       cap_tooltip = cap_tooltip + "<br>" + key + ": " + value
     }
     for (let n = 0; n < active_channels; n++) {
-      var label = "ch " + n
-      if ('labels' in cap_params) {
-        const labels = cap_params.labels
-        label = getLabelForChannel(labels, n)
-      }
-      channel_labels.push(label)
+      const labels = cap_params.labels
+      channel_labels.push(getLabelForChannel(labels, n))
     }
     for (let n = 0; n < active_channels; n++) {
       var label = channel_labels[n]
@@ -454,13 +450,10 @@ class PipelinePlot extends React.Component<Props, State> {
           1.5,
           spacing_v * mixconf.channels.out
         )
-        if (!((mixconf.labels == null || mixconf.labels.length === 0) && mixconf.channels.out == mixconf.channels.in)) {
-          channel_labels = []
-          const labels = mixconf.labels
-          for (let n = 0; n < mixconf.channels.out; n++) {
-            label = getLabelForChannel(labels, n)
-            channel_labels.push(label)
-          }
+        channel_labels = []
+        for (let n = 0; n < mixconf.channels.out; n++) {
+          label = getLabelForChannel(mixconf.labels, n)
+          channel_labels.push(label)
         }
         for (let m = 0; m < mixconf.channels.out; m++) {
           mixerchannels.push([])

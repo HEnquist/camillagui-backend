@@ -45,7 +45,7 @@ function Description(props: {
                 className="textbox"
                 rows={10}
                 value={props.config.description === null ? "": props.config.description}
-                tooltip="Optoional description for the configuration"
+                tooltip="Optional description for the configuration"
                 onChange={desc => desc === "" ? props.onChange(config => { config.description = null }) : props.onChange(config => { config.description = desc })} 
                 />
     </Box>
