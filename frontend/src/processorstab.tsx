@@ -4,8 +4,8 @@ import "./index.css"
 import {
     Config,
     defaultProcessor,
+    getProcessorChannelLabels,
     Processor,
-    Processors,
     newProcessorName,
     removeProcessor,
     renameProcessor,
@@ -33,7 +33,7 @@ import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
     {
-        processors: Processors
+        config: Config
         updateConfig: (update: Update<Config>) => void
         errors: ErrorsForPath
     },
@@ -66,7 +66,7 @@ export class ProcessorsTab extends React.Component<
     //private timer = delayedExecutor(2000)
 
     private processorNames(): string[] {
-        return sortedProcessorNamesOf(this.props.processors, this.state.sortBy, this.state.sortReverse)
+        return sortedProcessorNamesOf(this.props.config.processors, this.state.sortBy, this.state.sortReverse)
     }
 
     private changeSortBy(key: string) {
@@ -125,7 +125,8 @@ export class ProcessorsTab extends React.Component<
     }
 
     render() {
-        let { processors, errors } = this.props
+        let { config, errors } = this.props
+        let processors = config.processors ? config.processors : {}
         return <div>
             <div className="horizontally-spaced-content" style={{ width: '700px' }}>
                 <EnumOption
@@ -148,6 +149,7 @@ export class ProcessorsTab extends React.Component<
                             key={this.state.processorKeys[name]}
                             name={name}
                             processor={processors[name]}
+                            config={config}
                             errors={errorsForSubpath(errors, name)}
                             updateProcessor={update => this.updateProcessor(name, update)}
                             rename={newName => this.renameProcessor(name, newName)}
@@ -169,6 +171,7 @@ function hasChannelSelectors(processor: Processor): boolean {
 interface ProcessorViewProps {
     name: string
     processor: Processor
+    config: Config
     errors: ErrorsForPath
     updateProcessor: (update: Update<Processor>) => void
     rename: (newName: string) => void
@@ -186,9 +189,10 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
     }
 
     render() {
-        const { name, processor } = this.props
+        const { name, processor, config } = this.props
         const isValidProcessorName = (newName: string) =>
             name === newName || (newName.trim().length > 0 && this.props.isFreeProcessorName(newName))
+        const channel_labels = getProcessorChannelLabels(config, name)
         return <Box style={{width: '700px' }} title={
             <ParsedInput
                 style={{ width: '300px' }}
@@ -209,7 +213,8 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
                 <ProcessorParams
                     processor={processor}
                     errors={this.props.errors}
-                    updateProcessor={this.props.updateProcessor} />
+                    updateProcessor={this.props.updateProcessor}
+                    labels={channel_labels} />
             </div>
 
 
@@ -236,6 +241,7 @@ class ProcessorParams extends React.Component<{
     processor: Processor
     errors: ErrorsForPath
     updateProcessor: (update: Update<Processor>) => void
+    labels: (string|null)[] | null
 }, unknown> {
     constructor(props: any) {
         super(props)
@@ -288,7 +294,7 @@ class ProcessorParams extends React.Component<{
 
 
     render() {
-        const { processor, errors } = this.props
+        const { processor, errors, labels } = this.props
         return <div style={{ width: '100%', textAlign: 'right' }}>
             <ErrorMessage message={errors({ path: [] })} />
             <EnumOption
@@ -312,13 +318,13 @@ class ProcessorParams extends React.Component<{
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} />
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} labels={labels}/>
                 </label>
                 <label className="setting">
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} />
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} labels={labels}/>
                 </label>
                 </div>
             }

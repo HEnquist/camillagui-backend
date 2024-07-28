@@ -28,6 +28,7 @@ import {
   IntInput,
   IntOption,
   KeyValueSelectPopup,
+  LabelListOption,
   MdiButton,
   null_to_default,
   OptionalBoolOption,
@@ -41,6 +42,7 @@ import {
   TextOption,
 } from "./utilities/ui-components"
 import {mdiMagnify} from '@mdi/js'
+import { Range } from "immutable"
 
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {Update} from "./utilities/common"
@@ -462,19 +464,20 @@ function CaptureOptions(props: {
 }) {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
+  let [expanded, setExpanded] = useState(false)
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
-    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null },
-    Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something' },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false},
-    Jack: { type: 'Jack', channels: 2, device: 'default'},
-    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
+    CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
+    Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something', labels: null },
+    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false, labels: null},
+    Jack: { type: 'Jack', channels: 2, device: 'default', labels: null},
+    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
     RawFile: { type: 'RawFile', channels: 2, format: 'S32LE', filename: '/path/to/file',
-      extra_samples: null, skip_bytes: null, read_bytes: null },
-    WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null },
-    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2}
+      extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
+    WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null, labels: null },
+    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2, labels: null}
   }
 
   const {capture, onChange, errors, supported_capture_types} = props
@@ -486,6 +489,49 @@ function CaptureOptions(props: {
     // The selected type isn't available, change to one that is
     props.onChange(devices => devices.capture= defaults[captureTypes[0]])
   }
+
+
+  const toggleExpanded = () => {
+    setExpanded(!expanded)
+  }
+
+  const updateChannelLabel = (channel: number, label: string | null) => {
+    let existing = capture.labels
+    if (existing === null) {
+      existing = []
+    }
+    while (existing.length <= channel) {
+      existing.push(null)
+    }
+    existing[channel] = label
+    console.log("Update label for channel", channel, label)
+    onChange(devices =>
+      devices.capture.labels = existing)
+  }
+
+  const updateChannelLabels = (labels: (string | null)[] | null) => {
+    let channels = "channels" in props.capture ? props.capture.channels : 2
+    if (labels !== null && labels.length > channels) {
+      labels = labels.slice(0, channels)
+    }
+    console.log("Update labels to", labels)
+    onChange(devices =>
+      devices.capture.labels = labels)
+  }
+
+  const makeDropdown = () =>
+  {
+    return <div>
+      {Range(0, 2).map(row => (
+                <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
+                error={errors({path: ['labels']})}
+                desc={row.toString()}
+                tooltip={'Label for channel '+ row}
+                onChange={new_label => updateChannelLabel(row, new_label)}/>
+            ))}
+    </div>
+}
+
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
@@ -673,6 +719,14 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
+    <LabelListOption
+      value={capture.labels ? capture.labels.map(lab => lab ? lab : "").join(",") : ""}
+      error={errors({path: ['labels']})}
+      desc="labels"
+      onChange={updateChannelLabels}
+      onButtonClick={toggleExpanded}
+      />
+    {expanded && makeDropdown()}
   </Box>
 }
 

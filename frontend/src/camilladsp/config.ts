@@ -30,7 +30,7 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null },
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
         },
         filters: {},
@@ -462,7 +462,8 @@ export function defaultMixer(): Mixer {
     return {
         description: null,
         channels: { in: 2, out: 2 },
-        mapping: [defaultMapping(2, [])]
+        mapping: [defaultMapping(2, [])],
+        labels: null
     }
 }
 
@@ -615,22 +616,25 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
-    | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
-    | { type: 'Pulse', channels: number, format: Format, device: string }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: (string|null)[] | null }
+    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
+    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
+    | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
     | {
         type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     }
-    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null }
+    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null, labels: (string|null)[] | null }
     | {
         type: 'Stdin', channels: number, format: Format,
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     } | {
         type: 'Bluez', channels: number, format: Format,
-        service: string | null, dbus_path: string
+        service: string | null, dbus_path: string,
+        labels: (string|null)[] | null
     }
 
 export type PlaybackDevice =
@@ -677,6 +681,7 @@ export interface Mixer {
         out: number
     }
     mapping: Mapping[]
+    labels: (string|null)[] | null
 }
 
 export interface Mapping {
@@ -746,4 +751,66 @@ export async function getCaptureChannelCount(config: Config): Promise<number> {
             return 2
     }
     return config.devices.capture.channels
+}
+
+export function getChannelLabels(config: Config, index: number): (string|null)[]|null {
+    // Capture device labels
+    let cap_params = config.devices.capture
+    let channel_labels = cap_params.labels
+    let pipeline = config.pipeline ? config.pipeline : []
+    for (let idx = 0; idx < index; idx++) {
+        const step = pipeline[idx]
+        const disabled = step.bypassed === true
+        if (step.type === "Mixer" && config.mixers && !disabled) {
+            const mixername = step.name
+            const mixconf = config["mixers"][mixername]
+            channel_labels = mixconf.labels
+        }
+    }
+    return channel_labels
+}
+
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
+    if (labels === undefined || labels === null || labels.length <= channel) {
+        return channel.toString()
+    }
+    const label = labels[channel]
+    if (label) {
+        return label
+    }
+    return channel.toString()
+}
+
+export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Mixer' && step.name === mixername) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at)
+    }
+    else {
+        return null
+    }
+}
+
+export function getProcessorChannelLabels(config: Config, procname: string): (string|null)[] | null {
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Processor' && step.name === procname) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at)
+    }
+    else {
+        return null
+    }
 }
