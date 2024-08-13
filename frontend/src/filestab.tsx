@@ -1,5 +1,5 @@
 import React, {Component} from "react"
-import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort} from "./utilities/ui-components"
+import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort, fileTitleSort} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -38,7 +38,7 @@ export function Files(props: {
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
-  return <div className="wide-tabpanel" style={{ width: '700px' }}>
+  return <div className="wide-tabpanel" style={{ width: '900px' }}>
     <NewConfig currentConfig={props.config}
                setCurrentConfig={props.setCurrentConfig}
                updateConfig={props.updateConfig}/>
@@ -256,38 +256,9 @@ class FileTable extends Component<
 
   render() {
     const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName, filterText} = this.state
-    var columns: any= [
-      {
-        name: 'Filename',
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
-          FileDownloadLink({
-              type: this.props.type,
-              filename: row.name,
-              isCurrentConfig: false
-          })),
-        sortFunction: fileNameSort,
-        sortable: true,
-        grow: 2
-      },
-      {
-        name: 'Date',
-        selector: (row: FileInfo) => row.formattedDate,
-        sortFunction: fileDateSort,
-        sortable: true,
-        maxWidth: '200px'
-      },
-      {
-        name: 'Size',
-        selector: (row: FileInfo) => row.size,
-        sortable: true,
-        maxWidth: '100px'
-      }
-    ]
-    const filteredFiles = files.filter(
-      item => item.name.toLowerCase().includes(filterText.toLowerCase()),
-    )
+    var columns: any = []
     if (this.canLoadAndSave) {
-      columns.unshift({
+      columns.push({
         name: '',
         cell: (row: FileInfo, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
           <SetActiveButton
@@ -310,6 +281,54 @@ class FileTable extends Component<
         compact: true
       })
     }
+    columns.push(
+      {
+        name: 'Filename',
+        cell: (row: FileInfo, index: number, column: number, id: any) => (
+          FileDownloadLink({
+              type: this.props.type,
+              filename: row.name,
+              isCurrentConfig: false
+          })),
+        sortFunction: fileNameSort,
+        sortable: true,
+        grow: 2
+      }
+    )
+    if (this.props.type === "config") {
+      columns.push(
+        {
+          name: 'Title',
+          cell: (row: FileInfo, index: number, column: number, id: any) => (<div data-tooltip-html={row.description} data-tooltip-id="main-tooltip">
+            {row.title ? row.title : (row.description ? <i>{row.description.slice(0, 20) + "..."}</i> : null)}
+            </div>),
+          sortFunction: fileTitleSort,
+          sortable: true,
+          grow: 2
+        }
+      )
+    }
+    columns.push(
+      {
+        name: 'Date',
+        selector: (row: FileInfo) => row.formattedDate,
+        sortFunction: fileDateSort,
+        sortable: true,
+        maxWidth: '200px'
+      }
+    )
+    columns.push(
+      {
+        name: 'Size',
+        selector: (row: FileInfo) => row.size,
+        sortable: true,
+        maxWidth: '100px'
+      }
+    )
+    const filteredFiles = files.filter(
+      item => item.name.toLowerCase().includes(filterText.toLowerCase()) || item.title && item.title.toLowerCase().includes(filterText.toLowerCase()),
+    )
+    
     return (
       <Box title={this.props.title}>
         <div>
@@ -474,6 +493,7 @@ function FileDownloadLink(props: { type: string, filename: string, isCurrentConf
   return <a className='file-link'
             style={{width: 'max-content'}}
             data-tooltip-html={'Download ' + filename + (isCurrentConfig ? '<br>This is the config file currently loaded in this Editor' : '')}
+            data-tooltip-id="main-tooltip"
             download={filename}
             target="_blank"
             rel="noopener noreferrer"

@@ -180,7 +180,7 @@ export class SidePanel extends React.Component<
           checked={this.state.applyConfigAutomatically}
           onChange={(e) => this.setState({applyConfigAutomatically: e.target.checked})}/>
       </div>
-      <div data-tooltip-html="Save config to file automatically<br>after each change" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
+      <div data-tooltip-html="Save config to file automatically<br>after each change" data-tooltip-id="main-tooltip" style={{display: 'table-row', textAlign: 'center', marginTop: '5px'}}>
         <div className="setting-label-wide">Save automatically</div>
         <input
           className = "setting-input"
@@ -190,10 +190,10 @@ export class SidePanel extends React.Component<
       </div>
       </div>
       <div className="two-column-grid">
-        <div data-tooltip-html={unsaved ? "GUI has changes that have<br>not been saved to file": "All changes have been saved to file"} style={{textAlign: 'center', marginTop: '5px'}}>
+        <div data-tooltip-html={unsaved ? "GUI has changes that have<br>not been saved to file": "All changes have been saved to file"} data-tooltip-id="main-tooltip" style={{textAlign: 'center', marginTop: '5px'}}>
           {unsaved ? "All saved: ⚠️": "All saved: ✔️"}
         </div>
-        <div data-tooltip-html={unapplied ? "GUI has changes that have<br>not been applied to the DSP": "All changes have been applied to the DSP"} style={{textAlign: 'center', marginTop: '5px'}}>
+        <div data-tooltip-html={unapplied ? "GUI has changes that have<br>not been applied to the DSP": "All changes have been applied to the DSP"} data-tooltip-id="main-tooltip" style={{textAlign: 'center', marginTop: '5px'}}>
           {unapplied ? "All applied: ⚠️": "All applied: ✔️"}
         </div>
       </div>

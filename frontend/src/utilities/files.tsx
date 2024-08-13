@@ -4,7 +4,9 @@ export interface FileInfo {
   name: string,
   lastModified: number,
   formattedDate: string,
-  size: number
+  size: number,
+  title: string|null|undefined,
+  description: string|null|undefined,
 }
 
 export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {

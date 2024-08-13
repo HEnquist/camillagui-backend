@@ -505,7 +505,7 @@ export function LabelListOption(props: {
         props.onChange(labels)
       }
 
-    return <div className="setting" data-tooltip-html="Name of device">
+    return <div className="setting" data-tooltip-html="Name of device" data-tooltip-id="main-tooltip">
       <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
       <OptionalTextInput
           value={props.value}
@@ -1015,8 +1015,26 @@ export function delayedExecutor(delay: number): (action: Action) => void {
 }
 
 export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
-	const a = rowA.name.toLowerCase();
-	const b = rowB.name.toLowerCase();
+	const a = rowA.name.toLowerCase()
+	const b = rowB.name.toLowerCase()
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+export const fileTitleSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.title ? rowA.title.toLowerCase() : ""
+	const b = rowB.title ? rowB.title.toLowerCase() : ""
+    if (!a && b) {
+        return 1
+    }
+    if (a && !b) {
+        return -1
+    }
 	if (a > b) {
 		return 1
 	}
@@ -1027,8 +1045,8 @@ export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
 }
 
 const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) => {
-	const a = rowA[1].toLowerCase();
-	const b = rowB[1].toLowerCase();
+	const a = rowA[1].toLowerCase()
+	const b = rowB[1].toLowerCase()
 	if (a > b) {
 		return 1
 	}
@@ -1040,8 +1058,8 @@ const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) 
 
 
 export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
-	const a = rowA.lastModified;
-	const b = rowB.lastModified;
+	const a = rowA.lastModified
+	const b = rowB.lastModified
 	if (a > b) {
 		return 1
 	}
