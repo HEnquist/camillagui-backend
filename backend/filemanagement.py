@@ -63,7 +63,7 @@ async def store_files(folder, request):
     return web.Response(text="Saved {} file(s)".format(i))
 
 
-def list_of_files_in_directory(folder):
+def list_of_files_in_directory(folder, title_and_desc=False):
     """
     Return a list of files (name and modification date) in a folder.
     """
@@ -72,14 +72,26 @@ def list_of_files_in_directory(folder):
         for file in os.listdir(folder)
         if isfile(file_in_folder(folder, file))
     ]
-    files_list = map(
-        lambda file: {
-            "name": os.path.basename(file),
-            "lastModified": getmtime(file),
-            "size": getsize(file),
-        },
-        files,
-    )
+    files_list = []
+    for filepath in files:
+        file_data = {
+            "name": os.path.basename(filepath),
+            "lastModified": getmtime(filepath),
+            "size": getsize(filepath),
+        }
+        if title_and_desc:
+            with open(filepath) as f:
+                try:
+                    parsed = yaml.safe_load(f)
+                    title = parsed.get("title")
+                    desc = parsed.get("description")
+                except ScannerError:
+                    title = None
+                    desc = None
+            file_data["title"] = title
+            file_data["description"] = desc
+        files_list.append(file_data)
+
     sorted_files = sorted(files_list, key=lambda x: x["name"].lower())
     return sorted_files
 

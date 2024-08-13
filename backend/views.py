@@ -564,7 +564,7 @@ async def get_stored_configs(request):
     Fetch a list of config files in config_dir.
     """
     config_dir = request.app["config_dir"]
-    configs = list_of_files_in_directory(config_dir)
+    configs = list_of_files_in_directory(config_dir, title_and_desc=True)
     return web.json_response(configs, headers=HEADERS)
 
 
