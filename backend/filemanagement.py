@@ -85,7 +85,7 @@ def list_of_files_in_directory(folder, title_and_desc=False):
                     parsed = yaml.safe_load(f)
                     title = parsed.get("title")
                     desc = parsed.get("description")
-                except ScannerError:
+                except Exception:
                     title = None
                     desc = None
             file_data["title"] = title
