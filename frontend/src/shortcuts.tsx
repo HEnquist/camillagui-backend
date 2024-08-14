@@ -4,7 +4,7 @@ import {Box, Button, MdiIcon} from "./utilities/ui-components"
 import {mdiHelpCircleOutline} from "@mdi/js"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {numberValue, setNumberValues, Update} from "./utilities/common"
+import {numberValue, setNumberValues, Update, boolValue, setBoolValues} from "./utilities/common"
 import {ShortcutSection} from "./guiconfig"
 
 
@@ -49,23 +49,42 @@ function ShortcutSectionView(props: {
     </>
   }>
     {shortcuts.map(s => {
-      let value = numberValue(config, s.config_elements[0].path)
-      return <div key={s.name}>
-        <div className='horizontally-spaced-content'>
-          <div>{s.name}</div>
-          {<DescriptionIcon description={s.description}/>}
-          <div>:</div>
-          <div>{value}</div>
-          <br/>
+      // TODO add a tooltip telling what parameter(s) are controlled
+      // TODO warn when different parameters are out of sync?
+      // TODO reset button, where to get original values?
+      if (s.type && s.type === "boolean") {
+        let value = boolValue(config, s.config_elements[0].path)
+        return <div key={s.name}>
+          <div className='horizontally-spaced-content'>
+            <div>{s.name}</div>
+            {<DescriptionIcon description={s.description}/>}
+            <div>:</div>
+            <Checkbox
+              value={value}
+              setValue={v => updateConfig(cfg => setBoolValues(cfg, s, v))}
+            />
+          </div>
+          
         </div>
-        <Slider
+      } else {
+        let value = numberValue(config, s.config_elements[0].path)
+        return <div key={s.name}>
+          <div className='horizontally-spaced-content'>
+            <div>{s.name}</div>
+            {<DescriptionIcon description={s.description}/>}
+            <div>:</div>
+            <div>{value}</div>
+            <br/>
+          </div>
+          <Slider
             value={value}
             setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
             min={s.range_from}
             max={s.range_to}
             step={s.step}
-        />
-      </div>
+          />
+        </div>
+      }
     })}
   </Box>
 }
@@ -95,6 +114,21 @@ function Slider(props: {
       step={props.step}
       value={value}
       onChange={e => props.setValue(e.target.valueAsNumber)}
+  />
+}
+
+function Checkbox(props: {
+  value?: boolean
+  setValue: (value: boolean) => void
+}) {
+  const value = props.value ?? false
+  const disabled = props.value === undefined
+  return <input
+      disabled={disabled}
+      style={{margin: 0, padding: 0}}
+      type="checkbox"
+      checked={value}
+      onChange={e => props.setValue(e.target.checked)}
   />
 }
 

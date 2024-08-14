@@ -24,6 +24,7 @@ export interface ShortcutSection {
     shortcuts: Shortcut[]
 }
 
+// TODO proper typing
 export interface Shortcut {
     name: string
     description?: string
@@ -31,6 +32,7 @@ export interface Shortcut {
     range_from: number
     range_to: number
     step: number
+    type: string|undefined
 }
 
 export function defaultGuiConfig(): GuiConfig {

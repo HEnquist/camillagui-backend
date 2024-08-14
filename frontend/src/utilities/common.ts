@@ -1,6 +1,7 @@
 import cloneDeep from "lodash/cloneDeep"
 import isEqual from "lodash/isEqual"
 import { isArray, isObject } from "lodash"
+import { Shortcut } from "../guiconfig"
 
 export interface Update<T> {
   (value: T): void
@@ -64,6 +65,18 @@ export function numberValue(object: any, path: string[]): number | undefined {
   return value
 }
 
+export function boolValue(object: any, path: string[]): boolean | undefined {
+  if (object === undefined || object === null)
+      return undefined
+  let value = object
+  for (const property of path) {
+    value = value[property]
+    if (value === undefined || value === null)
+      return undefined
+  }
+  return value
+}
+
 export function setNumberValue(object: any, path: string[], value: number) {
   let subObject = object
   for (const property of path.slice(0, path.length - 1)) {
@@ -76,7 +89,7 @@ export function setNumberValue(object: any, path: string[], value: number) {
   }
 }
 
-export function setNumberValues(object: any, elements: any, value: number) {
+export function setNumberValues(object: any, elements: Shortcut, value: number) {
   for (const element of elements.config_elements) {
     console.log(element)
     const path = element.path
@@ -88,5 +101,30 @@ export function setNumberValues(object: any, elements: any, value: number) {
     }
     console.log(value, elementValue)
     setNumberValue(object, path, elementValue)
+  }
+}
+
+export function setBoolValue(object: any, path: string[], value: boolean) {
+  let subObject = object
+  for (const property of path.slice(0, path.length - 1)) {
+    subObject = subObject[property]
+    if (subObject === undefined)
+      return undefined
+  }
+  if (path[path.length - 1] in subObject) {
+    subObject[path[path.length - 1]] = value
+  }
+}
+
+export function setBoolValues(object: any, elements: Shortcut, value: boolean) {
+  for (const element of elements.config_elements) {
+    console.log(element)
+    const path = element.path
+    let elementValue = value
+    if (element.invert) {
+      elementValue = !elementValue
+    }
+    console.log(value, elementValue)
+    setBoolValue(object, path, elementValue)
   }
 }
