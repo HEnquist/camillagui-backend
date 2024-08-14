@@ -4,7 +4,7 @@ import {Box, Button, MdiIcon} from "./utilities/ui-components"
 import {mdiHelpCircleOutline} from "@mdi/js"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {numberValue, setNumberValue, Update} from "./utilities/common"
+import {numberValue, setNumberValues, Update} from "./utilities/common"
 import {ShortcutSection} from "./guiconfig"
 
 
@@ -49,7 +49,7 @@ function ShortcutSectionView(props: {
     </>
   }>
     {shortcuts.map(s => {
-      let value = numberValue(config, s.path_in_config)
+      let value = numberValue(config, s.config_elements[0].path)
       return <div key={s.name}>
         <div className='horizontally-spaced-content'>
           <div>{s.name}</div>
@@ -60,7 +60,7 @@ function ShortcutSectionView(props: {
         </div>
         <Slider
             value={value}
-            setValue={v => updateConfig(cfg => setNumberValue(cfg, s.path_in_config, v))}
+            setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
             min={s.range_from}
             max={s.range_to}
             step={s.step}

@@ -27,7 +27,7 @@ export interface ShortcutSection {
 export interface Shortcut {
     name: string
     description?: string
-    path_in_config: string[]
+    config_elements: any
     range_from: number
     range_to: number
     step: number

@@ -71,5 +71,22 @@ export function setNumberValue(object: any, path: string[], value: number) {
     if (subObject === undefined)
       return undefined
   }
-  subObject[path[path.length - 1]] = value
+  if (path[path.length - 1] in subObject) {
+    subObject[path[path.length - 1]] = value
+  }
+}
+
+export function setNumberValues(object: any, elements: any, value: number) {
+  for (const element of elements.config_elements) {
+    console.log(element)
+    const path = element.path
+    let elementValue = value
+    if (element.invert) {
+      let range = elements.range_from - elements.range_to
+      let fraction = (value - elements.range_from) / range
+      elementValue = elements.range_to - fraction*range
+    }
+    console.log(value, elementValue)
+    setNumberValue(object, path, elementValue)
+  }
 }
