@@ -61,9 +61,8 @@ GUI_CONFIG_SCHEMA = {
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "path_in_config": {
-                                    "type": "array",
-                                    "items": {"type": "string"},
+                                "config_elements": {
+                                    "type": "array"
                                 },
                                 "range_from": {"type": "number"},
                                 "range_to": {"type": "number"},
@@ -71,7 +70,7 @@ GUI_CONFIG_SCHEMA = {
                             },
                             "required": [
                                 "name",
-                                "path_in_config",
+                                "config_elements",
                                 "range_from",
                                 "range_to",
                                 "step",
