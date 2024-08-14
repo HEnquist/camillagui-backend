@@ -70,10 +70,7 @@ GUI_CONFIG_SCHEMA = {
                             },
                             "required": [
                                 "name",
-                                "config_elements",
-                                "range_from",
-                                "range_to",
-                                "step",
+                                "config_elements"
                             ],
                         },
                     },
