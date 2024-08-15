@@ -62,11 +62,26 @@ GUI_CONFIG_SCHEMA = {
                             "properties": {
                                 "name": {"type": "string"},
                                 "config_elements": {
-                                    "type": "array"
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "path": {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                                "minLength": 1
+                                            },
+                                            "reverse": {"type": ["boolean", "null"]},
+                                        }
+                                    }
                                 },
-                                "range_from": {"type": "number"},
-                                "range_to": {"type": "number"},
-                                "step": {"type": "number"},
+                                "range_from": {"type": "number"}, # TODO required if "number"
+                                "range_to": {"type": "number"}, # TODO required if "number"
+                                "step": {"type": "number"}, # TODO required if "number"
+                                "type": {
+                                    "type": ["string", "null"],
+                                    "enum": ["boolean", "number"]
+                                },
                             },
                             "required": [
                                 "name",
