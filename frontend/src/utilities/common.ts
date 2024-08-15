@@ -53,26 +53,40 @@ function asFormattedLines(object: any): string[] {
     })
 }
 
-export function numberValue(object: any, path: string[]): number | undefined {
+export function numberValue(object: any, shortcut: Shortcut): number | undefined {
   if (object === undefined || object === null)
-      return undefined
+    return undefined
+  const element = shortcut.config_elements[0]
   let value = object
-  for (const property of path) {
+  for (const property of element.path) {
     value = value[property]
     if (value === undefined || value === null)
       return undefined
   }
+  if (typeof value !== "number")
+    return undefined
+  if (element.reverse) {
+    let range = shortcut.range_from - shortcut.range_to
+    let fraction = (value - shortcut.range_from) / range
+    value = shortcut.range_to - fraction * range
+  }
   return value
 }
 
-export function boolValue(object: any, path: string[]): boolean | undefined {
+export function boolValue(object: any, shortcut: Shortcut): boolean | undefined {
   if (object === undefined || object === null)
-      return undefined
+    return undefined
+  const element = shortcut.config_elements[0]
   let value = object
-  for (const property of path) {
+  for (const property of element.path) {
     value = value[property]
     if (value === undefined || value === null)
       return undefined
+  }
+  if (typeof value !== "boolean")
+    return undefined
+  if (element.reverse) {
+    value = !value
   }
   return value
 }
@@ -84,20 +98,20 @@ export function setNumberValue(object: any, path: string[], value: number) {
     if (subObject === undefined)
       return undefined
   }
-  if (path[path.length - 1] in subObject) {
+  if (path[path.length - 1] in subObject && typeof subObject[path[path.length - 1]] === "number") {
     subObject[path[path.length - 1]] = value
   }
 }
 
-export function setNumberValues(object: any, elements: Shortcut, value: number) {
-  for (const element of elements.config_elements) {
+export function setNumberValues(object: any, shortcut: Shortcut, value: number) {
+  for (const element of shortcut.config_elements) {
     console.log(element)
     const path = element.path
     let elementValue = value
-    if (element.invert) {
-      let range = elements.range_from - elements.range_to
-      let fraction = (value - elements.range_from) / range
-      elementValue = elements.range_to - fraction*range
+    if (element.reverse) {
+      let range = shortcut.range_from - shortcut.range_to
+      let fraction = (value - shortcut.range_from) / range
+      elementValue = shortcut.range_to - fraction * range
     }
     console.log(value, elementValue)
     setNumberValue(object, path, elementValue)
@@ -111,17 +125,17 @@ export function setBoolValue(object: any, path: string[], value: boolean) {
     if (subObject === undefined)
       return undefined
   }
-  if (path[path.length - 1] in subObject) {
+  if (path[path.length - 1] in subObject && typeof subObject[path[path.length - 1]] === "boolean") {
     subObject[path[path.length - 1]] = value
   }
 }
 
-export function setBoolValues(object: any, elements: Shortcut, value: boolean) {
-  for (const element of elements.config_elements) {
+export function setBoolValues(object: any, shortcut: Shortcut, value: boolean) {
+  for (const element of shortcut.config_elements) {
     console.log(element)
     const path = element.path
     let elementValue = value
-    if (element.invert) {
+    if (element.reverse) {
       elementValue = !elementValue
     }
     console.log(value, elementValue)

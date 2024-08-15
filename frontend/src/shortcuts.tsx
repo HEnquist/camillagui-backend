@@ -49,15 +49,22 @@ function ShortcutSectionView(props: {
     </>
   }>
     {shortcuts.map(s => {
-      // TODO add a tooltip telling what parameter(s) are controlled
       // TODO warn when different parameters are out of sync?
       // TODO reset button, where to get original values?
+      const desc = s.description ? s.description + "<br><br>" : ""
+      let shortcut_desc = desc + "Controlled config elements:<br>"
+      for (const elem of s.config_elements) {
+        const path = elem.path.join("/")
+        const reverse = elem.reverse ? "<i>reverse</i>" : ""
+
+        shortcut_desc = shortcut_desc + path + " " + reverse + "<br>"
+      }
       if (s.type && s.type === "boolean") {
-        let value = boolValue(config, s.config_elements[0].path)
+        let value = boolValue(config, s)
         return <div key={s.name}>
           <div className='horizontally-spaced-content'>
             <div>{s.name}</div>
-            {<DescriptionIcon description={s.description}/>}
+            {<DescriptionIcon description={shortcut_desc}/>}
             <div>:</div>
             <Checkbox
               value={value}
@@ -67,11 +74,11 @@ function ShortcutSectionView(props: {
           
         </div>
       } else {
-        let value = numberValue(config, s.config_elements[0].path)
+        let value = numberValue(config, s)
         return <div key={s.name}>
           <div className='horizontally-spaced-content'>
             <div>{s.name}</div>
-            {<DescriptionIcon description={s.description}/>}
+            {<DescriptionIcon description={shortcut_desc}/>}
             <div>:</div>
             <div>{value}</div>
             <br/>

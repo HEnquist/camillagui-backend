@@ -1,4 +1,4 @@
-import { asFormattedText, modifiedCopyOf, withoutEmptyProperties, numberValue, setNumberValue } from "./common"
+import { asFormattedText, modifiedCopyOf, withoutEmptyProperties, numberValue, setNumberValue, setBoolValue } from "./common"
 
 test('modifiedCopyOf', () => {
   const object = { a: 1, b: 2 }
@@ -80,19 +80,84 @@ describe('asFormattedText', () => {
   })
 
   test('numberValue returns undefined, if property is absent', () => {
-    expect(numberValue({}, ['a'])).toBe(undefined)
+    const shortcut = {
+      name: "dummy",
+      range_from: -5,
+      range_to: 5,
+      step: 0.5,
+      type: "number",
+      config_elements: [
+        {
+          path: ['a'],
+        }
+      ]
+    }
+    expect(numberValue({}, shortcut)).toBe(undefined)
   })
 
   test('numberValue returns undefined, if parent property is absent', () => {
-    expect(numberValue({}, ['a', 'b'])).toBe(undefined)
+    const shortcut = {
+      name: "dummy",
+      range_from: -5,
+      range_to: 5,
+      step: 0.5,
+      type: "number",
+      config_elements: [
+        {
+          path: ['a', 'b'],
+        }
+      ]
+    }
+    expect(numberValue({}, shortcut)).toBe(undefined)
   })
 
   test('numberValue for simple object', () => {
-    expect(numberValue({ a: 1 }, ['a'])).toBe(1)
+    const shortcut = {
+      name: "dummy",
+      range_from: -5,
+      range_to: 5,
+      step: 0.5,
+      type: "number",
+      config_elements: [
+        {
+          path: ['a'],
+        }
+      ]
+    }
+    expect(numberValue({ a: 1 }, shortcut)).toBe(1)
   })
 
   test('numberValue for complex object', () => {
-    expect(numberValue({ a: { b: 2 } }, ['a', 'b'])).toBe(2)
+    const shortcut = {
+      name: "dummy",
+      range_from: -5,
+      range_to: 5,
+      step: 0.5,
+      type: "number",
+      config_elements: [
+        {
+          path: ['a', 'b'],
+        }
+      ]
+    }
+    expect(numberValue({ a: { b: 2 } }, shortcut)).toBe(2)
+  })
+
+  test('numberValue with reverse', () => {
+    const shortcut = {
+      name: "dummy",
+      range_from: 0,
+      range_to: 10,
+      step: 0.5,
+      type: "number",
+      config_elements: [
+        {
+          path: ['a'],
+          reverse: true,
+        }
+      ]
+    }
+    expect(numberValue({ a: 1 }, shortcut)).toBe(9)
   })
 
   test('setNumberValue for simple object', () => {
@@ -105,5 +170,29 @@ describe('asFormattedText', () => {
     let object = { a: { b: 1 } }
     setNumberValue(object, ['a', 'b'], 2)
     expect(object.a.b).toBe(2)
+  })
+
+  test('setNumberValue for wrong type', () => {
+    let object = { a: "string" }
+    setNumberValue(object, ['a'], 2)
+    expect(object.a).toBe("string")
+  })
+
+  test('setBoolValue for simple object', () => {
+    let object = { a: true }
+    setBoolValue(object, ['a'], false)
+    expect(object.a).toBe(false)
+  })
+
+  test('setBoolValue for complex object', () => {
+    let object = { a: { b: false } }
+    setBoolValue(object, ['a', 'b'], true)
+    expect(object.a.b).toBe(true)
+  })
+
+  test('setBoolValue for wrong type', () => {
+    let object = { a: 5 }
+    setBoolValue(object, ['a'], false)
+    expect(object.a).toBe(5)
   })
 })
