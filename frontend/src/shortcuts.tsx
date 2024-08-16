@@ -1,10 +1,10 @@
 import * as React from "react"
 import {useEffect, useState} from "react"
 import {Box, Button, MdiIcon} from "./utilities/ui-components"
-import {mdiHelpCircleOutline} from "@mdi/js"
+import {mdiHelpCircleOutline, mdiAlert} from "@mdi/js"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {numberValue, setNumberValues, Update, boolValue, setBoolValues} from "./utilities/common"
+import {numberValues, setNumberValues, Update, boolValues, setBoolValues} from "./utilities/common"
 import {ShortcutSection} from "./guiconfig"
 
 
@@ -60,31 +60,30 @@ function ShortcutSectionView(props: {
         shortcut_desc = shortcut_desc + path + " " + reverse + "<br>"
       }
       if (s.type && s.type === "boolean") {
-        let value = boolValue(config, s)
+        let values = boolValues(config, s)
         return <div key={s.name}>
           <div className='horizontally-spaced-content'>
             <div>{s.name}</div>
-            {<DescriptionIcon description={shortcut_desc}/>}
+            {<DescriptionIcon description={shortcut_desc}/>}{<AlertIcon values={values}/>}
             <div>:</div>
             <Checkbox
-              value={value}
+              value={values[0]}
               setValue={v => updateConfig(cfg => setBoolValues(cfg, s, v))}
             />
           </div>
-          
         </div>
       } else {
-        let value = numberValue(config, s)
+        let values = numberValues(config, s)
         return <div key={s.name}>
           <div className='horizontally-spaced-content'>
             <div>{s.name}</div>
-            {<DescriptionIcon description={shortcut_desc}/>}
+            {<DescriptionIcon description={shortcut_desc}/>}{<AlertIcon values={values}/>}
             <div>:</div>
-            <div>{value}</div>
+            <div>{values[0]}</div>
             <br/>
           </div>
           <Slider
-            value={value}
+            value={values[0]}
             setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
             min={s.range_from ? s.range_from : -10}
             max={s.range_to ? s.range_to: 10}
@@ -101,6 +100,24 @@ function DescriptionIcon(props: {description?: string}) {
   return description === undefined ?
       null :
       <MdiIcon icon={mdiHelpCircleOutline} tooltip={description}/>
+}
+
+function AlertIcon(props: {values: (boolean|number|undefined)[]}) {
+  const {values} = props
+  const missing = values.includes(undefined)
+  const not_synced = !values.every(val => val === values[0])
+  let description = ""
+  if (missing) {
+    description = description + "One or several config elements are missing."
+  }
+  if (not_synced) {
+    if (description) {
+      description = description + "<br><br>"
+    }
+    description = description + "This shortcut controls multiple elements, that are not in sync.<br>Changing this control may lead to unexpected results."
+  }
+  return description ?
+      <MdiIcon icon={mdiAlert} tooltip={description}/> : null
 }
 
 function Slider(props: {

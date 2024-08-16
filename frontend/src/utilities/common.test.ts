@@ -92,7 +92,7 @@ describe('asFormattedText', () => {
         }
       ]
     }
-    expect(numberValue({}, shortcut)).toBe(undefined)
+    expect(numberValue({}, shortcut, shortcut.config_elements[0])).toBe(undefined)
   })
 
   test('numberValue returns undefined, if parent property is absent', () => {
@@ -108,7 +108,7 @@ describe('asFormattedText', () => {
         }
       ]
     }
-    expect(numberValue({}, shortcut)).toBe(undefined)
+    expect(numberValue({}, shortcut, shortcut.config_elements[0])).toBe(undefined)
   })
 
   test('numberValue for simple object', () => {
@@ -124,7 +124,7 @@ describe('asFormattedText', () => {
         }
       ]
     }
-    expect(numberValue({ a: 1 }, shortcut)).toBe(1)
+    expect(numberValue({ a: 1 }, shortcut, shortcut.config_elements[0])).toBe(1)
   })
 
   test('numberValue for complex object', () => {
@@ -140,7 +140,7 @@ describe('asFormattedText', () => {
         }
       ]
     }
-    expect(numberValue({ a: { b: 2 } }, shortcut)).toBe(2)
+    expect(numberValue({ a: { b: 2 } }, shortcut, shortcut.config_elements[0])).toBe(2)
   })
 
   test('numberValue with reverse', () => {
@@ -157,7 +157,7 @@ describe('asFormattedText', () => {
         }
       ]
     }
-    expect(numberValue({ a: 1 }, shortcut)).toBe(9)
+    expect(numberValue({ a: 1 }, shortcut, shortcut.config_elements[0])).toBe(9)
   })
 
   test('setNumberValue for simple object', () => {

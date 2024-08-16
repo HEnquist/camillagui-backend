@@ -1,7 +1,7 @@
 import cloneDeep from "lodash/cloneDeep"
 import isEqual from "lodash/isEqual"
 import { isArray, isObject } from "lodash"
-import { Shortcut } from "../guiconfig"
+import { ConfigElement, Shortcut } from "../guiconfig"
 
 export interface Update<T> {
   (value: T): void
@@ -53,10 +53,10 @@ function asFormattedLines(object: any): string[] {
     })
 }
 
-export function numberValue(object: any, shortcut: Shortcut): number | undefined {
+export function numberValue(object: any, shortcut: Shortcut, element: ConfigElement): number|undefined {
   if (object === undefined || object === null)
     return undefined
-  const element = shortcut.config_elements[0]
+
   let value = object
   for (const property of element.path) {
     value = value[property]
@@ -75,10 +75,21 @@ export function numberValue(object: any, shortcut: Shortcut): number | undefined
   return value
 }
 
-export function boolValue(object: any, shortcut: Shortcut): boolean | undefined {
+export function numberValues(object: any, shortcut: Shortcut): (number|undefined)[] {
+  if (object === undefined || object === null)
+    return [undefined]
+
+  let values = []
+  for (const element of shortcut.config_elements) {
+    values.push(numberValue(object, shortcut, element))
+  }
+  return values
+}
+
+export function boolValue(object: any, shortcut: Shortcut, element: ConfigElement): boolean | undefined {
   if (object === undefined || object === null)
     return undefined
-  const element = shortcut.config_elements[0]
+
   let value = object
   for (const property of element.path) {
     value = value[property]
@@ -91,6 +102,17 @@ export function boolValue(object: any, shortcut: Shortcut): boolean | undefined 
     value = !value
   }
   return value
+}
+
+export function boolValues(object: any, shortcut: Shortcut): (boolean|undefined)[] {
+  if (object === undefined || object === null)
+    return [undefined]
+
+  let values = []
+  for (const element of shortcut.config_elements) {
+    values.push(boolValue(object, shortcut, element))
+  }
+  return values
 }
 
 export function setNumberValue(object: any, path: string[], value: number) {
