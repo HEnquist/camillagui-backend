@@ -86,9 +86,9 @@ function ShortcutSectionView(props: {
           <Slider
             value={value}
             setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
-            min={s.range_from}
-            max={s.range_to}
-            step={s.step}
+            min={s.range_from ? s.range_from : -10}
+            max={s.range_to ? s.range_to: 10}
+            step={s.step ? s.step : 0.5}
           />
         </div>
       }

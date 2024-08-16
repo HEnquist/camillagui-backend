@@ -28,12 +28,18 @@ export interface ShortcutSection {
 export interface Shortcut {
     name: string
     description?: string
-    config_elements: any
-    range_from: number
-    range_to: number
-    step: number
-    type: string|undefined
+    config_elements: ConfigElement[]
+    range_from?: number
+    range_to?: number
+    step?: number
+    type?: string
 }
+
+export interface ConfigElement {
+    path: string[]
+    reverse?: boolean
+}
+
 
 export function defaultGuiConfig(): GuiConfig {
     return {
