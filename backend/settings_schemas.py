@@ -72,16 +72,29 @@ GUI_CONFIG_SCHEMA = {
                                                 "minLength": 1
                                             },
                                             "reverse": {"type": ["boolean", "null"]},
-                                        }
+                                        },
+                                        "required": ["path"],
                                     }
                                 },
                                 "range_from": {"type": "number"}, # TODO required if "number"
                                 "range_to": {"type": "number"}, # TODO required if "number"
-                                "step": {"type": "number"}, # TODO required if "number"
+                                "step": {"type": "number", "exclusiveMinimum": 0},
                                 "type": {
                                     "type": ["string", "null"],
                                     "enum": ["boolean", "number"]
                                 },
+                            },
+                            "if": {
+                                "properties": {
+                                    "type": {
+                                        "const": "number"
+                                    }
+                                }
+                            },
+                            "then": {
+                                "required": [
+                                    "range_from", "range_to", "step"
+                                ]
                             },
                             "required": [
                                 "name",
