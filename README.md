@@ -190,12 +190,13 @@ custom_shortcuts:
         step: 0.1
         type: "number"
 ```
+When letting a shortcut control more than one element in the config,
+the first one is considered the main one, that controls the slider position.
+The first element must be present in the config in order for the shortcut to function.
 
-The gui config is checked when the backend starts, and any problems are logged.
-For example, `range_from` must be a number. If it is not, this results in a message such as this:
-```
-ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not of type 'number'
-```
+If any of the others is not at the expected value, the GUI will show a warning.
+The same happens if any of the others is missing in the config.
+The control can then still be used, but may not give the wanted result.
 
 ### Hiding GUI Options
 Options can be hidden from your users by editing `config/gui-config.yml`.
@@ -219,6 +220,14 @@ To enable it by default, in `config/gui-config.yml` set `apply_config_automatica
 
 The update rate of the level meters can be adjusted by changing the `status_update_interval` setting.
 The value is in milliseconds, and the default value is 100 ms.
+
+### Gui config syntax check
+The gui config is checked when the backend starts, and any problems are logged.
+For example, the `range_from` property of a config shortcut must be a number.
+If it is not, this results in a message such as this:
+```
+ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not of type 'number'
+```
 
 ## Running
 Start the server with:
