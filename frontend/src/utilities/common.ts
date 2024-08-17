@@ -66,8 +66,8 @@ export function numberValue(object: any, shortcut: Shortcut, element: ConfigElem
   if (typeof value !== "number")
     return undefined
   if (element.reverse) {
-    const range_from = shortcut.range_from ? shortcut.range_from : -10
-    const range_to = shortcut.range_to ? shortcut.range_to : 10
+    const range_from = shortcut.range_from!
+    const range_to = shortcut.range_to!
     let range = range_from - range_to
     let fraction = (value - range_from) / range
     value = range_to - fraction * range
@@ -133,8 +133,8 @@ export function setNumberValues(object: any, shortcut: Shortcut, value: number) 
     const path = element.path
     let elementValue = value
     if (element.reverse) {
-      const range_from = shortcut.range_from ? shortcut.range_from : -10
-      const range_to = shortcut.range_to ? shortcut.range_to : 10
+      const range_from = shortcut.range_from!
+      const range_to = shortcut.range_to!
       let range = range_from - range_to
       let fraction = (value - range_from) / range
       elementValue = range_to - fraction * range

@@ -85,9 +85,9 @@ function ShortcutSectionView(props: {
           <Slider
             value={values[0]}
             setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
-            min={s.range_from ? s.range_from : -10}
-            max={s.range_to ? s.range_to: 10}
-            step={s.step ? s.step : 0.5}
+            min={s.range_from!}
+            max={s.range_to!}
+            step={s.step!}
           />
         </div>
       }
@@ -99,7 +99,7 @@ function DescriptionIcon(props: {description?: string}) {
   const {description} = props
   return description === undefined ?
       null :
-      <MdiIcon icon={mdiHelpCircleOutline} tooltip={description}/>
+      <MdiIcon icon={mdiHelpCircleOutline} tooltip={description.replace(/\n/gi, '<br>')}/>
 }
 
 function AlertIcon(props: {values: (boolean|number|undefined)[]}) {
