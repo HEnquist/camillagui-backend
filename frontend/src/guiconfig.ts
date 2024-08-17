@@ -24,7 +24,6 @@ export interface ShortcutSection {
     shortcuts: Shortcut[]
 }
 
-// TODO proper typing
 export interface Shortcut {
     name: string
     description?: string

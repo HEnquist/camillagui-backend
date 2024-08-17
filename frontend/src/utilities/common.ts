@@ -66,6 +66,7 @@ export function numberValue(object: any, shortcut: Shortcut, element: ConfigElem
   if (typeof value !== "number")
     return undefined
   if (element.reverse) {
+    // these properties have been checked earlier, ok to use ! to skip null/undefined checks here.
     const range_from = shortcut.range_from!
     const range_to = shortcut.range_to!
     let range = range_from - range_to
@@ -133,6 +134,7 @@ export function setNumberValues(object: any, shortcut: Shortcut, value: number) 
     const path = element.path
     let elementValue = value
     if (element.reverse) {
+      // these properties have been checked earlier, ok to use ! to skip null/undefined checks here.
       const range_from = shortcut.range_from!
       const range_to = shortcut.range_to!
       let range = range_from - range_to
