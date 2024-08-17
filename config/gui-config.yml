@@ -8,7 +8,12 @@ apply_config_automatically: false
 status_update_interval: 100
 custom_shortcuts:
   - section: "Equalizer"
-    description: "To use the EQ, add filters named \"Bass\" and \"Treble\" to the pipeline.<br/>Recommented settings: <br/>Bass: Biquad Lowshelf freq=85 q=0.9<br/>Treble: Biquad Highshelf freq=6500 q=0.7"
+    description: |
+      To use the EQ, add filters named "Bass" and "Treble" to the pipeline.
+
+      Recommended settings:
+      Bass: Biquad Lowshelf freq=85 q=0.9
+      Treble: Biquad Highshelf freq=6500 q=0.7
     shortcuts:
       - name: "Treble (dB)"
         config_elements:
@@ -23,7 +28,13 @@ custom_shortcuts:
         range_to: 12
         step: 0.5
   - section: "Custom"
-    description: "Demo for a few custom shortcuts"
+    description: |
+      Demo for a few custom shortcuts.
+      For crossover example, add one biquad lowpass filter named "Lowpass",
+      and one highpass named "Highpass".
+
+      For the crossfade and switch examples,
+      add two gain filters named "GainA" and "GainB".
     shortcuts:
       - name: "Crossover freq"
         config_elements:

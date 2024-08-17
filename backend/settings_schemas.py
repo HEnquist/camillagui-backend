@@ -76,8 +76,8 @@ GUI_CONFIG_SCHEMA = {
                                         "required": ["path"],
                                     }
                                 },
-                                "range_from": {"type": "number"}, # TODO required if "number"
-                                "range_to": {"type": "number"}, # TODO required if "number"
+                                "range_from": {"type": "number"},
+                                "range_to": {"type": "number"},
                                 "step": {"type": "number", "exclusiveMinimum": 0},
                                 "type": {
                                     "type": ["string", "null"],
@@ -110,22 +110,3 @@ GUI_CONFIG_SCHEMA = {
     "required": [],
 }
 
-"""
-
-custom_shortcuts:
-  - section: "Equalizer"
-    description: "To use the EQ, add filters named \"Bass\" and \"Treble\" to the pipeline.<br/>Recommented settings: <br/>Bass: Biquad Lowshelf freq=85 q=0.9<br/>Treble: Biquad Highshelf freq=6500 q=0.7"
-    shortcuts:
-      - name: "Treble (dB)"
-        path_in_config: ["filters", "Treble", "parameters", "gain"]
-        range_from: -12
-        range_to: 12
-        step: 0.5
-      - name: "Bass (dB)"
-        path_in_config: ["filters", "Bass", "parameters", "gain"]
-        range_from: -12
-        range_to: 12
-        step: 0.5    
-    
-    
-    """
