@@ -326,7 +326,7 @@ class FileTable extends Component<
       }
     )
     const filteredFiles = files.filter(
-      item => item.name.toLowerCase().includes(filterText.toLowerCase()) || item.title && item.title.toLowerCase().includes(filterText.toLowerCase()),
+      item => item.name.toLowerCase().includes(filterText.toLowerCase()) || (item.title && item.title.toLowerCase().includes(filterText.toLowerCase())),
     )
     
     return (

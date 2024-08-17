@@ -1,10 +1,10 @@
 import * as React from "react"
 import {useEffect, useState} from "react"
 import {Box, Button, MdiIcon} from "./utilities/ui-components"
-import {mdiHelpCircleOutline} from "@mdi/js"
+import {mdiHelpCircleOutline, mdiAlert} from "@mdi/js"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
-import {numberValue, setNumberValue, Update} from "./utilities/common"
+import {numberValues, setNumberValues, Update, boolValues, setBoolValues} from "./utilities/common"
 import {ShortcutSection} from "./guiconfig"
 
 
@@ -49,23 +49,48 @@ function ShortcutSectionView(props: {
     </>
   }>
     {shortcuts.map(s => {
-      let value = numberValue(config, s.path_in_config)
-      return <div key={s.name}>
-        <div className='horizontally-spaced-content'>
-          <div>{s.name}</div>
-          {<DescriptionIcon description={s.description}/>}
-          <div>:</div>
-          <div>{value}</div>
-          <br/>
+      // TODO warn when different parameters are out of sync?
+      // TODO reset button, where to get original values?
+      const desc = s.description ? s.description + "<br><br>" : ""
+      let shortcut_desc = desc + "Controlled config elements:<br>"
+      for (const elem of s.config_elements) {
+        const path = elem.path.join("/")
+        const reverse = elem.reverse ? "<i>reverse</i>" : ""
+
+        shortcut_desc = shortcut_desc + path + " " + reverse + "<br>"
+      }
+      if (s.type && s.type === "boolean") {
+        let values = boolValues(config, s)
+        return <div key={s.name}>
+          <div className='horizontally-spaced-content'>
+            <div>{s.name}</div>
+            {<DescriptionIcon description={shortcut_desc}/>}{<AlertIcon values={values}/>}
+            <div>:</div>
+            <Checkbox
+              value={values[0]}
+              setValue={v => updateConfig(cfg => setBoolValues(cfg, s, v))}
+            />
+          </div>
         </div>
-        <Slider
-            value={value}
-            setValue={v => updateConfig(cfg => setNumberValue(cfg, s.path_in_config, v))}
-            min={s.range_from}
-            max={s.range_to}
-            step={s.step}
-        />
-      </div>
+      } else {
+        let values = numberValues(config, s)
+        return <div key={s.name}>
+          <div className='horizontally-spaced-content'>
+            <div>{s.name}</div>
+            {<DescriptionIcon description={shortcut_desc}/>}{<AlertIcon values={values}/>}
+            <div>:</div>
+            <div>{values[0]}</div>
+            <br/>
+          </div>
+          <Slider
+            value={values[0]}
+            setValue={v => updateConfig(cfg => setNumberValues(cfg, s, v))}
+            min={s.range_from!}
+            max={s.range_to!}
+            step={s.step!}
+          />
+        </div>
+      }
     })}
   </Box>
 }
@@ -74,7 +99,25 @@ function DescriptionIcon(props: {description?: string}) {
   const {description} = props
   return description === undefined ?
       null :
-      <MdiIcon icon={mdiHelpCircleOutline} tooltip={description}/>
+      <MdiIcon icon={mdiHelpCircleOutline} tooltip={description.replace(/\n/gi, '<br>')}/>
+}
+
+function AlertIcon(props: {values: (boolean|number|undefined)[]}) {
+  const {values} = props
+  const missing = values.includes(undefined)
+  const not_synced = !values.every(val => val === values[0])
+  let description = ""
+  if (missing) {
+    description = description + "One or several config elements are missing."
+  }
+  if (not_synced) {
+    if (description) {
+      description = description + "<br><br>"
+    }
+    description = description + "This shortcut controls multiple elements, that are not in sync.<br>Changing this control may lead to unexpected results."
+  }
+  return description ?
+      <MdiIcon icon={mdiAlert} tooltip={description}/> : null
 }
 
 function Slider(props: {
@@ -95,6 +138,21 @@ function Slider(props: {
       step={props.step}
       value={value}
       onChange={e => props.setValue(e.target.valueAsNumber)}
+  />
+}
+
+function Checkbox(props: {
+  value?: boolean
+  setValue: (value: boolean) => void
+}) {
+  const value = props.value ?? false
+  const disabled = props.value === undefined
+  return <input
+      disabled={disabled}
+      style={{margin: 0, padding: 0}}
+      type="checkbox"
+      checked={value}
+      onChange={e => props.setValue(e.target.checked)}
   />
 }
 
