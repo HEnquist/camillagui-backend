@@ -38,7 +38,7 @@ export function Files(props: {
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
-  return <div className="wide-tabpanel" style={{ width: '900px' }}>
+  return <div className="tabcontainer"><div className="wide-tabpanel" style={{ width: '900px' }}>
     <NewConfig currentConfig={props.config}
                setCurrentConfig={props.setCurrentConfig}
                updateConfig={props.updateConfig}/>
@@ -51,7 +51,7 @@ export function Files(props: {
                saveNotify={props.saveNotify}
                canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
     <FileTable title='Filters' type="coeff"/>
-  </div>
+  </div><div className="tabspacer"></div></div>
 }
 
 interface FileTableProps {

@@ -141,7 +141,8 @@ export class ProcessorsTab extends React.Component<
                     tooltip="Reverse display order"
                     onChange={this.changeSortOrder} />
             </div>
-            <div className="tabpanel-with-header" style={{ width: '100%' }}>
+            <div className="tabcontainer">
+            <div className="tabpanel-with-header" style={{ width: '700px' }}>
                 <ErrorMessage message={errors({ path: [] })} />
                 {this.processorNames()
                     .map(name =>
@@ -158,7 +159,7 @@ export class ProcessorsTab extends React.Component<
                         />
                     )}
                 <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
-            </div>
+            </div><div className="tabspacer"></div></div>
         </div>
     }
 }

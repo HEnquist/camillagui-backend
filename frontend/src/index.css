@@ -96,45 +96,54 @@ textarea.logfileviewer {
   overflow-y: auto;
   overflow-x: hidden;
   height: 95vh;
-  width: 250px;
+  width: 320px;
 }
 
 .tabpanel {
   border: 4px;
-  border-right: var(--box-border);
+  /*border-right: var(--box-border);*/
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
-  overflow: auto;
+  /*overflow: auto;*/
   height: 90vh;
+}
+
+.tabcontainer {
+  width: 100%;
+  overflow-y: auto;
+}
+
+.tabspacer {
+  width: 100%;
 }
 
 .tabpanel-with-header {
   border: 4px;
-  border-right: var(--box-border);
+  /*border-right: var(--box-border);*/
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
-  overflow: auto;
+  /*overflow: auto;*/
   height: 86vh;
 }
 
 .wide-tabpanel {
   border: 4px;
-  border-right: var(--box-border);
+  /*border-right: var(--box-border);*/
   text-align: left;
   padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 550px;
-  overflow: auto;
+  /*overflow: auto;*/
   height: 90vh;
 }
 
@@ -158,6 +167,7 @@ textarea.logfileviewer {
   text-align: left;
   padding: 2px;
   display: flex;
+  width: 100%;
   flex-direction: column;
 }
 

@@ -173,7 +173,8 @@ export class FiltersTab extends React.Component<
           tooltip="Reverse display order"
           onChange={this.changeSortOrder} />
       </div>
-      <div className="tabpanel-with-header" style={{ width: '100%'}}>
+      <div className="tabcontainer">
+      <div className="tabpanel-with-header" style={{ width: '700px'}}>
         <ErrorMessage message={errors({ path: [] })} />
         {this.filterNames()
           .map(name =>
@@ -195,7 +196,7 @@ export class FiltersTab extends React.Component<
             />
           )}
         <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
-      </div></div>
+      </div><div className="tabspacer"></div></div></div>
   }
 }
 
