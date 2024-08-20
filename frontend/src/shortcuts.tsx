@@ -17,10 +17,10 @@ export function Shortcuts(props: {
 })
 {
     const {currentConfigName, config, setConfig, updateConfig, shortcutSections} = props
-    return <div className="tabpanel">
+    return <div className="tabcontainer"><div className="tabpanel">
         <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig}/>
         <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
-    </div>
+    </div><div className="tabspacer"></div></div>
 }
 
 export function ShortcutSections(props: {
