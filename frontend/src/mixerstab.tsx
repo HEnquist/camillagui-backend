@@ -113,7 +113,7 @@ export class MixersTab extends React.Component<{
     const {config, errors} = this.props
     const mixers = config.mixers ? config.mixers : {}
     return (
-        <div className="tabpanel" style={{width: '700px'}}>
+      <div className="tabcontainer"><div className="tabpanel" style={{width: '700px'}}>
           <ErrorMessage message={errors({path: []})}/>
           {this.mixerNames()
               .map(name =>
@@ -133,7 +133,7 @@ export class MixersTab extends React.Component<{
           <div>
             <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
           </div>
-        </div>
+        </div><div className="tabspacer"></div></div>
     )
   }
 }

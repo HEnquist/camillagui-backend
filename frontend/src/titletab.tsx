@@ -10,14 +10,14 @@ export function TitleTab(props: {
     config: Config,
     updateConfig: (update: Update<Config>) => void
   }) {
-    return <div className="tabpanel" style={{width: '700px'}}>
+    return <div className="tabcontainer"><div className="tabpanel" style={{width: '700px'}}>
       <Title
           config={props.config}
           onChange={props.updateConfig}/>
         <Description
           config={props.config}
           onChange={props.updateConfig}/>
-    </div>
+    </div><div className="tabspacer"></div></div>
   }
 
 function Title(props: {

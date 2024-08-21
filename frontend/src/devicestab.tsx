@@ -70,7 +70,7 @@ export function DevicesTab(props: {
             .then(backends => setAvailableBackends(backends))
       })
   }, []);
-  return <div className="tabpanel">
+  return <div className="tabcontainer"><div className="tabpanel">
     <ErrorMessage message={errors({path: []})}/>
     <Samplerate
         hide_capture_samplerate={guiConfig.hide_capture_samplerate}
@@ -117,7 +117,7 @@ export function DevicesTab(props: {
         errors={errorsForSubpath(errors, 'playback')}
         onChange={updateDevices}
     />
-  </div>
+  </div><div className="tabspacer"></div></div>
 }
 
 function Samplerate(props: {

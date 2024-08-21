@@ -122,7 +122,7 @@ export class PipelineTab extends React.Component<{
   render() {
     const { config, errors } = this.props
     const pipeline = config.pipeline
-    return <DndContainer>
+    return <div className="tabcontainer"><DndContainer>
       <div className="tabpanel" style={{ width: '700px' }}>
         <ErrorMessage message={errors({ path: [] })} />
         <div className="pipeline-channel">
@@ -210,7 +210,7 @@ export class PipelineTab extends React.Component<{
           }}
           onClose={() => this.setState({ plotFilterStep: false })} />}
       </div>
-    </DndContainer>
+    </DndContainer><div className="tabspacer"></div></div>
   }
 }
 
