@@ -5,7 +5,7 @@ import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
 import { AuxFadersBox } from "./auxfaderbox"
 import {Box, Button, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
-import {Config} from "../camilladsp/config"
+import {Config, getOutputLabels} from "../camilladsp/config"
 import {GuiConfig} from "../guiconfig"
 import {LogFileViewerPopup} from "./logfileviewer"
 import {defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller} from "../camilladsp/status"
@@ -84,7 +84,9 @@ export class SidePanel extends React.Component<
         {isCdspOnline(this.state.cdspStatus)
             && <VolumeBox
                     vuMeterStatus={this.state.cdspStatus}
-                    setMessage={message => this.setState({msg: message})}/>
+                    setMessage={message => this.setState({msg: message})}
+                    inputLabels={this.props.config.devices.capture.labels}
+                    outputLabels={getOutputLabels(this.props.config)}/>
         }
         {isCdspOnline(this.state.cdspStatus)
             && <AuxFadersBox />

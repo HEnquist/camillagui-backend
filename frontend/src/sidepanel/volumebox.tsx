@@ -9,6 +9,8 @@ import { throttle } from "lodash"
 type Props = {
     vuMeterStatus: VuMeterStatus
     setMessage: (message: string) => void
+    inputLabels: null | (string|null)[]
+    outputLabels: null | (string|null)[]
 }
 
 type State = {
@@ -184,9 +186,10 @@ export class VolumeBox extends React.Component<Props, State> {
             </>
         }>
             <VuMeterGroup
-                title="In"
+                title="IN"
                 levels={capturesignalrms}
                 peaks={capturesignalpeak}
+                labels={this.props.inputLabels}
             />
             <input
                 style={{ width: '100%', margin: 0, padding: 0 }}
@@ -198,9 +201,10 @@ export class VolumeBox extends React.Component<Props, State> {
                 onChange={e => this.changeVolume(e.target.valueAsNumber / 10.0)}
             />
             <VuMeterGroup
-                title="Out"
+                title="OUT"
                 levels={playbacksignalrms}
                 peaks={playbacksignalpeak}
+                labels={this.props.outputLabels}
             />
         </Box>
     }

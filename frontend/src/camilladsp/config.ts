@@ -770,6 +770,11 @@ export function getChannelLabels(config: Config, index: number): (string|null)[]
     return channel_labels
 }
 
+export function getOutputLabels(config: Config): (string|null)[]|null {
+    let pipeline_length = config.pipeline? config.pipeline.length : 0
+    return getChannelLabels(config, pipeline_length)
+}
+
 export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
     if (labels === undefined || labels === null || labels.length <= channel) {
         return channel.toString()

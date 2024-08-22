@@ -38,7 +38,11 @@ export function CompactView(props: {
   const {currentConfigName, config, setConfig, updateConfig, disableCompactView, guiConfig} = props
   return <div className="tabpanel" style={{margin: 'auto'}}>
     <DisableCompactViewButton disableCompactView={disableCompactView}/>
-    <VolumeBox vuMeterStatus={defaultStatus()} setMessage={() => {}}/>
+    <VolumeBox
+      vuMeterStatus={defaultStatus()}
+      setMessage={() => {}}
+      inputLabels={null}
+      outputLabels={null}/>
     <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig}/>
     <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
   </div>
