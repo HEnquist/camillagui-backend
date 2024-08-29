@@ -12,6 +12,8 @@ export interface GuiConfig {
     status_update_interval: number
     can_update_active_config: boolean
     custom_shortcuts: ShortcutSection[]
+    volume_max: number
+    volume_range: number
 }
 
 export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
@@ -52,6 +54,8 @@ export function defaultGuiConfig(): GuiConfig {
         save_config_automatically: false,
         status_update_interval: 100,
         can_update_active_config: false,
-        custom_shortcuts: []
+        custom_shortcuts: [],
+        volume_max: 0,
+        volume_range: 50
     }
 }

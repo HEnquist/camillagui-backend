@@ -86,10 +86,11 @@ export class SidePanel extends React.Component<
                     vuMeterStatus={this.state.cdspStatus}
                     setMessage={message => this.setState({msg: message})}
                     inputLabels={this.props.config.devices.capture.labels}
-                    outputLabels={getOutputLabels(this.props.config)}/>
+                    outputLabels={getOutputLabels(this.props.config)}
+                    guiConfig={this.props.guiConfig}/>
         }
         {isCdspOnline(this.state.cdspStatus)
-            && <AuxFadersBox />
+            && <AuxFadersBox guiConfig={this.props.guiConfig}/>
         }
         {this.cdspStateBox()}
         {this.configBox()}

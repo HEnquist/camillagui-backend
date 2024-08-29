@@ -5,16 +5,17 @@ import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { throttle } from "lodash"
 import { Range } from "immutable"
 import cloneDeep from "lodash/cloneDeep"
+import { GuiConfig } from "../guiconfig"
 
-type Props = {}
+type Props = {
+    guiConfig: GuiConfig
+}
 
 type State = {
     faders: Fader[]
     send_to_dsp: boolean
     visible: boolean
 }
-
-export const minVolume = -51
 
 export interface Fader {
     volume: number
@@ -157,13 +158,15 @@ export class AuxFadersBox extends React.Component<Props, State> {
 
     render() {
         const { faders, visible } = this.state
+        const maxVol = this.props.guiConfig.volume_max
+        const minVol = maxVol - this.props.guiConfig.volume_range
         const sliders = Range(0, faders.length).map(index => {
             return <div style={{ display: 'flex', flexDirection: 'row' }}>
                 <input
                     style={{ width: '100%', margin: 0, padding: 0 }}
                     type="range"
-                    min={10.0 * minVolume}
-                    max="0"
+                    min={10.0 * minVol}
+                    max={10.0 * maxVol}
                     value={10.0 * faders[index].volume}
                     key={"vol" + index}
                     onChange={e => this.moveFader(index, e.target.valueAsNumber / 10.0)}

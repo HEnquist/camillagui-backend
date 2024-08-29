@@ -42,7 +42,8 @@ export function CompactView(props: {
       vuMeterStatus={defaultStatus()}
       setMessage={() => {}}
       inputLabels={null}
-      outputLabels={null}/>
+      outputLabels={null}
+      guiConfig={guiConfig}/>
     <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig}/>
     <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
   </div>
