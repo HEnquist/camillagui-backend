@@ -6,6 +6,8 @@ hide_playback_device: false
 hide_rate_monitoring: false
 apply_config_automatically: false
 status_update_interval: 100
+volume_range: 50
+volume_max: 0
 custom_shortcuts:
   - section: "Equalizer"
     description: |

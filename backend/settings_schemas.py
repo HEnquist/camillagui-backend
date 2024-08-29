@@ -48,6 +48,8 @@ GUI_CONFIG_SCHEMA = {
         "apply_config_automatically": {"type": "boolean"},
         "save_config_automatically": {"type": "boolean"},
         "status_update_interval": {"type": "integer", "minValue": 1},
+        "volume_range": {"type": "number", "exclusiveMinimum": 0, "maxValue": 200},
+        "volume_max": {"type": "integer", "minValue": -100, "maxValue": 50},
         "custom_shortcuts": {
             "type": ["array", "null"],
             "items": {

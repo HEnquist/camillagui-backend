@@ -23,6 +23,8 @@ GUI_CONFIG_DEFAULTS = {
     "apply_config_automatically": False,
     "save_config_automatically": False,
     "status_update_interval": 100,
+    "volume_range": 50,
+    "volume_max": 0,
 }
 
 # Default values for the optional settings.
