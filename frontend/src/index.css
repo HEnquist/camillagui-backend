@@ -379,6 +379,8 @@ div .popup-content {
 }
 
 .db-label {
+  font-size: 14pt;
+  font-family: monospace;
   display: inline-block;
   width: 7ch;
   text-align: right;
@@ -386,6 +388,8 @@ div .popup-content {
 }
 
 .db-label-muted {
+  font-size: 14pt;
+  font-family: monospace;
   display: inline-block;
   width: 7ch;
   text-align: right;
