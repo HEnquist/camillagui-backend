@@ -607,15 +607,24 @@ class PipelinePlot extends React.Component<Props, State> {
           }
           else {
             let name = "(empty)"
-            let tooltip = "<strong>Filters</strong>"
-            if (step.names.length > 0) {
+            let tooltip = "Filters:"
+            if (step.description) {
+              tooltip = step.description + '<br><br>' + tooltip
+              if (step.description.length > 50) {
+                name = step.description.slice(0, 47) + '...'
+              }
+              else {
+                name = step.description
+              }
+            }
+            else if (step.names.length > 0) {
               name = step.names[0]
               if (step.names.length > 1) {
                 name = name + " (+" + (step.names.length - 1) + ")"
               }
             }
             for (const filtname of step.names) {
-              tooltip = tooltip + "<br>" + filtname
+              tooltip = tooltip + "<br> - " + filtname
             }
             let ch_step: number
             if (ch_nbr < stages[stages.length - 1].length) {
