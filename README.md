@@ -208,6 +208,7 @@ hide_silence: false
 hide_capture_device: false
 hide_playback_device: false
 hide_rate_monitoring: false
+hide_multithreading: false
 ```
 
 ### Styling the GUI

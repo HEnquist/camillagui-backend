@@ -45,6 +45,7 @@ GUI_CONFIG_SCHEMA = {
         "hide_silence": {"type": "boolean"},
         "hide_capture_device": {"type": "boolean"},
         "hide_playback_device": {"type": "boolean"},
+        "hide_multithreading": {"type": "boolean"},
         "apply_config_automatically": {"type": "boolean"},
         "save_config_automatically": {"type": "boolean"},
         "status_update_interval": {"type": "integer", "minValue": 1},

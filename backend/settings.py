@@ -20,6 +20,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
+    "hide_multithreading": False,
     "apply_config_automatically": False,
     "save_config_automatically": False,
     "status_update_interval": 100,
