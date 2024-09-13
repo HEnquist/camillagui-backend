@@ -4,6 +4,7 @@ export interface GuiConfig {
     hide_capture_device: boolean
     hide_playback_device: boolean
     hide_rate_monitoring: boolean
+    hide_multithreading: boolean
     coeff_dir: string
     supported_capture_types?: CaptureType[]
     supported_playback_types?: PlaybackType[]
@@ -49,6 +50,7 @@ export function defaultGuiConfig(): GuiConfig {
         hide_capture_device: false,
         hide_playback_device: false,
         hide_rate_monitoring: false,
+        hide_multithreading: false,
         coeff_dir: '',
         apply_config_automatically: false,
         save_config_automatically: false,

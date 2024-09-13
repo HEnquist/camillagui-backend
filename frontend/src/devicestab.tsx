@@ -104,6 +104,11 @@ export function DevicesTab(props: {
         devices={devices}
         errors={errors}
         onChange={updateDevices}/>
+    <MultithreadingOptions
+        hide_multithreading={guiConfig.hide_multithreading}
+        devices={devices}
+        errors={errors}
+        onChange={updateDevices}/>
     <CaptureOptions
         hide_capture_device={guiConfig.hide_capture_device}
         supported_capture_types={availableBackends[1] as CaptureType[]}
@@ -430,6 +435,32 @@ function RateMonitoringOptions(props: {
             desc="stop_on_rate_change"
             tooltip="Stop processing when a sample rate change is detected"
             onChange={stopOnRateChange => props.onChange(devices => devices.stop_on_rate_change = stopOnRateChange)}/>
+    </Box>
+  }
+
+  function MultithreadingOptions(props: {
+    hide_multithreading: boolean
+    devices: Devices
+    errors: ErrorsForPath
+    error?: string
+    onChange: (update: Update<Devices>) => void
+  }) {
+    if (props.hide_multithreading)
+        return null
+    return <Box title="Multithreaded processing">
+        <OptionalBoolOption
+            value={props.devices.multithreaded}
+            error={props.errors({path: ['multithreaded']})}
+            desc="multithreaded"
+            tooltip="Enable multithreaded processing of filters"
+            onChange={multithreaded => props.onChange(devices => devices.multithreaded = multithreaded)}/>
+        <OptionalIntOption
+            value={props.devices.worker_threads}
+            error={props.errors({path: ['worker_threads']})}
+            desc="worker_threads"
+            tooltip="Number of worker threads for filter processing"
+            onChange={workerThreads => props.onChange(devices => devices.worker_threads = workerThreads)}/>
+
     </Box>
   }
 

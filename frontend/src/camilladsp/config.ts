@@ -27,6 +27,10 @@ export function defaultConfig(): Config {
             stop_on_rate_change: null,
             rate_measure_interval: null,
 
+            //Multithreading
+            multithreaded: null,
+            worker_threads: null,
+
             volume_ramp_time: null,
             volume_limit: null,
 
@@ -553,6 +557,10 @@ export interface Devices {
     //Volume control settings
     volume_ramp_time: number | null,
     volume_limit: number | null,
+
+    //Multithreading
+    multithreaded: boolean | null,
+    worker_threads: number | null,
 
     capture: CaptureDevice,
     playback: PlaybackDevice,
