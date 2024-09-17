@@ -12,11 +12,10 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^14.4.3",
-    "awesome-typescript-loader": "^5.2.1",
+    "@vitejs/plugin-react-swc": "^3.7.0",
     "chart.js": "^3.9.1",
     "chartjs-plugin-zoom": "^1.2.1",
     "d3": "^7.6.1",
-    "http-proxy-middleware": "^3.0.0",
     "immutable": "^4.1.0",
     "json8-patch": "^1.0.6",
     "lodash.clonedeep": "^4.5.0",
@@ -28,17 +27,18 @@
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
-    "react-scripts": "^5.0.1",
     "react-tabs": "^5.1.0",
     "react-tooltip": "^5.26.3",
     "reactjs-popup": "^2.0.5",
-    "styled-components": "^6.1.8"
+    "styled-components": "^6.1.8",
+    "vite": "^5.4.6",
+    "vite-plugin-svgr": "^4.2.0",
+    "vite-tsconfig-paths": "^5.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview"
   },
   "eslintConfig": {
     "extends": "react-app"
