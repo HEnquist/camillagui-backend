@@ -9,7 +9,7 @@ export function jsonDiff(json1: any, json2: any) : string {
   convertArraysToObjects(converted2)
   return diff(converted1, converted2)
       .map(op => {
-        const path = op.path.substr(1).split('/')
+        const path = op.path.slice(1).split('/')
         switch (op.op) {
           case "add": return diffEntry(path, "*added*", valueAsString(op.value))
           case "remove": return diffEntry(path, "*removed*", valueAt(json1, path))
