@@ -15,7 +15,6 @@
     "d3": "^7.6.1",
     "eslint": "^8.57.1",
     "immutable": "^4.1.0",
-    "json8-patch": "^1.0.6",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
     "nth-check": "^2.1.1",
@@ -28,6 +27,7 @@
     "react-tabs": "^6.0.2",
     "react-tooltip": "^5.26.3",
     "reactjs-popup": "^2.0.5",
+    "rfc6902": "^5.1.1",
     "styled-components": "^6.1.8",
     "vite": "^5.4.6",
     "vite-tsconfig-paths": "^5.0.1"
@@ -56,7 +56,6 @@
   },
   "devDependencies": {
     "@types/d3": "^7.4.0",
-    "@types/json8-patch": "^1.0.1",
     "@types/lodash": "^4.17.7",
     "@vitest/coverage-v8": "^2.1.1",
     "ajv": "^8.11.0",

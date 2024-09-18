@@ -108,10 +108,10 @@ export class Import {
     target[parent][name] = cloneDeep(this.config[parent][name])
   }
 
-  private removeElement(target: ParentProp, parent: string, name: string | number) {
-    if (isArray(target[parent]) && isNumber(name)) {
+  private removeElement(target: ParentProp, parent: string, name: string) {
+    if (isArray(target[parent])) {
       //keep null instead of element, so it can be mapped to the corresponding element in the original config
-      target[parent][name] = null
+      target[parent][Number(name)] = null
       if (target[parent].every((item: any) => item === null))
         delete target[parent]
     } else if (isObject(target[parent]) && !isArray(target[parent]) && isString(name)) {
