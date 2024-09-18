@@ -21,5 +21,8 @@ export default defineConfig({
       include: ['src/**/*'],
       exclude: [],
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 1500
   }
 })
