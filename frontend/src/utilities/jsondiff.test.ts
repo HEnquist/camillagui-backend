@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest';
 import {jsonDiff} from "./jsondiff"
 
 test('diff with one property', () => {

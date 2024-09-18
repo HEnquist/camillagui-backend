@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest'
 import {UndoRedo} from "./UndoRedo"
 
 test('Cannot undo/redo when empty', () => {

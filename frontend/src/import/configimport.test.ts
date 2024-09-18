@@ -1,3 +1,4 @@
+import {describe, expect, test} from 'vitest'
 import {Import, mergeTopLevelObjectsAndAppendTopLevelArrays} from "./configimport"
 
 describe('isWholeConfigImported', () => {
