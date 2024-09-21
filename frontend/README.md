@@ -24,7 +24,7 @@ The development server watches for changes in the source files
 and updates the running version automatically.
 
 To make a production build, run `npm run build`.
-The build will be stored in the `dist` folder.
+The build will be stored in the `build` folder.
 After building, the production build can be previewed with `npm run serve`.
 Note that this preview is not automatically updated
 when source files change, it must be manually update with `npm run build`.
