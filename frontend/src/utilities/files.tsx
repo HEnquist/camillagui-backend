@@ -95,6 +95,7 @@ export async function doUpload(
     })
     onSuccess(uploadedFiles)
   } catch (e) {
-    onError(e.message)
+    let err = e as Error
+    onError(err.message)
   }
 }

@@ -1,3 +1,4 @@
+import {describe, expect, test} from 'vitest'
 import { asFormattedText, modifiedCopyOf, withoutEmptyProperties, numberValue, setNumberValue, setBoolValue } from "./common"
 
 test('modifiedCopyOf', () => {

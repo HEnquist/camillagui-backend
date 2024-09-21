@@ -1,11 +1,19 @@
 import {Config, Devices, Pipeline, PipelineStep} from "../camilladsp/config"
-import {cloneDeep, isArray, isEqual, isObject} from "lodash"
+import {cloneDeep, isArray, isEqual, isNumber, isObject, isString} from "lodash"
 import {isComplexObject} from "../utilities/common"
 
 /**
  * Like {@link Config}, except all properties are optional and all properties in {@link Config#devices} are optional.
  */
 export type ImportedConfig = Omit<Partial<Config>, 'devices'> & { devices?: Partial<Devices> }
+
+interface ChildProp {
+  [key: string]: any
+}
+
+interface ParentProp {
+  [key: string]: null | any[] | ChildProp
+}
 
 const topLevelElementOrder = ['title', 'description', 'devices', 'filters', 'mixers', 'processors', 'pipeline']
 export function topLevelComparator(element1: string, element2: string): number {
@@ -100,13 +108,13 @@ export class Import {
     target[parent][name] = cloneDeep(this.config[parent][name])
   }
 
-  private removeElement(target: any, parent: string, name: string) {
+  private removeElement(target: ParentProp, parent: string, name: string) {
     if (isArray(target[parent])) {
       //keep null instead of element, so it can be mapped to the corresponding element in the original config
-      target[parent][name] = null
+      target[parent][Number(name)] = null
       if (target[parent].every((item: any) => item === null))
         delete target[parent]
-    } else if (isObject(target[parent])) {
+    } else if (isObject(target[parent]) && !isArray(target[parent]) && isString(name)) {
       delete target[parent][name]
       if (isEqual(target[parent], {}))
         delete target[parent]

@@ -1,44 +1,39 @@
 {
   "name": "camillagui",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "private": true,
   "homepage": ".",
+  "type": "module",
   "dependencies": {
-    "@babel/core": "^7.19.6",
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@mdi/js": "^7.0.96",
     "@mdi/react": "^1.6.1",
-    "@svgr/plugin-svgo": "^6.5.0",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^14.4.3",
-    "awesome-typescript-loader": "^5.2.1",
+    "@vitejs/plugin-react-swc": "^3.7.0",
     "chart.js": "^3.9.1",
     "chartjs-plugin-zoom": "^1.2.1",
     "d3": "^7.6.1",
-    "http-proxy-middleware": "^3.0.0",
+    "eslint": "^8.57.1",
     "immutable": "^4.1.0",
-    "json8-patch": "^1.0.6",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
-    "nth-check": "^2.1.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^4.3.1",
     "react-data-table-component": "^7.6.2",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
-    "react-scripts": "^5.0.1",
-    "react-tabs": "^5.1.0",
+    "react-tabs": "^6.0.2",
     "react-tooltip": "^5.26.3",
     "reactjs-popup": "^2.0.5",
-    "styled-components": "^6.1.8"
+    "rfc6902": "^5.1.1",
+    "vite": "^5.4.6",
+    "vite-tsconfig-paths": "^5.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage --watch=false"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -57,16 +52,12 @@
   },
   "devDependencies": {
     "@types/d3": "^7.4.0",
-    "@types/jest": "^29.2.0",
-    "@types/json8-patch": "^1.0.1",
-    "@types/lodash": "^4.14.186",
-    "@types/react": "^18.0.23",
-    "@types/react-dom": "^18.0.7",
-    "@types/react-tabs": "^5.0.4",
-    "ajv": "^8.11.0",
-    "jest-watch-typeahead": "^2.2.0",
-    "source-map-loader": "^4.0.1",
-    "ts-loader": "^9.4.1",
-    "typescript": "^3.9.10"
+    "@types/lodash": "^4.17.7",
+    "@types/react-dom": "^18.3.0",
+    "@vitest/coverage-v8": "^2.1.1",
+    "jsdom": "^25.0.0",
+    "lodash": "^4.17.21",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
   }
 }

@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest';
 import {jsonDiff} from "./jsondiff"
 
 test('diff with one property', () => {
@@ -12,10 +13,10 @@ test('diff with multiple properties', () => {
       {a: {b: 1, c: {d: 10}, oldProperty: 'isDeleted'}},
       {a: {b: 2, c: {d: 20}, newProperty: 'isNew'}}
   )).toBe(
-      "a > b: 1 => 2<br/>" +
-      "a > c > d: 10 => 20<br/>" +
+      "a > oldProperty: *removed* => isDeleted<br/>" +
       "a > newProperty: *added* => isNew<br/>" +
-      "a > oldProperty: *removed* => isDeleted"
+      "a > b: 1 => 2<br/>" +
+      "a > c > d: 10 => 20"
   )
 })
 
@@ -45,8 +46,8 @@ test('objects in array changed', () => {
       {objects: [{child1: 1}, {child3: 3}]}
   )).toBe(
       "objects > 0 > child1: 0 => 1<br/>" +
-      "objects > 1 > child3: *added* => 3<br/>" + // for some reason these changes are not reported for objects[0]
-      "objects > 1 > child2: *removed* => 2"
+      "objects > 1 > child2: *removed* => 2<br/>" +
+      "objects > 1 > child3: *added* => 3"
   )
 })
 
@@ -69,9 +70,9 @@ test('object in array moved', () => {
       {objects: [{child1: 1}, {child2: 2}]},
       {objects: [{child2: 2}, {child1: 1}]}
   )).toBe(
-      "objects > 0 > child2: *added* => 2<br/>" +
       "objects > 0 > child1: *removed* => 1<br/>" +
-      "objects > 1 > child1: *added* => 1<br/>" +
-      "objects > 1 > child2: *removed* => 2"
+      "objects > 0 > child2: *added* => 2<br/>" +
+      "objects > 1 > child2: *removed* => 2<br/>" +
+      "objects > 1 > child1: *added* => 1"
   )
 })

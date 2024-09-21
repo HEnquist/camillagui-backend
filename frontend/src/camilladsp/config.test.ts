@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest'
 import {
     defaultConfig,
     defaultFilter, defaultMapping, defaultMixer,
