@@ -78,7 +78,7 @@ def mock_camillaclient(statefile):
     client.rate.capture = MagicMock(return_value=44100)
     client.general = MagicMock()
     client.general.state = MagicMock(
-        return_value=camilladsp.camilladsp.ProcessingState.RUNNING
+        return_value=camilladsp.ProcessingState.RUNNING
     )
     client.general.list_capture_devices = MagicMock(
         return_value=[["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]
