@@ -18,6 +18,7 @@ STATEFILE_PATH = os.path.join(TESTFILE_DIR, "statefile.yml")
 STATEFILE_TEMPLATE_PATH = os.path.join(TESTFILE_DIR, "statefile_template.yml")
 LOGFILE_PATH = os.path.join(TESTFILE_DIR, "log.txt")
 SAMPLE_CONFIG = yaml.safe_load(open(SAMPLE_CONFIG_PATH))
+GUI_CONFIG_PATH = os.path.join(TESTFILE_DIR, "gui_config.yml")
 
 
 @pytest.fixture
@@ -40,6 +41,7 @@ server_config = {
     "default_config": SAMPLE_CONFIG_PATH,
     "statefile_path": STATEFILE_PATH,
     "log_file": LOGFILE_PATH,
+    "gui_config_file": GUI_CONFIG_PATH,
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
