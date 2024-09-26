@@ -34,7 +34,7 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
             playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
         },
         filters: {},
@@ -624,7 +624,7 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, follow_volume_control: string | null, labels: (string|null)[] | null }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
     | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
     | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }

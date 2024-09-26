@@ -499,7 +499,7 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, follow_volume_control: null, labels: null },
+    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something', labels: null },
     Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false, labels: null},
@@ -631,12 +631,20 @@ function CaptureOptions(props: {
           setPopupState(true)
         }} />
       <OptionalTextOption
-          value={capture.follow_volume_control}
-          error={errors({path: ['follow_volume_control']})}
-          desc="follow_volume_control"
-          tooltip="Name of volume control to follow"
-          onChange={follow_volume_control => onChange(devices => // @ts-ignore
-              devices.capture.follow_volume_control = follow_volume_control
+          value={capture.link_volume_control}
+          error={errors({path: ['link_volume_control']})}
+          desc="link_volume_control"
+          tooltip="Name of volume control to link with CamillaDSP main volume"
+          onChange={link_volume_control => onChange(devices => // @ts-ignore
+              devices.capture.link_volume_control = link_volume_control
+          )}/>
+      <OptionalTextOption
+          value={capture.link_mute_control}
+          error={errors({path: ['link_mute_control']})}
+          desc="link_mute_control"
+          tooltip="Name of mute control to link with CamillaDSP main mute"
+          onChange={link_mute_control => onChange(devices => // @ts-ignore
+              devices.capture.link_mute_control = link_mute_control
           )}/>
       <OptionalBoolOption
             value={capture.stop_on_inactive}
