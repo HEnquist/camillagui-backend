@@ -63,31 +63,43 @@ async def store_files(folder, request):
     return web.Response(text="Saved {} file(s)".format(i))
 
 
-def list_of_files_in_directory(folder, title_and_desc=False):
+def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False):
     """
     Return a list of files (name and modification date) in a folder.
     """
-    files = [
-        file_in_folder(folder, file)
-        for file in os.listdir(folder)
-        if isfile(file_in_folder(folder, file))
-    ]
+
     files_list = []
-    for filepath in files:
+    for file in os.listdir(folder):
+        filepath = file_in_folder(folder, file)
+        if not isfile(filepath) or file.startswith("."):
+            # skip directories and hidden files
+            continue
+
         file_data = {
-            "name": os.path.basename(filepath),
-            "lastModified": getmtime(filepath),
-            "size": getsize(filepath),
+            "name": file,
         }
+        if file_stats:
+            file_data["lastModified"] = getmtime(filepath)
+            file_data["size"] = getsize(filepath)
+
         if title_and_desc:
             with open(filepath) as f:
                 try:
                     parsed = yaml.safe_load(f)
                     title = parsed.get("title")
                     desc = parsed.get("description")
-                except Exception:
-                    title = None
-                    desc = None
+                except yaml.YAMLError as e:
+                    title = "(YAML syntax error)"
+                    desc = "This config file has a YAML syntax error."
+                    if hasattr(e, 'problem_mark'):
+                        mark = e.problem_mark
+                        desc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}."
+                except (AttributeError, UnicodeDecodeError):
+                    title = "(not a YAML file)"
+                    desc = "This does not appear to be a YAML file."
+                except Exception as e:
+                    title = "(error reading file)"
+                    desc = f"Error: {e}"
             file_data["title"] = title
             file_data["description"] = desc
         files_list.append(file_data)
@@ -97,7 +109,7 @@ def list_of_files_in_directory(folder, title_and_desc=False):
 
 
 def list_of_filenames_in_directory(folder):
-    return map(lambda file: file["name"], list_of_files_in_directory(folder))
+    return [file["name"] for file in list_of_files_in_directory(folder, file_stats=False)]
 
 
 def delete_files(folder, files):
