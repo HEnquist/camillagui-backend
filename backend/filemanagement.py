@@ -93,7 +93,7 @@ def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False):
                     desc = "This config file has a YAML syntax error."
                     if hasattr(e, 'problem_mark'):
                         mark = e.problem_mark
-                        desc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}."
+                        desc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
                 except (AttributeError, UnicodeDecodeError):
                     title = "(not a YAML file)"
                     desc = "This does not appear to be a YAML file."
