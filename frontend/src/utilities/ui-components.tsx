@@ -1169,8 +1169,10 @@ export function ChannelSelection(props: {
     const { channels, maxChannelCount, setChannels, label, labels } = props
     let [expanded, setExpanded] = useState(false)
 
-    if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
-        props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
+    if (maxChannelCount > 0) {
+        if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
+            props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
+        }
     }
 
     const rowSize = 8

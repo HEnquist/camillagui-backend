@@ -337,7 +337,7 @@ function FilterStepView(props: {
   const {
     stepIndex, typeSelect, filterStep, filters, updatePipeline, plot, controls, maxChannelCount
   } = props
-  const [maxChannels, setMaxChannels] = useState(2)
+  const [maxChannels, setMaxChannels] = useState(0)
   useEffect(() => {
     maxChannelCount.then(chans => setMaxChannels(chans))
   }, [maxChannelCount])
