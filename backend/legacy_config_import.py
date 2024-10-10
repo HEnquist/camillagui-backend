@@ -26,7 +26,8 @@ def _modify_loundness_filters(config):
     if "filters" in config:
         for name, params in config["filters"].items():
             if params["type"] == "Loudness":
-                del params["parameters"]["ramp_time"]
+                if "ramp_time" in params["parameters"]:
+                    del params["parameters"]["ramp_time"]
                 params["parameters"]["fader"] = "Main"
                 params["parameters"]["attenuate_mid"] = False
 
