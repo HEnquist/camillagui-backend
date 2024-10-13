@@ -106,7 +106,7 @@ def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, va
                             valid = True
                     elif version < 3:
                         valid = False
-                        errors = [([], f"This config is made for the previuos version {version} of CamillaDSP.")]
+                        errors = [([], f"This config is made for the previous version {version} of CamillaDSP.")]
                 except yaml.YAMLError as e:
                     if hasattr(e, 'problem_mark'):
                         mark = e.problem_mark
