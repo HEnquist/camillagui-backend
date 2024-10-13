@@ -1,6 +1,6 @@
 import React, { ReactNode, useEffect, useState } from "react"
 import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
-import { loadConfigJson, loadFilenames } from "../utilities/files"
+import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
 import { Config } from "../camilladsp/config"
 import { isObject } from "lodash"
 import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
@@ -103,7 +103,7 @@ function FileList(props: {
     importedEqAPOConfigAsJson(files, 2).then(config => setImportConfig(file.name, config))
   }
   function loadJsonConfigWithName(name: string): void {
-    loadConfigJson(name).then(config => setImportConfig(name, config))
+    loadMigratedConfigJson(name).then(config => setImportConfig(name, config))
   }
   return <div className="tabpanel">
     {importDoneFromFile ?

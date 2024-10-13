@@ -160,6 +160,10 @@ export function mergeTopLevelObjectsAndAppendTopLevelArrays(object: any, toImpor
 
 export async function importedYamlConfigAsJson(files: FileList): Promise<ImportedConfig> {
   const content = await fileContent(files)
+  return localYamlConfigAsJson(content)
+}
+
+export async function localYamlConfigAsJson(content: string): Promise<ImportedConfig> {
   const response = await fetch("/api/ymltojson", {method: "POST", body: content})
   if (response.ok) {
     const text = await response.text()

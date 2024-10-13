@@ -1069,6 +1069,18 @@ export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
 	return 0
 }
 
+export const fileValidSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.valid === true
+	const b = rowB.valid === true
+	if (a && !b) {
+		return 1
+	}
+	if (b && !a) {
+		return -1
+	}
+	return 0
+}
+
 export function FileSelectPopup(props: {
     open: boolean
     header?: ReactNode
@@ -1226,7 +1238,7 @@ export function ChannelSelection(props: {
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
             <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
             {Range(0, maxChannelCount).map(index =>
-                <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels.includes(index)} onClick={() => toggleChannel(index)} />
+                <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels !== undefined && channels.includes(index)} onClick={() => toggleChannel(index)} />
             )}
         </div>
     }

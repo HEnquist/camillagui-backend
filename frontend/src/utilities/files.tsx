@@ -7,6 +7,9 @@ export interface FileInfo {
   size: number,
   title: string|null|undefined,
   description: string|null|undefined,
+  version: number|null|undefined,
+  valid: boolean|undefined,
+  errors: [string[], string][]|null|undefined
 }
 
 export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
@@ -48,6 +51,16 @@ export function loadConfigJson(name: string, onNotOk: (reason: string) => void =
           return response.json()
         else
           response.text().then(reason => onNotOk(reason))
+      })
+}
+
+export function loadMigratedConfigJson(name: string): Promise<Config> {
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`)
+      .then(response => {
+        if (response.ok)
+          return response.json()
+        else
+          response.text()
       })
 }
 
@@ -97,5 +110,22 @@ export async function doUpload(
   } catch (e) {
     let err = e as Error
     onError(err.message)
+  }
+}
+
+export function fileStatusDesc(errors: [string[], string][]|null|undefined): string {
+  if (errors === null || errors === undefined) {
+    return "Config is valid."
+  }
+  else {
+    let desc = "Errors:"
+    for (const error of errors) {
+      let path = error[0].join('/')
+      if (path) {
+        path = path + ' : '
+      }
+      desc = desc + '<br>' + path + error[1]
+    }
+    return desc
   }
 }

@@ -1,5 +1,5 @@
 import React, {Component} from "react"
-import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort, fileTitleSort} from "./utilities/ui-components"
+import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort, fileTitleSort, fileValidSort} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -20,13 +20,15 @@ import {
   loadActiveConfig,
   loadConfigJson,
   loadDefaultConfigJson,
-  loadFiles
+  loadFiles,
+  fileStatusDesc
 } from "./utilities/files"
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
 import DataTable from 'react-data-table-component'
 import { isEqual } from "lodash"
 
+const CURRENT_VERSION = 3
 
 
 export function Files(props: {
@@ -124,7 +126,7 @@ class FileTable extends Component<
 
   componentDidMount() {
     this.update()
-    const timerId = setInterval(this.update, 1000)
+    const timerId = setInterval(this.update, 10000)
     this.setState({stopTimer: () => clearInterval(timerId)})
     this.loadActiveConfigName()
   }
@@ -263,40 +265,62 @@ class FileTable extends Component<
         name: '',
         cell: (row: FileInfo, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
           <SetActiveButton
-              key={id}
+              key={'setactive'+id}
               active={row.name === activeConfigFileName}
               onClick={() => this.setActiveConfig(row.name)}
-              enabled={this.props.canUpdateActiveConfig}/>
+              enabled={this.props.canUpdateActiveConfig && row.valid}
+              valid={row.valid}/>
           <SaveButton
-              key={id}
+              key={'save'+id}
               filename={row.name}
               fileStatus={fileStatus}
               saveConfig={this.overwriteConfig}/>
           <LoadButton
-              key={id}
+              key={'load'+id}
               filename={row.name}
               fileStatus={fileStatus}
+              valid={row.valid}
+              for_version={row.version}
               loadConfig={this.loadConfig}/>
           </div>),
         sortable: false,
-        compact: true
+        compact: true,
+        width: '125px'
       })
     }
-    columns.push(
-      {
-        name: 'Filename',
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
-          FileDownloadLink({
-              type: this.props.type,
-              filename: row.name,
-              isCurrentConfig: false
-          })),
-        sortFunction: fileNameSort,
-        sortable: true,
-        grow: 2
-      }
-    )
-    if (this.props.type === "config") {
+    if (this.props.type === "coeff") {
+      columns.push(
+        {
+          name: 'Filename',
+          cell: (row: FileInfo, index: number, column: number, id: any) => (
+            FileDownloadLink({
+                type: this.props.type,
+                filename: row.name,
+                isCurrentConfig: false
+            })),
+          sortFunction: fileNameSort,
+          sortable: true,
+          grow: 1,
+          compact: true
+        }
+      )
+    }
+    else if (this.props.type === "config") {
+      columns.push(
+        {
+          name: 'Filename',
+          cell: (row: FileInfo, index: number, column: number, id: any) => (
+            FileDownloadLink({
+                type: this.props.type,
+                filename: row.name,
+                isCurrentConfig: false
+            })),
+          sortFunction: fileNameSort,
+          sortable: true,
+          width: '250px',
+          compact: true
+        }
+      )
       columns.push(
         {
           name: 'Title',
@@ -305,7 +329,29 @@ class FileTable extends Component<
             </div>),
           sortFunction: fileTitleSort,
           sortable: true,
-          grow: 2
+          maxWidth: '150px',
+          compact: true
+        }
+      )
+      columns.push(
+        {
+          name: 'Valid',
+          cell: (row: FileInfo, index: number, column: number, id: any) => (<div data-tooltip-html={fileStatusDesc(row.errors)} data-tooltip-id="main-tooltip">
+            {row.valid === true ? '✔️' : '❌'}
+            </div>),
+          sortFunction: fileValidSort,
+          sortable: true,
+          width: '60px',
+          compact: true
+        }
+      )
+      columns.push(
+        {
+          name: 'Version',
+          selector: (row: FileInfo) => row.version,
+          sortable: true,
+          width: '60px',
+          compact: true
         }
       )
     }
@@ -315,7 +361,8 @@ class FileTable extends Component<
         selector: (row: FileInfo) => row.formattedDate,
         sortFunction: fileDateSort,
         sortable: true,
-        maxWidth: '200px'
+        width: '110px',
+        compact: true
       }
     )
     columns.push(
@@ -323,7 +370,9 @@ class FileTable extends Component<
         name: 'Size',
         selector: (row: FileInfo) => row.size,
         sortable: true,
-        maxWidth: '100px'
+        width: '60px',
+        compact: true,
+        right: true
       }
     )
     const filteredFiles = files.filter(
@@ -420,11 +469,16 @@ function UploadFilesButton(props: {
       multiple={true}/>
 }
 
-function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?: boolean}) {
-  const {active, onClick, enabled} = props
+function SetActiveButton(props: {active: boolean, onClick: () => void, enabled?: boolean, valid?: boolean}) {
+  const {active, onClick, enabled, valid} = props
   let tooltip
   if (enabled === false) {
-    tooltip = "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
+    if (valid) {
+      tooltip = "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
+    }
+    else {
+      tooltip = "Mark this config file as active.<br>Disabled since this config file is not valid."
+    }
   }
   else {
     if (active) {
@@ -472,9 +526,11 @@ function LoadButton(
       filename: string,
       fileStatus: FileStatus | null,
       loadConfig: (filename: string) => void
+      valid: boolean | undefined
+      for_version: number | null | undefined
     }
 ) {
-  const { filename, fileStatus, loadConfig } = props
+  const { filename, fileStatus, loadConfig, valid, for_version } = props
   let loadIcon: { icon: string, className?: string } =
       {icon: mdiRefresh}
   if (fileStatus !== null && fileStatus.action === 'load' && fileStatus.filename === filename) {
@@ -482,10 +538,21 @@ function LoadButton(
         {icon: mdiCheck, className: 'success-text'}
         : {icon: mdiAlertCircle, className: 'error-text'}
   }
+  let disabled_reason
+  if (for_version === CURRENT_VERSION) {
+    disabled_reason = ""
+  }
+  else if (for_version && for_version !== CURRENT_VERSION ) {
+    disabled_reason = "<br>Disabled because this config file made for an older CamillaDSP version.<br>Click 'Import Config' to convert and import it."
+  }
+  else {
+    disabled_reason = "<br>Disabled because this config file is invalid."
+  }
   return <MdiButton
       icon={loadIcon.icon}
       className={loadIcon.className}
-      tooltip={`Load into GUI from ${filename}`}
+      tooltip={`Load into GUI from ${filename}${disabled_reason}`}
+      enabled={!disabled_reason}
       onClick={() => loadConfig(filename)}/>
 }
 
