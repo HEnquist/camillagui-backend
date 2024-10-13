@@ -428,11 +428,14 @@ async def get_config_file(request):
     """
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
+    migrate = request.query.get("migrate", False)
     config_file = path_of_configfile(request, config_name)
     try:
         config_object = make_config_filter_paths_relative(
             read_yaml_from_path_to_object(request, config_file), config_dir
         )
+        if migrate:
+            migrate_legacy_config(config_object)
     except CamillaError as e:
         raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(config_object, headers=HEADERS)
@@ -564,7 +567,8 @@ async def get_stored_configs(request):
     Fetch a list of config files in config_dir.
     """
     config_dir = request.app["config_dir"]
-    configs = list_of_files_in_directory(config_dir, title_and_desc=True)
+    validator = request.app["VALIDATOR"]
+    configs = list_of_files_in_directory(config_dir, title_and_desc=True, validator=validator)
     return web.json_response(configs, headers=HEADERS)
 
 

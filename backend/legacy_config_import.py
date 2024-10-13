@@ -1,15 +1,16 @@
+# v1->v2 introduces the default volume control, remove old volume filters
 def _remove_volume_filters(config):
     """
-    Remove any Volume filter
+    Remove any Volume filter without a "fader" parameter
     """
-    if "filters" in config:
+    if "filters" in config and isinstance(config["filters"], dict):
         volume_names = []
         for name, params in list(config["filters"].items()):
-            if params["type"] == "Volume":
+            if params["type"] == "Volume" and "fader" not in params["parameters"]:
                 volume_names.append(name)
                 del config["filters"][name]
 
-        if "pipeline" in config:
+        if "pipeline" in config and isinstance(config["pipeline"], list):
             for step in list(config["pipeline"]):
                 if step["type"] == "Filter":
                     step["names"] = [
@@ -18,12 +19,12 @@ def _remove_volume_filters(config):
                     if len(step["names"]) == 0:
                         config["pipeline"].remove(step)
 
-
+# v1->v2 removes "ramp_time" from loudness filters
 def _modify_loundness_filters(config):
     """
     Modify Loudness filters
     """
-    if "filters" in config:
+    if "filters" in config and isinstance(config["filters"], dict):
         for name, params in config["filters"].items():
             if params["type"] == "Loudness":
                 if "ramp_time" in params["parameters"]:
@@ -32,6 +33,7 @@ def _modify_loundness_filters(config):
                 params["parameters"]["attenuate_mid"] = False
 
 
+# v1->v2 changes the resampler config
 def _modify_resampler(config):
     """
     Update the resampler config
@@ -88,11 +90,12 @@ def _modify_devices(config):
         if "playback" in config["devices"]:
             dev = config["devices"]["playback"]
             _modify_coreaudio_device(dev)
+            _modify_file_playback_device(dev)
 
         # Resampler
         _modify_resampler(config)
 
-
+# v1->v2 removes the "change_format" and makes "format" optional
 def _modify_coreaudio_device(dev):
     if dev["type"] == "CoreAudio":
         if "change_format" in dev:
@@ -102,14 +105,19 @@ def _modify_coreaudio_device(dev):
         else:
             dev["format"] = None
 
+# vx-vx changes some of the file playback types
+def _modify_file_playback_device(dev):
+    if dev["type"] == "File":
+        dev["type"] = "RawFile"
 
+# v1->v2 changes some names for dither filters
 def _modify_dither(config):
     """
     Update Dither filters, some names have changed.
     Uniform -> Flat
     Simple -> Highpass
     """
-    if "filters" in config:
+    if "filters" in config and isinstance(config["filters"], dict):
         for _name, params in config["filters"].items():
             if params["type"] == "Dither":
                 if params["parameters"]["type"] == "Uniform":
@@ -131,11 +139,14 @@ def _fix_rew_pipeline(config):
             config["pipeline"] = [pipeline]
 
 
+# v2->v3 changes scalar "channel" to array "channels"
 def _modify_pipeline_filter_steps(config):
-    for step in config.get("pipeline", []):
-        if step["type"] == "Filter":
-            step["channels"] = [step["channel"]]
-            del step["channel"]
+    if "pipeline" in config and isinstance(config["pipeline"], list):
+        for step in config["pipeline"]:
+            if step["type"] == "Filter":
+                if "channel" in step:
+                    step["channels"] = [step["channel"]]
+                    del step["channel"]
 
 
 def migrate_legacy_config(config):
@@ -149,3 +160,65 @@ def migrate_legacy_config(config):
     _modify_dither(config)
     _modify_devices(config)
     _modify_pipeline_filter_steps(config)
+
+
+def _look_for_v1_volume(config):
+    if "filters" in config and isinstance(config["filters"], dict):
+        for name, params in list(config["filters"].items()):
+            if params["type"] == "Volume" and "fader" not in params["parameters"]:
+                return True
+    return False
+
+def _look_for_v1_loudness(config):
+    if "filters" in config and isinstance(config["filters"], dict):
+        for name, params in config["filters"].items():
+            if params["type"] == "Loudness" and "ramp_time" in params["parameters"]:
+                return True
+    return False
+
+def _look_for_v1_resampler(config):
+    return "devices" in config and "enable_resampling" in config["devices"]
+
+def _look_for_v1_devices(config):
+    if "devices" in config:
+        for direction in ("capture", "playback"):
+            if direction in config["devices"] and "type" in config["devices"][direction]:
+                if config["devices"][direction]["type"] == "CoreAudio" and "change_format" in config["devices"][direction]:
+                    return True
+    return False
+
+def _look_for_v2_devices(config):
+    return "devices" in config and "capture" in config["devices"] and config["devices"]["capture"]["type"] == "File"
+
+def _look_for_v1_dither(config):
+    if "filters" in config and isinstance(config["filters"], dict):
+        for _name, params in config["filters"].items():
+            if params["type"] == "Dither":
+                if params["parameters"]["type"] in ("Uniform", "Simple"):
+                    return True
+    return False
+
+def _look_for_v2_pipeline(config):
+    if "pipeline" in config and isinstance(config["pipeline"], list):
+        for step in config["pipeline"]:
+            if step["type"] == "Filter":
+                if "channel" in step:
+                    return True
+    return False
+
+def identify_version(config):
+    if _look_for_v1_volume(config):
+        return 1
+    if _look_for_v1_loudness(config):
+        return 1
+    if _look_for_v1_resampler(config):
+        return 1
+    if _look_for_v1_devices(config):
+        return 1
+    if _look_for_v1_dither(config):
+        return 1
+    if _look_for_v2_pipeline(config):
+        return 2
+    if _look_for_v2_devices(config):
+        return 2
+    return 3
