@@ -772,7 +772,12 @@ export function getChannelLabels(config: Config, index: number): (string|null)[]
         if (step.type === "Mixer" && config.mixers && !disabled) {
             const mixername = step.name
             const mixconf = config["mixers"][mixername]
-            channel_labels = mixconf.labels
+            if (mixconf) {
+                channel_labels = mixconf.labels
+            }
+            else {
+                channel_labels = null
+            }
         }
     }
     return channel_labels
