@@ -407,6 +407,15 @@ div .popup-content {
   font-size: small;
 }
 
+.namecol {
+  text-align: left;
+}
+
+.valuecol {
+  text-align: right;
+}
+
+
 .quick-config-switch > * {
   margin: 5px;
 }
