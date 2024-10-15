@@ -5,6 +5,7 @@ import logging
 import sys
 import camilladsp
 from camilladsp_plot.validate_config import CamillaValidator
+from camilladsp_plot import VERSION as plot_version
 
 from backend.version import VERSION
 from backend.routes import setup_routes, setup_static_routes
@@ -38,6 +39,7 @@ def build_app(backend_config):
     app["STATUSCACHE"] = {
         "backend_version": version_string(VERSION),
         "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
+        "py_cdsp_plot_version": plot_version,
         "backends": [],
         "playback_devices": {},
         "capture_devices": {},
