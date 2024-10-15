@@ -20,9 +20,12 @@ GUI_CONFIG_DEFAULTS = {
     "hide_silence": False,
     "hide_capture_device": False,
     "hide_playback_device": False,
+    "hide_multithreading": False,
     "apply_config_automatically": False,
     "save_config_automatically": False,
     "status_update_interval": 100,
+    "volume_range": 50,
+    "volume_max": 0,
 }
 
 # Default values for the optional settings.
@@ -80,6 +83,7 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
+    config["gui_config_file"] = absolute_path_or_none_if_empty(config["gui_config_file"])
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
@@ -90,8 +94,11 @@ def get_config(path):
     
     # Read the gui config.
     # This is only to validate the file and log any problems.
-    # The result is not used. 
-    get_gui_config_or_defaults()
+    # The result is not used.
+    gui_config_path = config["gui_config_file"]
+    if gui_config_path is None:
+        gui_config_path = GUI_CONFIG_PATH
+    get_gui_config_or_defaults(gui_config_path)
 
     return config
 
@@ -151,12 +158,12 @@ def absolute_path_or_none_if_empty(path):
         return None
 
 
-def get_gui_config_or_defaults():
+def get_gui_config_or_defaults(path):
     """
     Get the gui config from file if it exists,
     if not return the defaults.
     """
-    config = _read_and_validate_file(GUI_CONFIG_PATH, GUI_CONFIG_SCHEMA)
+    config = _read_and_validate_file(path, GUI_CONFIG_SCHEMA)
     if config is not None:
         for key, value in GUI_CONFIG_DEFAULTS.items():
             if key not in config:
@@ -166,5 +173,3 @@ def get_gui_config_or_defaults():
         logging.warning("Unable to read gui config file, using defaults")
         return GUI_CONFIG_DEFAULTS
 
-
-config = get_config(CONFIG_PATH)

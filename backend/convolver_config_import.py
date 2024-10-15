@@ -39,10 +39,10 @@ def channels_factors_and_inversions_as_list(
     ]
 
 
-def make_filter_step(channel: int, names: List[str]) -> dict:
+def make_filter_step(channels: List[int], names: List[str]) -> dict:
     return {
         "type": "Filter",
-        "channel": channel,
+        "channels": channels,
         "names": names,
         "bypassed": None,
         "description": None,
@@ -157,7 +157,7 @@ class ConvolverConfig:
 
     def _delay_pipeline_steps(self, delays: List[int]) -> List[dict]:
         return [
-            make_filter_step(channel, [self._delay_name(delay)])
+            make_filter_step([channel], [self._delay_name(delay)])
             for channel, delay in enumerate(delays)
             if delay != 0
         ]
@@ -210,4 +210,4 @@ class ConvolverConfig:
         return [{"type": "Mixer", "name": "Mixer out", "description": None}]
 
     def _filter_pipeline_steps(self) -> List[dict]:
-        return [make_filter_step(f.channel, [f.name()]) for f in self._filters]
+        return [make_filter_step([f.channel], [f.name()]) for f in self._filters]

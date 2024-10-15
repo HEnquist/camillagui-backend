@@ -5,6 +5,7 @@ import time
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
+from camilladsp_plot.audiofileread import read_wav_header
 import logging
 import traceback
 
@@ -32,7 +33,7 @@ from .filters import (
     filter_plot_options,
     pipeline_step_plot_options,
 )
-from .settings import get_gui_config_or_defaults
+from .settings import get_gui_config_or_defaults, GUI_CONFIG_PATH
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
 from .legacy_config_import import migrate_legacy_config
@@ -133,7 +134,7 @@ async def get_status(request):
                     }
                 )
         except IOError as e:
-            print("TODO safe to remove this try-except? error:", e)
+            #print("TODO safe to remove this try-except? error:", e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
@@ -160,9 +161,9 @@ async def get_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        result = cdsp.volume.main()
+        result = cdsp.volume.main_volume()
     elif name == "mute":
-        result = cdsp.mute.main()
+        result = cdsp.volume.main_mute()
     elif name == "signalrange":
         result = cdsp.levels.range()
     elif name == "signalrangedb":
@@ -181,6 +182,17 @@ async def get_param(request):
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result), headers=HEADERS)
 
+async def get_param_json(request):
+    """
+    Combined getter for several parameters, returns json.
+    """
+    name = request.match_info["name"]
+    cdsp = request.app["CAMILLA"]
+    if name == "faders":
+        result = cdsp.volume.all()
+    else:
+        raise web.HTTPNotFound(text=f"Unknown parameter {name}")
+    return web.json_response(result, headers=HEADERS)
 
 async def get_list_param(request):
     """
@@ -205,12 +217,12 @@ async def set_param(request):
     name = request.match_info["name"]
     cdsp = request.app["CAMILLA"]
     if name == "volume":
-        cdsp.volume.set_main(value)
+        cdsp.volume.set_main_volume(value)
     elif name == "mute":
         if value.lower() == "true":
-            cdsp.mute.set_main(True)
+            cdsp.volume.set_main_mute(True)
         elif value.lower() == "false":
-            cdsp.mute.set_main(False)
+            cdsp.volume.set_main_mute(False)
         else:
             raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
     elif name == "updateinterval":
@@ -222,6 +234,25 @@ async def set_param(request):
     return web.Response(text="OK", headers=HEADERS)
 
 
+async def set_param_index(request):
+    """
+    Combined setter for various parameters taking an additional index parameter
+    """
+    value = await request.text()
+    name = request.match_info["name"]
+    index = request.match_info["index"]
+    cdsp = request.app["CAMILLA"]
+    if name == "volume":
+        cdsp.volume.set_volume(int(index), value)
+    elif name == "mute":
+        if value.lower() == "true":
+            cdsp.volume.set_mute(int(index), True)
+        elif value.lower() == "false":
+            cdsp.volume.set_mute(int(index), False)
+        else:
+            raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
+    return web.Response(text="OK", headers=HEADERS)
+
 async def eval_filter_values(request):
     """
     Evaluate a filter. Returns values for plotting.
@@ -232,6 +263,7 @@ async def eval_filter_values(request):
     replace_relative_filter_path_with_absolute_paths(config, config_dir)
     channels = content["channels"]
     samplerate = content["samplerate"]
+    volume = content.get("volume", 0.0)
     filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     if "filename" in config["parameters"]:
         filename = config["parameters"]["filename"]
@@ -245,6 +277,7 @@ async def eval_filter_values(request):
             name=(content["name"]),
             samplerate=samplerate,
             npoints=1000,
+            volume=volume
         )
         data["channels"] = channels
         data["options"] = options
@@ -395,11 +428,14 @@ async def get_config_file(request):
     """
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
+    migrate = request.query.get("migrate", False)
     config_file = path_of_configfile(request, config_name)
     try:
         config_object = make_config_filter_paths_relative(
             read_yaml_from_path_to_object(request, config_file), config_dir
         )
+        if migrate:
+            migrate_legacy_config(config_object)
     except CamillaError as e:
         raise web.HTTPInternalServerError(text=str(e))
     return web.json_response(config_object, headers=HEADERS)
@@ -465,7 +501,6 @@ async def translate_eqapo_to_json(request):
         channels = int(request.rel_url.query.get("channels", None))
     except (ValueError, TypeError) as e:
         raise web.HTTPBadRequest(reason=str(e))
-    print(channels)
     config = await request.text()
     converter = EqAPO(config, channels)
     converter.translate_file()
@@ -487,10 +522,20 @@ async def validate_config(request):
     # print(yaml.dump(config_with_absolute_filter_paths, indent=2))
     errors = validator.get_errors()
     if len(errors) > 0:
+        logging.debug("Config has errors")
         logging.debug(errors)
         return web.json_response(status=406, data=errors)
+    logging.debug("Validated config, ok")
     return web.Response(text="OK", headers=HEADERS)
 
+
+async def get_wav_info(request):
+    """
+    Read the header of a wav file and return the info.
+    """
+    filename = request.query["filename"]
+    wav_info = read_wav_header(filename)
+    return web.json_response(wav_info, headers=HEADERS)
 
 async def store_coeffs(request):
     """
@@ -522,7 +567,8 @@ async def get_stored_configs(request):
     Fetch a list of config files in config_dir.
     """
     config_dir = request.app["config_dir"]
-    configs = list_of_files_in_directory(config_dir)
+    validator = request.app["VALIDATOR"]
+    configs = list_of_files_in_directory(config_dir, title_and_desc=True, validator=validator)
     return web.json_response(configs, headers=HEADERS)
 
 
@@ -570,7 +616,10 @@ async def get_gui_config(request):
     """
     Get the gui configuration.
     """
-    gui_config = get_gui_config_or_defaults()
+    gui_config_path = request.app["gui_config_file"]
+    if gui_config_path is None:
+        gui_config_path = GUI_CONFIG_PATH
+    gui_config = get_gui_config_or_defaults(gui_config_path)
     gui_config["coeff_dir"] = coeff_dir_relative_to_config_dir(request)
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]

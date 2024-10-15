@@ -5,6 +5,7 @@ from backend.legacy_config_import import (
     _remove_volume_filters,
     _modify_loundness_filters,
     _modify_dither,
+    _modify_pipeline_filter_steps,
     migrate_legacy_config,
 )
 from camilladsp_plot.validate_config import CamillaValidator
@@ -12,6 +13,7 @@ from camilladsp_plot.validate_config import CamillaValidator
 
 @pytest.fixture
 def basic_config():
+    # Config for camilladsp v1.0.x
     config = {
         "devices": {
             "samplerate": 96000,
@@ -89,6 +91,13 @@ def test_disabled_resampling(basic_config):
     assert basic_config["devices"]["resampler"] == None
 
 
+def test_pipeline_filter_step_channels(basic_config):
+    _modify_pipeline_filter_steps(basic_config)
+    for step in basic_config["pipeline"]:
+        assert "channel" not in step
+        assert isinstance(step["channels"], list)
+
+
 def test_removed_volume_filters(basic_config):
     _remove_volume_filters(basic_config)
     assert "vol" not in basic_config["filters"]
@@ -146,12 +155,14 @@ def test_schema_validation(basic_config):
     errors = validator.get_errors()
     assert len(errors) == 0
 
+
 def test_filters_only(basic_config):
     # make a config containing only filters,
     # to check that partial configs can be translated
     filters_only = {"filters": basic_config["filters"]}
     migrate_legacy_config(filters_only)
     assert len(filters_only["filters"]) == 3
+
 
 def test_rew_export(basic_config):
     # REW exports a single pipeline step rather than a list.

@@ -18,6 +18,7 @@ STATEFILE_PATH = os.path.join(TESTFILE_DIR, "statefile.yml")
 STATEFILE_TEMPLATE_PATH = os.path.join(TESTFILE_DIR, "statefile_template.yml")
 LOGFILE_PATH = os.path.join(TESTFILE_DIR, "log.txt")
 SAMPLE_CONFIG = yaml.safe_load(open(SAMPLE_CONFIG_PATH))
+GUI_CONFIG_PATH = os.path.join(TESTFILE_DIR, "gui_config.yml")
 
 
 @pytest.fixture
@@ -40,6 +41,7 @@ server_config = {
     "default_config": SAMPLE_CONFIG_PATH,
     "statefile_path": STATEFILE_PATH,
     "log_file": LOGFILE_PATH,
+    "gui_config_file": GUI_CONFIG_PATH,
     "on_set_active_config": None,
     "on_get_active_config": None,
     "supported_capture_types": None,
@@ -61,9 +63,8 @@ def mock_camillaclient(statefile):
     client_constructor = MagicMock(return_value=client)
     client_constructor._client = client
     client.volume = MagicMock()
-    client.volume.main = MagicMock(return_value=-20.0)
-    client.mute = MagicMock()
-    client.mute.main = MagicMock(return_value=False)
+    client.volume.main_volume = MagicMock(return_value=-20.0)
+    client.volume.main_mute = MagicMock(return_value=False)
     client.levels = MagicMock
     client.levels.capture_peak = MagicMock(return_value=[-2.0, -3.0])
     client.levels.playback_peak = MagicMock(return_value=[-2.5, -3.5])
@@ -79,7 +80,7 @@ def mock_camillaclient(statefile):
     client.rate.capture = MagicMock(return_value=44100)
     client.general = MagicMock()
     client.general.state = MagicMock(
-        return_value=camilladsp.camilladsp.ProcessingState.RUNNING
+        return_value=camilladsp.ProcessingState.RUNNING
     )
     client.general.list_capture_devices = MagicMock(
         return_value=[["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]

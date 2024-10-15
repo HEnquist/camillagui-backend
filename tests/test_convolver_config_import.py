@@ -68,7 +68,7 @@ def test_delays_and_mixers_are_imported():
     expected_pipeline = [
         {
             "type": "Filter",
-            "channel": 0,
+            "channels": [0],
             "names": ["Delay3"],
             "bypassed": None,
             "description": None,
@@ -77,7 +77,7 @@ def test_delays_and_mixers_are_imported():
         {"type": "Mixer", "name": "Mixer out", "description": None},
         {
             "type": "Filter",
-            "channel": 1,
+            "channels": [1],
             "names": ["Delay4"],
             "bypassed": None,
             "description": None,
@@ -115,7 +115,7 @@ def test_simple_impulse_response():
         {"type": "Mixer", "name": "Mixer in", "description": None},
         {
             "type": "Filter",
-            "channel": 0,
+            "channels": [0],
             "names": ["IR.wav-0"],
             "bypassed": None,
             "description": None,
@@ -196,14 +196,14 @@ def test_impulse_responses_are_mapped_to_correct_channels():
         {"type": "Mixer", "name": "Mixer in", "description": None},
         {
             "type": "Filter",
-            "channel": 0,
+            "channels": [0],
             "names": ["IR1.wav-0"],
             "bypassed": None,
             "description": None,
         },
         {
             "type": "Filter",
-            "channel": 1,
+            "channels": [1],
             "names": ["IR2.wav-0"],
             "bypassed": None,
             "description": None,

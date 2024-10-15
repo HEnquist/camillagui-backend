@@ -11,6 +11,7 @@ BACKEND_CONFIG_SCHEMA = {
         },
         "ssl_certificate": {"type": ["string", "null"], "minLength": 1},
         "ssl_private_key": {"type": ["string", "null"], "minLength": 1},
+        "gui_config_file": {"type": ["string", "null"], "minLength": 1},
         "config_dir": {"type": "string", "minLength": 1},
         "coeff_dir": {"type": "string", "minLength": 1},
         "default_config": {"type": ["string", "null"], "minLength": 1},
@@ -44,9 +45,12 @@ GUI_CONFIG_SCHEMA = {
         "hide_silence": {"type": "boolean"},
         "hide_capture_device": {"type": "boolean"},
         "hide_playback_device": {"type": "boolean"},
+        "hide_multithreading": {"type": "boolean"},
         "apply_config_automatically": {"type": "boolean"},
         "save_config_automatically": {"type": "boolean"},
         "status_update_interval": {"type": "integer", "minValue": 1},
+        "volume_range": {"type": "number", "exclusiveMinimum": 0, "maxValue": 200},
+        "volume_max": {"type": "integer", "minValue": -100, "maxValue": 50},
         "custom_shortcuts": {
             "type": ["array", "null"],
             "items": {
@@ -60,20 +64,44 @@ GUI_CONFIG_SCHEMA = {
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "path_in_config": {
+                                "config_elements": {
                                     "type": "array",
-                                    "items": {"type": "string"},
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "path": {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                                "minLength": 1
+                                            },
+                                            "reverse": {"type": ["boolean", "null"]},
+                                        },
+                                        "required": ["path"],
+                                    }
                                 },
                                 "range_from": {"type": "number"},
                                 "range_to": {"type": "number"},
-                                "step": {"type": "number"},
+                                "step": {"type": "number", "exclusiveMinimum": 0},
+                                "type": {
+                                    "type": ["string", "null"],
+                                    "enum": ["boolean", "number"]
+                                },
+                            },
+                            "if": {
+                                "properties": {
+                                    "type": {
+                                        "const": "number"
+                                    }
+                                }
+                            },
+                            "then": {
+                                "required": [
+                                    "range_from", "range_to", "step"
+                                ]
                             },
                             "required": [
                                 "name",
-                                "path_in_config",
-                                "range_from",
-                                "range_to",
-                                "step",
+                                "config_elements"
                             ],
                         },
                     },
@@ -85,22 +113,3 @@ GUI_CONFIG_SCHEMA = {
     "required": [],
 }
 
-"""
-
-custom_shortcuts:
-  - section: "Equalizer"
-    description: "To use the EQ, add filters named \"Bass\" and \"Treble\" to the pipeline.<br/>Recommented settings: <br/>Bass: Biquad Lowshelf freq=85 q=0.9<br/>Treble: Biquad Highshelf freq=6500 q=0.7"
-    shortcuts:
-      - name: "Treble (dB)"
-        path_in_config: ["filters", "Treble", "parameters", "gain"]
-        range_from: -12
-        range_to: 12
-        step: 0.5
-      - name: "Bass (dB)"
-        path_in_config: ["filters", "Bass", "parameters", "gain"]
-        range_from: -12
-        range_to: 12
-        step: 0.5    
-    
-    
-    """
