@@ -403,8 +403,8 @@ div .popup-content {
   margin: 15px 0;
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
-  font-size: xx-small;
+  justify-content: center;
+  font-size: small;
 }
 
 .quick-config-switch > * {

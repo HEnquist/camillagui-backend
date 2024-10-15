@@ -208,7 +208,7 @@ function OptionalSamplerateOption(props: {
     value = samplerate.toString()
   const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
   add_default_option(options, "default")
-  return <div className="setting" data-tooltip-html={props.tooltip} style={{padding: padding}}>
+  return <div className="setting" data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
         value={null_to_default(value, "default")}
