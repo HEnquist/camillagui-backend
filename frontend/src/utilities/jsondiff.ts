@@ -1,21 +1,32 @@
-import {createPatch} from 'rfc6902'
+import {createPatch, applyPatch} from 'rfc6902'
 import {cloneDeep} from "lodash"
 
 
 export function jsonDiff(json1: any, json2: any) : string {
-  const converted1 = cloneDeep(json1)
-  const converted2 = cloneDeep(json2)
-  return createPatch(converted1, converted2)
+  const json1copy = cloneDeep(json1)
+  return createPatch(json1copy, json2)
       .map(op => {
+        console.log(op)
         const path = op.path.slice(1).split('/')
         // special chars / and ~ are escaped by rfc6902, unescape to get back original names
         for (let n = 0; n < path.length; n++) {
           path[n] = path[n].replace(/~1/g, '/').replace(/~0/g, '~')
         }
         switch (op.op) {
-          case "add": return diffEntry(path, "*added*", valueAsString(op.value))
-          case "remove": return diffEntry(path, "*removed*", valueAt(json1, path))
-          case "replace": return diffEntry(path, valueAt(json1, path), valueAsString(op.value))
+          case "add": {
+            applyPatch(json1copy, [op])
+            return diffEntry(path, "*added*", valueAsString(op.value))
+          }
+          case "remove": {
+            const value = valueAt(json1copy, path)
+            applyPatch(json1copy, [op])
+            return diffEntry(path, "*removed*", value)
+          }
+          case "replace": {
+            const value = valueAt(json1copy, path)
+            applyPatch(json1copy, [op])
+            return diffEntry(path, value, valueAsString(op.value))
+          }
         }
         return ""
       }).join('<br/>')

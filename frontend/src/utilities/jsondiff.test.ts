@@ -55,7 +55,7 @@ test('object in array added', () => {
   expect(jsonDiff(
       {objects: []},
       {objects: [{child1: 1}]}
-  )).toBe("objects > 0: *added* => {child1:1}")
+  )).toBe("objects > -: *added* => {child1:1}")
 })
 
 test('object in array removed', () => {
@@ -70,9 +70,7 @@ test('object in array moved', () => {
       {objects: [{child1: 1}, {child2: 2}]},
       {objects: [{child2: 2}, {child1: 1}]}
   )).toBe(
-      "objects > 0 > child1: *removed* => 1<br/>" +
-      "objects > 0 > child2: *added* => 2<br/>" +
-      "objects > 1 > child2: *removed* => 2<br/>" +
-      "objects > 1 > child1: *added* => 1"
+      "objects > 0: *added* => {child2:2}<br/>" +
+      "objects > 2: *removed* => {child2:2}"
   )
 })
