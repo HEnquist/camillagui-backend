@@ -682,27 +682,27 @@ class FilterParams extends React.Component<{
           })} />
 
       if (info.type === 'text')
-        return <TextOption {...commonProps} />
+        return <TextOption {...commonProps} key={commonProps.key} />
       if (info.type === 'int')
-        return <IntOption {...commonProps} />
+        return <IntOption {...commonProps} key={commonProps.key} />
       if (info.type === 'float')
-        return <FloatOption {...commonProps} />
+        return <FloatOption {...commonProps} key={commonProps.key} />
       if (info.type === 'optional_int')
-        return <OptionalIntOption {...commonProps} />
+        return <OptionalIntOption {...commonProps} key={commonProps.key} />
       if (info.type === 'optional_float')
-        return <OptionalFloatOption {...commonProps} />
+        return <OptionalFloatOption {...commonProps} key={commonProps.key} />
       if (info.type === "bool")
-        return <BoolOption {...commonProps} />
+        return <BoolOption {...commonProps} key={commonProps.key} />
       if (info.type === "optional_bool")
-        return <OptionalBoolOption {...commonProps} />
+        return <OptionalBoolOption {...commonProps} key={commonProps.key} />
       if (info.type === 'floatlist')
-        return <FloatListOption {...commonProps} />
+        return <FloatListOption {...commonProps} key={commonProps.key} />
       if (info.type === 'enum') {
         let options = info.options
         if (parameter === "fader" && this.props.filter.type === "Volume") {
           options = VolumeFaders
         }
-        return <EnumOption {...commonProps} options={options} />
+        return <EnumOption {...commonProps} key={commonProps.key} options={options} />
       }
       return null
     })

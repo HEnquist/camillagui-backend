@@ -10,6 +10,10 @@ export function jsonDiff(json1: any, json2: any) : string {
   return createPatch(converted1, converted2)
       .map(op => {
         const path = op.path.slice(1).split('/')
+        // special chars / and ~ are escaped by rfc6902, unescape to get back original names
+        for (let n = 0; n < path.length; n++) {
+          path[n] = path[n].replace(/~1/g, '/').replace(/~0/g, '~')
+        }
         switch (op.op) {
           case "add": return diffEntry(path, "*added*", valueAsString(op.value))
           case "remove": return diffEntry(path, "*removed*", valueAt(json1, path))
@@ -21,7 +25,8 @@ export function jsonDiff(json1: any, json2: any) : string {
 
 /**
  * Recursively converts all array property values to objects.
- * This is necessary because json8-patch reports a change for the whole array instead of individual array elements.
+ * This is necessary because the rfc6902 library reports a change for the whole array
+ * instead of individual array elements.
  * @param object
  */
 function convertArraysToObjects(object: any) {
@@ -42,6 +47,9 @@ function diffEntry(path: string[], oldValue: string, newValue: string): string {
 }
 
 function valueAt(json: any, path: string[]): any {
+  if (json === undefined) {
+    return
+  }
   return path.length === 0 ?
       valueAsString(json)
       : valueAt(json[path[0]], path.slice(1))
