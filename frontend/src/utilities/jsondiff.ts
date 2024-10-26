@@ -5,8 +5,6 @@ import {cloneDeep} from "lodash"
 export function jsonDiff(json1: any, json2: any) : string {
   const converted1 = cloneDeep(json1)
   const converted2 = cloneDeep(json2)
-  convertArraysToObjects(converted1)
-  convertArraysToObjects(converted2)
   return createPatch(converted1, converted2)
       .map(op => {
         const path = op.path.slice(1).split('/')
@@ -21,25 +19,6 @@ export function jsonDiff(json1: any, json2: any) : string {
         }
         return ""
       }).join('<br/>')
-}
-
-/**
- * Recursively converts all array property values to objects.
- * This is necessary because the rfc6902 library reports a change for the whole array
- * instead of individual array elements.
- * @param object
- */
-function convertArraysToObjects(object: any) {
-  if (object !== null) {
-  Object.getOwnPropertyNames(object)
-      .forEach(property => {
-        const value = object[property]
-        if (Array.isArray(value))
-          object[property] = {...value} // convert Array to Object
-        if (typeof value === 'object')
-          convertArraysToObjects(value)
-      })
-    }
 }
 
 function diffEntry(path: string[], oldValue: string, newValue: string): string {

@@ -8,6 +8,7 @@ import { Range } from "immutable"
 import DataTable from 'react-data-table-component'
 import { FileInfo } from "./files"
 import { getLabelForChannel } from "../camilladsp/config"
+import {cloneDeep} from "lodash"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -1189,7 +1190,7 @@ export function ChannelSelection(props: {
 
     const rowSize = 8
 
-    var _channels = channels
+    var _channels = cloneDeep(channels)
     const toggleAllChannels = () => {
         if (_channels === null) {
             _channels = []
