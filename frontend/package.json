@@ -24,7 +24,7 @@
     "react-tabs": "^6.0.2",
     "react-tooltip": "^5.26.3",
     "reactjs-popup": "^2.0.5",
-    "rfc6902": "^5.1.1",
+    "rfc6902": "^5.1.2",
     "vite": "^5.4.6",
     "vite-tsconfig-paths": "^5.0.1"
   },

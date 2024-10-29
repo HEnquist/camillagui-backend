@@ -1,4 +1,5 @@
 import {createPatch, applyPatch} from 'rfc6902'
+import {Pointer} from 'rfc6902/pointer'
 import {cloneDeep} from "lodash"
 
 
@@ -6,12 +7,7 @@ export function jsonDiff(json1: any, json2: any) : string {
   const json1copy = cloneDeep(json1)
   return createPatch(json1copy, json2)
       .map(op => {
-        console.log(op)
-        const path = op.path.slice(1).split('/')
-        // special chars / and ~ are escaped by rfc6902, unescape to get back original names
-        for (let n = 0; n < path.length; n++) {
-          path[n] = path[n].replace(/~1/g, '/').replace(/~0/g, '~')
-        }
+        const path = Pointer.fromJSON(op.path).tokens
         switch (op.op) {
           case "add": {
             applyPatch(json1copy, [op])
