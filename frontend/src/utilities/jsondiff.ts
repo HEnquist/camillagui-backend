@@ -7,7 +7,7 @@ export function jsonDiff(json1: any, json2: any) : string {
   const json1copy = cloneDeep(json1)
   return createPatch(json1copy, json2)
       .map(op => {
-        const path = Pointer.fromJSON(op.path).tokens
+        const path = Pointer.fromJSON(op.path).tokens.slice(1)
         switch (op.op) {
           case "add": {
             applyPatch(json1copy, [op])
