@@ -4,7 +4,7 @@ import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
 import { CloseButton, cssStyles } from "../utilities/ui-components"
-import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount, getLabelForChannel } from "../camilladsp/config"
+import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount, getLabelForChannel, Source } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import { Range } from "immutable"
@@ -301,6 +301,26 @@ class PipelinePlot extends React.Component<Props, State> {
       return device.type
   }
 
+  private mixerGainText(src: Source, is_muted: boolean): string {
+    if (src.mute === true || is_muted) {
+      return "muted"
+    }
+    if (src.gain === null) {
+      return ''
+    }
+    let label = src.gain.toString()
+    if (src.scale === 'linear') {
+      label = "\u00D7 " + label
+    }
+    else {
+      label = label + " dB"
+    }
+    if (src.inverted) {
+      label = label + " inv."
+    }
+    return label
+  }
+
   private makeShapes(conf: Config, expand_filters: boolean) {
     const spacing_h = 3
     const spacing_v = 1
@@ -479,7 +499,7 @@ class PipelinePlot extends React.Component<Props, State> {
               const src = mapping.sources[p]
               const src_ch = src.channel
               const muted = src.mute === true || mapping_muted
-              const label = muted ? "muted" : src.gain + " dB" + (src.inverted ? " inv." : '')
+              const label = this.mixerGainText(src, muted)
               const srclen = stages[stages.length - 1][src_ch].length
               const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
               const dest_p = mixerchannels[dest_ch][0].input
