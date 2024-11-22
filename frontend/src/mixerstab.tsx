@@ -233,17 +233,12 @@ function MixerView(props: {
     <ErrorMessage message={errors({path: ['channels']})}/>
     <ErrorMessage message={errors({path: ['channels', 'in']})}/>
     <ErrorMessage message={errors({path: ['channels', 'out']})}/>
-    {mixer.mapping.map((mapping, index) =>
-        <MappingView
-            key={index}
-            mapping={mapping}
-            errors={errorsForSubpath(errors, 'mapping', index)}
+    <MappingMatrix
+            mappings={mixer.mapping}
+            errors={errorsForSubpath(errors, 'mapping', 0)}
             channels={mixer.channels}
-            update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
-            remove={() => update(mixer => mixer.mapping.splice(index, 1))}
-            input_labels={input_labels}
-            output_labels={mixer.labels}/>
-    )}
+            update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[0]))}
+            remove={() => update(mixer => mixer.mapping.splice(0, 1))}/>
     <div className="vertically-spaced-content">
     <div style={{display: 'flex', justifyContent: 'left'}}>
       {mixer.mapping.length < mixer.channels.out &&
@@ -330,6 +325,115 @@ function MappingView(props: {
       </div>
     </div>
   </Box>
+}
+
+function getMapping(mappings: Mapping[], dest: number): Mapping | undefined {
+  return mappings.find(m => m.dest === dest)
+}
+
+function getSource(mappings: Mapping[], src: number, dest: number): Source | undefined {
+  const mapping = getMapping(mappings, dest)
+  if (mapping === undefined) {
+    return undefined
+  }
+  return mapping.sources.find(s => s.channel === src)
+}
+
+
+
+function MappingMatrix(props: {
+  mappings: Mapping[]
+  errors: ErrorsForPath
+  channels: { in: number, out: number }
+  remove: () => void
+  update: (update: Update<Mapping>) => void
+}) {
+  const {mappings, errors, channels, remove, update} = props
+  console.log(channels)
+  return <Box style={{marginTop: '5px'}} title={
+    <>
+      <DeleteButton
+          tooltip="Delete this mapping"
+          smallButton={true}
+          onClick={remove}/>
+    </>
+  }>
+    <table>
+      <tr>
+        {Range(0, channels.in).map(src => {
+          console.log("header", src)
+          return (<td key={"header"+src}>{src}</td>) })}
+      </tr>
+      {Range(0, channels.out).map(dest => {
+        return (
+          <tr key={"row"+dest}>
+            <td key={"label"+dest}>{dest}</td>
+            {Range(0, channels.in).map(src => {
+              const cell = getSource(mappings, src, dest)
+              if (cell) {
+                return (<td key={"cell"+src+"."+dest}><SourceCell source={cell} errors={errors} update={updateSource => update(mixer => updateSource(mixer.sources[dest]))} remove={remove}/></td>)
+              }
+              return (<td key={"cell"+src+"."+dest}>{src} {dest}</td>)
+            })}
+          </tr>
+        )
+      })}
+    </table>
+    <div style={{display: 'flex', flexDirection: 'column'}}>
+      <div>
+        <AddButton
+            tooltip="Add a source to this mapping"
+            onClick={() => update(mapping => mapping.sources.push(defaultSource(channels.in, mapping.sources)))}/>
+      </div>
+    </div>
+  </Box>
+}
+
+function SourceCell(props: {
+  source: Source
+  errors: ErrorsForPath
+  update: (update: Update<Source>) => void
+  remove: () => void
+}) {
+  const {source, errors, update, remove} = props
+  return <>
+    <div className="vertically-spaced-content">
+      <div className="horizontally-spaced-content">
+        <div style={{flexGrow: 1}}>
+          <FloatOption
+              value={source.gain ? source.gain : 0.0}
+              desc=""
+              tooltip="Gain in dB for this source channel"
+              onChange={gain => update(source => source.gain = gain)}/>
+        </div>
+        <div style={{flexGrow: 1}}>
+          <OptionalEnumOption
+              value= {source.scale}
+              error={errors({path: ['scale']})}
+              options={GainScales}
+              desc=""
+              tooltip="Scale for gain"
+              onChange={scale => update(source => source.scale = scale )}/>
+        </div>
+      </div>
+      <div className="horizontally-spaced-content">
+        <MdiButton
+            icon={mdiPlusMinusVariant}
+            tooltip={"Invert this source channel"}
+            buttonSize="small"
+            highlighted={source.inverted}
+            onClick={() => update(source => source.inverted = !source.inverted)}/>
+        <MdiButton
+            icon={mdiVolumeOff}
+            tooltip={"Mute this source channel"}
+            buttonSize="small"
+            highlighted={source.mute}
+            onClick={() => update(source => source.mute = !source.mute)}/>
+        <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
+      </div>
+    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
+    </div>
+  </>
 }
 
 function SourceView(props: {
