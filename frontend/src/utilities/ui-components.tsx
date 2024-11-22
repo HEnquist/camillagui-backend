@@ -344,7 +344,7 @@ export function OptionalIntInput(props: {
     return <OptionalParsedInput
         {...props}
         immediate={true}
-        asString={(int: number | null) => int !== null ? int.toString() : ""}
+        asString={(int: number | null | undefined) => (int !== null && int !== undefined) ? int.toString() : ""}
         parseValue={(rawValue: string | undefined) => {
             const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN
             if (isNaN(parsedvalue)
