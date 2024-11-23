@@ -12,7 +12,11 @@ import {
   ParsedInput,
   OptionalTextInput,
   OptionalTextOption,
-  OptionalEnumOption
+  OptionalEnumOption,
+  EnumInput,
+  null_to_default,
+  default_to_null,
+  FloatInput,
 } from "./utilities/ui-components"
 import {
   Config,
@@ -28,9 +32,9 @@ import {
   Source,
   GainScales,
   getMixerInputLabels,
-  getLabelForChannel
+  getLabelForChannel,
 } from "./camilladsp/config"
-import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
+import {mdiClose, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
@@ -358,34 +362,46 @@ function MappingMatrix(props: {
           onClick={remove}/>
     </>
   }>
-    <table>
+    <table border={1}>
       <tr>
+        <td></td><td></td><td></td>
+        <td className="matrix-cell" colSpan={channels.in}>Input</td>
+      </tr>
+      <tr>
+        <td></td><td></td><td></td>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td key={"header"+src}>{src}</td>) })}
+          return (<td  className="matrix-cell" key={"header"+src}>{src}</td>) })}
       </tr>
+      <tr>
+        <td></td><td></td><td></td>
+        {Range(0, channels.in).map(src => {
+          console.log("header", src)
+          return (<td  className="matrix-cell" key={"header"+src}>↓</td>) })}
+      </tr>
+      
       {Range(0, channels.out).map(dest => {
+        let label = null
+        if (dest === 0) {
+          label = <td  className="matrix-cell" rowSpan={channels.out}><div className="vertical-matrix-cell">Output</div></td>
+        }
         return (
           <tr key={"row"+dest}>
-            <td key={"label"+dest}>{dest}</td>
+            {label}
+            <td className="matrix-cell" key={"label"+dest}>{dest}</td>
+            <td className="matrix-cell" key={"arrow"+dest}>←</td>
+            
             {Range(0, channels.in).map(src => {
               const cell = getSource(mappings, src, dest)
               if (cell) {
                 return (<td key={"cell"+src+"."+dest}><SourceCell source={cell} errors={errors} update={updateSource => update(mixer => updateSource(mixer.sources[dest]))} remove={remove}/></td>)
               }
-              return (<td key={"cell"+src+"."+dest}>{src} {dest}</td>)
+              return (<td key={"cell"+src+"."+dest}><AddCell update={()=>{}}/></td>)
             })}
           </tr>
         )
       })}
     </table>
-    <div style={{display: 'flex', flexDirection: 'column'}}>
-      <div>
-        <AddButton
-            tooltip="Add a source to this mapping"
-            onClick={() => update(mapping => mapping.sources.push(defaultSource(channels.in, mapping.sources)))}/>
-      </div>
-    </div>
   </Box>
 }
 
@@ -398,41 +414,59 @@ function SourceCell(props: {
   const {source, errors, update, remove} = props
   return <>
     <div className="vertically-spaced-content">
-      <div className="horizontally-spaced-content">
+
         <div style={{flexGrow: 1}}>
-          <FloatOption
+          <FloatInput
               value={source.gain ? source.gain : 0.0}
-              desc=""
               tooltip="Gain in dB for this source channel"
-              onChange={gain => update(source => source.gain = gain)}/>
+              className="small-setting-input"
+              onChange={(gain: number) => update(source => source.gain = gain)}/>
         </div>
         <div style={{flexGrow: 1}}>
-          <OptionalEnumOption
-              value= {source.scale}
-              error={errors({path: ['scale']})}
+          <EnumInput
+              value={null_to_default(source.scale, "default")}
               options={GainScales}
               desc=""
               tooltip="Scale for gain"
               onChange={scale => update(source => source.scale = scale )}/>
         </div>
-      </div>
+
       <div className="horizontally-spaced-content">
         <MdiButton
             icon={mdiPlusMinusVariant}
             tooltip={"Invert this source channel"}
-            buttonSize="small"
+            buttonSize="tiny"
             highlighted={source.inverted}
             onClick={() => update(source => source.inverted = !source.inverted)}/>
         <MdiButton
             icon={mdiVolumeOff}
             tooltip={"Mute this source channel"}
-            buttonSize="small"
+            buttonSize="tiny"
             highlighted={source.mute}
             onClick={() => update(source => source.mute = !source.mute)}/>
-        <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
+        <MdiButton
+            icon={mdiClose}
+            tooltip={"Delete this cell"}
+            buttonSize="tiny"
+            onClick={remove}/>
       </div>
     <ErrorMessage message={errors({path: [], includeChildren: true})}/>
     </div>
+  </>
+}
+
+function AddCell(props: {
+  update: (update: void) => void
+}) {
+  const {update} = props
+  return <>
+      <div className="centered-content">
+        <MdiButton
+            icon={mdiPlus}
+            tooltip={"Activate this cell"}
+            buttonSize="tiny"
+            onClick={update}/>
+      </div>
   </>
 }
 

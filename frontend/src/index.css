@@ -278,10 +278,30 @@ div .popup-content {
   gap: 5px;
 }
 
+
+
 .vertically-spaced-content {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+
+.centered-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.matrix-cell {
+  text-align: center;
+}
+
+.vertical-matrix-cell {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
 }
 
 .two-column-grid {
