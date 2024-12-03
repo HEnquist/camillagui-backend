@@ -94,6 +94,23 @@ export function Button(props: {
     </div>
 }
 
+export function MatrixCell(props: {
+    text: string
+    tooltip?: string
+    onClick: () => void
+    style?: CSSProperties
+    enabled?: boolean
+}) {
+    return <div
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
+        className="mapping-cell"
+        style={props.style}
+        onClick={props.onClick}>
+        {props.text}
+    </div>
+}
+
 export function SuccessFailureButton(props: {
     text: string
     tooltip?: string

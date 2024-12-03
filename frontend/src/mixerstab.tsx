@@ -6,23 +6,20 @@ import {
   DeleteButton,
   ErrorMessage,
   IntOption,
-  FloatOption,
   LabelListOption,
   MdiButton,
   ParsedInput,
   OptionalTextInput,
   OptionalTextOption,
-  OptionalEnumOption,
   EnumInput,
   null_to_default,
-  default_to_null,
   FloatInput,
+  MatrixCell
 } from "./utilities/ui-components"
 import {
   Config,
   defaultMapping,
   defaultMixer,
-  defaultSource,
   Mapping,
   Mixer,
   mixerNamesOf,
@@ -31,6 +28,7 @@ import {
   renameMixer,
   Source,
   GainScales,
+  GainScale,
   getMixerInputLabels,
   getLabelForChannel,
 } from "./camilladsp/config"
@@ -238,20 +236,12 @@ function MixerView(props: {
     <ErrorMessage message={errors({path: ['channels', 'in']})}/>
     <ErrorMessage message={errors({path: ['channels', 'out']})}/>
     <MappingMatrix
-            mappings={mixer.mapping}
+            mixer={mixer}
             errors={errorsForSubpath(errors, 'mapping', 0)}
             channels={mixer.channels}
-            update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[0]))}
+            update={mixerUpdate => update(mixer => mixerUpdate(mixer))}
             remove={() => update(mixer => mixer.mapping.splice(0, 1))}/>
     <div className="vertically-spaced-content">
-    <div style={{display: 'flex', justifyContent: 'left'}}>
-      {mixer.mapping.length < mixer.channels.out &&
-        <AddButton
-            tooltip="Add a mapping"
-            style={{marginTop: '10px'}}
-            onClick={() => update(mixer => mixer.mapping.push(defaultMapping(mixer.channels.out, mixer.mapping)))}/>
-      }
-      </div>
       <OptionalTextInput
         placeholder="description"
         value={mixer.description}
@@ -269,99 +259,80 @@ function MixerView(props: {
   </Box>
 }
 
-function MappingView(props: {
-  mapping: Mapping
-  errors: ErrorsForPath
-  channels: { in: number, out: number }
-  remove: () => void
-  update: (update: Update<Mapping>) => void
-  input_labels: (string|null)[] | null
-  output_labels: (string|null)[] | null
-}) {
-  const {mapping, errors, channels, remove, update, input_labels, output_labels} = props
-  return <Box style={{marginTop: '5px'}} title={
-    <>
-      <IntOption
-          value={mapping.dest}
-          desc="destination"
-          tooltip="Destination channel number"
-          small={true}
-          withControls={true}
-          min={0}
-          max={channels.out-1}
-          onChange={dest => update(mapping => mapping.dest = dest)}/>
-      <div  style={{width: 'fit-content'}}>
-        {getLabelForChannel(output_labels, mapping.dest)}
-      </div>
-      <MdiButton
-          icon={mdiVolumeOff}
-          tooltip={"Mute this destination channel"}
-          buttonSize="small"
-          highlighted={mapping.mute}
-          onClick={() => update(mapping => mapping.mute = !mapping.mute)}/>
-      <DeleteButton
-          tooltip="Delete this mapping"
-          smallButton={true}
-          onClick={remove}/>
-    </>
-  }>
-    <ErrorMessage message={errors({path: ['dest']})}/>
-    <ErrorMessage message={errors({path: ['mute']})}/>
-    <ErrorMessage message={errors({path: []})}/>
-    <ErrorMessage message={errors({path: ['sources']})}/>
-    <div style={{display: 'flex', flexDirection: 'column'}}>
-      {mapping.sources.map((source, index) =>
-          <React.Fragment key={index}>
-            <SourceView
-                source={source}
-                errors={errorsForSubpath(errors, 'sources', index)}
-                channelsIn={channels.in}
-                update={updateSource => update(mixer => updateSource(mixer.sources[index]))}
-                remove={() => update(mixer => mixer.sources.splice(index, 1))}
-                input_labels={input_labels}/>
-            {index+1 < mapping.sources.length && <hr/>}
-          </React.Fragment>
-      )}
-      <div>
-        <AddButton
-            tooltip="Add a source to this mapping"
-            onClick={() => update(mapping => mapping.sources.push(defaultSource(channels.in, mapping.sources)))}/>
-      </div>
-    </div>
-  </Box>
-}
 
-function getMapping(mappings: Mapping[], dest: number): Mapping | undefined {
-  return mappings.find(m => m.dest === dest)
-}
-
-function getSource(mappings: Mapping[], src: number, dest: number): Source | undefined {
-  const mapping = getMapping(mappings, dest)
-  if (mapping === undefined) {
-    return undefined
+function getMapping(mappings: Mapping[], dest: number): [Mapping|undefined, number] {
+  const idx = mappings.findIndex(m => m.dest === dest)
+  if (idx >= 0) {
+    return [mappings[idx], idx]
   }
-  return mapping.sources.find(s => s.channel === src)
+  return [undefined, idx]
 }
 
+function getSource(mappings: Mapping[], src: number, dest: number): [Source | undefined, number, number] {
+  const [mapping, map_idx] = getMapping(mappings, dest)
+  if (mapping === undefined) {
+    return [undefined, map_idx, -1]
+  }
+  const idx = mapping.sources.findIndex(s => s.channel === src)
+  if (idx >= 0) {
+    return [mapping.sources[idx], map_idx, idx]
+  }
+  return [undefined, map_idx, idx]
+}
 
+function addCell(mixer: Mixer, source: number, dest: number) {
+  let [mapping, idx] = getMapping(mixer.mapping, dest)
+  if (mapping === undefined) {
+    mapping = {
+      dest: dest,
+      sources: [],
+      mute: false
+    }
+    mixer.mapping.push(mapping)
+    idx = mixer.mapping.length - 1
+  }
+  const cell = { channel: source, gain: 0, inverted: false, mute: false, scale: 'dB' as GainScale }
+  mapping.sources.push(cell)
+}
+
+function deleteCell(mixer: Mixer, source: number, dest: number) {
+  let [cell, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
+  if (cell === undefined) {
+    return
+  }
+  mixer.mapping[map_idx].sources.splice(src_idx, 1)
+  if (mixer.mapping[map_idx].sources.length === 0) {
+    mixer.mapping.splice(map_idx, 1)
+  }
+}
+
+function updateCell(mixer: Mixer, source: number, dest: number, cell: Source) {
+  let [current, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
+  if (current === undefined) {
+    return
+  }
+  mixer.mapping[map_idx].sources[src_idx] = cell
+}
 
 function MappingMatrix(props: {
-  mappings: Mapping[]
+  mixer: Mixer
   errors: ErrorsForPath
   channels: { in: number, out: number }
   remove: () => void
-  update: (update: Update<Mapping>) => void
+  update: (update: Update<Mixer>) => void
 }) {
-  const {mappings, errors, channels, remove, update} = props
+  const {mixer, errors, channels, remove, update} = props
+  let [expanded, setExpanded] = useState([-1, -1])
+  const toggleExpanded = (row: number, col: number) => {
+    if (expanded[0] === row && expanded[1] === col) {
+      setExpanded([-1, -1])
+    }
+    else {
+      setExpanded([row, col])
+    }
+  }
   console.log(channels)
-  return <Box style={{marginTop: '5px'}} title={
-    <>
-      <DeleteButton
-          tooltip="Delete this mapping"
-          smallButton={true}
-          onClick={remove}/>
-    </>
-  }>
+  return <div>
     <table border={1}>
       <tr>
         <td></td><td></td><td></td>
@@ -371,19 +342,19 @@ function MappingMatrix(props: {
         <td></td><td></td><td></td>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td  className="matrix-cell" key={"header"+src}>{src}</td>) })}
+          return (<td className="matrix-cell" key={"header"+src}>{src}</td>) })}
       </tr>
       <tr>
         <td></td><td></td><td></td>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td  className="matrix-cell" key={"header"+src}>↓</td>) })}
+          return (<td className="matrix-cell" key={"header"+src}>↓</td>) })}
       </tr>
       
       {Range(0, channels.out).map(dest => {
         let label = null
         if (dest === 0) {
-          label = <td  className="matrix-cell" rowSpan={channels.out}><div className="vertical-matrix-cell">Output</div></td>
+          label = <td className="rotate" rowSpan={channels.out}><div>Output</div></td>
         }
         return (
           <tr key={"row"+dest}>
@@ -392,17 +363,48 @@ function MappingMatrix(props: {
             <td className="matrix-cell" key={"arrow"+dest}>←</td>
             
             {Range(0, channels.in).map(src => {
-              const cell = getSource(mappings, src, dest)
+              const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
               if (cell) {
-                return (<td key={"cell"+src+"."+dest}><SourceCell source={cell} errors={errors} update={updateSource => update(mixer => updateSource(mixer.sources[dest]))} remove={remove}/></td>)
+                var intensity = (cell.gain ? cell.gain: 0) / 24.0 + 0.5
+                if (intensity > 1.0) {
+                  intensity = 1.0
+                }
+                else if (intensity < 0) {
+                  intensity = 0
+                }
+
+                const color = colorAt(cell.gain ? cell.gain: 0)
+                const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
+                return (<td key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+                  <MatrixCell key='expand' text='&nbsp;' onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
+                  {(expanded[0] === dest && expanded[1]=== src) && makeDropdown(
+                    cell, 
+                    src,
+                    dest,
+                    errors,
+                    (cellupdate: Update<Source>)=>{update((mixer) => {
+                      cellupdate(cell)
+                      updateCell(mixer, src, dest, cell)})
+                    },
+                    ()=>{update((mixer) => {deleteCell(mixer, src, dest)})}
+                  )}
+              </div></td>)
               }
-              return (<td key={"cell"+src+"."+dest}><AddCell update={()=>{}}/></td>)
-            })}
+              return (<td key={"cell"+src+"."+dest}><AddCell onClick={()=>{
+                update((mixer) => {addCell(mixer, src, dest)})}
+              }/></td>)
+              })}
           </tr>
         )
       })}
     </table>
-  </Box>
+  </div>
+}
+
+const makeDropdown = (cell: Source, src: number, dest: number, errors: ErrorsForPath, update: any, remove: any) => {
+  return <div className="dropdown-menu" title='channels' >
+      <SourceCell source={cell} errors={errors} update={update} remove={remove}/>
+  </div>
 }
 
 function SourceCell(props: {
@@ -456,75 +458,38 @@ function SourceCell(props: {
 }
 
 function AddCell(props: {
-  update: (update: void) => void
+  onClick: () => void
 }) {
-  const {update} = props
+  const {onClick} = props
   return <>
       <div className="centered-content">
         <MdiButton
             icon={mdiPlus}
             tooltip={"Activate this cell"}
             buttonSize="tiny"
-            onClick={update}/>
+            onClick={onClick}/>
       </div>
   </>
 }
 
-function SourceView(props: {
-  source: Source
-  errors: ErrorsForPath
-  channelsIn: number
-  update: (update: Update<Source>) => void
-  remove: () => void
-  input_labels: (string|null)[] | null
-}) {
-  const {source, errors, channelsIn, update, remove, input_labels} = props
-  return <>
-    <div className="horizontally-spaced-content">
-      <div style={{flexGrow: 1}}>
-        <IntOption
-            value={source.channel}
-            desc="source"
-            tooltip="Source channel number"
-            small={true}
-            withControls={true}
-            min={0}
-            max={channelsIn - 1}
-            onChange={channel => update(source => source.channel = channel)}/>
-      </div>
-      <div style={{width: 'fit-content'}}>
-        {getLabelForChannel(input_labels, source.channel)}
-      </div>
-      <div style={{flexGrow: 1}}>
-        <FloatOption
-            value={source.gain ? source.gain : 0.0}
-            desc="gain"
-            tooltip="Gain in dB for this source channel"
-            onChange={gain => update(source => source.gain = gain)}/>
-      </div>
-      <div style={{flexGrow: 1}}>
-        <OptionalEnumOption
-            value= {source.scale}
-            error={errors({path: ['scale']})}
-            options={GainScales}
-            desc="scale"
-            tooltip="Scale for gain"
-            onChange={scale => update(source => source.scale = scale )}/>
-      </div>
-      <MdiButton
-          icon={mdiPlusMinusVariant}
-          tooltip={"Invert this source channel"}
-          buttonSize="small"
-          highlighted={source.inverted}
-          onClick={() => update(source => source.inverted = !source.inverted)}/>
-      <MdiButton
-          icon={mdiVolumeOff}
-          tooltip={"Mute this source channel"}
-          buttonSize="small"
-          highlighted={source.mute}
-          onClick={() => update(source => source.mute = !source.mute)}/>
-      <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
-    </div>
-    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
-  </>
+const gaincolors = [[-12, 0, 0, 180], [-9, 0, 0, 255], [-6, 0, 128, 255], [-3, 0, 200, 200], [0, 0, 255, 0], [3, 230, 230, 0], [6, 255, 150, 0], [9, 255, 0, 0], [12, 255, 128, 128]]
+function colorAt(index: number): [number, number, number] {
+  if (index < -12) {
+    index = -12
+  }
+  if (index > 12) {
+    index = 12
+  }
+  var n = 1
+  while (index > gaincolors[n][0]) {
+    n += 1
+  }
+  const prev = gaincolors[n-1]
+  const next = gaincolors[n]
+  const diff = next[0] - prev[0]
+  const frac = (index - prev[0]) / diff
+  const nw = frac
+  const pw = 1 - nw
+  console.log(prev, next, n, diff, pw, nw)
+  return [pw * prev[1] + nw * next[1], pw * prev[2] + nw * next[2], pw * prev[3] + nw * next[3]]
 }
