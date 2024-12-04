@@ -316,7 +316,14 @@ div .popup-content {
   border: 0px;
   min-width: 100%;
   min-height: 100%;
-  display: inline-block;
+  display: table-cell;
+  color: black;
+  font-size: x-small;
+  text-align: center;
+}
+
+.strikediag {
+  background: linear-gradient(to left top, transparent 47.75%, currentColor 49.5%, currentColor 50.5%, transparent 52.25%);
 }
 
 .rotate {

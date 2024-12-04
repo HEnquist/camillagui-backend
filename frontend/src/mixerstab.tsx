@@ -32,7 +32,7 @@ import {
   getMixerInputLabels,
   getLabelForChannel,
 } from "./camilladsp/config"
-import {mdiClose, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus} from "@mdi/js"
+import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
@@ -365,18 +365,23 @@ function MappingMatrix(props: {
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
               if (cell) {
-                var intensity = (cell.gain ? cell.gain: 0) / 24.0 + 0.5
-                if (intensity > 1.0) {
-                  intensity = 1.0
+                var color
+                if (cell.mute) {
+                  color = [128, 128, 128]
                 }
-                else if (intensity < 0) {
-                  intensity = 0
+                else {
+                  color = colorAt(cell.gain ? cell.gain: 0)
                 }
-
-                const color = colorAt(cell.gain ? cell.gain: 0)
+                var cellText
+                if (cell.scale === "linear") {
+                  cellText = (+(cell.gain !== null ? cell.gain : 1).toPrecision(2)).toString()
+                }
+                else {
+                  cellText = (Math.round(cell.gain !== null ? cell.gain : 0)).toString()
+                }
                 const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
-                return (<td key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
-                  <MatrixCell key='expand' text='&nbsp;' onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
+                return (<td style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
+                  <MatrixCell key='expand' muted={cell.mute} text={cellText} onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
                   {(expanded[0] === dest && expanded[1]=== src) && makeDropdown(
                     cell, 
                     src,
@@ -388,7 +393,7 @@ function MappingMatrix(props: {
                     },
                     ()=>{update((mixer) => {deleteCell(mixer, src, dest)})}
                   )}
-              </div></td>)
+                  </div></td>)
               }
               return (<td key={"cell"+src+"."+dest}><AddCell onClick={()=>{
                 update((mixer) => {addCell(mixer, src, dest)})}
@@ -447,7 +452,7 @@ function SourceCell(props: {
             highlighted={source.mute}
             onClick={() => update(source => source.mute = !source.mute)}/>
         <MdiButton
-            icon={mdiClose}
+            icon={mdiDelete}
             tooltip={"Delete this cell"}
             buttonSize="tiny"
             onClick={remove}/>

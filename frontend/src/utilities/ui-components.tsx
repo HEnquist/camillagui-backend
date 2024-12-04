@@ -99,12 +99,12 @@ export function MatrixCell(props: {
     tooltip?: string
     onClick: () => void
     style?: CSSProperties
-    enabled?: boolean
+    muted: boolean | null
 }) {
     return <div
         data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
-        className="mapping-cell"
+        className={"mapping-cell" + (props.muted ? " strikediag" : "")}
         style={props.style}
         onClick={props.onClick}>
         {props.text}
