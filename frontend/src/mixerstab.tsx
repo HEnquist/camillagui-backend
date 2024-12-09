@@ -240,7 +240,9 @@ function MixerView(props: {
             errors={errorsForSubpath(errors, 'mapping', 0)}
             channels={mixer.channels}
             update={mixerUpdate => update(mixer => mixerUpdate(mixer))}
-            remove={() => update(mixer => mixer.mapping.splice(0, 1))}/>
+            remove={() => update(mixer => mixer.mapping.splice(0, 1))}
+            updateLabel={updateChannelLabel}
+            inputLabels={input_labels}/>
     <div className="vertically-spaced-content">
       <OptionalTextInput
         placeholder="description"
@@ -320,8 +322,10 @@ function MappingMatrix(props: {
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mixer>) => void
+  updateLabel: (dest: number, new_label: string|null) => void
+  inputLabels: (string | null)[] | null
 }) {
-  const {mixer, errors, channels, remove, update} = props
+  const {mixer, errors, channels, remove, update, updateLabel, inputLabels} = props
   let [expanded, setExpanded] = useState([-1, -1])
   const toggleExpanded = (row: number, col: number) => {
     if (expanded[0] === row && expanded[1] === col) {
@@ -347,6 +351,11 @@ function MappingMatrix(props: {
       <tr>
         <td></td><td></td><td></td>
         {Range(0, channels.in).map(src => {
+          return (<td className="rotate" key={"header"+src}><div>{getLabelForChannel(inputLabels, src)}</div></td>) })}
+      </tr>
+      <tr>
+        <td></td><td></td><td></td>
+        {Range(0, channels.in).map(src => {
           console.log("header", src)
           return (<td className="matrix-cell" key={"header"+src}>↓</td>) })}
       </tr>
@@ -359,7 +368,13 @@ function MappingMatrix(props: {
         return (
           <tr key={"row"+dest}>
             {label}
-            <td className="matrix-cell" key={"label"+dest}>{dest}</td>
+            <td className="matrix-cell" key={"label"+dest}>
+              <OptionalTextOption value={mixer.labels && mixer.labels.length > dest ? mixer.labels[dest] : null } 
+                error={errors({path: ['labels']})}
+                desc={dest.toString()}
+                tooltip={'Label for channel '+ dest}
+                onChange={new_label => updateLabel(dest, new_label)}/>
+            </td>
             <td className="matrix-cell" key={"arrow"+dest}>←</td>
             
             {Range(0, channels.in).map(src => {
