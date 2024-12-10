@@ -312,13 +312,9 @@ div .popup-content {
 .mapping-cell {
   width: 25px;
   height: 25px;
-  border-radius: 0px;
-  border: 0px;
-  min-width: 100%;
-  min-height: 100%;
-  display: table-cell;
+  line-height: 25px;
   color: black;
-  font-size: x-small;
+  font-size: small;
   text-align: center;
   justify-content: center;
   align-items: center;

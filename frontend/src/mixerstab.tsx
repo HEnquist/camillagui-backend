@@ -394,6 +394,9 @@ function MappingMatrix(props: {
                 else {
                   cellText = (Math.round(cell.gain !== null ? cell.gain : 0)).toString()
                 }
+                if (cell.inverted) {
+                  cellText = "\u2195" + cellText
+                }
                 const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
                 return (<td style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
                   <MatrixCell key='expand' muted={cell.mute} text={cellText} onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
