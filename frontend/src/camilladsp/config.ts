@@ -789,14 +789,26 @@ export function getOutputLabels(config: Config): (string|null)[]|null {
 }
 
 export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
+    var result = channel.toString()
     if (labels === undefined || labels === null || labels.length <= channel) {
-        return channel.toString()
+        return result
+    }
+    const label = labels[channel]
+    if (label) {
+        result = result + ": " + label
+    }
+    return result
+}
+
+export function getLabelForChannel2(labels: (string|null)[] | null | undefined, channel: number): string {
+    if (labels === undefined || labels === null || labels.length <= channel) {
+        return ""
     }
     const label = labels[channel]
     if (label) {
         return label
     }
-    return channel.toString()
+    return ""
 }
 
 export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {

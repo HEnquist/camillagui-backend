@@ -294,8 +294,19 @@ div .popup-content {
   gap: 5px;
 }
 
+.mixer-table {
+  border-collapse: collapse;
+}
+
+.mixer-table > td {
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
 .matrix-cell {
   text-align: center;
+  border: var(--box-border);
+  border-collapse: collapse;
 }
 
 .vertical-matrix-cell2 {
@@ -314,6 +325,19 @@ div .popup-content {
   height: 25px;
   line-height: 25px;
   color: black;
+  font-size: small;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mapping-cell-empty {
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  color: var(--text-color);
   font-size: small;
   text-align: center;
   justify-content: center;

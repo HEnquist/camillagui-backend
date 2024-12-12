@@ -1,8 +1,10 @@
 import React, {useState} from "react"
+import Icon from "@mdi/react"
 import "./index.css"
 import {
   AddButton,
   Box,
+  CloseButton,
   DeleteButton,
   ErrorMessage,
   IntOption,
@@ -31,6 +33,7 @@ import {
   GainScale,
   getMixerInputLabels,
   getLabelForChannel,
+  getLabelForChannel2,
 } from "./camilladsp/config"
 import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
@@ -337,33 +340,31 @@ function MappingMatrix(props: {
   }
   console.log(channels)
   return <div>
-    <table border={1}>
+    <table className="mixer-table">
       <tr>
-        <td></td><td></td><td></td>
+        <td colSpan={3} rowSpan={4}></td>
         <td className="matrix-cell" colSpan={channels.in}>Input</td>
       </tr>
+
       <tr>
-        <td></td><td></td><td></td>
+        {Range(0, channels.in).map(src => {
+          return (<td className="rotate matrix-cell" key={"header"+src}><div>{getLabelForChannel2(inputLabels, src)}</div></td>) })}
+      </tr>
+      <tr>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
           return (<td className="matrix-cell" key={"header"+src}>{src}</td>) })}
       </tr>
       <tr>
-        <td></td><td></td><td></td>
-        {Range(0, channels.in).map(src => {
-          return (<td className="rotate" key={"header"+src}><div>{getLabelForChannel(inputLabels, src)}</div></td>) })}
-      </tr>
-      <tr>
-        <td></td><td></td><td></td>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td className="matrix-cell" key={"header"+src}>↓</td>) })}
+          return (<td className="matrix-cell" key={"header"+src}>{"\u25bc"}</td>) })}
       </tr>
       
       {Range(0, channels.out).map(dest => {
         let label = null
         if (dest === 0) {
-          label = <td className="rotate" rowSpan={channels.out}><div>Output</div></td>
+          label = <td className="rotate matrix-cell" rowSpan={channels.out}><div>Output</div></td>
         }
         return (
           <tr key={"row"+dest}>
@@ -375,7 +376,7 @@ function MappingMatrix(props: {
                 tooltip={'Label for channel '+ dest}
                 onChange={new_label => updateLabel(dest, new_label)}/>
             </td>
-            <td className="matrix-cell" key={"arrow"+dest}>←</td>
+            <td className="matrix-cell" key={"arrow"+dest}>{"\u25c0"}</td>
             
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
@@ -398,7 +399,7 @@ function MappingMatrix(props: {
                   cellText = "\u2195" + cellText
                 }
                 const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
-                return (<td style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
+                return (<td className="matrix-cell" style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
                   <MatrixCell key='expand' muted={cell.mute} text={cellText} onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
                   {(expanded[0] === dest && expanded[1]=== src) && makeDropdown(
                     cell, 
@@ -413,7 +414,7 @@ function MappingMatrix(props: {
                   )}
                   </div></td>)
               }
-              return (<td key={"cell"+src+"."+dest}><AddCell onClick={()=>{
+              return (<td className="matrix-cell" key={"cell"+src+"."+dest}><AddCell onClick={()=>{
                 update((mixer) => {addCell(mixer, src, dest)})}
               }/></td>)
               })}
@@ -440,12 +441,13 @@ function SourceCell(props: {
   return <>
     <div className="vertically-spaced-content">
 
-        <div style={{flexGrow: 1}}>
+        <div style={{display: 'flex', flexDirection: 'row', flexGrow: 1}}>
           <FloatInput
               value={source.gain ? source.gain : 0.0}
               tooltip="Gain in dB for this source channel"
               className="small-setting-input"
               onChange={(gain: number) => update(source => source.gain = gain)}/>
+          <span style={{float: 'right', width: '100%'}}><CloseButton onClick={()=>{}}/></span>
         </div>
         <div style={{flexGrow: 1}}>
           <EnumInput
@@ -460,19 +462,19 @@ function SourceCell(props: {
         <MdiButton
             icon={mdiPlusMinusVariant}
             tooltip={"Invert this source channel"}
-            buttonSize="tiny"
+            buttonSize="small"
             highlighted={source.inverted}
             onClick={() => update(source => source.inverted = !source.inverted)}/>
         <MdiButton
             icon={mdiVolumeOff}
             tooltip={"Mute this source channel"}
-            buttonSize="tiny"
+            buttonSize="small"
             highlighted={source.mute}
             onClick={() => update(source => source.mute = !source.mute)}/>
         <MdiButton
             icon={mdiDelete}
             tooltip={"Delete this cell"}
-            buttonSize="tiny"
+            buttonSize="small"
             onClick={remove}/>
       </div>
     <ErrorMessage message={errors({path: [], includeChildren: true})}/>
@@ -484,15 +486,13 @@ function AddCell(props: {
   onClick: () => void
 }) {
   const {onClick} = props
-  return <>
-      <div className="centered-content">
-        <MdiButton
-            icon={mdiPlus}
-            tooltip={"Activate this cell"}
-            buttonSize="tiny"
-            onClick={onClick}/>
-      </div>
-  </>
+  return <div
+        data-tooltip-html="Activate this mapping cell"
+        data-tooltip-id="main-tooltip"
+        className="mapping-cell-empty"
+        onClick={props.onClick}>
+        <Icon path={mdiPlus} size='16px'/>
+  </div>
 }
 
 const gaincolors = [[-12, 0, 0, 180], [-9, 0, 0, 255], [-6, 0, 128, 255], [-3, 0, 200, 200], [0, 0, 255, 0], [3, 230, 230, 0], [6, 255, 150, 0], [9, 255, 0, 0], [12, 255, 128, 128]]
