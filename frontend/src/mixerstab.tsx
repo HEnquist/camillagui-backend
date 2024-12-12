@@ -164,8 +164,9 @@ function MixerView(props: {
   }
 
   const updateChannelLabel = (channel: number, label: string | null) => {
+    console.log("label!", label, channel)
     let existing = props.mixer.labels
-    if (existing === null) {
+    if (existing === null || existing === undefined) {
       existing = []
     }
     while (existing.length <= channel) {
@@ -342,7 +343,7 @@ function MappingMatrix(props: {
   return <div>
     <table className="mixer-table">
       <tr>
-        <td colSpan={3} rowSpan={4}></td>
+        <td colSpan={4} rowSpan={4}></td>
         <td className="matrix-cell" colSpan={channels.in}>Input</td>
       </tr>
 
@@ -370,12 +371,15 @@ function MappingMatrix(props: {
           <tr key={"row"+dest}>
             {label}
             <td className="matrix-cell" key={"label"+dest}>
-              <OptionalTextOption value={mixer.labels && mixer.labels.length > dest ? mixer.labels[dest] : null } 
-                error={errors({path: ['labels']})}
-                desc={dest.toString()}
+              <OptionalTextInput
+                placeholder="none"
+                className="setting-input"
+                value={mixer.labels && mixer.labels.length > dest ? mixer.labels[dest] : null } 
                 tooltip={'Label for channel '+ dest}
-                onChange={new_label => updateLabel(dest, new_label)}/>
+                style={{border: '0px'}}
+                onChange={new_label => updateLabel(dest, new_label)} />
             </td>
+            <td className="matrix-cell" key={"destnumber"+dest}>{dest}</td>
             <td className="matrix-cell" key={"arrow"+dest}>{"\u25c0"}</td>
             
             {Range(0, channels.in).map(src => {
