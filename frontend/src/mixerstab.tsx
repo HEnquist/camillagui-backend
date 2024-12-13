@@ -154,14 +154,9 @@ function MixerView(props: {
   update: (update: Update<Mixer>) => void
 }) {
   const {name, mixer, config, errors, rename, remove, update} = props
-  let [expanded, setExpanded] = useState(false)
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
   const input_labels = getMixerInputLabels(config, name)
-
-  const toggleExpanded = () => {
-    setExpanded(!expanded)
-  }
 
   const updateChannelLabel = (channel: number, label: string | null) => {
     console.log("label!", label, channel)
@@ -177,28 +172,6 @@ function MixerView(props: {
     update(mixer =>
       mixer.labels = existing)
   }
-
-  const updateChannelLabels = (labels: (string | null)[] | null) => {
-    if (labels !== null && labels.length > props.mixer.channels.out) {
-      labels = labels.slice(0, props.mixer.channels.out)
-    }
-    console.log("Update labels to", labels)
-    update(mixer =>
-      mixer.labels = labels)
-  }
-
-  const makeDropdown = () =>
-  {
-    return <div>
-      {Range(0, 2).map(row => (
-                <OptionalTextOption value={mixer.labels && mixer.labels.length > row ? mixer.labels[row] : null } 
-                error={errors({path: ['labels']})}
-                desc={row.toString()}
-                tooltip={'Label for channel '+ row}
-                onChange={new_label => updateChannelLabel(row, new_label)}/>
-            ))}
-    </div>
-}
 
   return <Box title={
     <>
@@ -253,14 +226,6 @@ function MixerView(props: {
         value={mixer.description}
         tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
-      <LabelListOption
-        value={mixer.labels ? mixer.labels.map(lab => lab ? lab : "").join(",") : ""}
-        error={errors({path: ['labels']})}
-        desc="labels"
-        onChange={updateChannelLabels}
-        onButtonClick={toggleExpanded}
-      />
-      {expanded && makeDropdown()}
     </div>
   </Box>
 }
@@ -385,13 +350,7 @@ function MappingMatrix(props: {
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
               if (cell) {
-                var color
-                if (cell.mute) {
-                  color = [128, 128, 128]
-                }
-                else {
-                  color = colorAt(cell.gain ? cell.gain: 0)
-                }
+                const csscolor = cssColorAt(cell)
                 var cellText
                 if (cell.scale === "linear") {
                   cellText = (+(cell.gain !== null ? cell.gain : 1).toPrecision(2)).toString()
@@ -402,7 +361,6 @@ function MappingMatrix(props: {
                 if (cell.inverted) {
                   cellText = "\u2195" + cellText
                 }
-                const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
                 return (<td className="matrix-cell" style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
                   <MatrixCell key='expand' muted={cell.mute} text={cellText} onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
                   {(expanded[0] === dest && expanded[1]=== src) && makeDropdown(
@@ -414,7 +372,8 @@ function MappingMatrix(props: {
                       cellupdate(cell)
                       updateCell(mixer, src, dest, cell)})
                     },
-                    ()=>{update((mixer) => {deleteCell(mixer, src, dest)})}
+                    ()=>{update((mixer) => {deleteCell(mixer, src, dest)})},
+                    ()=>{setExpanded([-1, -1])}
                   )}
                   </div></td>)
               }
@@ -429,9 +388,9 @@ function MappingMatrix(props: {
   </div>
 }
 
-const makeDropdown = (cell: Source, src: number, dest: number, errors: ErrorsForPath, update: any, remove: any) => {
-  return <div className="dropdown-menu" title='channels' >
-      <SourceCell source={cell} errors={errors} update={update} remove={remove}/>
+const makeDropdown = (cell: Source, src: number, dest: number, errors: ErrorsForPath, update: any, remove: any, close: any) => {
+  return <div className="dropdown-menu" style={{borderColor: cssColorAt(cell)}}title='channels' >
+      <SourceCell source={cell} errors={errors} update={update} remove={remove} close={close}/>
   </div>
 }
 
@@ -440,8 +399,9 @@ function SourceCell(props: {
   errors: ErrorsForPath
   update: (update: Update<Source>) => void
   remove: () => void
+  close: () => void
 }) {
-  const {source, errors, update, remove} = props
+  const {source, errors, update, remove, close} = props
   return <>
     <div className="vertically-spaced-content">
 
@@ -451,9 +411,9 @@ function SourceCell(props: {
               tooltip="Gain in dB for this source channel"
               className="small-setting-input"
               onChange={(gain: number) => update(source => source.gain = gain)}/>
-          <span style={{float: 'right', width: '100%'}}><CloseButton onClick={()=>{}}/></span>
+          <span style={{float: 'right', width: '100%'}}><CloseButton onClick={close}/></span>
         </div>
-        <div style={{flexGrow: 1}}>
+        <div style={{display: 'flex', flexDirection: 'row', flexGrow: 1}}>
           <EnumInput
               value={null_to_default(source.scale, "default")}
               options={GainScales}
@@ -517,6 +477,17 @@ function colorAt(index: number): [number, number, number] {
   const frac = (index - prev[0]) / diff
   const nw = frac
   const pw = 1 - nw
-  console.log(prev, next, n, diff, pw, nw)
   return [pw * prev[1] + nw * next[1], pw * prev[2] + nw * next[2], pw * prev[3] + nw * next[3]]
+}
+
+function cssColorAt(cell: Source): string {
+  var color
+  if (cell.mute) {
+    color = [128, 128, 128]
+  }
+  else {
+    color = colorAt(cell.gain ? cell.gain: 0)
+  }
+  const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
+  return csscolor
 }
