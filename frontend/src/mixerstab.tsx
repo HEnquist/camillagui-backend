@@ -16,7 +16,8 @@ import {
   EnumInput,
   null_to_default,
   FloatInput,
-  MatrixCell
+  MatrixCell,
+  cssStyles
 } from "./utilities/ui-components"
 import {
   Config,
@@ -35,10 +36,15 @@ import {
   getLabelForChannel,
   getLabelForChannel2,
 } from "./camilladsp/config"
-import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus} from "@mdi/js"
+import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus, mdiVolumeHigh, mdiChevronDown, mdiChevronLeft} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
+
+const styles = cssStyles()
+const mutedCellColor = styles.getPropertyValue("--muted-cell-color")
+const normalCellColor = styles.getPropertyValue("--normal-cell-color")
+const invertedCellColor = styles.getPropertyValue("--inverted-cell-color")
 
 export class MixersTab extends React.Component<{
   config: Config
@@ -308,7 +314,7 @@ function MappingMatrix(props: {
   return <div>
     <table className="mixer-table">
       <tr>
-        <td colSpan={4} rowSpan={4}></td>
+        <td colSpan={5} rowSpan={4}></td>
         <td className="matrix-cell" colSpan={channels.in}>Input</td>
       </tr>
 
@@ -324,7 +330,7 @@ function MappingMatrix(props: {
       <tr>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td className="matrix-cell" key={"header"+src}>{"\u25bc"}</td>) })}
+          return (<td className="matrix-cell" key={"header"+src}><Icon path={mdiChevronDown} size='16px'/></td>) })}
       </tr>
       
       {Range(0, channels.out).map(dest => {
@@ -345,7 +351,10 @@ function MappingMatrix(props: {
                 onChange={new_label => updateLabel(dest, new_label)} />
             </td>
             <td className="matrix-cell" key={"destnumber"+dest}>{dest}</td>
-            <td className="matrix-cell" key={"arrow"+dest}>{"\u25c0"}</td>
+            <td className="matrix-cell" key={"mute"+dest}>
+              <OutputMute onClick={()=>{}} mute={true}/>
+            </td>
+            <td className="matrix-cell" key={"arrow"+dest}><Icon path={mdiChevronLeft} size='16px'/></td>
             
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
@@ -358,9 +367,9 @@ function MappingMatrix(props: {
                 else {
                   cellText = (Math.round(cell.gain !== null ? cell.gain : 0)).toString()
                 }
-                if (cell.inverted) {
-                  cellText = "\u2195" + cellText
-                }
+                //if (cell.inverted) {
+                //  cellText = "\u2195" + cellText
+                //}
                 return (<td className="matrix-cell" style={{backgroundColor: csscolor}} key={"cell"+src+"."+dest}><div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline', height: '100%', minHeight: '100%'}}>
                   <MatrixCell key='expand' muted={cell.mute} text={cellText} onClick={() => {toggleExpanded(dest, src)}} style={{backgroundColor: csscolor}}/>
                   {(expanded[0] === dest && expanded[1]=== src) && makeDropdown(
@@ -453,9 +462,23 @@ function AddCell(props: {
   return <div
         data-tooltip-html="Activate this mapping cell"
         data-tooltip-id="main-tooltip"
-        className="mapping-cell-empty"
-        onClick={props.onClick}>
+        className="centered"
+        onClick={onClick}>
         <Icon path={mdiPlus} size='16px'/>
+  </div>
+}
+
+function OutputMute(props: {
+  onClick: () => void,
+  mute: boolean
+}) {
+  const {onClick, mute} = props
+  return <div
+        data-tooltip-html={mute ? "Unmute this output channel" : "Mute this output channel"}
+        data-tooltip-id="main-tooltip"
+        className="centered"
+        onClick={onClick}>
+        <Icon path={mute ? mdiVolumeOff : mdiVolumeHigh} size='16px'/>
   </div>
 }
 
@@ -480,7 +503,7 @@ function colorAt(index: number): [number, number, number] {
   return [pw * prev[1] + nw * next[1], pw * prev[2] + nw * next[2], pw * prev[3] + nw * next[3]]
 }
 
-function cssColorAt(cell: Source): string {
+function cssColorAt2(cell: Source): string {
   var color
   if (cell.mute) {
     color = [128, 128, 128]
@@ -490,4 +513,14 @@ function cssColorAt(cell: Source): string {
   }
   const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
   return csscolor
+}
+
+function cssColorAt(cell: Source): string {
+  if (cell.mute) {
+    return mutedCellColor
+  }
+  else if (cell.inverted) {
+    return invertedCellColor
+  }
+  return normalCellColor
 }

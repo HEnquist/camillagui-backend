@@ -309,6 +309,10 @@ div .popup-content {
   border-collapse: collapse;
 }
 
+.centered {
+  text-align: center;
+}
+
 .vertical-matrix-cell2 {
   writing-mode: vertical-rl;
   text-orientation: mixed;
