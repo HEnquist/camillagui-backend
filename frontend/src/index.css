@@ -313,6 +313,18 @@ div .popup-content {
   text-align: center;
 }
 
+.centered-button {
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.centered-button-disabled {
+  text-align: center;
+  user-select: none;
+  color: var(--disabled-text-color);
+}
+
 .vertical-matrix-cell2 {
   writing-mode: vertical-rl;
   text-orientation: mixed;

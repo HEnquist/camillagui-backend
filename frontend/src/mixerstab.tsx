@@ -36,7 +36,7 @@ import {
   getLabelForChannel,
   getLabelForChannel2,
 } from "./camilladsp/config"
-import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus, mdiVolumeHigh, mdiChevronDown, mdiChevronLeft} from "@mdi/js"
+import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus, mdiVolumeHigh, mdiArrowDown, mdiArrowLeft} from "@mdi/js"
 import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
@@ -330,7 +330,7 @@ function MappingMatrix(props: {
       <tr>
         {Range(0, channels.in).map(src => {
           console.log("header", src)
-          return (<td className="matrix-cell" key={"header"+src}><Icon path={mdiChevronDown} size='16px'/></td>) })}
+          return (<td className="matrix-cell" key={"header"+src}><Icon path={mdiArrowDown} size='14px'/></td>) })}
       </tr>
       
       {Range(0, channels.out).map(dest => {
@@ -343,7 +343,7 @@ function MappingMatrix(props: {
             {label}
             <td className="matrix-cell" key={"label"+dest}>
               <OptionalTextInput
-                placeholder="none"
+                placeholder="(no label)"
                 className="setting-input"
                 value={mixer.labels && mixer.labels.length > dest ? mixer.labels[dest] : null } 
                 tooltip={'Label for channel '+ dest}
@@ -352,9 +352,9 @@ function MappingMatrix(props: {
             </td>
             <td className="matrix-cell" key={"destnumber"+dest}>{dest}</td>
             <td className="matrix-cell" key={"mute"+dest}>
-              <OutputMute onClick={()=>{}} mute={true}/>
+              <OutputMute onClick={()=>{}} mute={undefined}/>
             </td>
-            <td className="matrix-cell" key={"arrow"+dest}><Icon path={mdiChevronLeft} size='16px'/></td>
+            <td className="matrix-cell" key={"arrow"+dest}><Icon path={mdiArrowLeft} size='14px'/></td>
             
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
@@ -470,15 +470,28 @@ function AddCell(props: {
 
 function OutputMute(props: {
   onClick: () => void,
-  mute: boolean
+  mute: boolean | undefined
 }) {
   const {onClick, mute} = props
+  const enabled = mute !== undefined
+  const audible = mute === false
+  var tooltip
+  if (audible) {
+    tooltip = "Mute this output channel"
+  }
+  else if (enabled) {
+    tooltip = "Unmute this output channel"
+  }
+  else {
+    tooltip = "This output channel has no sources"
+  }
+  const click = enabled ? onClick : undefined
   return <div
-        data-tooltip-html={mute ? "Unmute this output channel" : "Mute this output channel"}
+        data-tooltip-html={tooltip}
         data-tooltip-id="main-tooltip"
-        className="centered"
-        onClick={onClick}>
-        <Icon path={mute ? mdiVolumeOff : mdiVolumeHigh} size='16px'/>
+        className={enabled ? "centered-button" : "centered-button-disabled"}
+        onClick={click}>
+        <Icon path={audible ? mdiVolumeHigh : mdiVolumeOff} size='24px'/>
   </div>
 }
 
