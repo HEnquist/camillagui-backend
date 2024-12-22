@@ -205,7 +205,12 @@ function MixerView(props: {
           small={true}
           withControls={true}
           min={1}
-          onChange={channelsIn => update(mixer => mixer.channels.in = channelsIn)}/>
+          onChange={
+            channelsIn => update(mixer => {
+              mixer.channels.in = channelsIn
+              pruneMixer(mixer)
+            })
+          }/>
       <IntOption
           value={mixer.channels.out}
           desc="out"
@@ -213,7 +218,12 @@ function MixerView(props: {
           small={true}
           withControls={true}
           min={1}
-          onChange={channelsOut => update(mixer => mixer.channels.out = channelsOut)}/>
+          onChange={
+            channelsOut => update(mixer => {
+              mixer.channels.out = channelsOut
+              pruneMixer(mixer)
+            })
+          }/>
     </div>
     <ErrorMessage message={errors({path: ['channels']})}/>
     <ErrorMessage message={errors({path: ['channels', 'in']})}/>
@@ -291,6 +301,25 @@ function updateCell(mixer: Mixer, source: number, dest: number, cell: Source) {
   mixer.mapping[map_idx].sources[src_idx] = cell
 }
 
+function toggleMappingMute(mixer: Mixer, dest: number) {
+  let [current, idx] = getMapping(mixer.mapping, dest)
+  if (current !== undefined) {
+    if (current.mute === true) {
+      mixer.mapping[idx].mute = false
+    }
+    else {
+      mixer.mapping[idx].mute = true
+    }
+  }
+}
+
+function pruneMixer(mixer: Mixer) {
+  mixer.mapping = mixer.mapping.filter(map => map.dest < mixer.channels.out)
+  for (var mapping of mixer.mapping) {
+    mapping.sources = mapping.sources.filter(src => src.channel < mixer.channels.in)
+  }
+}
+
 function MappingMatrix(props: {
   mixer: Mixer
   errors: ErrorsForPath
@@ -338,6 +367,7 @@ function MappingMatrix(props: {
         if (dest === 0) {
           label = <td className="rotate matrix-cell" rowSpan={channels.out}><div>Output</div></td>
         }
+        const [mapping, _map_idx] = getMapping(mixer.mapping, dest)
         return (
           <tr key={"row"+dest}>
             {label}
@@ -352,7 +382,15 @@ function MappingMatrix(props: {
             </td>
             <td className="matrix-cell" key={"destnumber"+dest}>{dest}</td>
             <td className="matrix-cell" key={"mute"+dest}>
-              <OutputMute onClick={()=>{}} mute={undefined}/>
+              <OutputMute 
+                onClick={
+                  ()=>{
+                    update((mixer) => {
+                      toggleMappingMute(mixer, dest)
+                    })
+                  }
+                }
+                mute={mapping ? mapping.mute : undefined}/>
             </td>
             <td className="matrix-cell" key={"arrow"+dest}><Icon path={mdiArrowLeft} size='14px'/></td>
             
@@ -470,11 +508,11 @@ function AddCell(props: {
 
 function OutputMute(props: {
   onClick: () => void,
-  mute: boolean | undefined
+  mute: boolean | null | undefined
 }) {
   const {onClick, mute} = props
   const enabled = mute !== undefined
-  const audible = mute === false
+  const audible = mute === false || mute === null
   var tooltip
   if (audible) {
     tooltip = "Mute this output channel"
