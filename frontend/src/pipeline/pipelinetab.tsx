@@ -8,6 +8,7 @@ import {
   DeleteButton,
   EnumInput,
   ERROR_BACKGROUND_STYLE,
+  ErrorBoundary,
   ErrorMessage,
   MdiButton,
   OptionalBoolOption,
@@ -36,7 +37,7 @@ import {
   ProcessorStep
 } from "../camilladsp/config"
 import { mdiArrowDownBold, mdiArrowUpBold } from "@mdi/js"
-import { ErrorsForPath, errorsForSubpath } from "../utilities/errors"
+import {Errors} from "../utilities/errors"
 import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/dragndrop"
 import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
 import { Update } from "../utilities/common"
@@ -45,7 +46,7 @@ import { ChartData, ChartPopup } from "../utilities/chart"
 export class PipelineTab extends React.Component<{
   config: Config
   updateConfig: (update: Update<Config>) => void
-  errors: ErrorsForPath
+  errors: Errors
 }, {
   plotPipeline: boolean
   plotFilterStep: boolean
@@ -122,95 +123,97 @@ export class PipelineTab extends React.Component<{
   render() {
     const { config, errors } = this.props
     const pipeline = config.pipeline
-    return <div className="tabcontainer"><DndContainer>
-      <div className="tabpanel" style={{ width: '700px' }}>
-        <ErrorMessage message={errors({ path: [] })} />
-        <div className="pipeline-channel">
-          Capture: {this.state.capture_channels} channels in
+    return <ErrorBoundary errorMessage={errors.asText()}>
+      <div className="tabcontainer"><DndContainer>
+        <div className="tabpanel" style={{ width: '700px' }}>
+          <ErrorMessage message={errors.rootMessage()} />
+          <div className="pipeline-channel">
+            Capture: {this.state.capture_channels} channels in
+          </div>
+          {pipeline?.map((step: PipelineStep, index: number) => {
+            const channel_labels = getChannelLabels(config, index)
+            const stepErrors = errors.forSubpath(index)
+            const typeSelect = <EnumInput
+              value={step.type}
+              options={['Mixer', 'Filter', 'Processor']}
+              desc="type"
+              tooltip="Step type"
+              style={{ marginRight: '15px' }}
+              onChange={type => this.setStepType(index, type)} />
+            const controls = <>
+              <DeleteButton tooltip="Delete this step" onClick={() => this.removeStep(index)} />
+              <MdiButton
+                icon={mdiArrowUpBold}
+                tooltip="Move this step up"
+                enabled={index > 0}
+                onClick={() => this.moveStepUp(index)} />
+              <MdiButton
+                icon={mdiArrowDownBold}
+                tooltip="Move this step down"
+                enabled={index + 1 < pipeline.length}
+                onClick={() => this.moveStepDown(index)} />
+            </>
+            if (step.type === 'Filter')
+              return <FilterStepView
+                key={index}
+                stepIndex={index}
+                maxChannelCount={maxChannelCount(config, index)}
+                typeSelect={typeSelect}
+                filterStep={step}
+                filters={config.filters ? config.filters : {}}
+                updatePipeline={this.updatePipeline}
+                plot={() => this.plotFilterStep(index)}
+                errors={stepErrors}
+                controls={controls}
+                labels={channel_labels} />
+            if (step.type === 'Mixer')
+              return <MixerStepView
+                key={index}
+                stepIndex={index}
+                typeSelect={typeSelect}
+                mixerStep={step}
+                mixers={config.mixers ? config.mixers : {}}
+                updatePipeline={this.updatePipeline}
+                errors={stepErrors}
+                controls={controls} />
+            if (step.type === 'Processor')
+              return <ProcessorStepView
+                key={index}
+                stepIndex={index}
+                typeSelect={typeSelect}
+                processorStep={step}
+                processors={config.processors ? config.processors : {}}
+                updatePipeline={this.updatePipeline}
+                errors={stepErrors}
+                controls={controls} />
+            else
+              return null
+          }
+          )}
+          <div className="horizontally-spaced-content">
+            <AddButton tooltip="Add a pipeline step" onClick={this.addStep} />
+            <PlotButton tooltip="Plot the pipeline" pipeline={true} onClick={() => this.setState({ plotPipeline: true })} />
+          </div>
+          <div className="pipeline-channel">
+            Playback: {config.devices.playback.channels} channels out
+          </div>
+          <PipelinePopup
+            key={this.state.plotPipeline as any}
+            open={this.state.plotPipeline}
+            config={config}
+            onClose={() => this.setState({ plotPipeline: false })} />
+          {this.state.plotFilterStep && <ChartPopup
+            key={this.state.plotFilterStep as any}
+            open={this.state.plotFilterStep}
+            data={this.state.data}
+            onChange={name => {
+              const current = this.state.data.options.filter(o => o.name === name)[0]
+              this.plotFilterStep(this.state.stepIndex!!, current.samplerate, current.channels)
+            }}
+            onClose={() => this.setState({ plotFilterStep: false })} />}
         </div>
-        {pipeline?.map((step: PipelineStep, index: number) => {
-          const channel_labels = getChannelLabels(config, index)
-          const stepErrors = errorsForSubpath(errors, index)
-          const typeSelect = <EnumInput
-            value={step.type}
-            options={['Mixer', 'Filter', 'Processor']}
-            desc="type"
-            tooltip="Step type"
-            style={{ marginRight: '15px' }}
-            onChange={type => this.setStepType(index, type)} />
-          const controls = <>
-            <DeleteButton tooltip="Delete this step" onClick={() => this.removeStep(index)} />
-            <MdiButton
-              icon={mdiArrowUpBold}
-              tooltip="Move this step up"
-              enabled={index > 0}
-              onClick={() => this.moveStepUp(index)} />
-            <MdiButton
-              icon={mdiArrowDownBold}
-              tooltip="Move this step down"
-              enabled={index + 1 < pipeline.length}
-              onClick={() => this.moveStepDown(index)} />
-          </>
-          if (step.type === 'Filter')
-            return <FilterStepView
-              key={index}
-              stepIndex={index}
-              maxChannelCount={maxChannelCount(config, index)}
-              typeSelect={typeSelect}
-              filterStep={step}
-              filters={config.filters ? config.filters : {}}
-              updatePipeline={this.updatePipeline}
-              plot={() => this.plotFilterStep(index)}
-              errors={stepErrors}
-              controls={controls}
-              labels={channel_labels} />
-          if (step.type === 'Mixer')
-            return <MixerStepView
-              key={index}
-              stepIndex={index}
-              typeSelect={typeSelect}
-              mixerStep={step}
-              mixers={config.mixers ? config.mixers : {}}
-              updatePipeline={this.updatePipeline}
-              errors={stepErrors}
-              controls={controls} />
-          if (step.type === 'Processor')
-            return <ProcessorStepView
-              key={index}
-              stepIndex={index}
-              typeSelect={typeSelect}
-              processorStep={step}
-              processors={config.processors ? config.processors : {}}
-              updatePipeline={this.updatePipeline}
-              errors={stepErrors}
-              controls={controls} />
-          else
-            return null
-        }
-        )}
-        <div className="horizontally-spaced-content">
-          <AddButton tooltip="Add a pipeline step" onClick={this.addStep} />
-          <PlotButton tooltip="Plot the pipeline" pipeline={true} onClick={() => this.setState({ plotPipeline: true })} />
-        </div>
-        <div className="pipeline-channel">
-          Playback: {config.devices.playback.channels} channels out
-        </div>
-        <PipelinePopup
-          key={this.state.plotPipeline as any}
-          open={this.state.plotPipeline}
-          config={config}
-          onClose={() => this.setState({ plotPipeline: false })} />
-        {this.state.plotFilterStep && <ChartPopup
-          key={this.state.plotFilterStep as any}
-          open={this.state.plotFilterStep}
-          data={this.state.data}
-          onChange={name => {
-            const current = this.state.data.options.filter(o => o.name === name)[0]
-            this.plotFilterStep(this.state.stepIndex!!, current.samplerate, current.channels)
-          }}
-          onClose={() => this.setState({ plotFilterStep: false })} />}
-      </div>
-    </DndContainer><div className="tabspacer"></div></div>
+      </DndContainer><div className="tabspacer"/></div>
+    </ErrorBoundary>
   }
 }
 
@@ -227,7 +230,7 @@ function MixerStepView(props: {
   mixerStep: MixerStep
   mixers: Mixers
   updatePipeline: (update: Update<Pipeline>) => void
-  errors: ErrorsForPath
+  errors: Errors
   controls: ReactNode
 }) {
   const { stepIndex, typeSelect, mixers, mixerStep, updatePipeline, controls } = props
@@ -237,7 +240,7 @@ function MixerStepView(props: {
     <span style={{ marginRight: '15px' }}>{mixer.channels.in}&nbsp;in,&nbsp;{mixer.channels.out}&nbsp;out</span>
     : null
   const options = [EMPTY].concat(mixerNamesOf(mixers))
-  const nameError = props.errors({ path: ['name'] })
+  const nameError = props.errors.messageFor('name')
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   return <DndSortable {...dndProps}>
     <Box title={
@@ -253,8 +256,8 @@ function MixerStepView(props: {
       </>
     }>
       <div className="vertically-spaced-content">
-        <ErrorMessage message={props.errors({ path: [] })} />
-        <ErrorMessage message={props.errors({ path: ['type'] })} />
+        <ErrorMessage message={props.errors.rootMessage()} />
+        <ErrorMessage message={props.errors.messageFor('type')} />
         <EnumInput
           value={mixerStep.name}
           options={options}
@@ -280,13 +283,13 @@ function ProcessorStepView(props: {
   processorStep: ProcessorStep
   processors: Processors
   updatePipeline: (update: Update<Pipeline>) => void
-  errors: ErrorsForPath
+  errors: Errors
   controls: ReactNode
 }) {
   const { stepIndex, typeSelect, processors, processorStep, updatePipeline, controls } = props
   const update = (update: Update<ProcessorStep>) => updatePipeline(pipeline => update(pipeline[stepIndex] as ProcessorStep))
   const options = [EMPTY].concat(processorNamesOf(processors))
-  const nameError = props.errors({ path: ['name'] })
+  const nameError = props.errors.messageFor('name')
   const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
   return <DndSortable {...dndProps}>
     <Box title={
@@ -301,8 +304,8 @@ function ProcessorStepView(props: {
       </>
     }>
       <div className="vertically-spaced-content">
-        <ErrorMessage message={props.errors({ path: [] })} />
-        <ErrorMessage message={props.errors({ path: ['type'] })} />
+        <ErrorMessage message={props.errors.rootMessage()} />
+        <ErrorMessage message={props.errors.messageFor('type')} />
         <EnumInput
           value={processorStep.name}
           options={options}
@@ -330,7 +333,7 @@ function FilterStepView(props: {
   filters: Filters
   updatePipeline: (update: Update<Pipeline>) => void
   plot: () => void
-  errors: ErrorsForPath
+  errors: Errors
   controls: ReactNode
   labels: (string|null)[] | null
 }) {
@@ -379,9 +382,9 @@ function FilterStepView(props: {
   return <DndSortable {...dndProps}>
     <Box title={title}>
       <div className="vertically-spaced-content">
-        <ErrorMessage message={props.errors({ path: ['type'] })} />
-        <ErrorMessage message={props.errors({ path: ['channel'] })} />
-        <ErrorMessage message={props.errors({ path: [] })} />
+        <ErrorMessage message={props.errors.messageFor('type')} />
+        <ErrorMessage message={props.errors.messageFor('channel')} />
+        <ErrorMessage message={props.errors.rootMessage()} />
         <div className="vertically-spaced-content">
 
           {filterStep.names.map((name, index) =>
@@ -393,7 +396,7 @@ function FilterStepView(props: {
               options={options}
               setName={filterName => update(step => step.names[index] = filterName)}
               moveFilter={moveFilter}
-              errors={props.errors({ path: ['names', index] })}
+              errors={props.errors.messageFor('names', index)}
               controls={
                 <>
                   <MdiButton
@@ -418,7 +421,7 @@ function FilterStepView(props: {
           )}
 
         </div>
-        <ErrorMessage message={props.errors({ path: ['names'] })} />
+        <ErrorMessage message={props.errors.messageFor('names')} />
         <div className="horizontally-spaced-content">
           {controls}
           <AddButton tooltip="Add a filter to the list" onClick={addFilter} />

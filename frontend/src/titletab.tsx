@@ -1,23 +1,27 @@
 import React from "react"
 import "./index.css"
-import { TextInput, MultilineTextInput, Box } from "./utilities/ui-components"
+import {TextInput, MultilineTextInput, Box, ErrorBoundary} from "./utilities/ui-components"
 import { Config } from "./camilladsp/config"
 import {Update} from "./utilities/common"
 
 
-
 export function TitleTab(props: {
-    config: Config,
-    updateConfig: (update: Update<Config>) => void
-  }) {
-    return <div className="tabcontainer"><div className="tabpanel" style={{width: '700px'}}>
-      <Title
-          config={props.config}
-          onChange={props.updateConfig}/>
-        <Description
-          config={props.config}
-          onChange={props.updateConfig}/>
-    </div><div className="tabspacer"></div></div>
+  config: Config,
+  updateConfig: (update: Update<Config>) => void
+}) {
+    return <ErrorBoundary>
+      <div className="tabcontainer">
+        <div className="tabpanel" style={{width: '700px'}}>
+          <Title
+              config={props.config}
+              onChange={props.updateConfig}/>
+          <Description
+              config={props.config}
+              onChange={props.updateConfig}/>
+        </div>
+        <div className="tabspacer"/>
+      </div>
+    </ErrorBoundary>
   }
 
 function Title(props: {

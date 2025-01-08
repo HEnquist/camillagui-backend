@@ -1,6 +1,6 @@
 import * as React from "react"
 import {useEffect, useState} from "react"
-import {Box, Button, MdiIcon} from "./utilities/ui-components"
+import {Box, Button, ErrorBoundary, MdiIcon} from "./utilities/ui-components"
 import {mdiHelpCircleOutline, mdiAlert} from "@mdi/js"
 import {loadConfigJson, loadFilenames} from "./utilities/files"
 import {Config} from "./camilladsp/config"
@@ -17,10 +17,15 @@ export function Shortcuts(props: {
 })
 {
     const {currentConfigName, config, setConfig, updateConfig, shortcutSections} = props
-    return <div className="tabcontainer"><div className="tabpanel">
-        <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig}/>
-        <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
-    </div><div className="tabspacer"></div></div>
+    return <ErrorBoundary>
+      <div className="tabcontainer">
+        <div className="tabpanel">
+          <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig}/>
+          <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
+        </div>
+        <div className="tabspacer"/>
+      </div>
+    </ErrorBoundary>
 }
 
 export function ShortcutSections(props: {

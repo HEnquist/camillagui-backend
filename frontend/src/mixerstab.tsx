@@ -12,7 +12,8 @@ import {
   ParsedInput,
   OptionalTextInput,
   OptionalTextOption,
-  OptionalEnumOption
+  OptionalEnumOption,
+  ErrorBoundary
 } from "./utilities/ui-components"
 import {
   Config,
@@ -31,13 +32,13 @@ import {
   getLabelForChannel
 } from "./camilladsp/config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
-import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
 
 export class MixersTab extends React.Component<{
   config: Config
-  errors: ErrorsForPath
+  errors: Errors
   updateConfig: (update: Update<Config>) => void
 }, {
   mixerKeys: { [name: string]: number}
@@ -112,9 +113,10 @@ export class MixersTab extends React.Component<{
   render() {
     const {config, errors} = this.props
     const mixers = config.mixers ? config.mixers : {}
-    return (
-      <div className="tabcontainer"><div className="tabpanel" style={{width: '700px'}}>
-          <ErrorMessage message={errors({path: []})}/>
+    return <ErrorBoundary errorMessage={errors.asText()}>
+      <div className="tabcontainer">
+        <div className="tabpanel" style={{width: '700px'}}>
+          <ErrorMessage message={errors.rootMessage()}/>
           {this.mixerNames()
               .map(name =>
                   <MixerView
@@ -122,7 +124,7 @@ export class MixersTab extends React.Component<{
                       name={name}
                       mixer={mixers[name]}
                       config={config}
-                      errors={errorsForSubpath(errors, name)}
+                      errors={errors.forSubpath(name)}
                       update={update => this.updateMixer(name, update)}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
@@ -133,8 +135,10 @@ export class MixersTab extends React.Component<{
           <div>
             <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
           </div>
-        </div><div className="tabspacer"></div></div>
-    )
+        </div>
+        <div className="tabspacer"></div>
+      </div>
+    </ErrorBoundary>
   }
 }
 
@@ -142,7 +146,7 @@ function MixerView(props: {
   name: string
   mixer: Mixer
   config: Config
-  errors: ErrorsForPath
+  errors: Errors
   isFreeMixerName: (name: string) => boolean
   rename: (newName: string) => void
   remove: () => void
@@ -186,7 +190,7 @@ function MixerView(props: {
     return <div>
       {Range(0, 2).map(row => (
                 <OptionalTextOption value={mixer.labels && mixer.labels.length > row ? mixer.labels[row] : null } 
-                error={errors({path: ['labels']})}
+                error={errors.messageFor('labels')}
                 desc={row.toString()}
                 tooltip={'Label for channel '+ row}
                 onChange={new_label => updateChannelLabel(row, new_label)}/>
@@ -211,7 +215,7 @@ function MixerView(props: {
           onClick={remove}/>
     </>
   }>
-    <ErrorMessage message={errors({path: []})}/>
+    <ErrorMessage message={errors.rootMessage()}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
@@ -230,14 +234,14 @@ function MixerView(props: {
           min={1}
           onChange={channelsOut => update(mixer => mixer.channels.out = channelsOut)}/>
     </div>
-    <ErrorMessage message={errors({path: ['channels']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'in']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'out']})}/>
+    <ErrorMessage message={errors.messageFor('channels')}/>
+    <ErrorMessage message={errors.messageFor('channels', 'in')}/>
+    <ErrorMessage message={errors.messageFor('channels', 'out')}/>
     {mixer.mapping.map((mapping, index) =>
         <MappingView
             key={index}
             mapping={mapping}
-            errors={errorsForSubpath(errors, 'mapping', index)}
+            errors={errors.forSubpath('mapping', index)}
             channels={mixer.channels}
             update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
             remove={() => update(mixer => mixer.mapping.splice(index, 1))}
@@ -260,7 +264,7 @@ function MixerView(props: {
         onChange={desc => update(mixer => mixer.description = desc)}/>
       <LabelListOption
         value={mixer.labels ? mixer.labels.map(lab => lab ? lab : "").join(",") : ""}
-        error={errors({path: ['labels']})}
+        error={errors.messageFor('labels')}
         desc="labels"
         onChange={updateChannelLabels}
         onButtonClick={toggleExpanded}
@@ -272,7 +276,7 @@ function MixerView(props: {
 
 function MappingView(props: {
   mapping: Mapping
-  errors: ErrorsForPath
+  errors: Errors
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mapping>) => void
@@ -306,16 +310,16 @@ function MappingView(props: {
           onClick={remove}/>
     </>
   }>
-    <ErrorMessage message={errors({path: ['dest']})}/>
-    <ErrorMessage message={errors({path: ['mute']})}/>
-    <ErrorMessage message={errors({path: []})}/>
-    <ErrorMessage message={errors({path: ['sources']})}/>
+    <ErrorMessage message={errors.messageFor('dest')}/>
+    <ErrorMessage message={errors.messageFor('mute')}/>
+    <ErrorMessage message={errors.rootMessage()}/>
+    <ErrorMessage message={errors.messageFor('sources')}/>
     <div style={{display: 'flex', flexDirection: 'column'}}>
       {mapping.sources.map((source, index) =>
           <React.Fragment key={index}>
             <SourceView
                 source={source}
-                errors={errorsForSubpath(errors, 'sources', index)}
+                errors={errors.forSubpath('sources', index)}
                 channelsIn={channels.in}
                 update={updateSource => update(mixer => updateSource(mixer.sources[index]))}
                 remove={() => update(mixer => mixer.sources.splice(index, 1))}
@@ -334,7 +338,7 @@ function MappingView(props: {
 
 function SourceView(props: {
   source: Source
-  errors: ErrorsForPath
+  errors: Errors
   channelsIn: number
   update: (update: Update<Source>) => void
   remove: () => void
@@ -367,7 +371,7 @@ function SourceView(props: {
       <div style={{flexGrow: 1}}>
         <OptionalEnumOption
             value= {source.scale}
-            error={errors({path: ['scale']})}
+            error={errors.messageFor('scale')}
             options={GainScales}
             desc="scale"
             tooltip="Scale for gain"
@@ -387,6 +391,6 @@ function SourceView(props: {
           onClick={() => update(source => source.mute = !source.mute)}/>
       <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
     </div>
-    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
+    <ErrorMessage message={errors.asText()}/>
   </>
 }
