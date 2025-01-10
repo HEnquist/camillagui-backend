@@ -1,13 +1,13 @@
-import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState } from "react"
+import React, {ChangeEvent, CSSProperties, ErrorInfo, ReactNode, useEffect, useRef, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import { mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline, mdiMenuDown } from "@mdi/js"
+import {mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
-import { toMap } from "./arrays"
-import { Range } from "immutable"
+import {toMap} from "./arrays"
+import {Range} from "immutable"
 import DataTable from 'react-data-table-component'
-import { FileInfo } from "./files"
-import { getLabelForChannel } from "../camilladsp/config"
+import {FileInfo} from "./files"
+import {getLabelForChannel} from "../camilladsp/config"
 import {cloneDeep} from "lodash"
 
 export function cssStyles(): CSSStyleDeclaration {
@@ -705,6 +705,30 @@ export function ErrorMessage(props: { message?: string }) {
     return props.message ?
         <div style={{ color: 'var(--error-text-color)', whiteSpace: 'pre-wrap' }}>{props.message}</div>
         : null
+}
+
+export interface ErrorBoundaryProps {
+    errorMessage?: string
+    children: ReactNode
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, {errorOccurred: boolean}> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = {errorOccurred: false};
+    }
+
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        this.setState({errorOccurred: true})
+    }
+
+    render() {
+        const errorMessage = "An error occured.\n\n" + (this.props.errorMessage || '')
+        const {errorOccurred} = this.state;
+        return errorOccurred ?
+            <ErrorMessage message={errorMessage}/>
+            : this.props.children;
+    }
 }
 
 export function BoolOption(props: {

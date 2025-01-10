@@ -1,5 +1,15 @@
 import React, {Component} from "react"
-import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort, fileTitleSort, fileValidSort} from "./utilities/ui-components"
+import {
+  Box,
+  Button,
+  MdiButton,
+  UploadButton,
+  fileDateSort,
+  fileNameSort,
+  fileTitleSort,
+  fileValidSort,
+  ErrorBoundary
+} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -40,20 +50,25 @@ export function Files(props: {
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
-  return <div className="tabcontainer"><div className="wide-tabpanel" style={{ width: '900px' }}>
-    <NewConfig currentConfig={props.config}
-               setCurrentConfig={props.setCurrentConfig}
-               updateConfig={props.updateConfig}/>
-    <FileTable title='Configs'
-               type="config"
-               currentConfigFile={props.currentConfigFile}
-               config={props.config}
-               setCurrentConfig={props.setCurrentConfig}
-               setCurrentConfigFileName={props.setCurrentConfigFileName}
-               saveNotify={props.saveNotify}
-               canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
-    <FileTable title='Filters' type="coeff"/>
-  </div><div className="tabspacer"></div></div>
+  return <ErrorBoundary>
+    <div className="tabcontainer">
+      <div className="wide-tabpanel" style={{ width: '900px' }}>
+        <NewConfig currentConfig={props.config}
+                   setCurrentConfig={props.setCurrentConfig}
+                   updateConfig={props.updateConfig}/>
+        <FileTable title='Configs'
+                   type="config"
+                   currentConfigFile={props.currentConfigFile}
+                   config={props.config}
+                   setCurrentConfig={props.setCurrentConfig}
+                   setCurrentConfigFileName={props.setCurrentConfigFileName}
+                   saveNotify={props.saveNotify}
+                   canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
+        <FileTable title='Filters' type="coeff"/>
+      </div>
+      <div className="tabspacer"/>
+    </div>
+  </ErrorBoundary>
 }
 
 interface FileTableProps {

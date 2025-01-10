@@ -27,15 +27,16 @@ import {
     OptionalTextOption,
     ParsedInput,
     TextOption,
+    ErrorBoundary,
 } from "./utilities/ui-components"
-import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
     {
         config: Config
         updateConfig: (update: Update<Config>) => void
-        errors: ErrorsForPath
+        errors: Errors
     },
     {
         processorKeys: { [name: string]: number }
@@ -62,8 +63,6 @@ export class ProcessorsTab extends React.Component<
         }
         this.processorNames().forEach((name, i) => this.state.processorKeys[name] = i)
     }
-
-    //private timer = delayedExecutor(2000)
 
     private processorNames(): string[] {
         return sortedProcessorNamesOf(this.props.config.processors, this.state.sortBy, this.state.sortReverse)
@@ -127,40 +126,44 @@ export class ProcessorsTab extends React.Component<
     render() {
         let { config, errors } = this.props
         let processors = config.processors ? config.processors : {}
-        return <div>
-            <div className="horizontally-spaced-content" style={{ width: '700px' }}>
-                <EnumOption
-                    value={this.state.sortBy}
-                    options={ProcessorSortKeys}
-                    desc="Sort processors by"
-                    tooltip="Property used to sort processors"
-                    onChange={this.changeSortBy} />
-                <BoolOption
-                    value={this.state.sortReverse}
-                    desc="Reverse order"
-                    tooltip="Reverse display order"
-                    onChange={this.changeSortOrder} />
+        return <ErrorBoundary errorMessage={errors.asText()}>
+            <div>
+                <div className="horizontally-spaced-content" style={{ width: '700px' }}>
+                    <EnumOption
+                        value={this.state.sortBy}
+                        options={ProcessorSortKeys}
+                        desc="Sort processors by"
+                        tooltip="Property used to sort processors"
+                        onChange={this.changeSortBy} />
+                    <BoolOption
+                        value={this.state.sortReverse}
+                        desc="Reverse order"
+                        tooltip="Reverse display order"
+                        onChange={this.changeSortOrder} />
+                </div>
+                <div className="tabcontainer">
+                    <div className="tabpanel-with-header" style={{ width: '700px' }}>
+                        <ErrorMessage message={errors.rootMessage()} />
+                        {this.processorNames()
+                            .map(name =>
+                                <ProcessorView
+                                    key={this.state.processorKeys[name]}
+                                    name={name}
+                                    processor={processors[name]}
+                                    config={config}
+                                    errors={errors.forSubpath(name)}
+                                    updateProcessor={update => this.updateProcessor(name, update)}
+                                    rename={newName => this.renameProcessor(name, newName)}
+                                    isFreeProcessorName={this.isFreeProcessorName}
+                                    remove={() => this.removeProcessor(name)}
+                                />
+                            )}
+                        <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
+                    </div>
+                    <div className="tabspacer"/>
+                </div>
             </div>
-            <div className="tabcontainer">
-            <div className="tabpanel-with-header" style={{ width: '700px' }}>
-                <ErrorMessage message={errors({ path: [] })} />
-                {this.processorNames()
-                    .map(name =>
-                        <ProcessorView
-                            key={this.state.processorKeys[name]}
-                            name={name}
-                            processor={processors[name]}
-                            config={config}
-                            errors={errorsForSubpath(errors, name)}
-                            updateProcessor={update => this.updateProcessor(name, update)}
-                            rename={newName => this.renameProcessor(name, newName)}
-                            isFreeProcessorName={this.isFreeProcessorName}
-                            remove={() => this.removeProcessor(name)}
-                        />
-                    )}
-                <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
-            </div><div className="tabspacer"></div></div>
-        </div>
+        </ErrorBoundary>
     }
 }
 
@@ -173,7 +176,7 @@ interface ProcessorViewProps {
     name: string
     processor: Processor
     config: Config
-    errors: ErrorsForPath
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
     rename: (newName: string) => void
     isFreeProcessorName: (name: string) => boolean
@@ -240,7 +243,7 @@ const defaultParameters: {
 
 class ProcessorParams extends React.Component<{
     processor: Processor
-    errors: ErrorsForPath
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
     labels: (string|null)[] | null
 }, unknown> {
@@ -297,16 +300,16 @@ class ProcessorParams extends React.Component<{
     render() {
         const { processor, errors, labels } = this.props
         return <div style={{ width: '100%', textAlign: 'right' }}>
-            <ErrorMessage message={errors({ path: [] })} />
+            <ErrorMessage message={errors.rootMessage()} />
             <EnumOption
                 value={processor.type}
-                error={errors({ path: ['type'] })}
+                error={errors.messageFor('type')}
                 options={Object.keys(defaultParameters)}
                 desc="type"
                 tooltip="Processor type"
                 onChange={this.onTypeChange} />
-            <ErrorMessage message={errors({ path: ['parameters'] })} />
-            {this.renderProcessorParams(processor.parameters, errorsForSubpath(errors, 'parameters'))}
+            <ErrorMessage message={errors.messageFor('parameters')} />
+            {this.renderProcessorParams(processor.parameters, errors.forSubpath('parameters'))}
             <OptionalTextOption
                 placeholder="none"
                 value={processor.description}
@@ -332,7 +335,7 @@ class ProcessorParams extends React.Component<{
         </div>
     }
 
-    private renderProcessorParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
+    private renderProcessorParams(parameters: { [p: string]: any }, errors: Errors) {
         return Object.keys(parameters).map(parameter => {
             if (parameter === 'type') // 'type' is already rendered by parent component
                 return null
@@ -346,7 +349,7 @@ class ProcessorParams extends React.Component<{
             const commonProps = {
                 key: parameter,
                 value: parameters[parameter],
-                error: errors({ path: [parameter] }),
+                error: errors.messageFor(parameter),
                 desc: info.desc,
                 tooltip: info.tooltip,
                 onChange: (value: any) => this.onParamChange(parameter, value)
