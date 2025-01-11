@@ -40,12 +40,10 @@ PK_CDSP = {"freq": 50.0, "gain": -3.0, "q": 10.0, "type": "Peaking"}
 PEQ_EQAPO = "Filter  2: ON  PEQ      Fc     100 Hz  Gain   1.0 dB  BW Oct 0.167"
 PEQ_CDSP = {"freq": 100.0, "gain": 1.0, "bandwidth": 0.167, "type": "Peaking"}
 
+
 @pytest.mark.parametrize(
     "filterline, expected_params",
-    [
-        (PK_EQAPO, PK_CDSP),
-        (PEQ_EQAPO, PEQ_CDSP)
-    ],
+    [(PK_EQAPO, PK_CDSP), (PEQ_EQAPO, PEQ_CDSP)],
 )
 def test_single_filter(eqapo, filterline, expected_params):
     eqapo.parse_line(filterline)
@@ -80,13 +78,13 @@ SIMPLE_CONV_CDSP = {
             "type": "Filter",
             "names": ["Convolution_1"],
             "description": "Channel: L",
-            "channel": 0,
+            "channels": [0],
         },
         {
             "type": "Filter",
             "names": ["Convolution_2"],
             "description": "Channel: R",
-            "channel": 1,
+            "channels": [1],
         },
     ],
 }
@@ -172,25 +170,13 @@ CROSSOVER_CDSP = {
             "type": "Filter",
             "names": ["Filter_1"],
             "description": "Channel: L R",
-            "channel": 0,
-        },
-        {
-            "type": "Filter",
-            "names": ["Filter_1"],
-            "description": "Channel: L R",
-            "channel": 1,
+            "channels": [0, 1],
         },
         {
             "type": "Filter",
             "names": ["Filter_2"],
             "description": "Channel: RL RR",
-            "channel": 2,
-        },
-        {
-            "type": "Filter",
-            "names": ["Filter_2"],
-            "description": "Channel: RL RR",
-            "channel": 3,
+            "channels": [2, 3],
         },
     ],
 }

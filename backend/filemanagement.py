@@ -12,6 +12,7 @@ from os.path import (
     isabs,
     commonpath,
     getmtime,
+    getsize,
 )
 import logging
 import traceback
@@ -21,6 +22,8 @@ from yaml.scanner import ScannerError
 from aiohttp import web
 
 from camilladsp import CamillaError
+
+from .legacy_config_import import identify_version
 
 DEFAULT_STATEFILE = {
     "config_path": None,
@@ -62,28 +65,72 @@ async def store_files(folder, request):
     return web.Response(text="Saved {} file(s)".format(i))
 
 
-def list_of_files_in_directory(folder):
+def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, validator=None):
     """
     Return a list of files (name and modification date) in a folder.
     """
-    files = [
-        file_in_folder(folder, file)
-        for file in os.listdir(folder)
-        if isfile(file_in_folder(folder, file))
-    ]
-    files_list = map(
-        lambda file: {
-            "name": (os.path.basename(file)),
-            "lastModified": (getmtime(file)),
-        },
-        files,
-    )
+
+    files_list = []
+    for file in os.listdir(folder):
+        filepath = file_in_folder(folder, file)
+        if not isfile(filepath) or file.startswith("."):
+            # skip directories and hidden files
+            continue
+
+        file_data = {
+            "name": file,
+        }
+        if file_stats:
+            file_data["lastModified"] = getmtime(filepath)
+            file_data["size"] = getsize(filepath)
+
+        if title_and_desc:
+            valid = False
+            version = None
+            errors = None
+            title = None
+            desc = None
+            with open(filepath) as f:
+                try:
+                    parsed = yaml.safe_load(f)
+                    title = parsed.get("title")
+                    desc = parsed.get("description")
+                    version = identify_version(parsed)
+                    if version == 3 and validator is not None:
+                        parsed_abs = make_config_filter_paths_absolute(parsed, folder)
+                        validator.validate_config(parsed_abs)
+                        error_list = validator.get_errors()
+                        if len(error_list) > 0:
+                            errors = error_list
+                        else:
+                            valid = True
+                    elif version < 3:
+                        valid = False
+                        errors = [([], f"This config is made for the previous version {version} of CamillaDSP.")]
+                except yaml.YAMLError as e:
+                    if hasattr(e, 'problem_mark'):
+                        mark = e.problem_mark
+                        errordesc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
+                    else:
+                        errordesc = "This config file has a YAML syntax error."
+                    errors = [([], errordesc)]
+                except (AttributeError, UnicodeDecodeError) as e:
+                    errors = [([], "This does not appear to be a YAML file.")]
+                except Exception as e:
+                    errors = [([], f"Error: {e}")]
+            file_data["title"] = title
+            file_data["description"] = desc
+            file_data["version"] = version
+            file_data["valid"] = valid
+            file_data["errors"] = errors
+        files_list.append(file_data)
+
     sorted_files = sorted(files_list, key=lambda x: x["name"].lower())
     return sorted_files
 
 
 def list_of_filenames_in_directory(folder):
-    return map(lambda file: file["name"], list_of_files_in_directory(folder))
+    return [file["name"] for file in list_of_files_in_directory(folder, file_stats=False)]
 
 
 def delete_files(folder, files):

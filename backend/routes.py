@@ -2,7 +2,9 @@ from .settings import BASEPATH
 from .views import (
     get_param,
     get_list_param,
+    get_param_json,
     set_param,
+    set_param_index,
     eval_filter_values,
     eval_filterstep_values,
     get_config,
@@ -34,14 +36,17 @@ from .views import (
     get_capture_devices,
     get_playback_devices,
     get_backends,
+    get_wav_info,
 )
 
 
 def setup_routes(app):
     app.router.add_get("/api/status", get_status)
     app.router.add_get("/api/getparam/{name}", get_param)
+    app.router.add_get("/api/getparamjson/{name}", get_param_json)
     app.router.add_get("/api/getlistparam/{name}", get_list_param)
     app.router.add_post("/api/setparam/{name}", set_param)
+    app.router.add_post("/api/setparamindex/{name}/{index}", set_param_index)
     app.router.add_post("/api/evalfilter", eval_filter_values)
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
     app.router.add_get("/api/getconfig", get_config)
@@ -57,6 +62,7 @@ def setup_routes(app):
     app.router.add_post("/api/convolvertojson", translate_convolver_to_json)
     app.router.add_post("/api/eqapotojson", translate_eqapo_to_json)
     app.router.add_post("/api/validateconfig", validate_config)
+    app.router.add_get("/api/wavinfo", get_wav_info)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
     app.router.add_get("/api/defaultsforcoeffs", get_defaults_for_coeffs)

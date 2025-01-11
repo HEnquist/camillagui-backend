@@ -292,21 +292,6 @@ class EqAPO:
             for idx, dest in enumerate(list(mixer["mapping"])):
                 if len(dest["sources"]) == 0:
                     mixer["mapping"].pop(idx)
-        # Expand filter steps to all channels
-        pipeline = []
-        for step in self.pipeline:
-            if step["type"] != "Filter":
-                pipeline.append(step)
-            else:
-                channels = step["channels"]
-                if channels is None:
-                    channels = range(self.nbr_channels)
-                for channel in channels:
-                    new_step = deepcopy(step)
-                    new_step["channel"] = channel
-                    del new_step["channels"]
-                    pipeline.append(new_step)
-        self.pipeline = pipeline
 
     def build_config(self):
         config = {

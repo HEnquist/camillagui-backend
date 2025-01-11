@@ -5,6 +5,7 @@ bind_address: "0.0.0.0"
 port: 5005
 ssl_certificate: null
 ssl_private_key: null
+gui_config_file: null
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"

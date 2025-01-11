@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 2.0.x.
+This version works with CamillaDSP 3.0.x.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
@@ -35,7 +35,7 @@ for more information.
 
 ## Configuration
 
-The backend configuration is stored in `config/camillagui.yml`
+The backend configuration is stored in `config/camillagui.yml` by default.
 
 ```yaml
 ---
@@ -45,6 +45,7 @@ bind_address: "0.0.0.0"
 port: 5005
 ssl_certificate: null (*)
 ssl_private_key: null (*)
+gui_config_file: null (*)
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
 default_config: "~/camilladsp/default_config.yml"
@@ -61,6 +62,8 @@ with the websocket server enabled at port 1234.
 The web interface will be served on port 5005 using plain HTTP.
 It is possible to run the gui and CamillaDSP on different machines,
 just point the `camilla_host` to the right address.
+
+The optional `gui_config_file` can be used to override the default path to the gui config file.
 
 **Warning**: By default the backend will bind to all network interfaces.
 This makes the gui available on all networks the system is connected to, which may be insecure.
@@ -149,32 +152,51 @@ The styling can be customized by editing `build/css-variables.css`.
 
 ### Adding custom shortcut settings
 It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
-The included config file contains the default Bass and Treble filters.
+The included config file contains the default Bass and Treble filters,
+as well as a few commented out examples.
+
 To add more, edit the file `config/gui-config.yml` to add
 the new shortcuts to the list under `custom_shortcuts`.
 
-Here is an example config to set the gain of a filter called `MyFilter`
-within the range from 0 to 10 db in steps of 0.1 dB.
+Here is an example config to set the gain of the filters called `MyFilter` and `MyOtherFilter`.
+within the range from -10 to 0 db in steps of 0.1 dB.
+For `MyOtherFilter`, the scale is reversed, such that moving the slider from -10 to -9 dB
+changes the gain of `MyOtherFilter` fom 0 to -1 dB.
+The `type` property is set to `number`.
+This creates a slider control, used to control numerical values.
+It can also be set to `boolean` which creates a checkbox.
+For `number`, the `range_from`, `range_to` and `step` properties are required.
+They are not used by `boolean` controls and may be left out.
+
 ```yaml
 custom_shortcuts:
   - section: "My custom section"
-    description: "Optional description for the section. Omit the attribute, if unwanted"
+    description: |
+      Optional description for the section.
+      Omit this attribute, if unwanted.
+      The text will be shown in the gui with line breaks.
     shortcuts:
       - name: "My filter gain"
-        description: "Optional description for the setting. Omit the attribute, if unwanted"
-        path_in_config: ["filters", "MyFilter", "parameters", "gain"]
-        range_from: 0
-        range_to: 10
+        description: |
+          Optional description for the setting.
+          Omit this attribute, if unwanted.
+        config_elements:
+          - path: ["filters", "MyFilter", "parameters", "gain"]
+            reverse: false
+          - path: ["filters", "MyOtherFilter", "parameters", "gain"]
+            reverse: true
+        range_from: -10
+        range_to: 0
         step: 0.1
-      - name: "The next setting"
-        ...
+        type: "number"
 ```
+When letting a shortcut control more than one element in the config,
+the first one is considered the main one, that controls the slider position.
+The first element must be present in the config in order for the shortcut to function.
 
-The gui config is checked when the backend starts, and any problems are logged.
-For example, `range_from` must be a number. If it is not, this results in a message such as this:
-```
-ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not of type 'number'
-```
+If any of the others is not at the expected value, the GUI will show a warning.
+The same happens if any of the others is missing in the config.
+The control can then still be used, but may not give the wanted result.
 
 ### Hiding GUI Options
 Options can be hidden from your users by editing `config/gui-config.yml`.
@@ -186,6 +208,7 @@ hide_silence: false
 hide_capture_device: false
 hide_playback_device: false
 hide_rate_monitoring: false
+hide_multithreading: false
 ```
 
 ### Styling the GUI
@@ -199,6 +222,14 @@ To enable it by default, in `config/gui-config.yml` set `apply_config_automatica
 The update rate of the level meters can be adjusted by changing the `status_update_interval` setting.
 The value is in milliseconds, and the default value is 100 ms.
 
+### Gui config syntax check
+The gui config is checked when the backend starts, and any problems are logged.
+For example, the `range_from` property of a config shortcut must be a number.
+If it is not, this results in a message such as this:
+```
+ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not of type 'number'
+```
+
 ## Running
 Start the server with:
 ```sh
@@ -209,6 +240,31 @@ The gui should now be available at: http://localhost:5005/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP
 or hostname of the machine running the gui server.
+
+### Command line options
+The logging level for the backend itself as well as the AIOHTTP framework are set to `WARNING` by default.
+These can both be changed with command line arguments, which may be useful when debugging some problem.
+
+The backend norally reads its configuration from a default location.
+This can be changed by providing a different path as a command line argument.
+
+Use the `-h` or `--help` argument to view the built-in help:
+```
+> python main.py --help
+usage: python main.py [-h] [-c CONFIG] [-l {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}]
+                      [-a {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}]
+
+Backend for the CamillaDSP web GUI
+
+options:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config CONFIG
+                        Provide a path to a backend config file to use instead of the default
+  -l {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}, --log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}
+                        Logging level
+  -a {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}, --aiohttp-log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG,NOTSET}
+                        AIOHTTP logging level
+```
 
 
 ## Development
