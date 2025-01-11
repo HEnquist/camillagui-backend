@@ -30,6 +30,7 @@ export function defaultStatus(): Status {
     processingload: '',
     cdsp_version: '',
     py_cdsp_version: '',
+    py_cdsp_plot_version: '',
     backend_version: '',
   }
 }

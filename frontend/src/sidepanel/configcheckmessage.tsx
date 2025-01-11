@@ -1,12 +1,12 @@
 import React from "react"
 import {Config} from "../camilladsp/config"
-import {ErrorsForPath, errorsOf, noErrors} from "../utilities/errors"
+import {Errors, NoErrors} from "../utilities/errors"
 import {delayedExecutor} from "../utilities/ui-components"
 import isEqual from "lodash/isEqual"
 
 export class Configcheckmessage extends React.Component<{
   config: Config,
-  setErrors: (errors: ErrorsForPath) => void
+  setErrors: (errors: Errors) => void
 },
     { message: string }> {
 
@@ -35,17 +35,17 @@ export class Configcheckmessage extends React.Component<{
       if (request.ok) {
         const message = await request.text()
         this.setState({message: message})
-        this.props.setErrors(noErrors)
+        this.props.setErrors(NoErrors)
       } else {
         const json = await request.json()
-        const errors = errorsOf(json)
-        const globalErrors = errors({path: []})
+        const errors = new Errors(json)
+        const globalErrors = errors.rootMessage()
         this.setState({message: 'Config has errors' + (globalErrors ? (':\n' + globalErrors) : '')})
         this.props.setErrors(errors)
       }
     } catch (err) {
       this.setState({message: 'Validation failed'})
-      this.props.setErrors(noErrors)
+      this.props.setErrors(NoErrors)
     }
   }
 

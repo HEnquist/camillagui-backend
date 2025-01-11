@@ -1,6 +1,6 @@
 import * as React from "react"
 import {VolumeBox} from "./sidepanel/volumebox"
-import {MdiButton} from "./utilities/ui-components"
+import {ErrorBoundary, MdiButton} from "./utilities/ui-components"
 import {mdiImageSizeSelectSmall} from "@mdi/js"
 import {Config} from "./camilladsp/config"
 import {defaultStatus} from "./camilladsp/status"
@@ -38,9 +38,16 @@ export function CompactView(props: {
   const {currentConfigName, config, setConfig, updateConfig, disableCompactView, guiConfig} = props
   return <div className="tabpanel" style={{margin: 'auto'}}>
     <DisableCompactViewButton disableCompactView={disableCompactView}/>
-    <VolumeBox vuMeterStatus={defaultStatus()} setMessage={() => {}}/>
-    <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig}/>
-    <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
+    <ErrorBoundary>
+      <VolumeBox
+        vuMeterStatus={defaultStatus()}
+        setMessage={() => {}}
+        inputLabels={null}
+        outputLabels={null}
+        guiConfig={guiConfig}/>
+      <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig}/>
+      <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName}/>
+    </ErrorBoundary>
   </div>
 }
 

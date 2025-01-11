@@ -4,8 +4,8 @@ import "./index.css"
 import {
     Config,
     defaultProcessor,
+    getProcessorChannelLabels,
     Processor,
-    Processors,
     newProcessorName,
     removeProcessor,
     renameProcessor,
@@ -16,6 +16,7 @@ import {
     AddButton,
     BoolOption,
     Box,
+    ChannelSelection,
     DeleteButton,
     EnumOption,
     ErrorMessage,
@@ -26,15 +27,16 @@ import {
     OptionalTextOption,
     ParsedInput,
     TextOption,
+    ErrorBoundary,
 } from "./utilities/ui-components"
-import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
     {
-        processors: Processors
+        config: Config
         updateConfig: (update: Update<Config>) => void
-        errors: ErrorsForPath
+        errors: Errors
     },
     {
         processorKeys: { [name: string]: number }
@@ -62,10 +64,8 @@ export class ProcessorsTab extends React.Component<
         this.processorNames().forEach((name, i) => this.state.processorKeys[name] = i)
     }
 
-    //private timer = delayedExecutor(2000)
-
     private processorNames(): string[] {
-        return sortedProcessorNamesOf(this.props.processors, this.state.sortBy, this.state.sortReverse)
+        return sortedProcessorNamesOf(this.props.config.processors, this.state.sortBy, this.state.sortReverse)
     }
 
     private changeSortBy(key: string) {
@@ -124,51 +124,59 @@ export class ProcessorsTab extends React.Component<
     }
 
     render() {
-        let { processors, errors } = this.props
-        return <div>
-            <div className="horizontally-spaced-content" style={{ width: '700px' }}>
-                <EnumOption
-                    value={this.state.sortBy}
-                    options={ProcessorSortKeys}
-                    desc="Sort processors by"
-                    data-tip="Property used to sort processors"
-                    onChange={this.changeSortBy} />
-                <BoolOption
-                    value={this.state.sortReverse}
-                    desc="Reverse order"
-                    data-tip="Reverse display order"
-                    onChange={this.changeSortOrder} />
+        let { config, errors } = this.props
+        let processors = config.processors ? config.processors : {}
+        return <ErrorBoundary errorMessage={errors.asText()}>
+            <div>
+                <div className="horizontally-spaced-content" style={{ width: '700px' }}>
+                    <EnumOption
+                        value={this.state.sortBy}
+                        options={ProcessorSortKeys}
+                        desc="Sort processors by"
+                        tooltip="Property used to sort processors"
+                        onChange={this.changeSortBy} />
+                    <BoolOption
+                        value={this.state.sortReverse}
+                        desc="Reverse order"
+                        tooltip="Reverse display order"
+                        onChange={this.changeSortOrder} />
+                </div>
+                <div className="tabcontainer">
+                    <div className="tabpanel-with-header" style={{ width: '700px' }}>
+                        <ErrorMessage message={errors.rootMessage()} />
+                        {this.processorNames()
+                            .map(name =>
+                                <ProcessorView
+                                    key={this.state.processorKeys[name]}
+                                    name={name}
+                                    processor={processors[name]}
+                                    config={config}
+                                    errors={errors.forSubpath(name)}
+                                    updateProcessor={update => this.updateProcessor(name, update)}
+                                    rename={newName => this.renameProcessor(name, newName)}
+                                    isFreeProcessorName={this.isFreeProcessorName}
+                                    remove={() => this.removeProcessor(name)}
+                                />
+                            )}
+                        <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
+                    </div>
+                    <div className="tabspacer"/>
+                </div>
             </div>
-            <div className="tabpanel" style={{ width: '700px' }}>
-                <ErrorMessage message={errors({ path: [] })} />
-                {this.processorNames()
-                    .map(name =>
-                        <ProcessorView
-                            key={this.state.processorKeys[name]}
-                            name={name}
-                            processor={processors[name]}
-                            errors={errorsForSubpath(errors, name)}
-                            updateProcessor={update => this.updateProcessor(name, update)}
-                            rename={newName => this.renameProcessor(name, newName)}
-                            isFreeProcessorName={this.isFreeProcessorName}
-                            remove={() => this.removeProcessor(name)}
-                        />
-                    )}
-                <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
-            </div>
-        </div>
+        </ErrorBoundary>
     }
 }
 
-function isCompressor(processor: Processor): boolean {
-    return processor.type === 'Compressor'
+function hasChannelSelectors(processor: Processor): boolean {
+    return processor.type === 'Compressor' || processor.type === 'NoiseGate'
 }
 
 
 interface ProcessorViewProps {
     name: string
     processor: Processor
-    errors: ErrorsForPath
+    config: Config
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
     rename: (newName: string) => void
     isFreeProcessorName: (name: string) => boolean
@@ -185,16 +193,17 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
     }
 
     render() {
-        const { name, processor } = this.props
+        const { name, processor, config } = this.props
         const isValidProcessorName = (newName: string) =>
             name === newName || (newName.trim().length > 0 && this.props.isFreeProcessorName(newName))
-        return <Box title={
+        const channel_labels = getProcessorChannelLabels(config, name)
+        return <Box style={{width: '700px' }} title={
             <ParsedInput
                 style={{ width: '300px' }}
                 value={name}
                 asString={x => x}
                 parseValue={newName => isValidProcessorName(newName) ? newName : undefined}
-                data-tip="Processor name, must be unique"
+                tooltip="Processor name, must be unique"
                 onChange={newName => this.props.rename(newName)}
                 immediate={false}
             />
@@ -208,7 +217,8 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
                 <ProcessorParams
                     processor={processor}
                     errors={this.props.errors}
-                    updateProcessor={this.props.updateProcessor} />
+                    updateProcessor={this.props.updateProcessor}
+                    labels={channel_labels} />
             </div>
 
 
@@ -226,20 +236,24 @@ const defaultParameters: {
     Compressor: {
         Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, factor: 5.0, makeup_gain: 15.0, soft_clip: false, enable_clip: false, clip_limit: 0.0 },
     },
+    NoiseGate: {
+        Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, attenuation: 20.0 },
+    },
 }
 
 class ProcessorParams extends React.Component<{
     processor: Processor
-    errors: ErrorsForPath
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
+    labels: (string|null)[] | null
 }, unknown> {
     constructor(props: any) {
         super(props)
         this.onDescChange = this.onDescChange.bind(this)
         this.onTypeChange = this.onTypeChange.bind(this)
         this.renderProcessorParams = this.renderProcessorParams.bind(this)
-        this.toggleMonitor = this.toggleMonitor.bind(this)
-        this.toggleProcess = this.toggleProcess.bind(this)
+        this.setMonitor = this.setMonitor.bind(this)
+        this.setProcess = this.setProcess.bind(this)
         this.onParamChange = this.onParamChange.bind(this)
     }
 
@@ -248,10 +262,10 @@ class ProcessorParams extends React.Component<{
     private onParamChange(parameter: string, value: any) {
         this.props.updateProcessor(processor => {
             processor.parameters[parameter] = value
-            if (isCompressor(processor) && parameter === "channels") {
-                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n < value)
-                processor.parameters.process_channels = processor.parameters.process_channels.filter((n: number) => n < value)
-            }
+            //if (isCompressor(processor) && parameter === "channels") {
+            //    processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n < value)
+            //    processor.parameters.process_channels = processor.parameters.process_channels.filter((n: number) => n < value)
+            //}
         })
     }
 
@@ -270,71 +284,58 @@ class ProcessorParams extends React.Component<{
         })
     }
 
-    private toggleMonitor(idx: number) {
+    private setMonitor(channels: number[]|null) {
         this.props.updateProcessor(processor => {
-            if (!processor.parameters.monitor_channels.includes(idx)) {
-                processor.parameters.monitor_channels.push(idx)
-            }
-            else {
-                processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n !== idx)
-            }
+            processor.parameters.monitor_channels = channels
+        })
+    }
+    private setProcess(channels: number[]|null) {
+        this.props.updateProcessor(processor => {
+            processor.parameters.process_channels = channels
         })
     }
 
-    private toggleProcess(band: number) {
-        this.props.updateProcessor(processor => {
-            if (!processor.parameters.process_channels.includes(band)) {
-                processor.parameters.process_channels.push(band)
-            }
-            else {
-                processor.parameters.process_channels = processor.parameters.process_channels.filter((idx: number) => idx !== band)
-            }
-        })
-    }
+
 
     render() {
-        const { processor, errors } = this.props
+        const { processor, errors, labels } = this.props
         return <div style={{ width: '100%', textAlign: 'right' }}>
-            <ErrorMessage message={errors({ path: [] })} />
+            <ErrorMessage message={errors.rootMessage()} />
             <EnumOption
                 value={processor.type}
-                error={errors({ path: ['type'] })}
+                error={errors.messageFor('type')}
                 options={Object.keys(defaultParameters)}
                 desc="type"
-                data-tip="Processor type"
+                tooltip="Processor type"
                 onChange={this.onTypeChange} />
-            <ErrorMessage message={errors({ path: ['parameters'] })} />
-            {this.renderProcessorParams(processor.parameters, errorsForSubpath(errors, 'parameters'))}
+            <ErrorMessage message={errors.messageFor('parameters')} />
+            {this.renderProcessorParams(processor.parameters, errors.forSubpath('parameters'))}
             <OptionalTextOption
                 placeholder="none"
                 value={processor.description}
                 desc="description"
-                data-tip="Processor description"
+                tooltip="Processor description"
                 onChange={this.onDescChange} />
-            {isCompressor(processor) &&
+            {hasChannelSelectors(processor) &&
+                <div>
                 <label className="setting">
-                <span className="setting-label">
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <br></br>
-                        <div data-tip="Channels to monitor">monitor_channels</div>
-                        <div data-tip="Channels to process">process_channels</div>
-                    </div>
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'row' }}>
-                {[...Array(processor.parameters.channels)].map((n, idx) =>
-                        <div key={"col"+idx} style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div key={"label"+idx} style={{ display: 'flex', justifyContent: 'center' }}>{idx}</div>
-                            <input type="checkbox" key={"monitor"+idx} data-tip={"Enable monitoring for channel " + idx} checked={processor.parameters.monitor_channels.includes(idx)} onChange={e => this.toggleMonitor(idx)} />
-                            <input type="checkbox" key={"process"+idx} data-tip={"Enable processing for channel " + idx} checked={processor.parameters.process_channels.includes(idx)} onChange={e => this.toggleProcess(idx)} />
-                        </div>
-                    )}
-                </div>
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} labels={labels}/>
                 </label>
+                <label className="setting">
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} labels={labels}/>
+                </label>
+                </div>
             }
         </div>
     }
 
-    private renderProcessorParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
+    private renderProcessorParams(parameters: { [p: string]: any }, errors: Errors) {
         return Object.keys(parameters).map(parameter => {
             if (parameter === 'type') // 'type' is already rendered by parent component
                 return null
@@ -348,9 +349,9 @@ class ProcessorParams extends React.Component<{
             const commonProps = {
                 key: parameter,
                 value: parameters[parameter],
-                error: errors({ path: [parameter] }),
+                error: errors.messageFor(parameter),
                 desc: info.desc,
-                'data-tip': info.tooltip,
+                tooltip: info.tooltip,
                 onChange: (value: any) => this.onParamChange(parameter, value)
             }
             if (info.type === 'text')
@@ -381,6 +382,11 @@ class ProcessorParams extends React.Component<{
                 type: "float",
                 desc: "attack",
                 tooltip: "Attack time in seconds",
+            },
+            attenuation: {
+                type: "float",
+                desc: "attenuation",
+                tooltip: "Attenuation in dB to apply when gate is closed",
             },
             channels: {
                 type: "int",

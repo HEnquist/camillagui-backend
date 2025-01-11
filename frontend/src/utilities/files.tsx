@@ -1,12 +1,18 @@
 import {Config} from "../camilladsp/config"
 
-/** Cannot be named File, because that is already a built-in type */
-export interface CFile {
+export interface FileInfo {
   name: string,
-  lastModified: string
+  lastModified: number,
+  formattedDate: string,
+  size: number,
+  title: string|null|undefined,
+  description: string|null|undefined,
+  version: number|null|undefined,
+  valid: boolean|undefined,
+  errors: [string[], string][]|null|undefined
 }
 
-export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
+export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
   return fetch(`/api/stored${type}s`)
       .then(response => {
         if (response.ok) return response.json()
@@ -17,9 +23,9 @@ export function loadFiles(type: "config" | "coeff"): Promise<CFile[]> {
         throw Error(err)
       })
       .then(json => {
-        const files = json as CFile[]
+        const files = json as FileInfo[]
         files.forEach(file =>
-            file.lastModified = new Date(1000 * parseFloat(file.lastModified)).toDateString()
+            file.formattedDate = new Date(1000 * file.lastModified).toDateString()
         )
         return files
       },
@@ -34,7 +40,7 @@ export function loadFilenames(type: "config" | "coeff"): Promise<string[]> {
       .then(files => fileNamesOf(files), _ => [])
 }
 
-export function fileNamesOf(files: CFile[]): string[] {
+export function fileNamesOf(files: FileInfo[]): string[] {
   return files.map(f => f.name)
 }
 
@@ -45,6 +51,16 @@ export function loadConfigJson(name: string, onNotOk: (reason: string) => void =
           return response.json()
         else
           response.text().then(reason => onNotOk(reason))
+      })
+}
+
+export function loadMigratedConfigJson(name: string): Promise<Config> {
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`)
+      .then(response => {
+        if (response.ok)
+          return response.json()
+        else
+          response.text()
       })
 }
 
@@ -92,6 +108,24 @@ export async function doUpload(
     })
     onSuccess(uploadedFiles)
   } catch (e) {
-    onError(e.message)
+    let err = e as Error
+    onError(err.message)
+  }
+}
+
+export function fileStatusDesc(errors: [string[], string][]|null|undefined): string {
+  if (errors === null || errors === undefined) {
+    return "Config is valid."
+  }
+  else {
+    let desc = "Errors:"
+    for (const error of errors) {
+      let path = error[0].join('/')
+      if (path) {
+        path = path + ' : '
+      }
+      desc = desc + '<br>' + path + error[1]
+    }
+    return desc
   }
 }

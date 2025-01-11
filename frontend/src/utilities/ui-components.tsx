@@ -1,9 +1,14 @@
-import React, {ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState} from "react"
+import React, {ChangeEvent, CSSProperties, ErrorInfo, ReactNode, useEffect, useRef, useState} from "react"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import {mdiChartBellCurveCumulative, mdiDelete, mdiPlusThick, mdiSitemapOutline,} from "@mdi/js"
+import {mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline} from "@mdi/js"
 import 'reactjs-popup/dist/index.css'
 import {toMap} from "./arrays"
+import {Range} from "immutable"
+import DataTable from 'react-data-table-component'
+import {FileInfo} from "./files"
+import {getLabelForChannel} from "../camilladsp/config"
+import {cloneDeep} from "lodash"
 
 export function cssStyles(): CSSStyleDeclaration {
     return getComputedStyle(document.body)
@@ -18,7 +23,7 @@ export function Box(props: {
     return (
         <fieldset className="box" style={props.style}>
             <legend>
-                <div data-tip={props.tooltip} className="horizontally-spaced-content" style={{alignItems: 'center'}}>
+                <div data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" className="horizontally-spaced-content" style={{ alignItems: 'center' }}>
                     {props.title}
                 </div>
             </legend>
@@ -53,10 +58,11 @@ export function CheckBox(props: {
             checkbox.indeterminate = true
         }
     }, [checked, checkbox])
-    return <label data-tip={tooltip} className='checkbox-area' style={style}>
+    return <label data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" className='checkbox-area' style={style}>
         <input
             type="checkbox"
-            data-tip={tooltip}
+            data-tooltip-html={tooltip}
+            data-tooltip-id="main-tooltip"
             disabled={!editable}
             ref={checkboxRef}
             onChange={(e) => onChange(e.target.checked)} />
@@ -66,7 +72,7 @@ export function CheckBox(props: {
 
 export function Button(props: {
     text: string
-    "data-tip"?: string
+    tooltip?: string
     onClick: () => void
     style?: CSSProperties
     className?: string
@@ -79,7 +85,8 @@ export function Button(props: {
     if (props.highlighted === true) classNames += ' highlighted-button'
     if (props.className) classNames += ' ' + props.className
     return <div
-        data-tip={props["data-tip"]}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         className={classNames}
         style={props.style}
         onClick={enabled ? props.onClick : () => { }}>
@@ -89,7 +96,7 @@ export function Button(props: {
 
 export function SuccessFailureButton(props: {
     text: string
-    "data-tip"?: string
+    tooltip?: string
     onClick: () => Promise<void>
     style?: CSSProperties
     enabled?: boolean
@@ -152,34 +159,34 @@ export function PlotButton(props: {
 
 export function UploadButton(
     props: ({ icon: string, tooltip: string } | { text: string })
-& {
-    upload: (files: FileList) => void
-    multiple?: boolean
-    className?: string
-    style?: CSSProperties
-    smallButton?: boolean
-}): JSX.Element {
+        & {
+            upload: (files: FileList) => void
+            multiple?: boolean
+            className?: string
+            style?: CSSProperties
+            smallButton?: boolean
+        }): JSX.Element {
     const style = Object.assign({ verticalAlign: 'bottom' }, props.style)
     const upload = (e: ChangeEvent<HTMLInputElement>) => {
         props.upload(e.target.files!)
         e.target.value = '' // this resets the upload field, so the same file can be uploaded twice in a row
     }
     return (
-        <label data-tip={"tooltip" in props ? props.tooltip : ""}>
-            <input style={{display: 'none'}}
-                   type="file"
-                   onChange={upload}
-                   multiple={props.multiple} />
+        <label data-tooltip-html={"tooltip" in props ? props.tooltip : ""} data-tooltip-id="main-tooltip">
+            <input style={{ display: 'none' }}
+                type="file"
+                onChange={upload}
+                multiple={props.multiple} />
             {"icon" in props && "tooltip" in props &&
                 <MdiButton
                     buttonSize={props.smallButton ? "small" : "default"}
                     icon={props.icon}
                     tooltip={props.tooltip}
                     className={props.className}
-                    style={style}/>
+                    style={style} />
             }
             {"text" in props &&
-                <Button text={props.text} onClick={() => {}}/>
+                <Button text={props.text} onClick={() => { }} />
             }
         </label>
     )
@@ -210,7 +217,7 @@ export function MdiButton(props: {
     let rot = {}
     if (props.rotation && props.rotation !== 0)
         rot = { transform: "rotate(" + props.rotation + "deg)" }
-    return <div onClick={clickhandler} data-tip={tooltip} className={buttonClass} style={props.style}>
+    return <div onClick={clickhandler} data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" className={buttonClass} style={props.style}>
         <Icon path={icon} size={buttonSize === "tiny" ? '15px' : '24px'} style={rot} />
     </div>
 }
@@ -223,7 +230,7 @@ export function MdiIcon(props: {
     tooltip?: string
     style?: CSSProperties
 }) {
-    return <span data-tip={props.tooltip} style={props.style}>
+    return <span data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={props.style}>
         <Icon path={props.icon} size={'15px'} />
     </span>
 }
@@ -236,14 +243,14 @@ export function CloseButton(props: {
 
 export function OptionLine(props: {
     desc: string
-    'data-tip': string
+    tooltip: string
     children: ReactNode
     small?: boolean
     style?: CSSProperties
 }) {
     const settingStyle = props.small ? { width: 'min-content' } : {}
     const combinedStyle = Object.assign(settingStyle, props.style)
-    return <label className="setting" data-tip={props['data-tip']} style={combinedStyle}>
+    return <label className="setting" data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={combinedStyle}>
         <span className="setting-label">{props.desc}</span>
         {props.children}
     </label>
@@ -253,7 +260,7 @@ export function IntOption(props: {
     value: number
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     onChange: (value: number) => void
     small?: boolean
     withControls?: boolean
@@ -261,9 +268,9 @@ export function IntOption(props: {
     max?: number
     style?: CSSProperties
 }) {
-    const {error, desc, small, style} = props
+    const { error, desc, small, style } = props
     return <>
-        <OptionLine desc={desc} data-tip={props["data-tip"]} small={small} style={style}>
+        <OptionLine desc={desc} tooltip={props.tooltip} small={small} style={style}>
             <IntInput
                 {...props}
                 className={'setting-input' + (small ? ' small-setting-input' : '')}
@@ -274,10 +281,10 @@ export function IntOption(props: {
 }
 
 export function OptionalIntOption(props: {
-    value: number|null
+    value: number | null
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     onChange: (value: number | null) => void
     small?: boolean
     withControls?: boolean
@@ -286,7 +293,7 @@ export function OptionalIntOption(props: {
 }) {
     const small = props.small
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
             <OptionalIntInput
                 {...props}
                 className={'setting-input' + (small ? ' small-setting-input' : '')}
@@ -298,7 +305,7 @@ export function OptionalIntOption(props: {
 
 export function IntInput(props: {
     value: number
-    'data-tip': string
+    tooltip: string
     onChange: (value: number) => void
     withControls?: boolean
     min?: number
@@ -325,7 +332,7 @@ export function IntInput(props: {
 
 export function OptionalIntInput(props: {
     value: number | null
-    'data-tip': string
+    tooltip: string
     onChange: (value: number | null) => void
     withControls?: boolean
     min?: number
@@ -337,9 +344,9 @@ export function OptionalIntInput(props: {
     return <OptionalParsedInput
         {...props}
         immediate={true}
-        asString={(int: number | null) => int !== null ? int.toString(): ""}
+        asString={(int: number | null | undefined) => (int !== null && int !== undefined) ? int.toString() : ""}
         parseValue={(rawValue: string | undefined) => {
-            const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN 
+            const parsedvalue = rawValue !== undefined ? parseInt(rawValue) : NaN
             if (isNaN(parsedvalue)
                 || (min !== undefined && parsedvalue < min)
                 || (max !== undefined && parsedvalue > max))
@@ -354,14 +361,14 @@ export function FloatOption(props: {
     value: number
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     onChange: (value: number) => void
 }) {
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <FloatInput
                 value={props.value}
-                data-tip={props["data-tip"]}
+                tooltip={props.tooltip}
                 onChange={props.onChange}
                 className="setting-input" />
         </OptionLine>
@@ -372,7 +379,7 @@ export function FloatOption(props: {
 export function FloatInput(props: {
     value: number
     error?: boolean
-    'data-tip': string
+    tooltip: string
     onChange: (value: number) => void
     className?: string
     style?: CSSProperties
@@ -380,7 +387,7 @@ export function FloatInput(props: {
     return <ParsedInput
         value={props.value}
         immediate={true}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         onChange={props.onChange}
         asString={(float?: number) => float === undefined ? "" : float.toString()}
         parseValue={(rawValue: string) => {
@@ -393,18 +400,18 @@ export function FloatInput(props: {
 }
 
 export function OptionalFloatOption(props: {
-    value: number|null
+    value: number | null
     error?: string
     desc: string
-    'data-tip': string
-    onChange: (value: number|null) => void
+    tooltip: string
+    onChange: (value: number | null) => void
     placeholder?: string
 }) {
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <OptionalFloatInput
                 value={props.value}
-                data-tip={props["data-tip"]}
+                tooltip={props.tooltip}
                 onChange={props.onChange}
                 placeholder={props.placeholder}
                 className="setting-input" />
@@ -414,10 +421,10 @@ export function OptionalFloatOption(props: {
 }
 
 export function OptionalFloatInput(props: {
-    value: number|null
+    value: number | null
     error?: boolean
-    'data-tip': string
-    onChange: (value: number|null) => void
+    tooltip: string
+    onChange: (value: number | null) => void
     className?: string
     style?: CSSProperties
     placeholder?: string
@@ -425,14 +432,14 @@ export function OptionalFloatInput(props: {
     return <OptionalParsedInput
         value={props.value}
         immediate={true}
-        data-tip={props["data-tip"]}
+        tooltip={props.tooltip}
         onChange={props.onChange}
         placeholder={props.placeholder}
-        asString={(float?: number|null) => (float === undefined || float === null) ? "" : float.toString()}
+        asString={(float?: number | null) => (float === undefined || float === null) ? "" : float.toString()}
         parseValue={(rawValue: string | undefined) => {
             if (rawValue === "")
                 return null
-            const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN 
+            const parsedvalue = (rawValue !== undefined) ? parseFloat(rawValue) : NaN
             if (isNaN(parsedvalue))
                 return undefined
             else
@@ -447,16 +454,16 @@ export function FloatListOption(props: {
     value: number[]
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     onChange: (value: number[]) => void
 }) {
     return <>
-        <OptionLine desc={props.desc} data-tip={props['data-tip']}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <ParsedInput
                 className="setting-input"
                 immediate={true}
                 value={props.value}
-                data-tip={props['data-tip']}
+                tooltip={props.tooltip}
                 asString={(value: number[]) => value.join(", ")}
                 parseValue={(rawValue: string) => {
                     const parsedvalue = []
@@ -477,11 +484,54 @@ export function FloatListOption(props: {
     </>
 }
 
+export function LabelListOption(props: {
+    value: string | null
+    error?: string
+    desc: string
+    onChange: (labels: (string|null)[] | null) => void
+    onButtonClick: () => void
+  }) {
+
+    const updateChannelLabels = (labels_str: string | null) => {
+        let labels: (string|null)[] = []
+        if (labels_str === null) {
+          props.onChange(null)
+          return
+        }
+        for (let label of labels_str.split(",")) {
+          let cleaned_label = label === "" ? null : label.trim()
+          labels.push(cleaned_label)
+        }
+        console.log("Update labels to", labels)
+        props.onChange(labels)
+      }
+
+    return <div className="setting" data-tooltip-html="Name of device" data-tooltip-id="main-tooltip">
+      <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
+      <OptionalTextInput
+          value={props.value}
+          tooltip="Name of device"
+          className="setting-input"
+          style={{width: '87%'}}
+          onChange={updateChannelLabels}/>
+      <MdiButton
+          icon={mdiMenuDown}
+          tooltip="Pick a device"
+          onClick={props.onButtonClick}
+          className='setting-button'
+          style={{width: '13%'}}
+          buttonSize="small"
+      />
+      <ErrorMessage message={props.error}/>
+    </div>
+  }
+
+
 type ParsedInputProps<TYPE> = {
     style?: CSSProperties
     className?: string
     value: TYPE
-    'data-tip': string
+    tooltip: string
     onChange: (value: TYPE) => void
     asString: (value: TYPE) => string
     parseValue: (rawValue: string) => TYPE | undefined
@@ -542,12 +592,14 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
         const parsedValue = props.parseValue(this.state.rawValue)
         const valid = parsedValue !== undefined
         return <input
+            spellCheck="false"
             type={props.withControls ? "number" : "text"}
             min={props.min}
             max={props.max}
             value={this.state.rawValue}
             placeholder={props.placeholder}
-            data-tip={props["data-tip"]}
+            data-tooltip-html={props.tooltip}
+            data-tooltip-id="main-tooltip"
             className={props.className}
             style={this.getStyle(valid)}
             onBlur={e => this.updateValue(e.target.value, true)}
@@ -561,7 +613,7 @@ type OptionalParsedInputProps<TYPE> = {
     style?: CSSProperties
     className?: string
     value: TYPE | null
-    'data-tip': string
+    tooltip: string
     onChange: (value: TYPE | null) => void
     asString: (value: TYPE | null) => string | undefined
     parseValue: (rawValue: string | undefined) => TYPE | null | undefined
@@ -626,12 +678,14 @@ export class OptionalParsedInput<TYPE> extends React.Component<OptionalParsedInp
             valid = parsedValue !== undefined
         }
         return <input
+            spellCheck="false"
             placeholder={placeholder}
             type={props.withControls ? "number" : "text"}
             min={props.min}
             max={props.max}
             value={this.state.rawValue}
-            data-tip={props["data-tip"]}
+            data-tooltip-html={props.tooltip}
+            data-tooltip-id="main-tooltip"
             className={props.className}
             style={this.getStyle(valid)}
             onBlur={e => this.updateValue(e.target.value, true)}
@@ -653,25 +707,51 @@ export function ErrorMessage(props: { message?: string }) {
         : null
 }
 
+export interface ErrorBoundaryProps {
+    errorMessage?: string
+    children: ReactNode
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, {errorOccurred: boolean}> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = {errorOccurred: false};
+    }
+
+    componentDidCatch(error: Error, info: ErrorInfo) {
+        this.setState({errorOccurred: true})
+    }
+
+    render() {
+        const errorMessage = "An error occured.\n\n" + (this.props.errorMessage || '')
+        const {errorOccurred} = this.state;
+        return errorOccurred ?
+            <ErrorMessage message={errorMessage}/>
+            : this.props.children;
+    }
+}
+
 export function BoolOption(props: {
     value: boolean
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     small?: boolean
     onChange: (value: boolean) => void
 }) {
     const small = props.small
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
             <div className={"setting-input" + (small ? " small-setting-input" : "")}
-                data-tip={props["data-tip"]}
+                data-tooltip-html={props.tooltip}
+                data-tooltip-id="main-tooltip"
                 style={{ cursor: 'pointer' }}>
                 <input
                     style={{ marginLeft: 0, marginTop: '8px', marginBottom: '8px' }}
                     type="checkbox"
                     checked={props.value}
-                    data-tip={props["data-tip"]}
+                    data-tooltip-html={props.tooltip}
+                    data-tooltip-id="main-tooltip"
                     onChange={(e) => props.onChange(e.target.checked)} />
             </div>
         </OptionLine>
@@ -680,16 +760,16 @@ export function BoolOption(props: {
 }
 
 export function OptionalBoolOption(props: {
-    value: boolean|null
+    value: boolean | null
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     small?: boolean
-    onChange: (value: boolean|null) => void
+    onChange: (value: boolean | null) => void
 }) {
     const small = props.small
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]} small={small}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
             <OptionalBoolInput {...props} className={"setting-input" + (small ? " small-setting-input" : "")} style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
         <ErrorMessage message={props.error} />
@@ -701,13 +781,13 @@ export function EnumOption<OPTION extends string>(props: {
     options: OPTION[]
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     className?: string
     onChange: (value: OPTION) => void
 }) {
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <EnumInput {...props} className={className} style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
         </OptionLine>
         <ErrorMessage message={props.error} />
@@ -719,38 +799,38 @@ export function add_default_option<OPTION extends string>(options: OPTION[], def
     options.unshift(defaultValue as OPTION)
 }
 
-export function null_to_default<OPTION extends string>(value: OPTION|null, defaultValue: string): OPTION {
+export function null_to_default<OPTION extends string>(value: OPTION | null, defaultValue: string): OPTION {
     if (value === null)
         return defaultValue as OPTION
     return value
 }
 
-export function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION|null {
+export function default_to_null<OPTION extends string>(value: OPTION, defaultValue: string): OPTION | null {
     if (value === defaultValue)
         return null
     return value
 }
 
 export function OptionalEnumOption<OPTION extends string>(props: {
-    value: OPTION|null
+    value: OPTION | null
     options: OPTION[]
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     className?: string
     placeholder?: string
-    onChange: (value: OPTION|null) => void
+    onChange: (value: OPTION | null) => void
 }) {
     const defaultValue = props.placeholder ? props.placeholder : "default"
     const className = 'setting-input' + (props.className ? ' ' + props.className : '')
     add_default_option(props.options, defaultValue)
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <EnumInput
                 value={null_to_default(props.value, defaultValue)}
                 options={props.options}
                 desc={props.desc}
-                data-tip={props["data-tip"]}
+                tooltip={props.tooltip}
                 onChange={(e) => props.onChange(default_to_null(e, defaultValue))}
                 className={className}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
@@ -766,7 +846,7 @@ export function EnumInput<OPTION extends string>(props: {
     value: OPTION
     options: OPTION[] | { [key: string]: string }
     desc: string
-    'data-tip': string
+    tooltip: string
     style?: CSSProperties
     className?: string
     onChange: (value: OPTION) => void
@@ -779,17 +859,18 @@ export function EnumInput<OPTION extends string>(props: {
         id={props.desc}
         name={props.desc}
         value={value}
-        data-tip={props["data-tip"]}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(e.target.value as OPTION)}
         style={props.style}
-        className={value === "default" ? props.className+"-default": props.className}
+        className={value === "default" ? props.className + "-default" : props.className}
     >
         {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
     </select>
 }
 
-function string_to_bool(valuestr: string): boolean|null {
-    switch(valuestr) {
+function string_to_bool(valuestr: string): boolean | null {
+    switch (valuestr) {
         case "default":
             return null
         case "yes":
@@ -800,8 +881,8 @@ function string_to_bool(valuestr: string): boolean|null {
     return null
 }
 
-function bool_to_string(value: boolean|null): string {
-    switch(value) {
+function bool_to_string(value: boolean | null): string {
+    switch (value) {
         case null:
             return "default"
         case true:
@@ -812,12 +893,12 @@ function bool_to_string(value: boolean|null): string {
 }
 
 export function OptionalBoolInput(props: {
-    value: boolean|null
+    value: boolean | null
     desc: string
-    'data-tip': string
+    tooltip: string
     style?: CSSProperties
     className?: string
-    onChange: (value: boolean|null) => void
+    onChange: (value: boolean | null) => void
 }) {
     let valuestring = bool_to_string(props.value)
 
@@ -825,10 +906,11 @@ export function OptionalBoolInput(props: {
         id={props.desc}
         name={props.desc}
         value={valuestring}
-        data-tip={props["data-tip"]}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(string_to_bool(e.target.value))}
         style={props.style}
-        className={valuestring === "default" ? props.className+"-default": props.className}
+        className={valuestring === "default" ? props.className + "-default" : props.className}
     >
         <option key="default">default</option>
         <option key="yes">yes</option>
@@ -840,15 +922,15 @@ export function TextOption(props: {
     value: string
     error?: string
     desc: string
-    'data-tip': string
+    tooltip: string
     onChange: (value: string) => void
 }) {
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <TextInput
                 className="setting-input"
                 value={props.value}
-                data-tip={props["data-tip"]}
+                tooltip={props.tooltip}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
                 onChange={props.onChange} />
         </OptionLine>
@@ -857,20 +939,20 @@ export function TextOption(props: {
 }
 
 export function OptionalTextOption(props: {
-    value: string|null
+    value: string | null
     error?: string
     desc: string
-    'data-tip': string
-    onChange: (value: string|null) => void
+    tooltip: string
+    onChange: (value: string | null) => void
     placeholder?: string
 }) {
     return <>
-        <OptionLine desc={props.desc} data-tip={props["data-tip"]}>
+        <OptionLine desc={props.desc} tooltip={props.tooltip}>
             <OptionalTextInput
                 placeholder={props.placeholder === undefined ? "default" : props.placeholder}
                 className="setting-input"
                 value={props.value}
-                data-tip={props["data-tip"]}
+                tooltip={props.tooltip}
                 style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
                 onChange={props.onChange} />
         </OptionLine>
@@ -879,18 +961,20 @@ export function OptionalTextOption(props: {
 }
 
 export function OptionalTextInput(props: {
-    value: string|null
-    'data-tip': string
+    value: string | null
+    tooltip: string
     className?: string
     style?: CSSProperties
-    onChange: (value: string|null) => void
+    onChange: (value: string | null) => void
     placeholder?: string
 }) {
     return <input
+        spellCheck="false"
         placeholder={props.placeholder}
         type="text"
-        value={props.value === null ? "": props.value}
-        data-tip={props["data-tip"]}
+        value={props.value === null ? "" : props.value}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}
         onChange={e => e.target.value === "" ? props.onChange(null) : props.onChange(e.target.value)} />
@@ -898,17 +982,19 @@ export function OptionalTextInput(props: {
 
 export function TextInput(props: {
     value: string
-    'data-tip': string
+    tooltip: string
     className?: string
     style?: CSSProperties
     onChange: (value: string) => void
     placeholder?: string
 }) {
     return <input
+        spellCheck="false"
         placeholder={props.placeholder}
         type="text"
         value={props.value}
-        data-tip={props["data-tip"]}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}
         onChange={e => props.onChange(e.target.value)} />
@@ -916,7 +1002,7 @@ export function TextInput(props: {
 
 export function MultilineTextInput(props: {
     value: string
-    'data-tip': string
+    tooltip: string
     className?: string
     style?: CSSProperties
     onChange: (value: string) => void
@@ -927,7 +1013,8 @@ export function MultilineTextInput(props: {
         placeholder={props.placeholder}
         rows={props.rows}
         value={props.value}
-        data-tip={props["data-tip"]}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
         className={props.className}
         style={props.style}
         onChange={e => props.onChange(e.target.value)}></textarea>
@@ -952,26 +1039,120 @@ export function delayedExecutor(delay: number): (action: Action) => void {
     }
 }
 
-export function ListSelectPopup(props: {
+export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.name.toLowerCase()
+	const b = rowB.name.toLowerCase()
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+export const fileTitleSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.title ? rowA.title.toLowerCase() : ""
+	const b = rowB.title ? rowB.title.toLowerCase() : ""
+    if (!a && b) {
+        return 1
+    }
+    if (a && !b) {
+        return -1
+    }
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) => {
+	const a = rowA[1].toLowerCase()
+	const b = rowB[1].toLowerCase()
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+
+export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.lastModified
+	const b = rowB.lastModified
+	if (a > b) {
+		return 1
+	}
+	if (b > a) {
+		return -1
+	}
+	return 0
+}
+
+export const fileValidSort = (rowA: FileInfo, rowB: FileInfo) => {
+	const a = rowA.valid === true
+	const b = rowB.valid === true
+	if (a && !b) {
+		return 1
+	}
+	if (b && !a) {
+		return -1
+	}
+	return 0
+}
+
+export function FileSelectPopup(props: {
     open: boolean
     header?: ReactNode
-    items: string[]
+    files: FileInfo[]
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const { open, items, onSelect, onClose } = props
-    const selectItem = (item: string) => { onSelect(item); onClose() }
+    const { open, files, onSelect, onClose } = props
+    const selectItem = (item: FileInfo) => { onSelect(item.name); onClose() }
+    const [filterText, setFilterText] = React.useState('');
+    var columns: any= [
+        {
+          name: 'Filename',
+          selector: (row: FileInfo) => row.name,
+          sortFunction: fileNameSort,
+          sortable: true
+        },
+        {
+          name: 'Date',
+          selector: (row: FileInfo) => row.formattedDate,
+          sortFunction: fileDateSort,
+          sortable: true,
+          maxWidth: '200px'
+        },
+        {
+          name: 'Size',
+          selector: (row: FileInfo) => row.size,
+          sortable: true,
+          maxWidth: '100px'
+        }
+      ]
+    const filteredFiles = files.filter(
+        item => item.name.toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
-            {items.map(item =>
-                <Button
-                    key={item}
-                    text={item}
-                    style={{ justifyContent: 'flex-start' }}
-                    onClick={() => selectItem(item)} />
-            )}
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '60vw', height: '80vh', overflowY: 'scroll'}}>
+        <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredFiles} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
         </div>
     </Popup>
 }
@@ -984,18 +1165,151 @@ export function KeyValueSelectPopup(props: {
     onClose: () => void
 }) {
     const { open, items, onSelect, onClose } = props
-    const selectItem = (item: string) => { onSelect(item); onClose() }
+    const [filterText, setFilterText] = React.useState('');
+    var columns: any = [
+        {
+          name: 'Name',
+          selector: (row: [String, String]) => row[1],
+          sortFunction: caseInsensitiveRowSort,
+          sortable: true
+        }
+      ]
+    const selectItem = (item: [string, string]) => { onSelect(item[0]); onClose() }
+    const filteredItems = items.filter(
+        item => item[1].toLowerCase().includes(filterText.toLowerCase()),
+    )
     return <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: 'max-content' }}>
-        <CloseButton onClick={onClose} />
-        {props.header}
-        <div style={{ display: 'flex', flexDirection: 'column', width: '30vw', height: '70vh', overflowY: 'auto', overflowX: 'auto'}}>
-            {items.map(item =>
-                <Button
-                    key={item[0]}
-                    text={ item[0] === item[1] ? item[1] : item[0] + ": " + item[1] }
-                    style={{ justifyContent: 'flex-start' }}
-                    onClick={() => selectItem(item[0])} />
-            )}
+        <div style={{margin: '5px'}}>
+            <span style={{float: 'right'}}><CloseButton onClick={onClose} /></span>
+            {props.header}
+        </div>
+        <div style={{ margin: '5px', width: '30vw', height: '80vh', overflowY: 'scroll'}}>
+            <input type="search" placeholder="Filter on name.."
+                value={filterText}
+                data-tooltip-html="Enter a search string to filter files on name"
+                data-tooltip-id="main-tooltip"
+                spellCheck='false'
+                onChange={(e) => setFilterText(e.target.value)}/>
+            <DataTable columns={columns} data={filteredItems} theme='camilla' onRowClicked={selectItem} highlightOnHover pointerOnHover/>
         </div>
     </Popup>
+}
+
+
+export function ChannelSelection(props: {
+    channels: number[] | null
+    maxChannelCount: number
+    label: string | null
+    setChannels: (channels: number[] | null) => void
+    labels?: (string|null)[] | null
+}) {
+    const { channels, maxChannelCount, setChannels, label, labels } = props
+    let [expanded, setExpanded] = useState(false)
+
+    if (maxChannelCount > 0) {
+        if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
+            props.setChannels(props.channels.filter((ch: number) => ch < props.maxChannelCount))
+        }
+    }
+
+    const rowSize = 8
+
+    var _channels = cloneDeep(channels)
+    const toggleAllChannels = () => {
+        if (_channels === null) {
+            _channels = []
+        }
+        else {
+            _channels = null
+        }
+        setChannels(_channels)
+    }
+    const toggleChannel = (idx: number) => {
+        if (_channels === null) {
+            _channels = []
+        }
+        if (!_channels.includes(idx)) {
+            _channels.push(idx)
+        }
+        else {
+            _channels = _channels.filter((n: number) => n !== idx)
+        }
+        setChannels(_channels)
+    }
+    const toggleExpanded = () => {
+        setExpanded(!expanded)
+    }
+
+    const rows = Math.ceil(maxChannelCount / rowSize)
+
+    const makeDropdown = () => {
+        return <div className="dropdown-menu" title='channels' >
+            <table>
+                {Range(0, rows).map(row => (
+                    <tr>
+                        {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
+                            <td>
+                                <ChannelButton key={rowSize * row + col} channel={getLabelForChannel(labels, rowSize * row + col)} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
+                            </td>
+                        ))}
+                    </tr>
+                ))}
+            </table>
+        </div>
+    }
+
+    if (rows === 1) {
+        return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+            {label && <span style={{ marginRight: '5px' }}>{label}</span>}
+            <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            {Range(0, maxChannelCount).map(index =>
+                <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels !== undefined && channels.includes(index)} onClick={() => toggleChannel(index)} />
+            )}
+        </div>
+    }
+    else {
+        // TODO add some compact display?
+        return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+            {label && <span style={{ marginRight: '5px' }}>{label}</span>}
+            <CompactChannelIndicator channels={channels} channelCount={maxChannelCount} />
+            <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+                <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+                {expanded && makeDropdown()}
+            </div>
+        </div>
+    }
+}
+
+function CompactChannelIndicator(props: {
+    channelCount: number,
+    channels: number[] | null
+}) {
+    return <div className='channel-indicator-field'>
+        {Range(0, props.channelCount).map(ch =>
+            <div className='channel-indicator' style={{
+                backgroundColor: (props.channels === null || props.channels.includes(ch)) ? 'var(--highlighted-button-border-color)' : 'var(--button-background-color)'
+            }}></div>)
+        }
+    </div>
+}
+
+export function ChannelButton(props: {
+    channel: number | string
+    selected: boolean
+    onClick: () => void
+    erroneousChannel?: boolean
+}) {
+    const { channel, selected, onClick, erroneousChannel } = props
+    return <Button
+        text={channel.toString()}
+        onClick={onClick}
+        highlighted={selected}
+        className='setting-button'
+        style={{
+            height: '28px',
+            marginRight: '5px',
+            backgroundColor: erroneousChannel ? 'var(--error-field-background-color)' : undefined
+        }}
+    />
 }

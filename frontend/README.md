@@ -8,23 +8,26 @@ The backend is located here: https://github.com/HEnquist/camillagui-backend
 For instructions on how to set the gui up, see the readme for the backend.
 
 ## Dependencies
-The gui is using the following libraries:
+The gui is based on the [React](https://react.dev/) framework.
+It uses the [npm](https://www.npmjs.com/) package manager,
+and the [Vite](https://vitejs.dev/) development environment.
 
-- npm: https://www.npmjs.com/
-- awesome-typescript-loader: https://github.com/s-panferov/awesome-typescript-loader
-- lodash: https://lodash.com/
-- Material Design Icons: https://materialdesignicons.com/
+It uses a number of open source libraries and components.
+See `package.json` for the full list.
 
-- React: https://reactjs.org/
-- react-tooltip: https://github.com/wwayne/react-tooltip
-- react-tabs: https://reactcommunity.org/react-tabs/
-- reactjs-popup: https://react-popup.elazizi.com/
-- rc-progress: https://github.com/react-component/progress
+## Development
+Install the dependencies with `npm install`.
 
-- chart.js: https://www.chartjs.org/
-- react-chartjs-2: https://github.com/jerairrest/react-chartjs-2
-- d3: https://d3js.org/
-- jest: https://jestjs.io/
-- http-proxy-middleware: https://github.com/chimurai/http-proxy-middleware
-- immutable-js: https://github.com/immutable-js/immutable-js
+Start the development server with `npm run dev`.
+This makes the GUI available on `http://localhost:5173/gui`.
+The development server watches for changes in the source files
+and updates the running version automatically.
+
+To make a production build, run `npm run build`.
+The build will be stored in the `build` folder.
+After building, the production build can be previewed with `npm run serve`.
+Note that this preview is not automatically updated
+when source files change, it must be manually update with `npm run build`.
+
+Tests are executed by running `npm test`.
 

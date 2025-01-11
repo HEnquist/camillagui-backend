@@ -4,6 +4,7 @@ export interface GuiConfig {
     hide_capture_device: boolean
     hide_playback_device: boolean
     hide_rate_monitoring: boolean
+    hide_multithreading: boolean
     coeff_dir: string
     supported_capture_types?: CaptureType[]
     supported_playback_types?: PlaybackType[]
@@ -12,9 +13,11 @@ export interface GuiConfig {
     status_update_interval: number
     can_update_active_config: boolean
     custom_shortcuts: ShortcutSection[]
+    volume_max: number
+    volume_range: number
 }
 
-export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdin' | 'Bluez'
+export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
 
 export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdout'
 
@@ -27,11 +30,18 @@ export interface ShortcutSection {
 export interface Shortcut {
     name: string
     description?: string
-    path_in_config: string[]
-    range_from: number
-    range_to: number
-    step: number
+    config_elements: ConfigElement[]
+    range_from?: number
+    range_to?: number
+    step?: number
+    type?: string
 }
+
+export interface ConfigElement {
+    path: string[]
+    reverse?: boolean
+}
+
 
 export function defaultGuiConfig(): GuiConfig {
     return {
@@ -40,11 +50,14 @@ export function defaultGuiConfig(): GuiConfig {
         hide_capture_device: false,
         hide_playback_device: false,
         hide_rate_monitoring: false,
+        hide_multithreading: false,
         coeff_dir: '',
         apply_config_automatically: false,
         save_config_automatically: false,
         status_update_interval: 100,
         can_update_active_config: false,
-        custom_shortcuts: []
+        custom_shortcuts: [],
+        volume_max: 0,
+        volume_range: 50
     }
 }

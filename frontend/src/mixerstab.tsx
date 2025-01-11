@@ -1,4 +1,4 @@
-import React from "react"
+import React, {useState} from "react"
 import "./index.css"
 import {
   AddButton,
@@ -7,10 +7,13 @@ import {
   ErrorMessage,
   IntOption,
   FloatOption,
+  LabelListOption,
   MdiButton,
   ParsedInput,
   OptionalTextInput,
-  OptionalEnumOption
+  OptionalTextOption,
+  OptionalEnumOption,
+  ErrorBoundary
 } from "./utilities/ui-components"
 import {
   Config,
@@ -20,20 +23,22 @@ import {
   Mapping,
   Mixer,
   mixerNamesOf,
-  Mixers,
   newMixerName,
   removeMixer,
   renameMixer,
   Source,
-  GainScales
+  GainScales,
+  getMixerInputLabels,
+  getLabelForChannel
 } from "./camilladsp/config"
 import {mdiPlusMinusVariant, mdiVolumeOff} from "@mdi/js"
-import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
+import { Range } from "immutable"
 
 export class MixersTab extends React.Component<{
-  mixers: Mixers
-  errors: ErrorsForPath
+  config: Config
+  errors: Errors
   updateConfig: (update: Update<Config>) => void
 }, {
   mixerKeys: { [name: string]: number}
@@ -53,7 +58,7 @@ export class MixersTab extends React.Component<{
   }
 
   private mixerNames(): string[] {
-    return mixerNamesOf(this.props.mixers)
+    return mixerNamesOf(this.props.config.mixers)
   }
 
   private updateMixer(name: string, update: Update<Mixer>) {
@@ -106,17 +111,20 @@ export class MixersTab extends React.Component<{
   }
 
   render() {
-    const {mixers, errors} = this.props
-    return (
+    const {config, errors} = this.props
+    const mixers = config.mixers ? config.mixers : {}
+    return <ErrorBoundary errorMessage={errors.asText()}>
+      <div className="tabcontainer">
         <div className="tabpanel" style={{width: '700px'}}>
-          <ErrorMessage message={errors({path: []})}/>
+          <ErrorMessage message={errors.rootMessage()}/>
           {this.mixerNames()
               .map(name =>
                   <MixerView
                       key={this.state.mixerKeys[name]}
                       name={name}
                       mixer={mixers[name]}
-                      errors={errorsForSubpath(errors, name)}
+                      config={config}
+                      errors={errors.forSubpath(name)}
                       update={update => this.updateMixer(name, update)}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
@@ -128,28 +136,74 @@ export class MixersTab extends React.Component<{
             <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
           </div>
         </div>
-    )
+        <div className="tabspacer"></div>
+      </div>
+    </ErrorBoundary>
   }
 }
 
 function MixerView(props: {
   name: string
   mixer: Mixer
-  errors: ErrorsForPath
+  config: Config
+  errors: Errors
   isFreeMixerName: (name: string) => boolean
   rename: (newName: string) => void
   remove: () => void
   update: (update: Update<Mixer>) => void
 }) {
-  const {name, mixer, errors, rename, remove, update} = props
+  const {name, mixer, config, errors, rename, remove, update} = props
+  let [expanded, setExpanded] = useState(false)
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
+  const input_labels = getMixerInputLabels(config, name)
+
+  const toggleExpanded = () => {
+    setExpanded(!expanded)
+  }
+
+  const updateChannelLabel = (channel: number, label: string | null) => {
+    let existing = props.mixer.labels
+    if (existing === null) {
+      existing = []
+    }
+    while (existing.length <= channel) {
+      existing.push(null)
+    }
+    existing[channel] = label
+    console.log("Update label for channel", channel, label)
+    update(mixer =>
+      mixer.labels = existing)
+  }
+
+  const updateChannelLabels = (labels: (string | null)[] | null) => {
+    if (labels !== null && labels.length > props.mixer.channels.out) {
+      labels = labels.slice(0, props.mixer.channels.out)
+    }
+    console.log("Update labels to", labels)
+    update(mixer =>
+      mixer.labels = labels)
+  }
+
+  const makeDropdown = () =>
+  {
+    return <div>
+      {Range(0, 2).map(row => (
+                <OptionalTextOption value={mixer.labels && mixer.labels.length > row ? mixer.labels[row] : null } 
+                error={errors.messageFor('labels')}
+                desc={row.toString()}
+                tooltip={'Label for channel '+ row}
+                onChange={new_label => updateChannelLabel(row, new_label)}/>
+            ))}
+    </div>
+}
+
   return <Box title={
     <>
       <ParsedInput
           value={name}
           style={{width: '300px'}}
-          data-tip="Mixer name, must be unique"
+          tooltip="Mixer name, must be unique"
           onChange={rename}
           asString={name => name}
           parseValue={name => isValidMixerName(name) ? name : undefined}
@@ -161,12 +215,12 @@ function MixerView(props: {
           onClick={remove}/>
     </>
   }>
-    <ErrorMessage message={errors({path: []})}/>
+    <ErrorMessage message={errors.rootMessage()}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
           desc="in"
-          data-tip="Number of channels in (source channels)"
+          tooltip="Number of channels in (source channels)"
           small={true}
           withControls={true}
           min={1}
@@ -174,23 +228,25 @@ function MixerView(props: {
       <IntOption
           value={mixer.channels.out}
           desc="out"
-          data-tip="Number of channels out (destination channels)"
+          tooltip="Number of channels out (destination channels)"
           small={true}
           withControls={true}
           min={1}
           onChange={channelsOut => update(mixer => mixer.channels.out = channelsOut)}/>
     </div>
-    <ErrorMessage message={errors({path: ['channels']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'in']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'out']})}/>
+    <ErrorMessage message={errors.messageFor('channels')}/>
+    <ErrorMessage message={errors.messageFor('channels', 'in')}/>
+    <ErrorMessage message={errors.messageFor('channels', 'out')}/>
     {mixer.mapping.map((mapping, index) =>
         <MappingView
             key={index}
             mapping={mapping}
-            errors={errorsForSubpath(errors, 'mapping', index)}
+            errors={errors.forSubpath('mapping', index)}
             channels={mixer.channels}
             update={mappingUpdate => update(mixer => mappingUpdate(mixer.mapping[index]))}
-            remove={() => update(mixer => mixer.mapping.splice(index, 1))}/>
+            remove={() => update(mixer => mixer.mapping.splice(index, 1))}
+            input_labels={input_labels}
+            output_labels={mixer.labels}/>
     )}
     <div className="vertically-spaced-content">
     <div style={{display: 'flex', justifyContent: 'left'}}>
@@ -204,31 +260,44 @@ function MixerView(props: {
       <OptionalTextInput
         placeholder="description"
         value={mixer.description}
-        data-tip="Mixer description"
+        tooltip="Mixer description"
         onChange={desc => update(mixer => mixer.description = desc)}/>
+      <LabelListOption
+        value={mixer.labels ? mixer.labels.map(lab => lab ? lab : "").join(",") : ""}
+        error={errors.messageFor('labels')}
+        desc="labels"
+        onChange={updateChannelLabels}
+        onButtonClick={toggleExpanded}
+      />
+      {expanded && makeDropdown()}
     </div>
   </Box>
 }
 
 function MappingView(props: {
   mapping: Mapping
-  errors: ErrorsForPath
+  errors: Errors
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mapping>) => void
+  input_labels: (string|null)[] | null
+  output_labels: (string|null)[] | null
 }) {
-  const {mapping, errors, channels, remove, update} = props
+  const {mapping, errors, channels, remove, update, input_labels, output_labels} = props
   return <Box style={{marginTop: '5px'}} title={
     <>
       <IntOption
           value={mapping.dest}
           desc="destination"
-          data-tip="Destination channel number"
+          tooltip="Destination channel number"
           small={true}
           withControls={true}
           min={0}
           max={channels.out-1}
           onChange={dest => update(mapping => mapping.dest = dest)}/>
+      <div  style={{width: 'fit-content'}}>
+        {getLabelForChannel(output_labels, mapping.dest)}
+      </div>
       <MdiButton
           icon={mdiVolumeOff}
           tooltip={"Mute this destination channel"}
@@ -241,19 +310,20 @@ function MappingView(props: {
           onClick={remove}/>
     </>
   }>
-    <ErrorMessage message={errors({path: ['dest']})}/>
-    <ErrorMessage message={errors({path: ['mute']})}/>
-    <ErrorMessage message={errors({path: []})}/>
-    <ErrorMessage message={errors({path: ['sources']})}/>
+    <ErrorMessage message={errors.messageFor('dest')}/>
+    <ErrorMessage message={errors.messageFor('mute')}/>
+    <ErrorMessage message={errors.rootMessage()}/>
+    <ErrorMessage message={errors.messageFor('sources')}/>
     <div style={{display: 'flex', flexDirection: 'column'}}>
       {mapping.sources.map((source, index) =>
           <React.Fragment key={index}>
             <SourceView
                 source={source}
-                errors={errorsForSubpath(errors, 'sources', index)}
+                errors={errors.forSubpath('sources', index)}
                 channelsIn={channels.in}
                 update={updateSource => update(mixer => updateSource(mixer.sources[index]))}
-                remove={() => update(mixer => mixer.sources.splice(index, 1))}/>
+                remove={() => update(mixer => mixer.sources.splice(index, 1))}
+                input_labels={input_labels}/>
             {index+1 < mapping.sources.length && <hr/>}
           </React.Fragment>
       )}
@@ -268,39 +338,43 @@ function MappingView(props: {
 
 function SourceView(props: {
   source: Source
-  errors: ErrorsForPath
+  errors: Errors
   channelsIn: number
   update: (update: Update<Source>) => void
   remove: () => void
+  input_labels: (string|null)[] | null
 }) {
-  const {source, errors, channelsIn, update, remove} = props
+  const {source, errors, channelsIn, update, remove, input_labels} = props
   return <>
     <div className="horizontally-spaced-content">
       <div style={{flexGrow: 1}}>
         <IntOption
             value={source.channel}
             desc="source"
-            data-tip="Source channel number"
+            tooltip="Source channel number"
             small={true}
             withControls={true}
             min={0}
             max={channelsIn - 1}
             onChange={channel => update(source => source.channel = channel)}/>
       </div>
+      <div style={{width: 'fit-content'}}>
+        {getLabelForChannel(input_labels, source.channel)}
+      </div>
       <div style={{flexGrow: 1}}>
         <FloatOption
             value={source.gain ? source.gain : 0.0}
             desc="gain"
-            data-tip="Gain in dB for this source channel"
+            tooltip="Gain in dB for this source channel"
             onChange={gain => update(source => source.gain = gain)}/>
       </div>
       <div style={{flexGrow: 1}}>
         <OptionalEnumOption
             value= {source.scale}
-            error={errors({path: ['scale']})}
+            error={errors.messageFor('scale')}
             options={GainScales}
             desc="scale"
-            data-tip="Scale for gain"
+            tooltip="Scale for gain"
             onChange={scale => update(source => source.scale = scale )}/>
       </div>
       <MdiButton
@@ -317,6 +391,6 @@ function SourceView(props: {
           onClick={() => update(source => source.mute = !source.mute)}/>
       <DeleteButton tooltip="Delete this source" smallButton={true} onClick={remove}/>
     </div>
-    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
+    <ErrorMessage message={errors.asText()}/>
   </>
 }

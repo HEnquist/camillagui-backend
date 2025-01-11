@@ -4,6 +4,8 @@ body {
   color: var(--text-color);
   background-color: var(--background-color);
   margin: 0;
+  height: 100vh;
+  width: 100vw;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -84,24 +86,65 @@ textarea.logfileviewer {
   padding: 2px;
 }
 
-.tabpanel {
+.sidepanel {
   border: 4px;
   text-align: left;
-  padding: 10px 0;
+  padding: 10px 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 95vh;
+  width: 320px;
+}
+
+.tabpanel {
+  border: 4px;
+  /*border-right: var(--box-border);*/
+  text-align: left;
+  padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 450px;
+  /*overflow: auto;*/
+  height: 90vh;
+}
+
+.tabcontainer {
+  width: 100%;
+  overflow-y: auto;
+}
+
+.tabspacer {
+  width: 100%;
+}
+
+.tabpanel-with-header {
+  border: 4px;
+  /*border-right: var(--box-border);*/
+  text-align: left;
+  padding: 10px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 450px;
+  /*overflow: auto;*/
+  height: 86vh;
 }
 
 .wide-tabpanel {
   border: 4px;
+  /*border-right: var(--box-border);*/
   text-align: left;
-  padding: 10px 0;
+  padding: 10px 20px 0 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 550px;
+  /*overflow: auto;*/
+  height: 90vh;
 }
 
 .tabpanel > * {
@@ -122,8 +165,9 @@ textarea.logfileviewer {
 .configtabs {
   float: left;
   text-align: left;
-  padding: 10px;
+  padding: 2px;
   display: flex;
+  width: 100%;
   flex-direction: column;
 }
 
@@ -206,6 +250,21 @@ div .popup-content {
   border: var(--box-border);
   border-radius: var(--border-radius);
 }
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown .dropdown-menu {
+  position: absolute;
+  background-color: var(--background-color);
+  border: var(--highlighted-button-border);
+  border-radius: var(--border-radius);
+  z-index: 1;
+  top: 100%;
+  left: 0%;
+}
+
 
 @media (max-width: 1023px) {
   div .popup-content {
@@ -320,6 +379,8 @@ div .popup-content {
 }
 
 .db-label {
+  font-size: 14pt;
+  font-family: monospace;
   display: inline-block;
   width: 7ch;
   text-align: right;
@@ -327,6 +388,8 @@ div .popup-content {
 }
 
 .db-label-muted {
+  font-size: 14pt;
+  font-family: monospace;
   display: inline-block;
   width: 7ch;
   text-align: right;
@@ -340,9 +403,18 @@ div .popup-content {
   margin: 15px 0;
   display: flex;
   flex-direction: row;
-  justify-content: space-evenly;
-  font-size: xx-small;
+  justify-content: center;
+  font-size: small;
 }
+
+.namecol {
+  text-align: left;
+}
+
+.valuecol {
+  text-align: right;
+}
+
 
 .quick-config-switch > * {
   margin: 5px;
@@ -412,9 +484,16 @@ div .popup-content {
 }
 
 .import-tab-tooltip {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   opacity: 1 !important;
-  border-radius: var(--border-radius) !important;
-  border: var(--box-border) !important;
+  font-size: smaller;
+  z-index: 1000;
+}
+
+.tooltip {
+  opacity: 1 !important;
+  text-align: center;
+  z-index: 1000;
 }
 
 .pipeline-tooltip {
@@ -424,4 +503,19 @@ div .popup-content {
   font-size: smaller;
   border-radius: var(--border-radius);
   padding: 5px 5px;
+}
+
+.channel-indicator {
+  width: 4px;
+  height: 12px;
+  margin-right: 1px;
+  margin-left: 1px;
+}
+
+.channel-indicator-field {
+  display: flex;
+  flex-direction: row;
+  margin-right: 4px;
+  margin-left: 2px;
+  vertical-align: middle;
 }

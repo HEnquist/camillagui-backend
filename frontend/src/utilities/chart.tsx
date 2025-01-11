@@ -1,7 +1,7 @@
 import React, {useCallback, useMemo, useRef} from "react"
 import {Scatter} from "react-chartjs-2"
 import {mdiHome, mdiImage, mdiTable} from "@mdi/js"
-import ReactTooltip from "react-tooltip"
+import {Tooltip as ReactTooltip} from 'react-tooltip'
 import {CloseButton, cssStyles, MdiButton} from "./ui-components"
 import Popup from "reactjs-popup"
 import {Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, PointElement, Tooltip} from "chart.js"
@@ -441,7 +441,8 @@ export function Chart(props: {
     <div style={{textAlign: 'center'}}>
       {props.data.options.length > 0 && <select
         value={selected}
-        data-tip="Select filter file"
+        data-tooltip-html="Select filter file"
+        data-tooltip-id="main-tooltip"
         onChange={e => props.onChange(e.target.value)}
       >
         {sampleRateOptions}

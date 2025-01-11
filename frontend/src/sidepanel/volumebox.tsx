@@ -5,10 +5,14 @@ import { Box, MdiButton } from "../utilities/ui-components"
 import { mdiVolumeMedium, mdiVolumeOff } from "@mdi/js"
 import { VuMeterStatus } from "../camilladsp/status"
 import { throttle } from "lodash"
+import { GuiConfig } from "../guiconfig"
 
 type Props = {
     vuMeterStatus: VuMeterStatus
     setMessage: (message: string) => void
+    inputLabels: null | (string|null)[]
+    outputLabels: null | (string|null)[]
+    guiConfig: GuiConfig
 }
 
 type State = {
@@ -17,8 +21,6 @@ type State = {
     dim: boolean
     send_to_dsp: boolean
 }
-
-export const minVolume = -51
 
 export interface Volume {
     volume: number
@@ -162,6 +164,8 @@ export class VolumeBox extends React.Component<Props, State> {
         const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms }
             = this.props.vuMeterStatus
         const { volume, mute, dim } = this.state
+        const maxVol = this.props.guiConfig.volume_max
+        const minVol = maxVol - this.props.guiConfig.volume_range
         return <Box title={
             <>
                 Volume
@@ -179,28 +183,30 @@ export class VolumeBox extends React.Component<Props, State> {
                     tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
                     buttonSize="small"
                     highlighted={dim}
-                    enabled={(dim && volume <= -20) || (!dim && volume >= minVolume + 20)}
+                    enabled={(dim && volume <= (maxVol - 20)) || (!dim && volume >= (minVol + 20))}
                     onClick={this.toggleDim} />
             </>
         }>
             <VuMeterGroup
-                title="In"
+                title="IN"
                 levels={capturesignalrms}
                 peaks={capturesignalpeak}
+                labels={this.props.inputLabels}
             />
             <input
                 style={{ width: '100%', margin: 0, padding: 0 }}
                 type="range"
-                min={10.0 * minVolume}
-                max="0"
+                min={10.0 * minVol}
+                max={10.0 * maxVol}
                 value={10.0 * volume}
                 id="volume"
                 onChange={e => this.changeVolume(e.target.valueAsNumber / 10.0)}
             />
             <VuMeterGroup
-                title="Out"
+                title="OUT"
                 levels={playbacksignalrms}
                 peaks={playbacksignalpeak}
+                labels={this.props.outputLabels}
             />
         </Box>
     }

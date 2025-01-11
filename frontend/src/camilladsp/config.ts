@@ -27,10 +27,15 @@ export function defaultConfig(): Config {
             stop_on_rate_change: null,
             rate_measure_interval: null,
 
-            volume_ramp_time: null,
+            //Multithreading
+            multithreaded: null,
+            worker_threads: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
-            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: null },
+            volume_ramp_time: null,
+            volume_limit: null,
+
+            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
+            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
         },
         filters: {},
         mixers: {},
@@ -259,7 +264,7 @@ function newName(prefix: string, existingNames: string[]): string {
 export const DefaultFilterParameters: {
     [type: string]: {
         [subtype: string]: {
-            [parameter: string]: string | number | number[] | boolean
+            [parameter: string]: string | number | number[] | boolean | null
         }
     }
 } = {
@@ -302,7 +307,7 @@ export const DefaultFilterParameters: {
         Default: { gain: 0.0, scale: 'dB', inverted: false, mute: false },
     },
     Volume: {
-        Default: { ramp_time: 200, fader: "Aux1" },
+        Default: { ramp_time: null, limit: null, fader: "Aux1" },
     },
     Loudness: {
         Default: { reference_level: 0.0, high_boost: 5, low_boost: 5, fader: "Main", attenuate_mid: false },
@@ -461,7 +466,8 @@ export function defaultMixer(): Mixer {
     return {
         description: null,
         channels: { in: 2, out: 2 },
-        mapping: [defaultMapping(2, [])]
+        mapping: [defaultMapping(2, [])],
+        labels: null
     }
 }
 
@@ -487,7 +493,7 @@ export function defaultFilterStep(config: Config): FilterStep {
     const filterNames = filterNamesOf(config)
     return {
         type: 'Filter',
-        channel: 0,
+        channels: [0],
         names: filterNames.length === 1 ? [filterNames[0]] : [EMPTY],
         description: null,
         bypassed: null
@@ -550,6 +556,11 @@ export interface Devices {
 
     //Volume control settings
     volume_ramp_time: number | null,
+    volume_limit: number | null,
+
+    //Multithreading
+    multithreaded: boolean | null,
+    worker_threads: number | null,
 
     capture: CaptureDevice,
     playback: PlaybackDevice,
@@ -613,30 +624,34 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format, device: string | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null }
-    | { type: 'Jack', channels: number, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null }
-    | { type: 'Pulse', channels: number, format: Format, device: string }
+    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
+    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
+    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
+    | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
     | {
-        type: 'File', channels: number, format: Format, filename: '/path/to/file',
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     }
+    | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null, labels: (string|null)[] | null }
     | {
         type: 'Stdin', channels: number, format: Format,
-        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null
+        extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
+        labels: (string|null)[] | null
     } | {
         type: 'Bluez', channels: number, format: Format,
-        service: string | null, dbus_path: string
+        service: string | null, dbus_path: string,
+        labels: (string|null)[] | null
     }
 
 export type PlaybackDevice =
     { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa', channels: number, format: Format, device: string | null }
+    | { type: 'Alsa', channels: number, format: Format | null, device: string }
     | { type: 'Pulse', channels: number, format: Format, device: string }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
-    | { type: 'File', channels: number, format: Format, filename: string }
+    | { type: 'File', channels: number, format: Format, filename: string, wav_header: boolean | null }
     | { type: 'Stdout', channels: number, format: Format }
 
 export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
@@ -674,6 +689,7 @@ export interface Mixer {
         out: number
     }
     mapping: Mapping[]
+    labels: (string|null)[] | null
 }
 
 export interface Mapping {
@@ -694,9 +710,9 @@ export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep { type: 'Mixer', name: string, description: string | null, bypassed: boolean | null }
 export interface ProcessorStep { type: 'Processor', name: string, description: string | null, bypassed: boolean | null }
-export interface FilterStep { type: 'Filter', channel: number, names: string[], description: string | null, bypassed: boolean | null }
+export interface FilterStep { type: 'Filter', channels: number[] | null, names: string[], description: string | null, bypassed: boolean | null }
 
-export function maxChannelCount(config: Config, pipelineStepIndex: number): number {
+export async function maxChannelCount(config: Config, pipelineStepIndex: number): Promise<number> {
     var lastValidMixerStepBeforeIndex = null
     if (config.pipeline) {
         lastValidMixerStepBeforeIndex = List(config.pipeline)
@@ -710,5 +726,109 @@ export function maxChannelCount(config: Config, pipelineStepIndex: number): numb
         const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
         return mixer.channels.out
     }
+    return getCaptureChannelCount(config)
+}
+
+export interface WavInfo {
+    dataoffset: number,
+    datalength: number,
+    sampleformat: string,
+    bitspersample: number,
+    channels: number,
+    byterate: number,
+    samplerate: number,
+    bytesperframe: number,
+}
+
+async function getWavInfo(filename: string): Promise<WavInfo | null> {
+    let info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
+    if (info_resp.ok) {
+        const info = await info_resp.json()
+        return info == null ? null: info as WavInfo
+    } 
+    return null
+}
+
+export async function getCaptureChannelCount(config: Config): Promise<number> {
+    if (config.devices.capture.type === 'WavFile') {
+        const wavInfo = await getWavInfo(config.devices.capture.filename)
+        if (wavInfo !== null)
+            return wavInfo.channels
+        else
+            console.log("Cannot get info for wav file, assuming stereo. File:", config.devices.capture.filename)
+            return 2
+    }
     return config.devices.capture.channels
+}
+
+export function getChannelLabels(config: Config, index: number): (string|null)[]|null {
+    // Capture device labels
+    let cap_params = config.devices.capture
+    let channel_labels = cap_params.labels
+    let pipeline = config.pipeline ? config.pipeline : []
+    for (let idx = 0; idx < index; idx++) {
+        const step = pipeline[idx]
+        const disabled = step.bypassed === true
+        if (step.type === "Mixer" && config.mixers && !disabled) {
+            const mixername = step.name
+            const mixconf = config["mixers"][mixername]
+            if (mixconf) {
+                channel_labels = mixconf.labels
+            }
+            else {
+                channel_labels = null
+            }
+        }
+    }
+    return channel_labels
+}
+
+export function getOutputLabels(config: Config): (string|null)[]|null {
+    let pipeline_length = config.pipeline? config.pipeline.length : 0
+    return getChannelLabels(config, pipeline_length)
+}
+
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
+    if (labels === undefined || labels === null || labels.length <= channel) {
+        return channel.toString()
+    }
+    const label = labels[channel]
+    if (label) {
+        return label
+    }
+    return channel.toString()
+}
+
+export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Mixer' && step.name === mixername) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at)
+    }
+    else {
+        return null
+    }
+}
+
+export function getProcessorChannelLabels(config: Config, procname: string): (string|null)[] | null {
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
+    for (const [idx, step] of pipeline.entries()) {
+        if (step.type === 'Processor' && step.name === procname) {
+            found_at = idx
+            break
+        }
+    }
+    if (found_at >= 0) {
+        return getChannelLabels(config, found_at)
+    }
+    else {
+        return null
+    }
 }

@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest'
 import {
     defaultConfig,
     defaultFilter, defaultMapping, defaultMixer,
@@ -24,14 +25,14 @@ test('removeFilter', () => {
     config.filters['to be removed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
-        channel: 0,
+        channels: [0],
         description: null,
         bypassed: null,
         names: ['to be removed', 'filter1', 'to be removed', 'filter2', 'to be removed']
     }
     config.pipeline[1] = {
         type: 'Filter',
-        channel: 1,
+        channels: [1],
         description: null,
         bypassed: null,
         names: ['filter3', 'to be removed', 'filter4']
@@ -49,14 +50,14 @@ test('renameFilter', () => {
     config.filters['to be renamed'] = defaultFilter()
     config.pipeline[0] = {
         type: 'Filter',
-        channel: 0,
+        channels: [0],
         description: null,
         bypassed: null,
         names: ['to be renamed', 'filter1', 'to be renamed', 'filter2', 'to be renamed']
     }
     config.pipeline[1] = {
         type: 'Filter',
-        channel: 1,
+        channels: [1],
         description: null,
         bypassed: null,
         names: ['filter3', 'to be renamed', 'filter4']
@@ -127,9 +128,10 @@ test('renameMixer throws on name collision', () => {
     expect(() => renameMixer(config, 'to be renamed', 'collision')).toThrow("Mixer 'collision' already exists")
 })
 
-test('maxChannelCount', () => {
+test('maxChannelCount', async () => {
     const config = defaultConfig()
     config.mixers = {}
+    // @ts-ignore
     config.devices.capture.channels = 1
     config.devices.playback.channels = 9999
     config.mixers.mixer1 = defaultMixer()
@@ -139,14 +141,14 @@ test('maxChannelCount', () => {
     config.pipeline = [
         { type: 'Mixer', name: 'mixer1', description: null, bypassed: null },
         { type: 'Processor', name: '', description: null, bypassed: null },
-        { type: 'Filter', channel: 0, names: [], description: null, bypassed: null },
+        { type: 'Filter', channels: [0], names: [], description: null, bypassed: null },
         { type: 'Mixer', name: 'mixer2', description: null, bypassed: null },
         { type: 'Mixer', name: '', description: null, bypassed: null }
     ]
-    expect(maxChannelCount(config, 0)).toBe(1)
-    expect(maxChannelCount(config, 1)).toBe(2)
-    expect(maxChannelCount(config, 2)).toBe(2)
-    expect(maxChannelCount(config, 3)).toBe(2)
-    expect(maxChannelCount(config, 4)).toBe(3)
-    expect(maxChannelCount(config, 5)).toBe(3)
+    expect(await maxChannelCount(config, 0)).toBe(1)
+    expect(await maxChannelCount(config, 1)).toBe(2)
+    expect(await maxChannelCount(config, 2)).toBe(2)
+    expect(await maxChannelCount(config, 3)).toBe(2)
+    expect(await maxChannelCount(config, 4)).toBe(3)
+    expect(await maxChannelCount(config, 5)).toBe(3)
 })

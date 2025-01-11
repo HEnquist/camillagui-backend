@@ -1,3 +1,4 @@
+import {expect, test} from 'vitest'
 import { levelAsPercent } from './vumeter'
 
 test('levelAsPercent', () => {

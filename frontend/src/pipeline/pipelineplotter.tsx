@@ -4,10 +4,10 @@ import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
 import { CloseButton, cssStyles } from "../utilities/ui-components"
-import { CaptureDevice, Config, PlaybackDevice } from "../camilladsp/config"
-import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowCollapse, mdiArrowExpand } from "@mdi/js"
+import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount, getLabelForChannel, Source } from "../camilladsp/config"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
-import ReactTooltip from "react-tooltip"
+import { Range } from "immutable"
 
 export function PipelinePopup(props: {
   config: Config,
@@ -47,10 +47,9 @@ export function PipelinePopup(props: {
       tooltip={expandFiltersteps ? "Collapse individual filters into filter steps" : "Expand filter steps to individual filters"}
       onClick={toggleExpandFiltersteps} />
     <MdiButton
-      icon={expandVertical ? mdiArrowCollapse : mdiArrowExpand}
-      tooltip={expandVertical ? "Zoom out to display entire plot height" : "Enlarge plot"}
+      icon={mdiArrowExpandAll}
+      tooltip={"Reset zoom to display entire plot"}
       onClick={toggleExpandVertical} />
-    <ReactTooltip />
   </Popup>
 
 }
@@ -66,7 +65,7 @@ interface Rect {
   fill: string
   stroke: string
   "stroke-width": number
-  tooltip: string|null
+  tooltip: string | null
 }
 
 interface Text {
@@ -96,13 +95,15 @@ interface Block {
 
 type Props = {
   config: Config,
-  expand_filters: boolean
-  expand_vertical: boolean
+  expand_filters: boolean,
+  expand_vertical: boolean,
 }
 
 type State = {
   width: number,
-  height: number
+  height: number,
+  capture_channels: number,
+  zoomTransform: any
 }
 
 class PipelinePlot extends React.Component<Props, State> {
@@ -120,11 +121,14 @@ class PipelinePlot extends React.Component<Props, State> {
   private blockTextColor?: string
   private disabledBlockTextColor?: string
   private node?: any
+  private zoom: any
+  private tooltip: any
 
   constructor(props: Props) {
     super(props)
     this.arrowColors = []
-    this.state = { height: this.height, width: this.width }
+    this.state = { height: this.height, width: this.width, capture_channels: 2, zoomTransform: null}
+    this.zoom = d3.zoom().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this));
   }
 
   componentDidMount() {
@@ -138,15 +142,46 @@ class PipelinePlot extends React.Component<Props, State> {
     this.disabledBlockBgColor = styles.getPropertyValue('--disabled-block-background-color')
     this.blockTextColor = styles.getPropertyValue('--block-text-color')
     this.disabledBlockTextColor = styles.getPropertyValue('--disabled-block-text-color')
+    getCaptureChannelCount(this.props.config).then(channels => {
+      this.setState({ capture_channels: channels })
+    })
     this.createPipelinePlot()
+    d3.select('#svg_pipeline_div').call(this.zoom);
+
+    // A div used to display tooltips
+    this.tooltip = d3.select(`#svg_pipeline_div`).append("div")
+        .attr("class", "pipeline-tooltip")
+        .style("opacity", 0)
+        .style("z-index", "100")
+        .style("position", "fixed")
+        .style("user-select", "none")
   }
 
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
-    if (this.state.width !== prevState.width || this.state.height !== prevState.height || this.props.expand_filters !== prevProps.expand_filters)
+    if (this.props.expand_vertical !== prevProps.expand_vertical) {
+      this.resetZoom()
+    }
+    if (this.state.width !== prevState.width ||
+      this.state.height !== prevState.height ||
+      this.props.expand_filters !== prevProps.expand_filters ||
+      this.state.capture_channels !== prevState.capture_channels ||
+      this.state.zoomTransform !== prevState.zoomTransform
+    ) {
       this.createPipelinePlot()
+    }
   }
 
-  private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string|null, x: number, y: number, width: number, disabled: boolean): Block {
+  zoomed(event: any) {
+    this.setState({
+      zoomTransform: event.transform,
+    });
+  }
+
+  resetZoom() {
+    d3.select('#svg_pipeline_div').transition().duration(500).call(this.zoom.transform, d3.zoomIdentity)
+  }
+
+  private appendBlock(labels: Text[], boxes: Rect[], label: string, tooltip: string | null, x: number, y: number, width: number, disabled: boolean): Block {
     const rect = {
       x: x - 0.5 * width,
       y: y - 0.35,
@@ -266,6 +301,26 @@ class PipelinePlot extends React.Component<Props, State> {
       return device.type
   }
 
+  private mixerGainText(src: Source, is_muted: boolean): string {
+    if (src.mute === true || is_muted) {
+      return "muted"
+    }
+    if (src.gain === null) {
+      return ''
+    }
+    let label = src.gain.toString()
+    if (src.scale === 'linear') {
+      label = "\u00D7 " + label
+    }
+    else {
+      label = label + " dB"
+    }
+    if (src.inverted) {
+      label = label + " inv."
+    }
+    return label
+  }
+
   private makeShapes(conf: Config, expand_filters: boolean) {
     const spacing_h = 3
     const spacing_v = 1
@@ -277,7 +332,8 @@ class PipelinePlot extends React.Component<Props, State> {
     const stages = []
     const channels = []
     const capture = conf["devices"]["capture"]
-    let active_channels = capture["channels"]
+    let active_channels = this.state.capture_channels
+    let channel_labels = []
     const capturename = PipelinePlot.deviceText(capture)
     this.appendFrame(
       labels,
@@ -288,13 +344,22 @@ class PipelinePlot extends React.Component<Props, State> {
       1.5,
       spacing_v * active_channels,
     )
+    let cap_params = conf.devices.capture
+    let cap_tooltip = "<strong>Capture device</strong>"
+    for (const [key, value] of Object.entries(cap_params)) {
+      cap_tooltip = cap_tooltip + "<br>" + key + ": " + value
+    }
     for (let n = 0; n < active_channels; n++) {
-      const label = "ch " + n
+      const labels = cap_params.labels
+      channel_labels.push(getLabelForChannel(labels, n))
+    }
+    for (let n = 0; n < active_channels; n++) {
+      var label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
         label,
-        null,
+        cap_tooltip,
         0,
         spacing_v * (-active_channels / 2 + 0.5 + n),
         1,
@@ -308,6 +373,78 @@ class PipelinePlot extends React.Component<Props, State> {
     // loop through pipeline
     let total_length = 0
     let stage_start = 0
+
+    // resampler
+    if (conf.devices.resampler !== null && conf.devices.resampler !== undefined) {
+      total_length += 1
+      let resampler_channels = []
+      this.appendFrame(
+        labels,
+        boxes,
+        "Resampler",
+        spacing_h * total_length,
+        0,
+        1.5,
+        spacing_v * active_channels,
+      )
+      let res_params = conf.devices.resampler
+      let res_tooltip = "<strong>Resampler</strong>"
+      for (const [key, value] of Object.entries(res_params)) {
+        res_tooltip = res_tooltip + "<br>" + key + ": " + value
+      }
+      for (let n = 0; n < active_channels; n++) {
+        const label = channel_labels[n]
+        const io_points = this.appendBlock(
+          labels,
+          boxes,
+          label,
+          res_tooltip,
+          spacing_h * total_length,
+          spacing_v * (-active_channels / 2 + 0.5 + n),
+          1,
+          false
+        )
+        resampler_channels.push([io_points])
+        const src_p = stages[0][n][0].output
+        const dest_p = io_points.input
+        this.appendLink(links, labels, src_p, dest_p, n)
+      }
+      stages.push(resampler_channels)
+      stage_start = total_length
+    }
+
+    // volume control
+    total_length += 1
+    let vol_channels = []
+    this.appendFrame(
+      labels,
+      boxes,
+      "Volume",
+      spacing_h * total_length,
+      0,
+      1.5,
+      spacing_v * active_channels,
+    )
+    for (let n = 0; n < active_channels; n++) {
+      const label = channel_labels[n]
+      const io_points = this.appendBlock(
+        labels,
+        boxes,
+        label,
+        "Default volume control",
+        spacing_h * total_length,
+        spacing_v * (-active_channels / 2 + 0.5 + n),
+        1,
+        false
+      )
+      vol_channels.push([io_points])
+      const src_p = stages[total_length-1][n][0].output
+      const dest_p = io_points.input
+      this.appendLink(links, labels, src_p, dest_p, n)
+    }
+    stages.push(vol_channels)
+    stage_start = total_length
+
     const pipeline = conf.pipeline ? conf.pipeline : []
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
@@ -317,7 +454,7 @@ class PipelinePlot extends React.Component<Props, State> {
         const mixername = step.name
         const mixconf = conf["mixers"][mixername]
         if (active_channels !== mixconf.channels.in && !disabled) {
-          console.log("Invalid config, unable to plot")
+          console.log("Invalid config, unable to complete plot")
           return { labels, boxes, links, max_h, max_v }
         }
         if (!disabled) {
@@ -333,9 +470,14 @@ class PipelinePlot extends React.Component<Props, State> {
           1.5,
           spacing_v * mixconf.channels.out
         )
+        channel_labels = []
+        for (let n = 0; n < mixconf.channels.out; n++) {
+          label = getLabelForChannel(mixconf.labels, n)
+          channel_labels.push(label)
+        }
         for (let m = 0; m < mixconf.channels.out; m++) {
           mixerchannels.push([])
-          const label = "ch " + m
+          const label = channel_labels[m]
           const io_points = this.appendBlock(
             labels,
             boxes,
@@ -357,7 +499,7 @@ class PipelinePlot extends React.Component<Props, State> {
               const src = mapping.sources[p]
               const src_ch = src.channel
               const muted = src.mute === true || mapping_muted
-              const label = muted ? "muted" : src.gain + " dB" + (src.inverted ? " inv." : '')
+              const label = this.mixerGainText(src, muted)
               const srclen = stages[stages.length - 1][src_ch].length
               const src_p = stages[stages.length - 1][src_ch][srclen - 1].output
               const dest_p = mixerchannels[dest_ch][0].input
@@ -390,8 +532,8 @@ class PipelinePlot extends React.Component<Props, State> {
           procchannels.push([])
           let label = m.toString()
           if (procconf.type === "Compressor") {
-            const is_m = procconf.parameters.monitor_channels.includes(m)
-            const is_p = procconf.parameters.process_channels.includes(m)
+            const is_m = procconf.parameters.monitor_channels === null || procconf.parameters.monitor_channels.includes(m)
+            const is_p = procconf.parameters.process_channels === null || procconf.parameters.process_channels.includes(m)
             if (is_m && is_p) {
               label = label + ": M+P"
             }
@@ -429,29 +571,80 @@ class PipelinePlot extends React.Component<Props, State> {
         stage_start = total_length
         max_v = Math.max(max_v, active_channels / 2 + 1)
       } else if (step.type === "Filter") {
-        const ch_nbr = step.channel
-        if (ch_nbr >= active_channels && !disabled) {
-          console.log("Invalid config, unable to plot")
-          return { labels, boxes, links, max_h, max_v }
+        let _channels = step.channels
+        if (_channels === null) {
+          _channels = Array.from(Range(0, active_channels))
         }
-        if (expand_filters) {
-          for (let m = 0; m < step.names.length; m++) {
-            const name = step.names[m]
-            let params = conf.filters ? conf.filters[name] : null
-            let tooltip = "<strong>Filter</strong>"
-            if (params !== null) {
-              for (const [key, value] of Object.entries(params)) {
-                if (key !== "parameters") {
-                  tooltip = tooltip + "<br>" + key + ": " + value
+        for (const ch_nbr of _channels) {
+          if (ch_nbr >= active_channels && !disabled) {
+            console.log("Invalid config, unable to plot")
+            return { labels, boxes, links, max_h, max_v }
+          }
+          if (expand_filters) {
+            for (let m = 0; m < step.names.length; m++) {
+              const name = step.names[m]
+              let params = conf.filters ? conf.filters[name] : null
+              let tooltip = "<strong>Filter</strong>"
+              if (params !== null) {
+                for (const [key, value] of Object.entries(params)) {
+                  if (key !== "parameters") {
+                    tooltip = tooltip + "<br>" + key + ": " + value
+                  }
+                }
+                if (params.hasOwnProperty("parameters")) {
+                  let fparams = params.parameters
+                  tooltip = tooltip + "<br>parameters:"
+                  for (const [key, value] of Object.entries(fparams)) {
+                    tooltip = tooltip + "<br>  " + key + ": " + value
+                  }
                 }
               }
-              if (params.hasOwnProperty("parameters")) {
-                let fparams = params.parameters
-                tooltip = tooltip + "<br>parameters:"
-                for (const [key, value] of Object.entries(fparams)) {
-                  tooltip = tooltip + "<br>  " + key + ": " + value
-                }
+              let ch_step: number
+              if (ch_nbr < stages[stages.length - 1].length) {
+                ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
+              } else {
+                ch_step = stage_start + stages[stages.length - 1][0].length
               }
+              total_length = Math.max(total_length, ch_step)
+              const io_points = this.appendBlock(
+                labels,
+                boxes,
+                name,
+                tooltip,
+                ch_step * spacing_h,
+                spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
+                2.5,
+                disabled
+              )
+              if (!disabled) {
+                const src_list = stages[stages.length - 1][ch_nbr]
+                const src_p = src_list[src_list.length - 1].output
+                const dest_p = io_points.input
+                stages[stages.length - 1][ch_nbr].push(io_points)
+                this.appendLink(links, labels, src_p, dest_p, ch_nbr)
+              }
+            }
+          }
+          else {
+            let name = "(empty)"
+            let tooltip = "Filters:"
+            if (step.description) {
+              tooltip = step.description + '<br><br>' + tooltip
+              if (step.description.length > 50) {
+                name = step.description.slice(0, 47) + '...'
+              }
+              else {
+                name = step.description
+              }
+            }
+            else if (step.names.length > 0) {
+              name = step.names[0]
+              if (step.names.length > 1) {
+                name = name + " (+" + (step.names.length - 1) + ")"
+              }
+            }
+            for (const filtname of step.names) {
+              tooltip = tooltip + "<br> - " + filtname
             }
             let ch_step: number
             if (ch_nbr < stages[stages.length - 1].length) {
@@ -460,6 +653,16 @@ class PipelinePlot extends React.Component<Props, State> {
               ch_step = stage_start + stages[stages.length - 1][0].length
             }
             total_length = Math.max(total_length, ch_step)
+            this.appendBlock(
+              labels,
+              boxes,
+              "",
+              null,
+              ch_step * spacing_h - 0.04,
+              spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
+              2.5,
+              disabled
+            )
             const io_points = this.appendBlock(
               labels,
               boxes,
@@ -479,53 +682,6 @@ class PipelinePlot extends React.Component<Props, State> {
             }
           }
         }
-        else {
-          let name = "(empty)"
-          let tooltip = "<strong>Filters</strong>"
-          if (step.names.length > 0) {
-            name = step.names[0]
-            if (step.names.length > 1) {
-              name = name + " (+" + (step.names.length - 1) + ")"
-            }
-          }
-          for (const filtname of step.names) {
-            tooltip = tooltip + "<br>" + filtname
-          }
-          let ch_step: number
-          if (ch_nbr < stages[stages.length - 1].length) {
-            ch_step = stage_start + stages[stages.length - 1][ch_nbr].length
-          } else {
-            ch_step = stage_start + stages[stages.length - 1][0].length
-          }
-          total_length = Math.max(total_length, ch_step)
-          this.appendBlock(
-            labels,
-            boxes,
-            "",
-            null,
-            ch_step * spacing_h - 0.04,
-            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr) - 0.06,
-            2.5,
-            disabled
-          )
-          const io_points = this.appendBlock(
-            labels,
-            boxes,
-            name,
-            tooltip,
-            ch_step * spacing_h,
-            spacing_v * (-active_channels / 2 + 0.5 + ch_nbr),
-            2.5,
-            disabled
-          )
-          if (!disabled) {
-            const src_list = stages[stages.length - 1][ch_nbr]
-            const src_p = src_list[src_list.length - 1].output
-            const dest_p = io_points.input
-            stages[stages.length - 1][ch_nbr].push(io_points)
-            this.appendLink(links, labels, src_p, dest_p, ch_nbr)
-          }
-        }
       }
     }
     const playbackchannels = []
@@ -541,13 +697,18 @@ class PipelinePlot extends React.Component<Props, State> {
       1.5,
       spacing_v * active_channels
     )
+    let pb_params = conf.devices.playback
+    let pb_tooltip = "<strong>Playback device</strong>"
+    for (const [key, value] of Object.entries(pb_params)) {
+      pb_tooltip = pb_tooltip + "<br>" + key + ": " + value
+    }
     for (let n = 0; n < active_channels; n++) {
-      const label = "ch " + n
+      const label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
         label,
-        null,
+        pb_tooltip,
         spacing_h * total_length,
         spacing_v * (-active_channels / 2 + 0.5 + n),
         1,
@@ -562,6 +723,8 @@ class PipelinePlot extends React.Component<Props, State> {
     stages.push(playbackchannels)
     return { labels, boxes, links, max_h, max_v }
   }
+
+
 
   createPipelinePlot() {
     d3.select(`#svg_pipeline`).selectAll('*').remove()
@@ -611,7 +774,7 @@ class PipelinePlot extends React.Component<Props, State> {
       d3.select(node)
         .append("defs")
         .append("marker")
-        .attr("id", "arrow"+ color)
+        .attr("id", "arrow" + color)
         // @ts-ignore
         .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
         .attr("refX", refX)
@@ -626,20 +789,13 @@ class PipelinePlot extends React.Component<Props, State> {
         .attr("d", d3.line()(arrowPoints))
     }
 
-    // A div used to display tooltips
-    var tooltip = d3.select(`#svg_pipeline_div`).append("div")
-      .attr("class", "pipeline-tooltip")
-      .style("opacity", 0)
-      .style("z-index", "100")
-      .style("position", "fixed")
-      .style("user-select", "none")
-
     const rects = d3
       .select(node)
       .selectAll("rect")
       .data(boxes)
       .enter()
       .append("rect")
+      .attr("transform", this.state.zoomTransform)
 
     rects
       .attr("x", d => xScale(d.x))
@@ -651,30 +807,31 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("fill", d => d.fill)
       .style("stroke", d => d.stroke)
       .style("stroke-width", d => d["stroke-width"])
-      .on("mouseover", (event,d) => {
+      .on("mouseover", (event, d) => {
         if (d.tooltip !== null) {
           // This element has a tooltip, add the content and display the tooltip div.
-          tooltip.html(d.tooltip)
-          tooltip.transition()
+          this.tooltip.html(d.tooltip)
+          this.tooltip.transition()
             .duration(500)
             .style("opacity", .9)
         }
         else {
           // This element does not have a tooltip, hide the tooltip div.
-          tooltip.transition()
+          this.tooltip.transition()
             .duration(500)
             .style("opacity", 0)
         }
       })
-      .on("mousemove", (event,d) => {
+      .on("mousemove", (event, d) => {
         // Move the tooltip with the cursor.
-        const tt_node = tooltip.node()
+        const tt_node = this.tooltip.node()
         const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
-        const tt_height = tt_node ? tt_node.getBoundingClientRect().height: 0
-        tooltip
-          .style("left", event.pageX - tt_width/2 + "px")
+        const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
+        console.log(event.pageX, event.pageY)
+        this.tooltip
+          .style("left", event.pageX - tt_width / 2 + "px")
           .style("top", event.pageY - tt_height - 10 + "px")
-        })
+      })
 
     const text = d3
       .select(node)
@@ -683,13 +840,17 @@ class PipelinePlot extends React.Component<Props, State> {
       .enter()
       .append("text")
 
+    let zoom_k = this.state.zoomTransform ? this.state.zoomTransform.k : 1
+    let zoom_x = this.state.zoomTransform ? this.state.zoomTransform.x : 0
+    let zoom_y = this.state.zoomTransform ? this.state.zoomTransform.y : 0
+
     //Add SVG Text Element Attributes
     text
       .text(d => d.text)
       .attr("font-size", d => yScale(d.size) - yScale(0) + "px")
       .attr("fill", d => d.fill)
       .style("text-anchor", "middle")
-      .attr("transform", d => (`translate(${xScale(d.x)},${yScale(d.y)}), rotate(${d.angle})`))
+      .attr("transform", d => (`translate(${zoom_x}, ${zoom_y}), scale(${zoom_k}, ${zoom_k}), translate(${xScale(d.x)},${yScale(d.y)}), rotate(${d.angle})`))
       .attr("font-family", "sans-serif")
 
     d3.select(node)
@@ -702,17 +863,23 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("fill", "none")
       .attr("stroke", d => d.color)
       .attr("stroke-width", yScale(0.03) - yScale(0) + "px")
+      .attr("transform", this.state.zoomTransform)
+
   }
 
+
   render() {
+    let x0 = 0
+    let y0 = 0
+    let width = this.state.width
+    let height = this.state.height
     return <div id="svg_pipeline_div" style={{ width: '90vw', height: '80vh', overflowY: 'auto', overflowX: 'auto' }}>
       <svg
         ref={node => this.node = node}
         id="svg_pipeline"
-        viewBox={`0 0 ${this.state.width} ${this.state.height}`}
-        style={this.props.expand_vertical ? {} : { height: '99%', width: '100%' }}
+        viewBox={`${x0} ${y0} ${width} ${height}`}
+        style={{ height: '99%', width: '100%' }}
       />
-
     </div>
   }
 }
