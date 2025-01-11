@@ -2,7 +2,7 @@
 
 This is the server part of CamillaGUI, a web-based GUI for CamillaDSP.
 
-This version works with CamillaDSP 2.0.x.
+This version works with CamillaDSP 3.0.x.
 
 The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
