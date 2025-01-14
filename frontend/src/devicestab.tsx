@@ -572,6 +572,7 @@ function CaptureOptions(props: {
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
+          showItemKey={true}
           open={popupState}
           header="Select capture device"
           items={availableDevices}
@@ -807,6 +808,7 @@ function PlaybackOptions(props: {
   return <Box title="Playback device">
     <KeyValueSelectPopup
       key="playback select popup"
+      showItemKey={true}
       open={popupState}
       header="Select playback device"
       items={availableDevices}
