@@ -115,6 +115,7 @@ jobs:
 
   pyinstaller_linux:
     runs-on: ubuntu-22.04
+    needs: build_and_test_be
     name: Build pyinstaller package on ${{ matrix.arch }}
 
     strategy:
