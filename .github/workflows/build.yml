@@ -92,3 +92,23 @@ jobs:
         file: camillagui.zip
         asset_name: camillagui.zip
         tag: ${{ github.ref }}
+
+  pyinstaller_win:
+    runs-on: windows-latest
+    needs: build_and_test_be
+    steps:
+    - name: Download complete distribution
+      uses: actions/download-artifact@v4
+      with:
+        name: camillagui-backend
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -r requirements.txt
+    - run: pip install pyinstaller
+    - run: pyinstaller .\main.py --add-data .\config\:config --add-data .\build\:build --collect-data camilladsp_plot --name camillagui_backend
+    - name: Upload build
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: standalone_win
