@@ -110,5 +110,5 @@ jobs:
     - name: Upload build
       uses: actions/upload-artifact@v4
       with:
-        name: dist
-        path: standalone_win
+        name: standalone_win
+        path: dist
