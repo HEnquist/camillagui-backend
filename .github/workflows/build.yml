@@ -134,21 +134,19 @@ jobs:
         id: build
         with:
           arch: ${{ matrix.arch }}
-          distro: ubuntu22.04
+          distro: bookworm
 
           # Mount the artifacts directory as /artifacts in the container
           dockerRunArgs: |
             --volume "${PWD}:/cdsp"
           install: |
-            apt-get update -q -y
-            add-apt-repository ppa:deadsnakes/ppa -y
-            apt update
-            apt install python3.12 -y
+            apt update -y
+            apt install python3 -y
           # 
           # Produce a binary artifact and place it in the mounted volume
           run: |
-            python3.12 -m pip install -r requirements.txt
-            python3.12 -m pip install pyinstaller
+            pip install -r requirements.txt
+            pip install pyinstaller
             cd cdsp
             pyinstaller .\main.py --add-data .\config\:config --add-data .\build\:build --collect-data camilladsp_plot --name camillagui_backend
 
