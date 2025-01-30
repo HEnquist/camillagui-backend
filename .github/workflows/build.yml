@@ -220,8 +220,7 @@ jobs:
             --volume "${PWD}:/cdsp"
           install: |
             apt update -y
-            apt install git python3 python3-pip python3-venv curl make gcc build-essential binutils -y
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            apt install git python3 python3-pip python3-venv curl make gcc build-essential binutils pkg-config -y
           run: |
             source $HOME/.cargo/env
             python3 -m venv ./venv
