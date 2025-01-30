@@ -222,7 +222,6 @@ jobs:
             apt update -y
             apt install git python3 python3-pip python3-venv curl make gcc build-essential binutils pkg-config -y
           run: |
-            source $HOME/.cargo/env
             python3 -m venv ./venv
             ./venv/bin/python3 -m pip config set global.extra-index-url https://www.piwheels.org/simple
             ./venv/bin/python3 -m pip install -r requirements.txt
