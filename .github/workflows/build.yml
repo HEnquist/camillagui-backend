@@ -225,6 +225,7 @@ jobs:
           run: |
             source $HOME/.cargo/env
             python3 -m venv ./venv
+            ./venv/bin/python3 -m pip config set global.extra-index-url=https://www.piwheels.org/simple
             ./venv/bin/python3 -m pip install -r requirements.txt
             ./venv/bin/python3 -m pip install pyinstaller
             ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
