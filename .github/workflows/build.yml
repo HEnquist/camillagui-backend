@@ -93,107 +93,61 @@ jobs:
         asset_name: camillagui.zip
         tag: ${{ github.ref }}
 
-  pyinstaller_win:
-    runs-on: windows-latest
+  pyinstaller_native:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            asset_name: standalone_linux_amd64.zip
+          - os: ubuntu-22.04-arm
+            asset_name: standalone_linux_aarch64.zip
+          - os: windows-latest
+            asset_name: standalone_windows_amd64.zip
+          - os: macos-latest
+            asset_name: standalone_macos_aarch64.zip
+          - os: macos-13
+            asset_name: standalone_macos_intel.zip
     needs: build_and_test_be
     steps:
     - name: Download complete distribution
       uses: actions/download-artifact@v4
       with:
         name: camillagui-backend
+
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
+
     - run: pip install -r requirements.txt
+      name: Install backend dependencies
+
     - run: pip install pyinstaller
-    - run: pyinstaller .\main.py --add-data .\config\:config --add-data .\build\:build --collect-data camilladsp_plot --name camillagui_backend
-    - name: Upload build
+      name: Install pyinstaller
+
+    - name: Bundle app with pyinstaller
+      run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
+
+    - name: Upload build as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: standalone_windows
+        name: ${{ matrix.asset_name }}
         path: dist
 
-  pyinstaller_macos_arm:
-    runs-on: macos-latest
-    needs: build_and_test_be
-    steps:
-    - name: Download complete distribution
-      uses: actions/download-artifact@v4
-      with:
-        name: camillagui-backend
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - run: pip install -r requirements.txt
-    - run: pip install pyinstaller
-    - run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
-    - name: Upload build
-      uses: actions/upload-artifact@v4
-      with:
-        name: standalone_macos_arm
-        path: dist
+    - name: Create zip
+      run: zip -r camillagui_backend.zip ./dist/camillagui_backend
 
-  pyinstaller_linux_amd64:
-    runs-on: ubuntu-22.04
-    needs: build_and_test_be
-    steps:
-    - name: Download complete distribution
-      uses: actions/download-artifact@v4
+    - name: Upload binaries to release
+      if: contains(github.ref, 'refs/tags/')
+      uses: svenstaro/upload-release-action@v2
       with:
-        name: camillagui-backend
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - run: pip install -r requirements.txt
-    - run: pip install pyinstaller
-    - run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
-    - name: Upload build
-      uses: actions/upload-artifact@v4
-      with:
-        name: standalone_linux_amd64
-        path: dist
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: camillagui_backend.zip
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
 
-  pyinstaller_linux_aarch64:
-    runs-on: ubuntu-22.04-arm
-    needs: build_and_test_be
-    steps:
-    - name: Download complete distribution
-      uses: actions/download-artifact@v4
-      with:
-        name: camillagui-backend
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - run: pip install -r requirements.txt
-    - run: pip install pyinstaller
-    - run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
-    - name: Upload build
-      uses: actions/upload-artifact@v4
-      with:
-        name: standalone_linux_aarch64
-        path: dist
-
-  pyinstaller_macos_intel:
-    runs-on: macos-13
-    needs: build_and_test_be
-    steps:
-    - name: Download complete distribution
-      uses: actions/download-artifact@v4
-      with:
-        name: camillagui-backend
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - run: pip install -r requirements.txt
-    - run: pip install pyinstaller
-    - run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
-    - name: Upload build
-      uses: actions/upload-artifact@v4
-      with:
-        name: standalone_macos_intel
-        path: dist
-
-  pyinstaller_linux_arm_qemu:
+  pyinstaller_qemu:
     runs-on: ubuntu-22.04
     needs: build_and_test_be
     name: Build pyinstaller package on ${{ matrix.arch }}
@@ -233,3 +187,15 @@ jobs:
         with:
           name: standalone_linux_${{ matrix.arch }}
           path: dist
+
+      - name: Create zip
+        run: zip -r camillagui_backend.zip ./dist/camillagui_backend
+
+      - name: Upload binaries to release
+        if: contains(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: camillagui_backend.zip
+          asset_name: standalone_linux_${{ matrix.arch }}.zip
+          tag: ${{ github.ref }}
