@@ -94,21 +94,26 @@ jobs:
         tag: ${{ github.ref }}
 
   pyinstaller_native:
-    name: Publish for ${{ matrix.os }}
+    name: Bundle for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-22.04
-            asset_name: standalone_linux_amd64.zip
+            asset_name: bundle_linux_amd64.zip
+            filename: bundle.tar.gz
           - os: ubuntu-22.04-arm
-            asset_name: standalone_linux_aarch64.zip
+            asset_name: bundle_linux_aarch64.zip
+            filename: bundle.tar.gz
           - os: windows-latest
-            asset_name: standalone_windows_amd64.zip
+            asset_name: bundle_windows_amd64.zip
+            filename: bundle.zip
           - os: macos-latest
-            asset_name: standalone_macos_aarch64.zip
+            asset_name: bundle_macos_aarch64.zip
+            filename: bundle.tar.gz
           - os: macos-13
-            asset_name: standalone_macos_intel.zip
+            asset_name: bundle_macos_intel.zip
+            filename: bundle.tar.gz
     needs: build_and_test_be
     steps:
     - name: Download complete distribution
@@ -129,28 +134,32 @@ jobs:
     - name: Bundle app with pyinstaller
       run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
 
-    - name: Upload build as artifact
+    - name: Compress as zip
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: powershell Compress-Archive ./dist/camillagui_backend ${{ matrix.filename }}
+    - name: Compress as tar.gz
+      if: ${{ !contains(matrix.os, 'windows') }}
+      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
+
+    - name: Upload bundle as artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset_name }}
-        path: dist
+        path: ${{ matrix.filename }}
 
-    - name: Create zip
-      run: zip -r camillagui_backend.zip ./dist/camillagui_backend
-
-    - name: Upload binaries to release
+    - name: Upload bundle to release
       if: contains(github.ref, 'refs/tags/')
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: camillagui_backend.zip
+        file: ${{ matrix.filename }}
         asset_name: ${{ matrix.asset_name }}
         tag: ${{ github.ref }}
 
   pyinstaller_qemu:
     runs-on: ubuntu-22.04
     needs: build_and_test_be
-    name: Build pyinstaller package on ${{ matrix.arch }}
+    name: Bundle for ${{ matrix.arch }}
 
     strategy:
       matrix:
@@ -182,20 +191,20 @@ jobs:
             ./venv/bin/python3 -m pip install pyinstaller
             ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
 
-      - name: Upload build
+      - name: Compress as tar.gz
+        run: tar -zcvf bundle.tar.gz -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
+
+      - name: Upload bundle as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: standalone_linux_${{ matrix.arch }}
-          path: dist
+          name: bundle_linux_${{ matrix.arch }}
+          path: bundle.tar.gz
 
-      - name: Create zip
-        run: zip -r camillagui_backend.zip ./dist/camillagui_backend
-
-      - name: Upload binaries to release
+      - name: Upload bundle to release
         if: contains(github.ref, 'refs/tags/')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: camillagui_backend.zip
-          asset_name: standalone_linux_${{ matrix.arch }}.zip
+          file: bundle.tar.gz
+          asset_name: bundle_linux_${{ matrix.arch }}.tar.gz
           tag: ${{ github.ref }}
