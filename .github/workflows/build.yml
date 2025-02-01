@@ -138,7 +138,10 @@ jobs:
       if: ${{ contains(matrix.os, 'windows') }}
       run: powershell Compress-Archive ./dist/camillagui_backend ${{ matrix.filename }}
     - name: Compress as tar.gz
-      if: ${{ !contains(matrix.os, 'windows') }}
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend
+    - name: Compress as tar.gz
+      if: ${{ contains(matrix.os, 'ubuntu') }}
       run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
 
     - name: Upload bundle as artifact
