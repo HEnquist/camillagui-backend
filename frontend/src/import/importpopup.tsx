@@ -89,7 +89,7 @@ function FileList(props: {
   const [fileList, setFileList] = useState<string[]>([])
   useEffect(() => {
     loadFilenames('config').then(files => setFileList(files))
-  })
+  }, [])
   function loadLocalCdspConfig(files: FileList): void {
     const file = files[0]
     importedYamlConfigAsJson(files).then(config => setImportConfig(file.name, config))
