@@ -144,7 +144,7 @@ function ConfigItemSelection(props: {
   import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
-  useEffect(() => {}) //Tooltip.rebuild() })
+  useEffect(() => {}, []) //Tooltip.rebuild() })
   const { currentConfig } = props
   const config = withoutEmptyProperties(props.config)
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
