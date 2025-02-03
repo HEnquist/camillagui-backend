@@ -146,9 +146,9 @@ function ConfigItemSelection(props: {
 }) {
   useEffect(() => {}, []) //Tooltip.rebuild() })
   const { currentConfig } = props
-  const config = withoutEmptyProperties(props.config)
+  const config = props.config as any
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
-  const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
+  const topLevelConfigElements = Object.keys(withoutEmptyProperties(config)).sort(topLevelComparator)
   return <>
     <div style={bottomMargin}>Select what to import</div>
     <div style={bottomMargin}>
