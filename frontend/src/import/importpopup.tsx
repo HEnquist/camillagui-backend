@@ -89,7 +89,7 @@ function FileList(props: {
   const [fileList, setFileList] = useState<string[]>([])
   useEffect(() => {
     loadFilenames('config').then(files => setFileList(files))
-  })
+  }, [])
   function loadLocalCdspConfig(files: FileList): void {
     const file = files[0]
     importedYamlConfigAsJson(files).then(config => setImportConfig(file.name, config))
@@ -144,11 +144,11 @@ function ConfigItemSelection(props: {
   import: (importConfig: ImportedConfig) => void
   cancel: () => void
 }) {
-  useEffect(() => {}) //Tooltip.rebuild() })
+  useEffect(() => {}, []) //Tooltip.rebuild() })
   const { currentConfig } = props
-  const config = withoutEmptyProperties(props.config)
+  const config = props.config as any
   const [configImport, setConfigImport] = useState<Import>(new Import(config))
-  const topLevelConfigElements = Object.keys(config).sort(topLevelComparator)
+  const topLevelConfigElements = Object.keys(withoutEmptyProperties(config)).sort(topLevelComparator)
   return <>
     <div style={bottomMargin}>Select what to import</div>
     <div style={bottomMargin}>
