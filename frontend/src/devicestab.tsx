@@ -558,8 +558,9 @@ function CaptureOptions(props: {
 
   const makeDropdown = () =>
   {
+    // TODO get channel count from wav file
     return <div>
-      {Range(0, 2).map(row => (
+      {Range(0, capture.type !== "WavFile" ? capture.channels : 2).map(row => (
                 <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
                 error={errors.messageFor('labels')}
                 desc={row.toString()}
@@ -567,7 +568,7 @@ function CaptureOptions(props: {
                 onChange={new_label => updateChannelLabel(row, new_label)}/>
             ))}
     </div>
-}
+  }
 
   return <Box title="Capture device">
     <KeyValueSelectPopup

@@ -188,7 +188,7 @@ function MixerView(props: {
   const makeDropdown = () =>
   {
     return <div>
-      {Range(0, 2).map(row => (
+      {Range(0, mixer.channels.out).map(row => (
                 <OptionalTextOption value={mixer.labels && mixer.labels.length > row ? mixer.labels[row] : null } 
                 error={errors.messageFor('labels')}
                 desc={row.toString()}
