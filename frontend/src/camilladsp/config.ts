@@ -726,7 +726,7 @@ export async function maxChannelCount(config: Config, pipelineStepIndex: number)
         const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
         return mixer.channels.out
     }
-    return getCaptureChannelCount(config)
+    return getCaptureDeviceChannelCount(config.devices.capture)
 }
 
 export interface WavInfo {
@@ -749,16 +749,16 @@ async function getWavInfo(filename: string): Promise<WavInfo | null> {
     return null
 }
 
-export async function getCaptureChannelCount(config: Config): Promise<number> {
-    if (config.devices.capture.type === 'WavFile') {
-        const wavInfo = await getWavInfo(config.devices.capture.filename)
+export async function getCaptureDeviceChannelCount(config: CaptureDevice): Promise<number> {
+    if (config.type === 'WavFile') {
+        const wavInfo = await getWavInfo(config.filename)
         if (wavInfo !== null)
             return wavInfo.channels
         else
-            console.log("Cannot get info for wav file, assuming stereo. File:", config.devices.capture.filename)
+            console.log("Cannot get info for wav file, assuming stereo. File:", config.filename)
             return 2
     }
-    return config.devices.capture.channels
+    return config.channels
 }
 
 export function getChannelLabels(config: Config, index: number): (string|null)[]|null {

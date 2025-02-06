@@ -4,7 +4,7 @@ import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
 import { CloseButton, cssStyles } from "../utilities/ui-components"
-import { CaptureDevice, Config, PlaybackDevice, getCaptureChannelCount, getLabelForChannel, Source } from "../camilladsp/config"
+import { CaptureDevice, Config, PlaybackDevice, getCaptureDeviceChannelCount, getLabelForChannel, Source } from "../camilladsp/config"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
 import { MdiButton } from "../utilities/ui-components"
 import { Range } from "immutable"
@@ -142,7 +142,7 @@ class PipelinePlot extends React.Component<Props, State> {
     this.disabledBlockBgColor = styles.getPropertyValue('--disabled-block-background-color')
     this.blockTextColor = styles.getPropertyValue('--block-text-color')
     this.disabledBlockTextColor = styles.getPropertyValue('--disabled-block-text-color')
-    getCaptureChannelCount(this.props.config).then(channels => {
+    getCaptureDeviceChannelCount(this.props.config.devices.capture).then(channels => {
       this.setState({ capture_channels: channels })
     })
     this.createPipelinePlot()

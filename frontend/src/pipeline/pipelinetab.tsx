@@ -24,7 +24,7 @@ import {
   filterNamesOf,
   Filters,
   FilterStep,
-  getCaptureChannelCount,
+  getCaptureDeviceChannelCount,
   getChannelLabels,
   maxChannelCount,
   mixerNamesOf,
@@ -69,7 +69,7 @@ export class PipelineTab extends React.Component<{
     }
   }
   componentDidMount() {
-    getCaptureChannelCount(this.props.config).then(channels => this.setState({ capture_channels: channels }))
+    getCaptureDeviceChannelCount(this.props.config.devices.capture).then(channels => this.setState({ capture_channels: channels }))
   }
 
   updatePipeline = (update: Update<Pipeline>) =>

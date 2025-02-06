@@ -12,6 +12,7 @@ import {
   defaultSincResampler,
   Devices,
   Formats,
+  getCaptureDeviceChannelCount,
   PlaybackDevice,
   Resampler,
   ResamplerType,
@@ -502,6 +503,7 @@ function CaptureOptions(props: {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
   let [expanded, setExpanded] = useState(false)
+  const [channels, setChannels] = useState(props.capture.type !== "WavFile" ? props.capture.channels : 2);
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
@@ -556,11 +558,14 @@ function CaptureOptions(props: {
       devices.capture.labels = labels)
   }
 
+  useEffect(() => {
+    getCaptureDeviceChannelCount(props.capture).then(nbr => setChannels(nbr));
+  }, [capture]);
+
   const makeDropdown = () =>
   {
-    // TODO get channel count from wav file
     return <div>
-      {Range(0, capture.type !== "WavFile" ? capture.channels : 2).map(row => (
+      {Range(0, channels).map(row => (
                 <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
                 error={errors.messageFor('labels')}
                 desc={row.toString()}
