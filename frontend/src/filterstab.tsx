@@ -934,7 +934,7 @@ class FilterParams extends React.Component<{
       unit: {
         type: "enum",
         desc: "unit",
-        options: ["ms", "samples"],
+        options: ["ms", "us", "mm", "samples"],
         tooltip: "Unit for delay",
       },
       values: {

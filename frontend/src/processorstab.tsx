@@ -239,6 +239,9 @@ const defaultParameters: {
     NoiseGate: {
         Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, attenuation: 20.0 },
     },
+    RACE: {
+        Default: { channels: 2, channel_a: 0, channel_b: 1, delay: 80, delay_unit: "us", subsample_delay: false, attenuation: 3.0 },
+    },
 }
 
 class ProcessorParams extends React.Component<{
@@ -254,6 +257,8 @@ class ProcessorParams extends React.Component<{
         this.renderProcessorParams = this.renderProcessorParams.bind(this)
         this.setMonitor = this.setMonitor.bind(this)
         this.setProcess = this.setProcess.bind(this)
+        this.setChannelA = this.setChannelA.bind(this)
+        this.setChannelB = this.setChannelB.bind(this)
         this.onParamChange = this.onParamChange.bind(this)
     }
 
@@ -294,6 +299,20 @@ class ProcessorParams extends React.Component<{
             processor.parameters.process_channels = channels
         })
     }
+    private setChannelA(channels: number[]|null) {
+        if (channels !== null) {
+            this.props.updateProcessor(processor => {
+                processor.parameters.channel_a = channels[0]
+            })
+        }
+    }
+    private setChannelB(channels: number[]|null) {
+        if (channels !== null) {
+            this.props.updateProcessor(processor => {
+                processor.parameters.channel_b = channels[0]
+            })
+        }
+    }
 
 
 
@@ -322,13 +341,29 @@ class ProcessorParams extends React.Component<{
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} labels={labels}/>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} multiSelect={true} labels={labels}/>
                 </label>
                 <label className="setting">
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} labels={labels}/>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} multiSelect={true} labels={labels}/>
+                </label>
+                </div>
+            }
+            {processor.type === "RACE" &&
+                <div>
+                <label className="setting">
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channel A" data-tooltip-id="main-tooltip">channel_a</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={[processor.parameters.channel_a]} setChannels={this.setChannelA} multiSelect={false} labels={labels}/>
+                </label>
+                <label className="setting">
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channel B" data-tooltip-id="main-tooltip">channel_b</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={[processor.parameters.channel_b]} setChannels={this.setChannelB} multiSelect={false} labels={labels}/>
                 </label>
                 </div>
             }
@@ -366,16 +401,21 @@ class ProcessorParams extends React.Component<{
                 return <FloatListOption {...commonProps} />
             if (info.type === 'optional_float')
                 return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
+            if (info.type === 'enum') {
+                let options = info.options!
+                return <EnumOption {...commonProps} key={commonProps.key} options={options} />
+            }
             return null
         })
     }
 
     parameterInfos: {
         [type: string]: {
-            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_float'
+            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_float' | 'enum'
             desc: string
             tooltip: string
             placeholder?: string
+            options?: string[]
         }
     } = {
             attack: {
@@ -415,5 +455,17 @@ class ProcessorParams extends React.Component<{
                 tooltip: "Makeup gain in dB",
             },
             soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
+            delay: {
+                type: "float",
+                desc: "delay",
+                tooltip: "RACE delay"
+            },
+            subsample_delay: { type: "bool", desc: "subsample_delay", tooltip: "Enable subsample delay" },
+            delay_unit: {
+                type: "enum",
+                desc: "delay_unit",
+                options: ["ms", "us", "mm", "samples"],
+                tooltip: "Unit for delay"
+            }
         }
 }

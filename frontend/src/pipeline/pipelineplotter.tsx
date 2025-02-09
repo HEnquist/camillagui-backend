@@ -531,7 +531,7 @@ class PipelinePlot extends React.Component<Props, State> {
         for (let m = 0; m < active_channels; m++) {
           procchannels.push([])
           let label = m.toString()
-          if (procconf.type === "Compressor") {
+          if (procconf.type === "Compressor" || procconf.type === "NoiseGate") {
             const is_m = procconf.parameters.monitor_channels === null || procconf.parameters.monitor_channels.includes(m)
             const is_p = procconf.parameters.process_channels === null || procconf.parameters.process_channels.includes(m)
             if (is_m && is_p) {
@@ -542,6 +542,17 @@ class PipelinePlot extends React.Component<Props, State> {
             }
             else if (is_p) {
               label = label + ": P"
+            }
+            else {
+              label = label + ": pass"
+            }
+          }
+          if (procconf.type === "RACE") {
+            if (procconf.parameters.channel_a === m) {
+              label = label + ": A"
+            }
+            else if (procconf.parameters.channel_b === m) {
+              label = label + ": B"
             }
             else {
               label = label + ": pass"
