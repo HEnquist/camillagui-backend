@@ -100,19 +100,19 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            asset_name: bundle_linux_amd64.zip
+            asset_name: bundle_linux_amd64.tar.gz
             filename: bundle.tar.gz
           - os: ubuntu-22.04-arm
-            asset_name: bundle_linux_aarch64.zip
+            asset_name: bundle_linux_aarch64.tar.gz
             filename: bundle.tar.gz
           - os: windows-latest
             asset_name: bundle_windows_amd64.zip
             filename: bundle.zip
           - os: macos-latest
-            asset_name: bundle_macos_aarch64.zip
+            asset_name: bundle_macos_aarch64.tar.gz
             filename: bundle.tar.gz
           - os: macos-13
-            asset_name: bundle_macos_intel.zip
+            asset_name: bundle_macos_intel.tar.gz
             filename: bundle.tar.gz
     needs: build_and_test_be
     steps:
