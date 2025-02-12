@@ -8,8 +8,41 @@ The complete GUI is made up of two parts:
 - a frontend based on React: https://reactjs.org/
 - a backend based on AIOHTTP: https://docs.aiohttp.org/en/stable/
 
-## Setting up
-### Install gui server
+## Download a complete bundle
+The easiest way to run the gui is to download and run one of the published bundles.
+These contain the gui backend server, the frontend files,
+and a complete Python environment.
+Bundles are provided for most common systems and cpu architectures.
+
+### Downloading the bundled gui
+Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
+Download the bundle for you system, for example "bundle_linux_amd64.tar.gz"
+for a linux system running an AMD or Intel cpu.
+Uncompress the archive to a directory of your choice.
+A suggestion is to create a directory named `camilladsp`
+in you home directory, and place the `camillagui_backend` in it.
+Also create directories named `configs` and `coeffs` in the `camilladsp` directory.
+
+### Configureing the bundled gui
+The gui configuration is stored in the bundle,
+at `camillagui_backend/_internal/config/camillagui.yml`.
+See [Configuration](#configuration) for an explanation of the options.
+The default confuguration uses the `configs` and `coeffs` directories
+created in the previous step, but these locations can be changed by
+editing the configuration file.
+
+### Running the bundled gui
+The archive contains a directory called `camillagui_backend`.
+Inside this directory there is an executable named `camillagui_backend`
+(or `camillagui_backend.exe` on windows).
+Run this executable to start the gui backend.
+
+## Setting up a in a Python environment
+This option sets up the gui backend in a Python environment.
+This gives more flexibility to customize the system,
+for example to develop Python scrips that use the pycamilladsp library.
+
+### Download the gui server
 Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
 Download the zip-file ("camillagui.zip") for the latest release. This includes both the backend and the frontend.
 
@@ -72,7 +105,8 @@ network interface(s) and/or to set your firewall to block external (internet) ac
 
 The `ssl_certificate` and `ssl_private_key` options are used to configure SSL, to enable HTTPS.
 Both a certificate and a private key are required.
-The values for `ssl_certificate` and `ssl_private_key` should then be the paths to the files containing the certificate and key.
+The values for `ssl_certificate` and `ssl_private_key` should then be
+the paths to the files containing the certificate and key.
 It's also possible to keep both certificate and key in a single file.
 In that case, provide only `ssl_certificate`.
 See the [Python ssl documentation](https://docs.python.org/3/library/ssl.html#ssl-certificates)
@@ -92,12 +126,14 @@ If you want to be able to view the log file in the GUI, configure CamillaDSP to 
 The active config file path is memorized via the CamillaDSP state file.
 Set the `statefile_path` to point at the statefile that the CamillaDSP process uses.
 For this to work, CamillaDSP must be running with a statefile.
-That is achieved by starting it with the `-s` parameter, giving the same path to the statefile as in `camillagui.yml`:
+That is achieved by starting it with the `-s` parameter,
+giving the same path to the statefile as in `camillagui.yml`:
 ```sh
 camilladsp -p 1234 -w -s /path/to/statefile.yml
 ```
 
-If the CamillaDSP process is running, the active config file path will be fetched by querying the running process.
+If the CamillaDSP process is running, the active config file path
+will be fetched by querying the running process.
 If its not running, it will instead be read directly from the statefile.
 
 The active config will be loaded into the web interface when it is opened.
@@ -231,10 +267,24 @@ ERROR:root:Parameter 'custom_shortcuts/0/shortcuts/1/range_from': 'hello' is not
 ```
 
 ## Running
-Start the server with:
+If using the bundle, start the server by changing to the directory
+containing the executable and run running it.
+Linux and macOS:
+```sh
+./camillagui_backend
+```
+```sh
+camillagui_backend.exe
+```
+On windows it is also possible to start by double-clicking the .exe-file.
+
+For a Python environment, the command for starting the server is:
 ```sh
 python main.py
 ```
+
+All methods of starting the server accept the same command line arguments,
+and running with `--help` shows the available arguments.
 
 The gui should now be available at: http://localhost:5005/gui/index.html
 
