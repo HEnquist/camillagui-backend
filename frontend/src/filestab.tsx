@@ -1,5 +1,15 @@
 import React, {Component} from "react"
-import {Box, Button, MdiButton, UploadButton, fileDateSort, fileNameSort, fileTitleSort, fileValidSort} from "./utilities/ui-components"
+import {
+  Box,
+  Button,
+  ErrorBoundary,
+  fileDateSort,
+  fileNameSort,
+  fileTitleSort,
+  fileValidSort,
+  MdiButton,
+  UploadButton
+} from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
 import {
   mdiAlertCircle,
@@ -7,6 +17,7 @@ import {
   mdiContentSave,
   mdiDelete,
   mdiDownload,
+  mdiPencil,
   mdiRefresh,
   mdiStar,
   mdiStarOutline,
@@ -14,19 +25,20 @@ import {
 } from '@mdi/js'
 import {Config, defaultConfig} from "./camilladsp/config"
 import {
+  doUpload,
+  download,
   FileInfo,
-  doUpload, download,
   fileNamesOf,
+  fileStatusDesc,
   loadActiveConfig,
   loadConfigJson,
   loadDefaultConfigJson,
-  loadFiles,
-  fileStatusDesc
+  loadFiles
 } from "./utilities/files"
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
 import DataTable from 'react-data-table-component'
-import { isEqual } from "lodash"
+import {isEqual} from "lodash"
 
 const CURRENT_VERSION = 3
 
@@ -40,25 +52,32 @@ export function Files(props: {
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
 }) {
-  return <div className="tabcontainer"><div className="wide-tabpanel" style={{ width: '900px' }}>
-    <NewConfig currentConfig={props.config}
-               setCurrentConfig={props.setCurrentConfig}
-               updateConfig={props.updateConfig}/>
-    <FileTable title='Configs'
-               type="config"
-               currentConfigFile={props.currentConfigFile}
-               config={props.config}
-               setCurrentConfig={props.setCurrentConfig}
-               setCurrentConfigFileName={props.setCurrentConfigFileName}
-               saveNotify={props.saveNotify}
-               canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
-    <FileTable title='Filters' type="coeff"/>
-  </div><div className="tabspacer"></div></div>
+  return <ErrorBoundary>
+    <div className="tabcontainer">
+      <div className="wide-tabpanel" style={{ width: '900px' }}>
+        <NewConfig currentConfig={props.config}
+                   setCurrentConfig={props.setCurrentConfig}
+                   updateConfig={props.updateConfig}/>
+        <FileTable title='Configs'
+                   type="config"
+                   currentConfigFile={props.currentConfigFile}
+                   config={props.config}
+                   setCurrentConfig={props.setCurrentConfig}
+                   setCurrentConfigFileName={props.setCurrentConfigFileName}
+                   saveNotify={props.saveNotify}
+                   canUpdateActiveConfig={props.guiConfig.can_update_active_config}/>
+        <FileTable title='Filters' type="coeff"/>
+      </div>
+      <div className="tabspacer"/>
+    </div>
+  </ErrorBoundary>
 }
+
+type FileType = "config" | "coeff"
 
 interface FileTableProps {
   title: string
-  type: "config" | "coeff"
+  type: FileType
   currentConfigFile?: string
   config?: Config
   canUpdateActiveConfig?: boolean
@@ -67,7 +86,7 @@ interface FileTableProps {
   saveNotify?: () => void
 }
 
-type FileAction = 'load' | 'save' | 'upload'
+type FileAction = 'load' | 'save' | 'upload' | 'rename'
 const EMPTY_FILENAME = '' // used only for FileAction 'upload'
 type FileStatus =
     {
@@ -94,8 +113,7 @@ class FileTable extends Component<
       filterText: string
     }> {
 
-  private readonly type: "config" | "coeff" = this.props.type
-  private readonly canLoadAndSave: boolean = this.type === "config"
+  private readonly type: FileType = this.props.type
 
   constructor(props: FileTableProps) {
     super(props)
@@ -110,6 +128,7 @@ class FileTable extends Component<
     this.loadConfig = this.loadConfig.bind(this)
     this.setSelected = this.setSelected.bind(this)
     this.showErrorMessage = this.showErrorMessage.bind(this)
+    this.rename = this.rename.bind(this)
     this.state = {
       files: [],
       selectedFiles: [],
@@ -175,14 +194,10 @@ class FileTable extends Component<
         this.type,
         files,
         () => {
-          this.setState({
-            fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: true}
-          })
+          this.showSuccess(EMPTY_FILENAME, 'upload')
           this.update()
         },
-        message => this.setState({
-          fileStatus: {filename: EMPTY_FILENAME, action: 'upload', success: false, statusText: message}
-        })
+        message => this.showErrorMessage(EMPTY_FILENAME, 'upload', message)
     )
   }
 
@@ -190,10 +205,14 @@ class FileTable extends Component<
     try {
       const jsonConfig = await loadConfigJson(name, reason => this.showErrorMessage(name, 'load', reason))
       this.props.setCurrentConfig!(name, jsonConfig as Config)
-      this.setState({fileStatus: {filename: name, action: 'load', success: true}})
+      this.showSuccess(name, 'load')
     } catch(e) {
       this.showErrorMessage(name, 'load', e as string)
     }
+  }
+
+  private showSuccess(filename: string, action: FileAction) {
+    this.setState({fileStatus: {filename, action, success: true}})
   }
 
   private showErrorMessage(filename: string, action: FileAction, errorMessage: string) {
@@ -242,7 +261,7 @@ class FileTable extends Component<
       })
       if (response.ok) {
         setCurrentConfig!(name, config!)
-        this.setState({fileStatus: {filename: name, action: 'save', success: true}})
+        this.showSuccess(name, 'save')
         if (this.props.saveNotify !== undefined)
           this.props.saveNotify()
         this.update()
@@ -251,16 +270,64 @@ class FileTable extends Component<
         this.showErrorMessage(name, 'save', message)
       }
     } catch (e) {
-      let err = e as Error
+      const err = e as Error
       this.showErrorMessage(name, 'save', err.message)
     }
   }
 
+  private async rename(filename: string, type: 'coeff' | 'config') {
+    const newName = window.prompt(`Enter a new name for ${filename}`)
+    if (!newName) return
+    try {
+      const response = await fetch(`/api/rename${type}?source=${encodeURIComponent(filename)}&target=${encodeURIComponent(newName)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", }
+      })
+      if (response.ok) {
+        this.showSuccess(newName, 'rename')
+        this.update()
+      } else {
+        const message = await response.text();
+        console.log("Error: " + message)
+        this.showErrorMessage(filename, 'rename', message)
+      }
+    } catch (e) {
+      const error = e as Error
+      this.showErrorMessage(filename, 'rename', error.message)
+    }
+  }
 
   render() {
     const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName, filterText} = this.state
-    var columns: any = []
-    if (this.canLoadAndSave) {
+    let columns: any = []
+    if (this.type === "coeff") {
+      columns.push({
+        name: '',
+        cell: (row: FileInfo, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
+          <RenameButton
+              key={'rename'+id}
+              filename={row.name}
+              fileStatus={fileStatus}
+              rename={() => this.rename(row.name, 'coeff')}/>
+        </div>),
+        sortable: false,
+        compact: true,
+        width: '42px'
+      })
+      columns.push(
+        {
+          name: 'Filename',
+          cell: (row: FileInfo, index: number, column: number, id: any) => (<div>
+            <FileDownloadLink type={this.type} filename={row.name} isCurrentConfig={false}/>
+            <FileStatusMessage filename={row.name} fileStatus={fileStatus} type={this.type}/>
+          </div>),
+          sortFunction: fileNameSort,
+          sortable: true,
+          grow: 1,
+          compact: true
+        }
+      )
+    } else if (this.type === "config") {
       columns.push({
         name: '',
         cell: (row: FileInfo, index: number, column: number, id: any) => (<div style={{ display: 'flex', flexDirection: 'row'}}>
@@ -275,6 +342,11 @@ class FileTable extends Component<
               filename={row.name}
               fileStatus={fileStatus}
               saveConfig={this.overwriteConfig}/>
+          <RenameButton
+              key={'rename'+id}
+              filename={row.name}
+              fileStatus={fileStatus}
+              rename={() => this.rename(row.name, 'config')}/>
           <LoadButton
               key={'load'+id}
               filename={row.name}
@@ -282,39 +354,18 @@ class FileTable extends Component<
               valid={row.valid}
               for_version={row.version}
               loadConfig={this.loadConfig}/>
-          </div>),
+        </div>),
         sortable: false,
         compact: true,
-        width: '125px'
+        width: '150px'
       })
-    }
-    if (this.props.type === "coeff") {
       columns.push(
         {
           name: 'Filename',
-          cell: (row: FileInfo, index: number, column: number, id: any) => (
-            FileDownloadLink({
-                type: this.props.type,
-                filename: row.name,
-                isCurrentConfig: false
-            })),
-          sortFunction: fileNameSort,
-          sortable: true,
-          grow: 1,
-          compact: true
-        }
-      )
-    }
-    else if (this.props.type === "config") {
-      columns.push(
-        {
-          name: 'Filename',
-          cell: (row: FileInfo, index: number, column: number, id: any) => (
-            FileDownloadLink({
-                type: this.props.type,
-                filename: row.name,
-                isCurrentConfig: false
-            })),
+          cell: (row: FileInfo, index: number, column: number, id: any) => (<div>
+            <FileDownloadLink type={this.type} filename={row.name} isCurrentConfig={row.name === this.props.currentConfigFile}/>
+            <FileStatusMessage filename={row.name} fileStatus={fileStatus} type={this.type}/>
+          </div>),
           sortFunction: fileNameSort,
           sortable: true,
           width: '250px',
@@ -396,13 +447,13 @@ class FileTable extends Component<
             onChange={(e) => this.setState({filterText: e.target.value})}/>
           </div>
           <div>
-            <FileStatusMessage filename={EMPTY_FILENAME} fileStatus={fileStatus}/>
+            <FileStatusMessage filename={EMPTY_FILENAME} fileStatus={fileStatus} type={this.type}/>
           </div>
 
           <DataTable columns={columns} data={filteredFiles} selectableRows theme='camilla' onSelectedRowsChange={this.setSelected}/>
 
           { // "Save to new config" row
-            this.canLoadAndSave && <>
+            this.type === "config" && <>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
               <SaveButton
                 disableReason={reasonToDisableSaveNewFileButton(newFileName, files)}
@@ -415,7 +466,7 @@ class FileTable extends Component<
                      data-tooltip-id="main-tooltip"
                      spellCheck='false'
                      onChange={(e) => this.setState({newFileName: e.target.value})}/>
-              <FileStatusMessage filename={newFileName} fileStatus={fileStatus}/>
+              <FileStatusMessage filename={newFileName} fileStatus={fileStatus} type={this.type}/>
             </div>
           </>
           }
@@ -521,6 +572,26 @@ function SaveButton(
       onClick={() => saveConfig(filename)}/>
 }
 
+function RenameButton(props: {
+  filename: string
+  fileStatus: FileStatus | null
+  rename: () => void
+}) {
+  const {filename, fileStatus, rename} = props
+  let renameIcon: { icon: string, className?: string } =
+      {icon: mdiPencil}
+  if (fileStatus !== null && fileStatus.action === 'rename' && fileStatus.filename === filename) {
+    renameIcon = fileStatus.success ?
+        {icon: mdiCheck, className: 'success-text'}
+        : {icon: mdiAlertCircle, className: 'error-text'}
+  }
+  return <MdiButton
+      icon={renameIcon.icon}
+      className={renameIcon.className}
+      tooltip={`Rename ${filename}`}
+      onClick={rename}/>
+}
+
 function LoadButton(
     props: {
       filename: string,
@@ -570,11 +641,15 @@ function FileDownloadLink(props: { type: string, filename: string, isCurrentConf
   </a>
 }
 
-function FileStatusMessage(props: { filename: string, fileStatus: FileStatus | null }) {
-  const {fileStatus, filename} = props
+function FileStatusMessage(props: {
+  filename: string
+  fileStatus: FileStatus | null
+  type: FileType
+}) {
+  const {fileStatus, filename, type} = props
   if (fileStatus && !fileStatus.success && fileStatus.filename === filename)
     return <div className={fileStatus.success ? 'success-text' : 'error-text'}>
-      Could not {fileStatus.action} config:<br/>
+      Could not {fileStatus.action} {type}:<br/>
       {fileStatus.statusText}
     </div>
   else

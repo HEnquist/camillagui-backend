@@ -1,46 +1,55 @@
+import { isEqual } from "lodash"
+
 export type Path = (string|number)[]
+export type Error = [Path, string] // Path in config + error message
 
-export interface ErrorsForPath{
-    (p: {path: Path, includeChildren?: boolean}): string | undefined
-}
+export class Errors {
 
-export const noErrors: ErrorsForPath =
-    () => undefined
+    private errors: Array<Error>
 
-export function errorsOf(errorList: Array<[Path, string]>): ErrorsForPath {
-    return (p :{path: Path, includeChildren?: boolean}): string | undefined => {
-        const {path, includeChildren} = p
-        const filter = includeChildren ?
-            (item: Path) => startsWith(item, path)
-            : (item: Path) => equals(item, path)
-        const text = errorList
-            .filter(entry => filter(entry[0]))
-            .map(entry => entry[1])
+    constructor(errors: Array<Error> = []) {
+        this.errors = errors
+    }
+
+    hasErrors(): boolean {
+        return this.errors.length > 0
+    }
+
+    hasErrorsFor(...path: Path) {
+        return this.forSubpath(...path).hasErrors()
+    }
+
+    forSubpath(...prefix: Path): Errors {
+        if (prefix.length === 0)
+            return this
+        return new Errors(
+            this.errors.filter(([path, _]) => path.length > 0 && path[0] === prefix[0])
+                .map(([path, message]) => [path.slice(1), message])
+        ).forSubpath(...prefix.slice(1))
+    }
+
+    rootMessage(): string | undefined {
+        const messages = this.errors.filter(([path, _]) => isEqual(path, []))
+            .map(([_, message]) => message);
+        return messages.length === 0 ?
+            undefined
+            : messages.join('\n')
+    }
+
+    messageFor(...path: Path): string | undefined {
+        return this.forSubpath(...path).rootMessage()
+    }
+
+    asText(): string {
+        return this.errors.map(error => this.formattedError(error))
             .join('\n')
-        return text.length > 0 ? text : undefined
+    }
+
+    private formattedError(error: Error): string {
+        const [path, message] = error
+        const formattedPath = path.length === 0 ? '' : path.join('|') + ": "
+        return formattedPath + message
     }
 }
 
-function equals(a1: Path, a2: Path) {
-    if (a1.length !== a2.length)
-        return false
-    for (let i = 0, l=a2.length; i < l; i++)
-        if (a1[i] !== a2[i])
-            return false
-    return true
-}
-
-function startsWith(path: Path, prefix: Path) {
-    if (path.length < prefix.length)
-        return false
-    for (let i = 0, l=prefix.length; i < l; i++)
-        if (path[i] !== prefix[i])
-            return false
-    return true
-}
-
-export function errorsForSubpath(errors: ErrorsForPath, ...prefix: Path): ErrorsForPath {
-    return (p :{path: Path, includeChildren?: boolean}): string | undefined => {
-        return errors({path: prefix.concat(p.path), includeChildren: p.includeChildren})
-    }
-}
+export const NoErrors = new Errors()

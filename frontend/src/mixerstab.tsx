@@ -17,7 +17,8 @@ import {
   null_to_default,
   FloatInput,
   MatrixCell,
-  cssStyles
+  cssStyles,
+  ErrorBoundary
 } from "./utilities/ui-components"
 import {
   Config,
@@ -37,7 +38,7 @@ import {
   getLabelForChannel2,
 } from "./camilladsp/config"
 import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus, mdiVolumeHigh, mdiArrowDown, mdiArrowLeft} from "@mdi/js"
-import {ErrorsForPath, errorsForSubpath} from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
 
@@ -48,7 +49,7 @@ const invertedCellColor = styles.getPropertyValue("--inverted-cell-color")
 
 export class MixersTab extends React.Component<{
   config: Config
-  errors: ErrorsForPath
+  errors: Errors
   updateConfig: (update: Update<Config>) => void
 }, {
   mixerKeys: { [name: string]: number}
@@ -123,9 +124,10 @@ export class MixersTab extends React.Component<{
   render() {
     const {config, errors} = this.props
     const mixers = config.mixers ? config.mixers : {}
-    return (
-      <div className="tabcontainer"><div className="tabpanel" style={{width: '700px'}}>
-          <ErrorMessage message={errors({path: []})}/>
+    return <ErrorBoundary errorMessage={errors.asText()}>
+      <div className="tabcontainer">
+        <div className="tabpanel" style={{width: '700px'}}>
+          <ErrorMessage message={errors.rootMessage()}/>
           {this.mixerNames()
               .map(name =>
                   <MixerView
@@ -133,7 +135,7 @@ export class MixersTab extends React.Component<{
                       name={name}
                       mixer={mixers[name]}
                       config={config}
-                      errors={errorsForSubpath(errors, name)}
+                      errors={errors.forSubpath(name)}
                       update={update => this.updateMixer(name, update)}
                       isFreeMixerName={this.isFreeMixerName}
                       rename={newName => this.renameMixer(name, newName)}
@@ -144,8 +146,10 @@ export class MixersTab extends React.Component<{
           <div>
             <AddButton tooltip="Add a new mixer" onClick={this.addMixer}/>
           </div>
-        </div><div className="tabspacer"></div></div>
-    )
+        </div>
+        <div className="tabspacer"></div>
+      </div>
+    </ErrorBoundary>
   }
 }
 
@@ -153,7 +157,7 @@ function MixerView(props: {
   name: string
   mixer: Mixer
   config: Config
-  errors: ErrorsForPath
+  errors: Errors
   isFreeMixerName: (name: string) => boolean
   rename: (newName: string) => void
   remove: () => void
@@ -196,7 +200,7 @@ function MixerView(props: {
           onClick={remove}/>
     </>
   }>
-    <ErrorMessage message={errors({path: []})}/>
+    <ErrorMessage message={errors.rootMessage()}/>
     <div style={{display: 'flex', justifyContent: 'space-evenly'}}>
       <IntOption
           value={mixer.channels.in}
@@ -225,12 +229,12 @@ function MixerView(props: {
             })
           }/>
     </div>
-    <ErrorMessage message={errors({path: ['channels']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'in']})}/>
-    <ErrorMessage message={errors({path: ['channels', 'out']})}/>
+    <ErrorMessage message={errors.messageFor('channels')} />
+    <ErrorMessage message={errors.messageFor('channels', 'in')} />
+    <ErrorMessage message={errors.messageFor('channels', 'out')} />
     <MappingMatrix
             mixer={mixer}
-            errors={errorsForSubpath(errors, 'mapping', 0)}
+            errors={errors}
             channels={mixer.channels}
             update={mixerUpdate => update(mixer => mixerUpdate(mixer))}
             remove={() => update(mixer => mixer.mapping.splice(0, 1))}
@@ -322,7 +326,7 @@ function pruneMixer(mixer: Mixer) {
 
 function MappingMatrix(props: {
   mixer: Mixer
-  errors: ErrorsForPath
+  errors: Errors
   channels: { in: number, out: number }
   remove: () => void
   update: (update: Update<Mixer>) => void
@@ -435,7 +439,7 @@ function MappingMatrix(props: {
   </div>
 }
 
-const makeDropdown = (cell: Source, src: number, dest: number, errors: ErrorsForPath, update: any, remove: any, close: any) => {
+const makeDropdown = (cell: Source, src: number, dest: number, errors: Errors, update: any, remove: any, close: any) => {
   return <div className="dropdown-menu" style={{borderColor: cssColorAt(cell)}}title='channels' >
       <SourceCell source={cell} errors={errors} update={update} remove={remove} close={close}/>
   </div>
@@ -443,7 +447,7 @@ const makeDropdown = (cell: Source, src: number, dest: number, errors: ErrorsFor
 
 function SourceCell(props: {
   source: Source
-  errors: ErrorsForPath
+  errors: Errors
   update: (update: Update<Source>) => void
   remove: () => void
   close: () => void
@@ -488,7 +492,7 @@ function SourceCell(props: {
             buttonSize="small"
             onClick={remove}/>
       </div>
-    <ErrorMessage message={errors({path: [], includeChildren: true})}/>
+    <ErrorMessage message={errors.rootMessage()}/>
     </div>
   </>
 }

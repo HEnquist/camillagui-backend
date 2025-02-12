@@ -27,15 +27,16 @@ import {
     OptionalTextOption,
     ParsedInput,
     TextOption,
+    ErrorBoundary,
 } from "./utilities/ui-components"
-import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
     {
         config: Config
         updateConfig: (update: Update<Config>) => void
-        errors: ErrorsForPath
+        errors: Errors
     },
     {
         processorKeys: { [name: string]: number }
@@ -62,8 +63,6 @@ export class ProcessorsTab extends React.Component<
         }
         this.processorNames().forEach((name, i) => this.state.processorKeys[name] = i)
     }
-
-    //private timer = delayedExecutor(2000)
 
     private processorNames(): string[] {
         return sortedProcessorNamesOf(this.props.config.processors, this.state.sortBy, this.state.sortReverse)
@@ -127,40 +126,44 @@ export class ProcessorsTab extends React.Component<
     render() {
         let { config, errors } = this.props
         let processors = config.processors ? config.processors : {}
-        return <div>
-            <div className="horizontally-spaced-content" style={{ width: '700px' }}>
-                <EnumOption
-                    value={this.state.sortBy}
-                    options={ProcessorSortKeys}
-                    desc="Sort processors by"
-                    tooltip="Property used to sort processors"
-                    onChange={this.changeSortBy} />
-                <BoolOption
-                    value={this.state.sortReverse}
-                    desc="Reverse order"
-                    tooltip="Reverse display order"
-                    onChange={this.changeSortOrder} />
+        return <ErrorBoundary errorMessage={errors.asText()}>
+            <div>
+                <div className="horizontally-spaced-content" style={{ width: '700px' }}>
+                    <EnumOption
+                        value={this.state.sortBy}
+                        options={ProcessorSortKeys}
+                        desc="Sort processors by"
+                        tooltip="Property used to sort processors"
+                        onChange={this.changeSortBy} />
+                    <BoolOption
+                        value={this.state.sortReverse}
+                        desc="Reverse order"
+                        tooltip="Reverse display order"
+                        onChange={this.changeSortOrder} />
+                </div>
+                <div className="tabcontainer">
+                    <div className="tabpanel-with-header" style={{ width: '700px' }}>
+                        <ErrorMessage message={errors.rootMessage()} />
+                        {this.processorNames()
+                            .map(name =>
+                                <ProcessorView
+                                    key={this.state.processorKeys[name]}
+                                    name={name}
+                                    processor={processors[name]}
+                                    config={config}
+                                    errors={errors.forSubpath(name)}
+                                    updateProcessor={update => this.updateProcessor(name, update)}
+                                    rename={newName => this.renameProcessor(name, newName)}
+                                    isFreeProcessorName={this.isFreeProcessorName}
+                                    remove={() => this.removeProcessor(name)}
+                                />
+                            )}
+                        <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
+                    </div>
+                    <div className="tabspacer"/>
+                </div>
             </div>
-            <div className="tabcontainer">
-            <div className="tabpanel-with-header" style={{ width: '700px' }}>
-                <ErrorMessage message={errors({ path: [] })} />
-                {this.processorNames()
-                    .map(name =>
-                        <ProcessorView
-                            key={this.state.processorKeys[name]}
-                            name={name}
-                            processor={processors[name]}
-                            config={config}
-                            errors={errorsForSubpath(errors, name)}
-                            updateProcessor={update => this.updateProcessor(name, update)}
-                            rename={newName => this.renameProcessor(name, newName)}
-                            isFreeProcessorName={this.isFreeProcessorName}
-                            remove={() => this.removeProcessor(name)}
-                        />
-                    )}
-                <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
-            </div><div className="tabspacer"></div></div>
-        </div>
+        </ErrorBoundary>
     }
 }
 
@@ -173,7 +176,7 @@ interface ProcessorViewProps {
     name: string
     processor: Processor
     config: Config
-    errors: ErrorsForPath
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
     rename: (newName: string) => void
     isFreeProcessorName: (name: string) => boolean
@@ -236,11 +239,14 @@ const defaultParameters: {
     NoiseGate: {
         Default: { channels: 2, monitor_channels: [0, 1], process_channels: [0, 1], attack: 0.025, release: 1.0, threshold: -25.0, attenuation: 20.0 },
     },
+    RACE: {
+        Default: { channels: 2, channel_a: 0, channel_b: 1, delay: 80, delay_unit: "us", subsample_delay: false, attenuation: 3.0 },
+    },
 }
 
 class ProcessorParams extends React.Component<{
     processor: Processor
-    errors: ErrorsForPath
+    errors: Errors
     updateProcessor: (update: Update<Processor>) => void
     labels: (string|null)[] | null
 }, unknown> {
@@ -251,6 +257,8 @@ class ProcessorParams extends React.Component<{
         this.renderProcessorParams = this.renderProcessorParams.bind(this)
         this.setMonitor = this.setMonitor.bind(this)
         this.setProcess = this.setProcess.bind(this)
+        this.setChannelA = this.setChannelA.bind(this)
+        this.setChannelB = this.setChannelB.bind(this)
         this.onParamChange = this.onParamChange.bind(this)
     }
 
@@ -291,22 +299,36 @@ class ProcessorParams extends React.Component<{
             processor.parameters.process_channels = channels
         })
     }
+    private setChannelA(channels: number[]|null) {
+        if (channels !== null) {
+            this.props.updateProcessor(processor => {
+                processor.parameters.channel_a = channels[0]
+            })
+        }
+    }
+    private setChannelB(channels: number[]|null) {
+        if (channels !== null) {
+            this.props.updateProcessor(processor => {
+                processor.parameters.channel_b = channels[0]
+            })
+        }
+    }
 
 
 
     render() {
         const { processor, errors, labels } = this.props
         return <div style={{ width: '100%', textAlign: 'right' }}>
-            <ErrorMessage message={errors({ path: [] })} />
+            <ErrorMessage message={errors.rootMessage()} />
             <EnumOption
                 value={processor.type}
-                error={errors({ path: ['type'] })}
+                error={errors.messageFor('type')}
                 options={Object.keys(defaultParameters)}
                 desc="type"
                 tooltip="Processor type"
                 onChange={this.onTypeChange} />
-            <ErrorMessage message={errors({ path: ['parameters'] })} />
-            {this.renderProcessorParams(processor.parameters, errorsForSubpath(errors, 'parameters'))}
+            <ErrorMessage message={errors.messageFor('parameters')} />
+            {this.renderProcessorParams(processor.parameters, errors.forSubpath('parameters'))}
             <OptionalTextOption
                 placeholder="none"
                 value={processor.description}
@@ -319,20 +341,36 @@ class ProcessorParams extends React.Component<{
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">monitor_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} labels={labels}/>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.monitor_channels} setChannels={this.setMonitor} multiSelect={true} labels={labels}/>
                 </label>
                 <label className="setting">
                     <span className="setting-label">
                         <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">process_channels</div>
                     </span>
-                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} labels={labels}/>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={processor.parameters.process_channels} setChannels={this.setProcess} multiSelect={true} labels={labels}/>
+                </label>
+                </div>
+            }
+            {processor.type === "RACE" &&
+                <div>
+                <label className="setting">
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channel A" data-tooltip-id="main-tooltip">channel_a</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={[processor.parameters.channel_a]} setChannels={this.setChannelA} multiSelect={false} labels={labels}/>
+                </label>
+                <label className="setting">
+                    <span className="setting-label">
+                        <div data-tooltip-html="Channel B" data-tooltip-id="main-tooltip">channel_b</div>
+                    </span>
+                    <ChannelSelection label={null} maxChannelCount={processor.parameters.channels} channels={[processor.parameters.channel_b]} setChannels={this.setChannelB} multiSelect={false} labels={labels}/>
                 </label>
                 </div>
             }
         </div>
     }
 
-    private renderProcessorParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
+    private renderProcessorParams(parameters: { [p: string]: any }, errors: Errors) {
         return Object.keys(parameters).map(parameter => {
             if (parameter === 'type') // 'type' is already rendered by parent component
                 return null
@@ -346,7 +384,7 @@ class ProcessorParams extends React.Component<{
             const commonProps = {
                 key: parameter,
                 value: parameters[parameter],
-                error: errors({ path: [parameter] }),
+                error: errors.messageFor(parameter),
                 desc: info.desc,
                 tooltip: info.tooltip,
                 onChange: (value: any) => this.onParamChange(parameter, value)
@@ -363,16 +401,21 @@ class ProcessorParams extends React.Component<{
                 return <FloatListOption {...commonProps} />
             if (info.type === 'optional_float')
                 return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
+            if (info.type === 'enum') {
+                let options = info.options!
+                return <EnumOption {...commonProps} key={commonProps.key} options={options} />
+            }
             return null
         })
     }
 
     parameterInfos: {
         [type: string]: {
-            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_float'
+            type: 'text' | 'int' | 'float' | 'floatlist' | 'bool' | 'optional_float' | 'enum'
             desc: string
             tooltip: string
             placeholder?: string
+            options?: string[]
         }
     } = {
             attack: {
@@ -412,5 +455,17 @@ class ProcessorParams extends React.Component<{
                 tooltip: "Makeup gain in dB",
             },
             soft_clip: { type: "bool", desc: "soft_clip", tooltip: "Use soft clipping" },
+            delay: {
+                type: "float",
+                desc: "delay",
+                tooltip: "RACE delay"
+            },
+            subsample_delay: { type: "bool", desc: "subsample_delay", tooltip: "Enable subsample delay" },
+            delay_unit: {
+                type: "enum",
+                desc: "delay_unit",
+                options: ["ms", "us", "mm", "samples"],
+                tooltip: "Unit for delay"
+            }
         }
 }

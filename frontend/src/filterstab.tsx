@@ -37,9 +37,10 @@ import {
   OptionalIntOption,
   ParsedInput,
   TextOption,
-  UploadButton
+  UploadButton,
+  ErrorBoundary
 } from "./utilities/ui-components"
-import { ErrorsForPath, errorsForSubpath } from "./utilities/errors"
+import {Errors} from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { isEqual } from "lodash"
 import { Chart, ChartData } from "./utilities/chart"
@@ -57,7 +58,7 @@ export class FiltersTab extends React.Component<
     channels: Promise<number>
     coeffDir: string
     updateConfig: (update: Update<Config>) => void
-    errors: ErrorsForPath
+    errors: Errors
   },
   {
     filterKeys: { [name: string]: number }
@@ -159,44 +160,49 @@ export class FiltersTab extends React.Component<
 
   render() {
     let { config, errors } = this.props
-    return <div>
-      <div className="horizontally-spaced-content" style={{ width: '700px' }}>
-        <EnumOption
-          value={this.state.sortBy}
-          options={FilterSortKeys}
-          desc="Sort filters by"
-          tooltip="Property used to sort filters"
-          onChange={this.changeSortBy} />
-        <BoolOption
-          value={this.state.sortReverse}
-          desc="Reverse order"
-          tooltip="Reverse display order"
-          onChange={this.changeSortOrder} />
+    return <ErrorBoundary errorMessage={errors.asText()}>
+      <div>
+        <div className="horizontally-spaced-content" style={{ width: '700px' }}>
+          <EnumOption
+            value={this.state.sortBy}
+            options={FilterSortKeys}
+            desc="Sort filters by"
+            tooltip="Property used to sort filters"
+            onChange={this.changeSortBy} />
+          <BoolOption
+            value={this.state.sortReverse}
+            desc="Reverse order"
+            tooltip="Reverse display order"
+            onChange={this.changeSortOrder} />
+        </div>
+        <div className="tabcontainer">
+          <div className="tabpanel-with-header" style={{ width: '700px'}}>
+            <ErrorMessage message={errors.rootMessage()} />
+            {this.filterNames()
+              .map(name =>
+                <FilterView
+                  key={this.state.filterKeys[name]}
+                  name={name}
+                  // @ts-ignore
+                  filter={config.filters[name]}
+                  errors={errors.forSubpath(name)}
+                  availableCoeffFiles={this.state.availableCoeffFiles}
+                  updateFilter={update => this.updateFilter(name, update)}
+                  rename={newName => this.renameFilter(name, newName)}
+                  isFreeFilterName={this.isFreeFilterName}
+                  remove={() => this.removeFilter(name)}
+                  updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
+                  coeffDir={this.props.coeffDir}
+                  samplerate={this.props.samplerate}
+                  channels={this.props.channels}
+                />
+              )}
+            <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
+          </div>
+          <div className="tabspacer"/>
+        </div>
       </div>
-      <div className="tabcontainer">
-      <div className="tabpanel-with-header" style={{ width: '700px'}}>
-        <ErrorMessage message={errors({ path: [] })} />
-        {this.filterNames()
-          .map(name =>
-            <FilterView
-              key={this.state.filterKeys[name]}
-              name={name}
-              // @ts-ignore
-              filter={config.filters[name]}
-              errors={errorsForSubpath(errors, name)}
-              availableCoeffFiles={this.state.availableCoeffFiles}
-              updateFilter={update => this.updateFilter(name, update)}
-              rename={newName => this.renameFilter(name, newName)}
-              isFreeFilterName={this.isFreeFilterName}
-              remove={() => this.removeFilter(name)}
-              updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
-              coeffDir={this.props.coeffDir}
-              samplerate={this.props.samplerate}
-              channels={this.props.channels}
-            />
-          )}
-        <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
-      </div><div className="tabspacer"></div></div></div>
+    </ErrorBoundary>
   }
 }
 
@@ -219,7 +225,7 @@ interface FilterDefaults {
 interface FilterViewProps {
   name: string
   filter: Filter
-  errors: ErrorsForPath
+  errors: Errors
   availableCoeffFiles: FileInfo[]
   updateFilter: (update: Update<Filter>) => void
   rename: (newName: string) => void
@@ -497,7 +503,7 @@ const hiddenParameters = ['skip_bytes_lines', 'read_bytes_lines']
 
 class FilterParams extends React.Component<{
   filter: Filter
-  errors: ErrorsForPath
+  errors: Errors
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: FileInfo[]
   coeffDir: string
@@ -596,10 +602,10 @@ class FilterParams extends React.Component<{
     const defaults = DefaultFilterParameters[filter.type]
     const subtypeOptions = defaults ? Object.keys(defaults) : []
     return <div style={{ width: '100%', textAlign: 'right' }}>
-      <ErrorMessage message={errors({ path: [] })} />
+      <ErrorMessage message={errors.rootMessage()} />
       <EnumOption
         value={filter.type}
-        error={errors({ path: ['type'] })}
+        error={errors.messageFor('type')}
         options={Object.keys(DefaultFilterParameters)}
         desc="type"
         tooltip="Filter type"
@@ -607,14 +613,14 @@ class FilterParams extends React.Component<{
       {subtypeOptions[0] !== 'Default' &&
         <EnumOption
           value={filter.parameters.type}
-          error={errors({ path: ['parameters', 'type'] })}
+          error={errors.messageFor('parameters', 'type')}
           options={subtypeOptions}
           desc="subtype"
           tooltip="Filter subtype"
           onChange={this.onSubtypeChange} />
       }
-      <ErrorMessage message={errors({ path: ['parameters'] })} />
-      {this.renderFilterParams(filter.parameters, errorsForSubpath(errors, 'parameters'))}
+      <ErrorMessage message={errors.messageFor('parameters')} />
+      {this.renderFilterParams(filter.parameters, errors.forSubpath('parameters'))}
       {isConvolutionFileFilter(this.props.filter) && !this.props.showDefaults && (this.hasHiddenDefaultValue()) &&
         <Button text="..." onClick={() => this.props.setShowDefaults()} />
       }
@@ -648,7 +654,7 @@ class FilterParams extends React.Component<{
     </div>
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }, errors: ErrorsForPath) {
+  private renderFilterParams(parameters: { [p: string]: any }, errors: Errors) {
     return Object.keys(parameters).map(parameter => {
       if (parameter === 'type') // 'type' is already rendered by parent component
         return null
@@ -660,7 +666,7 @@ class FilterParams extends React.Component<{
       const commonProps = {
         key: parameter,
         value: parameters[parameter],
-        error: errors({ path: [parameter] }),
+        error: errors.messageFor(parameter),
         desc: info.desc,
         tooltip: info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
@@ -928,7 +934,7 @@ class FilterParams extends React.Component<{
       unit: {
         type: "enum",
         desc: "unit",
-        options: ["ms", "samples"],
+        options: ["ms", "us", "mm", "samples"],
         tooltip: "Unit for delay",
       },
       values: {
