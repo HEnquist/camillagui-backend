@@ -92,3 +92,122 @@ jobs:
         file: camillagui.zip
         asset_name: camillagui.zip
         tag: ${{ github.ref }}
+
+  pyinstaller_native:
+    name: Bundle for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            asset_name: bundle_linux_amd64.tar.gz
+            filename: bundle.tar.gz
+          - os: ubuntu-22.04-arm
+            asset_name: bundle_linux_aarch64.tar.gz
+            filename: bundle.tar.gz
+          - os: windows-latest
+            asset_name: bundle_windows_amd64.zip
+            filename: bundle.zip
+          - os: macos-latest
+            asset_name: bundle_macos_aarch64.tar.gz
+            filename: bundle.tar.gz
+          - os: macos-13
+            asset_name: bundle_macos_intel.tar.gz
+            filename: bundle.tar.gz
+    needs: build_and_test_be
+    steps:
+    - name: Download complete distribution
+      uses: actions/download-artifact@v4
+      with:
+        name: camillagui-backend
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - run: pip install -r requirements.txt
+      name: Install backend dependencies
+
+    - run: pip install pyinstaller
+      name: Install pyinstaller
+
+    - name: Bundle app with pyinstaller
+      run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
+
+    - name: Compress as zip
+      if: ${{ contains(matrix.os, 'windows') }}
+      run: powershell Compress-Archive ./dist/camillagui_backend ${{ matrix.filename }}
+    - name: Compress as tar.gz
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend
+    - name: Compress as tar.gz
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
+
+    - name: Upload bundle as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.filename }}
+
+    - name: Upload bundle to release
+      if: contains(github.ref, 'refs/tags/')
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ${{ matrix.filename }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
+
+  pyinstaller_qemu:
+    runs-on: ubuntu-22.04
+    needs: build_and_test_be
+    name: Bundle for ${{ matrix.arch }}
+
+    strategy:
+      matrix:
+        include:
+          - arch: armv7
+          - arch: armv6
+    steps:
+      - name: Download complete distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: camillagui-backend
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build artifact
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: bookworm
+
+          # Mount the artifacts directory as /artifacts in the container
+          dockerRunArgs: |
+            --volume "${PWD}:/cdsp"
+          install: |
+            apt update -y
+            apt install git python3 python3-pip python3-venv python3-dev curl make gcc build-essential binutils pkg-config -y
+          run: |
+            python3 -m venv ./venv
+            ./venv/bin/python3 -m pip config set global.extra-index-url https://www.piwheels.org/simple
+            ./venv/bin/python3 -m pip install -r requirements.txt
+            ./venv/bin/python3 -m pip install pyinstaller
+            ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
+
+      - name: Compress as tar.gz
+        run: tar -zcvf bundle.tar.gz -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
+
+      - name: Upload bundle as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle_linux_${{ matrix.arch }}
+          path: bundle.tar.gz
+
+      - name: Upload bundle to release
+        if: contains(github.ref, 'refs/tags/')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bundle.tar.gz
+          asset_name: bundle_linux_${{ matrix.arch }}.tar.gz
+          tag: ${{ github.ref }}
