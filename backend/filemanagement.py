@@ -1,5 +1,6 @@
 import io
 import os
+from os import rename
 import zipfile
 from copy import deepcopy
 from os.path import (
@@ -14,6 +15,7 @@ from os.path import (
     getmtime,
     getsize,
 )
+from typing import Optional
 import logging
 import traceback
 
@@ -41,9 +43,14 @@ def file_in_folder(folder, filename):
     return os.path.abspath(os.path.join(folder, filename))
 
 
-def path_of_configfile(request, config_name):
+def path_of_config_file(request, config_name):
     config_folder = request.app["config_dir"]
     return file_in_folder(config_folder, config_name)
+
+
+def path_of_coeff_file(request, coeff_name):
+    coeff_folder = request.app["coeff_dir"]
+    return file_in_folder(coeff_folder, coeff_name)
 
 
 async def store_files(folder, request):
@@ -326,7 +333,7 @@ def save_config_to_yaml_file(config_name, config_object, request):
     """
     Write a given config object to a yaml file.
     """
-    config_file = path_of_configfile(request, config_name)
+    config_file = path_of_config_file(request, config_name)
     yaml_config = yaml.dump(config_object).encode("utf-8")
     with open(config_file, "wb") as f:
         f.write(yaml_config)
@@ -426,3 +433,20 @@ def is_path_in_folder(path, folder):
     Check if a file is in a given directory.
     """
     return folder == commonpath([path, folder])
+
+
+def rename_config_or_return_error(request, source, target) -> Optional[str]:
+    source_file = path_of_config_file(request, source)
+    target_file = path_of_config_file(request, target)
+    if os.path.isfile(target_file):
+        return "File " + target + " already exists"
+    rename(source_file, target_file)
+
+
+def rename_coeff_or_return_error(request, source, target) -> Optional[str]:
+    source_file = path_of_coeff_file(request, source)
+    target_file = path_of_coeff_file(request, target)
+    if os.path.isfile(target_file):
+        return "File " + target + " already exists"
+    rename(source_file, target_file)
+

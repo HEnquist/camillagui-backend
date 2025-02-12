@@ -37,6 +37,8 @@ from .views import (
     get_playback_devices,
     get_backends,
     get_wav_info,
+    rename_config_file,
+    rename_coeff_file,
 )
 
 
@@ -70,6 +72,8 @@ def setup_routes(app):
     app.router.add_post("/api/uploadcoeffs", store_coeffs)
     app.router.add_post("/api/deleteconfigs", delete_configs)
     app.router.add_post("/api/deletecoeffs", delete_coeffs)
+    app.router.add_post("/api/renameconfig", rename_config_file)
+    app.router.add_post("/api/renamecoeff", rename_coeff_file)
     app.router.add_post("/api/downloadconfigszip", download_configs_zip)
     app.router.add_post("/api/downloadcoeffszip", download_coeffs_zip)
     app.router.add_get("/api/guiconfig", get_gui_config)

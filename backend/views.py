@@ -10,7 +10,7 @@ import logging
 import traceback
 
 from .filemanagement import (
-    path_of_configfile,
+    path_of_config_file,
     store_files,
     list_of_files_in_directory,
     delete_files,
@@ -27,6 +27,8 @@ from .filemanagement import (
     make_absolute,
     replace_tokens_in_filter_config,
     list_of_filenames_in_directory,
+    rename_config_or_return_error,
+    rename_coeff_or_return_error,
 )
 from .filters import (
     defaults_for_filter,
@@ -417,7 +419,7 @@ async def set_active_config_name(request):
     """
     json = await request.json()
     config_name = json["name"]
-    config_file = path_of_configfile(request, config_name)
+    config_file = path_of_config_file(request, config_name)
     set_path_as_active_config(request, config_file)
     return web.Response(text="OK", headers=HEADERS)
 
@@ -429,7 +431,7 @@ async def get_config_file(request):
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
     migrate = request.query.get("migrate", False)
-    config_file = path_of_configfile(request, config_name)
+    config_file = path_of_config_file(request, config_name)
     try:
         config_object = make_config_filter_paths_relative(
             read_yaml_from_path_to_object(request, config_file), config_dir
@@ -447,6 +449,24 @@ async def save_config_file(request):
     """
     content = await request.json()
     save_config_to_yaml_file(content["filename"], content["config"], request)
+    return web.Response(text="OK", headers=HEADERS)
+
+
+async def rename_config_file(request):
+    source = request.query["source"]
+    target = request.query["target"]
+    error = rename_config_or_return_error(request, source, target)
+    if error:
+        return web.Response(status=500, text=error, headers=HEADERS)
+    return web.Response(text="OK", headers=HEADERS)
+
+
+async def rename_coeff_file(request):
+    source = request.query["source"]
+    target = request.query["target"]
+    error = rename_coeff_or_return_error(request, source, target)
+    if error:
+        return web.Response(status=500, text=error, headers=HEADERS)
     return web.Response(text="OK", headers=HEADERS)
 
 
