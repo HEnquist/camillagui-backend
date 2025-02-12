@@ -1208,9 +1208,10 @@ export function ChannelSelection(props: {
     maxChannelCount: number
     label: string | null
     setChannels: (channels: number[] | null) => void
+    multiSelect?: boolean
     labels?: (string|null)[] | null
 }) {
-    const { channels, maxChannelCount, setChannels, label, labels } = props
+    const { channels, maxChannelCount, setChannels, label, multiSelect, labels } = props
     let [expanded, setExpanded] = useState(false)
 
     if (maxChannelCount > 0) {
@@ -1232,16 +1233,21 @@ export function ChannelSelection(props: {
         setChannels(_channels)
     }
     const toggleChannel = (idx: number) => {
-        if (_channels === null) {
-            _channels = []
+        if (multiSelect) {
+            if (_channels === null) {
+                _channels = []
+            }
+            if (!_channels.includes(idx)) {
+                _channels.push(idx)
+            }
+            else {
+                _channels = _channels.filter((n: number) => n !== idx)
+            }
+            setChannels(_channels)
+        } else {
+            _channels = [idx]
+            setChannels(_channels)
         }
-        if (!_channels.includes(idx)) {
-            _channels.push(idx)
-        }
-        else {
-            _channels = _channels.filter((n: number) => n !== idx)
-        }
-        setChannels(_channels)
     }
     const toggleExpanded = () => {
         setExpanded(!expanded)
@@ -1268,7 +1274,7 @@ export function ChannelSelection(props: {
     if (rows === 1) {
         return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
-            <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            {multiSelect && <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />}
             {Range(0, maxChannelCount).map(index =>
                 <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels !== undefined && channels.includes(index)} onClick={() => toggleChannel(index)} />
             )}
