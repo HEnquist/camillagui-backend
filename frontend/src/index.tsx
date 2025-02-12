@@ -18,7 +18,7 @@ import {Errors, NoErrors} from "./utilities/errors"
 import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
 import {Tooltip} from 'react-tooltip'
 import {Files} from "./filestab"
-import {Config, defaultConfig, getCaptureChannelCount} from "./camilladsp/config"
+import {Config, defaultConfig, getCaptureDeviceChannelCount} from "./camilladsp/config"
 import {defaultGuiConfig, GuiConfig} from "./guiconfig"
 import {delayedExecutor, MdiButton, MdiIcon} from "./utilities/ui-components"
 import {cloneDeep} from "lodash"
@@ -327,7 +327,7 @@ class CamillaConfig extends React.Component<
           <FiltersTab
               config={config}
               samplerate={config.devices.samplerate}
-              channels={getCaptureChannelCount(config)}
+              channels={getCaptureDeviceChannelCount(config.devices.capture)}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
               errors={errors.forSubpath('filters')}

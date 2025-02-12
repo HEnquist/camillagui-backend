@@ -1,11 +1,11 @@
 import React from "react"
 import "../index.css"
-import { VuMeterGroup } from "./vumeter"
-import { Box, MdiButton } from "../utilities/ui-components"
-import { mdiVolumeMedium, mdiVolumeOff } from "@mdi/js"
-import { VuMeterStatus } from "../camilladsp/status"
-import { throttle } from "lodash"
-import { GuiConfig } from "../guiconfig"
+import {VuMeterGroup} from "./vumeter"
+import {Box, MdiButton} from "../utilities/ui-components"
+import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
+import {VuMeterStatus} from "../camilladsp/status"
+import {throttle} from "lodash"
+import {GuiConfig} from "../guiconfig"
 
 type Props = {
     vuMeterStatus: VuMeterStatus
@@ -15,9 +15,7 @@ type Props = {
     guiConfig: GuiConfig
 }
 
-type State = {
-    volume: number
-    mute: boolean
+type State = Volume & {
     dim: boolean
     send_to_dsp: boolean
 }
@@ -44,14 +42,16 @@ export class VolumePoller {
     private async updateVolume() {
         this.timerId = undefined
         try {
-            let volreq = fetch("/api/getparam/volume")
-            let mutereq = fetch("/api/getparam/mute")
-            let vol = await (await volreq).text()
-            let mute = await (await mutereq).text()
-            let volume: Volume = {
-                volume: parseFloat(vol),
-                mute: mute === "True",
-            }
+            const volreq = await fetch("/api/getparam/volume")
+            const mutereq = await fetch("/api/getparam/mute")
+            const volume: Volume = volreq.ok && mutereq.ok ?
+                {
+                    volume: parseFloat(await volreq.text()),
+                    mute: "True" === await mutereq.text(),
+                } : {
+                    volume: Number.NEGATIVE_INFINITY,
+                    mute: false
+                }
             // Only update if the timer hasn't been restarted
             // while we were reading the volume and mute settings.
             if (this.timerId === undefined) {
@@ -81,7 +81,7 @@ export class VolumePoller {
 
 export class VolumeBox extends React.Component<Props, State> {
 
-    private volumePoller = new VolumePoller(cdspVolume => this.setState({ volume: cdspVolume.volume, mute: cdspVolume.mute }), 1000.0, 2000.0)
+    private volumePoller = new VolumePoller(cdspVolume => this.setState({ ...cdspVolume }), 1000.0, 2000.0)
     private readonly setDspVolumeDebounced: any
 
     constructor(props: Props) {
@@ -89,7 +89,7 @@ export class VolumeBox extends React.Component<Props, State> {
         this.toggleMute = this.toggleMute.bind(this)
         this.toggleDim = this.toggleDim.bind(this)
         this.setDspVolumeDebounced = throttle(this.setDspVolume, 250)
-        this.state = { volume: -99, mute: false, dim: false, send_to_dsp: false }
+        this.state = { volume: Number.NEGATIVE_INFINITY, mute: false, dim: false, send_to_dsp: false }
     }
 
     componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
@@ -161,9 +161,10 @@ export class VolumeBox extends React.Component<Props, State> {
     }
 
     render() {
-        const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms }
-            = this.props.vuMeterStatus
         const { volume, mute, dim } = this.state
+        if (volume === Number.NEGATIVE_INFINITY)
+            return null
+        const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms } = this.props.vuMeterStatus
         const maxVol = this.props.guiConfig.volume_max
         const minVol = maxVol - this.props.guiConfig.volume_range
         return <Box title={

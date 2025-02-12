@@ -12,6 +12,7 @@ import {
   defaultSincResampler,
   Devices,
   Formats,
+  getCaptureDeviceChannelCount,
   PlaybackDevice,
   Resampler,
   ResamplerType,
@@ -502,6 +503,7 @@ function CaptureOptions(props: {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
   let [expanded, setExpanded] = useState(false)
+  const [channels, setChannels] = useState(props.capture.type !== "WavFile" ? props.capture.channels : 2);
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
@@ -556,10 +558,14 @@ function CaptureOptions(props: {
       devices.capture.labels = labels)
   }
 
+  useEffect(() => {
+    getCaptureDeviceChannelCount(props.capture).then(nbr => setChannels(nbr));
+  }, [capture]);
+
   const makeDropdown = () =>
   {
     return <div>
-      {Range(0, 2).map(row => (
+      {Range(0, channels).map(row => (
                 <OptionalTextOption value={capture.labels && capture.labels.length > row ? capture.labels[row] : null } 
                 error={errors.messageFor('labels')}
                 desc={row.toString()}
@@ -567,11 +573,12 @@ function CaptureOptions(props: {
                 onChange={new_label => updateChannelLabel(row, new_label)}/>
             ))}
     </div>
-}
+  }
 
   return <Box title="Capture device">
     <KeyValueSelectPopup
           key="capture select popup"
+          showItemKey={true}
           open={popupState}
           header="Select capture device"
           items={availableDevices}
@@ -807,6 +814,7 @@ function PlaybackOptions(props: {
   return <Box title="Playback device">
     <KeyValueSelectPopup
       key="playback select popup"
+      showItemKey={true}
       open={popupState}
       header="Select playback device"
       items={availableDevices}

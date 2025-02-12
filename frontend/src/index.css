@@ -97,6 +97,7 @@ textarea.logfileviewer {
   overflow-x: hidden;
   height: 95vh;
   width: 320px;
+  min-width: 320px;
 }
 
 .tabpanel {
@@ -168,6 +169,7 @@ textarea.logfileviewer {
   padding: 2px;
   display: flex;
   width: 100%;
+  min-width: 800px;
   flex-direction: column;
 }
 

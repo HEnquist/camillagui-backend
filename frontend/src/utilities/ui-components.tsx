@@ -1160,16 +1160,23 @@ export function FileSelectPopup(props: {
 export function KeyValueSelectPopup(props: {
     open: boolean
     header?: ReactNode
+    showItemKey?: boolean
     items: [string, string][]
     onSelect: (value: string) => void
     onClose: () => void
 }) {
-    const { open, items, onSelect, onClose } = props
+    const { open, items, showItemKey, onSelect, onClose } = props
     const [filterText, setFilterText] = React.useState('');
     var columns: any = [
         {
           name: 'Name',
-          selector: (row: [String, String]) => row[1],
+          selector: (row: [String, String]) => {
+            if (row[0] === row[1] || showItemKey !== true) {
+                return row[1]
+            } else {
+                return row[0] + ": " + row[1]
+            }
+          },
           sortFunction: caseInsensitiveRowSort,
           sortable: true
         }
