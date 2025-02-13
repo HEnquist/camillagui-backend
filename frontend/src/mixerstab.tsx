@@ -8,11 +8,9 @@ import {
   DeleteButton,
   ErrorMessage,
   IntOption,
-  LabelListOption,
   MdiButton,
   ParsedInput,
   OptionalTextInput,
-  OptionalTextOption,
   EnumInput,
   null_to_default,
   FloatInput,
@@ -22,7 +20,6 @@ import {
 } from "./utilities/ui-components"
 import {
   Config,
-  defaultMapping,
   defaultMixer,
   Mapping,
   Mixer,
@@ -46,6 +43,7 @@ const styles = cssStyles()
 const mutedCellColor = styles.getPropertyValue("--muted-cell-color")
 const normalCellColor = styles.getPropertyValue("--normal-cell-color")
 const invertedCellColor = styles.getPropertyValue("--inverted-cell-color")
+const errorCellColor = styles.getPropertyValue("--error-cell-color")
 
 export class MixersTab extends React.Component<{
   config: Config
@@ -167,7 +165,7 @@ function MixerView(props: {
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
   const input_labels = getMixerInputLabels(config, name)
-
+  console.log(name, errors)
   const updateChannelLabel = (channel: number, label: string | null) => {
     console.log("label!", label, channel)
     let existing = props.mixer.labels
@@ -343,7 +341,6 @@ function MappingMatrix(props: {
       setExpanded([row, col])
     }
   }
-  console.log(channels)
   return <div>
     <table className="mixer-table">
       <tr>
@@ -371,7 +368,9 @@ function MappingMatrix(props: {
         if (dest === 0) {
           label = <td className="rotate matrix-cell" rowSpan={channels.out}><div>Output</div></td>
         }
-        const [mapping, _map_idx] = getMapping(mixer.mapping, dest)
+        const [mapping, map_idx] = getMapping(mixer.mapping, dest)
+        const errorsForRow = errors.forSubpath('mapping', map_idx)
+        console.log(errorsForRow)
         return (
           <tr key={"row"+dest}>
             {label}
@@ -397,11 +396,11 @@ function MappingMatrix(props: {
                 mute={mapping ? mapping.mute : undefined}/>
             </td>
             <td className="matrix-cell" key={"arrow"+dest}><Icon path={mdiArrowLeft} size='14px'/></td>
-            
             {Range(0, channels.in).map(src => {
               const [cell, map_idx, src_idx] = getSource(mixer.mapping, src, dest)
+              const errorsForCell = errorsForRow.forSubpath('sources', src_idx)
               if (cell) {
-                const csscolor = cssColorAt(cell)
+                const csscolor = cssColorAt(cell, errorsForCell)
                 var cellText
                 if (cell.scale === "linear") {
                   cellText = (+(cell.gain !== null ? cell.gain : 1).toPrecision(2)).toString()
@@ -418,6 +417,8 @@ function MappingMatrix(props: {
                     cell, 
                     src,
                     dest,
+                    map_idx,
+                    src_idx,
                     errors,
                     (cellupdate: Update<Source>)=>{update((mixer) => {
                       cellupdate(cell)
@@ -439,9 +440,11 @@ function MappingMatrix(props: {
   </div>
 }
 
-const makeDropdown = (cell: Source, src: number, dest: number, errors: Errors, update: any, remove: any, close: any) => {
-  return <div className="dropdown-menu" style={{borderColor: cssColorAt(cell)}}title='channels' >
-      <SourceCell source={cell} errors={errors} update={update} remove={remove} close={close}/>
+const makeDropdown = (cell: Source, src: number, dest: number, map_idx: number, src_idx: number, errors: Errors, update: any, remove: any, close: any) => {
+  const errorsForCell = errors.forSubpath('mapping', map_idx, 'sources', src_idx)
+  console.log("makedropdown", errors, errorsForCell)
+  return <div className="dropdown-menu" style={{borderColor: cssColorAt(cell, errorsForCell)}}title='channels' >
+      <SourceCell source={cell} errors={errorsForCell} update={update} remove={remove} close={close}/>
   </div>
 }
 
@@ -492,7 +495,7 @@ function SourceCell(props: {
             buttonSize="small"
             onClick={remove}/>
       </div>
-    <ErrorMessage message={errors.rootMessage()}/>
+    <ErrorMessage message={errors.asText()}/>
     </div>
   </>
 }
@@ -558,20 +561,11 @@ function colorAt(index: number): [number, number, number] {
   return [pw * prev[1] + nw * next[1], pw * prev[2] + nw * next[2], pw * prev[3] + nw * next[3]]
 }
 
-function cssColorAt2(cell: Source): string {
-  var color
-  if (cell.mute) {
-    color = [128, 128, 128]
+function cssColorAt(cell: Source, errors: Errors): string {
+  if (errors.hasErrors()) {
+    return errorCellColor
   }
-  else {
-    color = colorAt(cell.gain ? cell.gain: 0)
-  }
-  const csscolor = "rgb(" + Math.round(color[0]) + ", " + Math.round(color[1]) + ", " + Math.round(color[2]) + ")"
-  return csscolor
-}
-
-function cssColorAt(cell: Source): string {
-  if (cell.mute) {
+  else if (cell.mute) {
     return mutedCellColor
   }
   else if (cell.inverted) {

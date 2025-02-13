@@ -1,8 +1,7 @@
 import {expect, test} from 'vitest'
 import {
     defaultConfig,
-    defaultFilter, defaultMapping, defaultMixer,
-    defaultSource,
+    defaultFilter, defaultMixer,
     sortedFilterNamesOf, mixerNamesOf,
     newFilterName,
     removeFilter, removeMixer,
@@ -74,22 +73,6 @@ test('renameFilter throws on name collision', () => {
     config.filters['to be renamed'] = defaultFilter()
     config.filters['collision'] = defaultFilter()
     expect(() => renameFilter(config, 'to be renamed', 'collision')).toThrow("Filter 'collision' already exists")
-})
-
-test('defaultMapping counts destination channel up until out channel count', () => {
-    const mapping = defaultMapping(1, [])
-    expect(mapping.dest).toBe(0)
-    expect(() => defaultMapping(1, [mapping]).dest).toThrow('Cannot add more than 1 (out) mappings')
-    expect(defaultMapping(2, [mapping]).dest).toBe(1)
-    expect(() => defaultMapping(2, [mapping, mapping]).dest).toThrow('Cannot add more than 2 (out) mappings')
-})
-
-test('defaultSource counts input channel up until in channel count', () => {
-    const source = defaultSource(1, [])
-    expect(source.channel).toBe(0)
-    expect(defaultSource(1, [source]).channel).toBe(0)
-    expect(defaultSource(2, [source]).channel).toBe(1)
-    expect(defaultSource(2, [source, source]).channel).toBe(0)
 })
 
 test('removeMixer', () => {
