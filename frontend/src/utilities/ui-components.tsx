@@ -519,7 +519,6 @@ export function LabelListOption(props: {
           let cleaned_label = label === "" ? null : label.trim()
           labels.push(cleaned_label)
         }
-        console.log("Update labels to", labels)
         props.onChange(labels)
       }
 

@@ -788,27 +788,22 @@ export function getOutputLabels(config: Config): (string|null)[]|null {
     return getChannelLabels(config, pipeline_length)
 }
 
-export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
-    var result = channel.toString()
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number, compact?: boolean): string {
+    var result = ""
+    if (!compact) {
+        result = channel.toString()
+    }
     if (labels === undefined || labels === null || labels.length <= channel) {
         return result
     }
     const label = labels[channel]
     if (label) {
-        result = result + ": " + label
+        if (compact) {
+            return label
+        }
+        return result + ": " + label
     }
     return result
-}
-
-export function getLabelForChannel2(labels: (string|null)[] | null | undefined, channel: number): string {
-    if (labels === undefined || labels === null || labels.length <= channel) {
-        return ""
-    }
-    const label = labels[channel]
-    if (label) {
-        return label
-    }
-    return ""
 }
 
 export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {

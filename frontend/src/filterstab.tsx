@@ -328,7 +328,6 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
 
   componentDidMount() {
     this.props.channels.then(ch => {
-      console.log('channels', ch)
       this.setState({ channels: ch })
     })
   }

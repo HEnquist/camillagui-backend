@@ -31,13 +31,13 @@ import {
   GainScales,
   GainScale,
   getMixerInputLabels,
-  getLabelForChannel,
-  getLabelForChannel2,
+  getLabelForChannel
 } from "./camilladsp/config"
 import {mdiDelete, mdiPlusMinusVariant, mdiVolumeOff, mdiPlus, mdiVolumeHigh, mdiArrowDown, mdiArrowLeft} from "@mdi/js"
 import {Errors} from "./utilities/errors"
 import {modifiedCopyOf, Update} from "./utilities/common"
 import { Range } from "immutable"
+import { cloneDeep } from "lodash"
 
 const styles = cssStyles()
 const mutedCellColor = styles.getPropertyValue("--muted-cell-color")
@@ -165,9 +165,7 @@ function MixerView(props: {
   const isValidMixerName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && props.isFreeMixerName(newName))
   const input_labels = getMixerInputLabels(config, name)
-  console.log(name, errors)
   const updateChannelLabel = (channel: number, label: string | null) => {
-    console.log("label!", label, channel)
     let existing = props.mixer.labels
     if (existing === null || existing === undefined) {
       existing = []
@@ -176,7 +174,6 @@ function MixerView(props: {
       existing.push(null)
     }
     existing[channel] = label
-    console.log("Update label for channel", channel, label)
     update(mixer =>
       mixer.labels = existing)
   }
@@ -350,19 +347,16 @@ function MappingMatrix(props: {
 
       <tr>
         {Range(0, channels.in).map(src => {
-          return (<td className="rotate matrix-cell" key={"header"+src}><div>{getLabelForChannel2(inputLabels, src)}</div></td>) })}
+          return (<td className="rotate matrix-cell" key={"header"+src}><div>{getLabelForChannel(inputLabels, src, true)}</div></td>) })}
       </tr>
       <tr>
         {Range(0, channels.in).map(src => {
-          console.log("header", src)
           return (<td className="matrix-cell" key={"header"+src}>{src}</td>) })}
       </tr>
       <tr>
         {Range(0, channels.in).map(src => {
-          console.log("header", src)
           return (<td className="matrix-cell" key={"header"+src}><Icon path={mdiArrowDown} size='14px'/></td>) })}
       </tr>
-      
       {Range(0, channels.out).map(dest => {
         let label = null
         if (dest === 0) {
@@ -370,7 +364,6 @@ function MappingMatrix(props: {
         }
         const [mapping, map_idx] = getMapping(mixer.mapping, dest)
         const errorsForRow = errors.forSubpath('mapping', map_idx)
-        console.log(errorsForRow)
         return (
           <tr key={"row"+dest}>
             {label}
@@ -421,8 +414,9 @@ function MappingMatrix(props: {
                     src_idx,
                     errors,
                     (cellupdate: Update<Source>)=>{update((mixer) => {
-                      cellupdate(cell)
-                      updateCell(mixer, src, dest, cell)})
+                      let cellCopy = cloneDeep(cell)
+                      cellupdate(cellCopy)
+                      updateCell(mixer, src, dest, cellCopy)})
                     },
                     ()=>{update((mixer) => {deleteCell(mixer, src, dest)})},
                     ()=>{setExpanded([-1, -1])}
@@ -442,7 +436,6 @@ function MappingMatrix(props: {
 
 const makeDropdown = (cell: Source, src: number, dest: number, map_idx: number, src_idx: number, errors: Errors, update: any, remove: any, close: any) => {
   const errorsForCell = errors.forSubpath('mapping', map_idx, 'sources', src_idx)
-  console.log("makedropdown", errors, errorsForCell)
   return <div className="dropdown-menu" style={{borderColor: cssColorAt(cell, errorsForCell)}}title='channels' >
       <SourceCell source={cell} errors={errorsForCell} update={update} remove={remove} close={close}/>
   </div>
@@ -462,11 +455,12 @@ function SourceCell(props: {
         <div style={{display: 'flex', flexDirection: 'row', flexGrow: 1}}>
           <FloatInput
               value={source.gain ? source.gain : 0.0}
-              tooltip="Gain in dB for this source channel"
+              tooltip="Gain value for this source channel"
               className="small-setting-input"
               onChange={(gain: number) => update(source => source.gain = gain)}/>
           <span style={{float: 'right', width: '100%'}}><CloseButton onClick={close}/></span>
         </div>
+        <ErrorMessage message={errors.forSubpath('gain').asText()}/>
         <div style={{display: 'flex', flexDirection: 'row', flexGrow: 1}}>
           <EnumInput
               value={null_to_default(source.scale, "default")}
@@ -495,7 +489,6 @@ function SourceCell(props: {
             buttonSize="small"
             onClick={remove}/>
       </div>
-    <ErrorMessage message={errors.asText()}/>
     </div>
   </>
 }
@@ -538,27 +531,6 @@ function OutputMute(props: {
         onClick={click}>
         <Icon path={audible ? mdiVolumeHigh : mdiVolumeOff} size='24px'/>
   </div>
-}
-
-const gaincolors = [[-12, 0, 0, 180], [-9, 0, 0, 255], [-6, 0, 128, 255], [-3, 0, 200, 200], [0, 0, 255, 0], [3, 230, 230, 0], [6, 255, 150, 0], [9, 255, 0, 0], [12, 255, 128, 128]]
-function colorAt(index: number): [number, number, number] {
-  if (index < -12) {
-    index = -12
-  }
-  if (index > 12) {
-    index = 12
-  }
-  var n = 1
-  while (index > gaincolors[n][0]) {
-    n += 1
-  }
-  const prev = gaincolors[n-1]
-  const next = gaincolors[n]
-  const diff = next[0] - prev[0]
-  const frac = (index - prev[0]) / diff
-  const nw = frac
-  const pw = 1 - nw
-  return [pw * prev[1] + nw * next[1], pw * prev[2] + nw * next[2], pw * prev[3] + nw * next[3]]
 }
 
 function cssColorAt(cell: Source, errors: Errors): string {
