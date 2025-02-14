@@ -1,6 +1,6 @@
 {
   "name": "camillagui",
-  "version": "3.0.0",
+  "version": "3.0.2",
   "private": true,
   "homepage": ".",
   "type": "module",
@@ -53,6 +53,7 @@
   "devDependencies": {
     "@types/d3": "^7.4.0",
     "@types/lodash": "^4.17.7",
+    "@types/node": "^22.13.4",
     "@types/react-dom": "^18.3.0",
     "@vitest/coverage-v8": "^2.1.1",
     "jsdom": "^25.0.0",
