@@ -543,7 +543,6 @@ function CaptureOptions(props: {
       existing.push(null)
     }
     existing[channel] = label
-    console.log("Update label for channel", channel, label)
     onChange(devices =>
       devices.capture.labels = existing)
   }
@@ -553,7 +552,6 @@ function CaptureOptions(props: {
     if (labels !== null && labels.length > channels) {
       labels = labels.slice(0, channels)
     }
-    console.log("Update labels to", labels)
     onChange(devices =>
       devices.capture.labels = labels)
   }

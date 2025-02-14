@@ -280,10 +280,103 @@ div .popup-content {
   gap: 5px;
 }
 
+
+
 .vertically-spaced-content {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+
+.centered-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.mixer-table {
+  border-collapse: collapse;
+}
+
+.mixer-table > td {
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.matrix-cell {
+  text-align: center;
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.centered {
+  text-align: center;
+}
+
+.centered-button {
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.centered-button-disabled {
+  text-align: center;
+  user-select: none;
+  color: var(--disabled-text-color);
+}
+
+.vertical-matrix-cell2 {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+.vertical-matrix-cell {
+  text-align: center;
+  display: block;
+  transform: rotate(270deg);
+}
+
+.mapping-cell {
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  color: black;
+  font-size: small;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mapping-cell-empty {
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  color: var(--text-color);
+  font-size: small;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.strikediag {
+  background: linear-gradient(to left top, transparent 47.75%, currentColor 49.5%, currentColor 50.5%, transparent 52.25%);
+}
+
+.rotate {
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  width: 1.5em;
+}
+.rotate div {
+  writing-mode:vertical-lr;
+  transform: rotate(180deg);
 }
 
 .two-column-grid {

@@ -94,6 +94,23 @@ export function Button(props: {
     </div>
 }
 
+export function MatrixCell(props: {
+    text: string
+    tooltip?: string
+    onClick: () => void
+    style?: CSSProperties
+    muted: boolean | null
+}) {
+    return <div
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
+        className={"mapping-cell" + (props.muted ? " strikediag" : "")}
+        style={props.style}
+        onClick={props.onClick}>
+        {props.text}
+    </div>
+}
+
 export function SuccessFailureButton(props: {
     text: string
     tooltip?: string
@@ -502,7 +519,6 @@ export function LabelListOption(props: {
           let cleaned_label = label === "" ? null : label.trim()
           labels.push(cleaned_label)
         }
-        console.log("Update labels to", labels)
         props.onChange(labels)
       }
 

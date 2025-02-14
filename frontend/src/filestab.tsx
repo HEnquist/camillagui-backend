@@ -158,7 +158,6 @@ class FileTable extends Component<
     loadFiles(this.type)
         .then(files => {
           if (!isEqual(files, this.state.files)) {
-            console.log("Files changed!", files, this.state.files)
             return this.setState(prevState => ({
               files: files,
             }));

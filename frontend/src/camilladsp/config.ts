@@ -466,24 +466,24 @@ export function defaultMixer(): Mixer {
     return {
         description: null,
         channels: { in: 2, out: 2 },
-        mapping: [defaultMapping(2, [])],
+        mapping: [
+            {
+                dest: 0,
+                sources: [
+                    { channel: 0, gain: 0, inverted: false, mute: false, scale: 'dB' }
+                ],
+                mute: false
+            },
+            {
+                dest: 1,
+                sources: [
+                    { channel: 1, gain: 0, inverted: false, mute: false, scale: 'dB' }
+                ],
+                mute: false
+            },
+        ],
         labels: null
     }
-}
-
-export function defaultMapping(outChannels: number, mappings: Mapping[]): Mapping {
-    if (mappings.length >= outChannels)
-        throw new Error(`Cannot add more than ${outChannels} (out) mappings`)
-    return {
-        dest: mappings.length,
-        sources: [defaultSource(0, [])],
-        mute: false
-    }
-}
-
-export function defaultSource(inChannels: number, sources: Source[]): Source {
-    const newChannel = sources.length < inChannels ? sources.length : 0
-    return { channel: newChannel, gain: 0, inverted: false, mute: false, scale: 'dB' }
 }
 
 /** Name for empty filter/mixer/processor slot */
@@ -788,15 +788,22 @@ export function getOutputLabels(config: Config): (string|null)[]|null {
     return getChannelLabels(config, pipeline_length)
 }
 
-export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number): string {
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number, compact?: boolean): string {
+    var result = ""
+    if (!compact) {
+        result = channel.toString()
+    }
     if (labels === undefined || labels === null || labels.length <= channel) {
-        return channel.toString()
+        return result
     }
     const label = labels[channel]
     if (label) {
-        return label
+        if (compact) {
+            return label
+        }
+        return result + ": " + label
     }
-    return channel.toString()
+    return result
 }
 
 export function getMixerInputLabels(config: Config, mixername: string): (string|null)[] | null {

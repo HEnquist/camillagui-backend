@@ -838,7 +838,6 @@ class PipelinePlot extends React.Component<Props, State> {
         const tt_node = this.tooltip.node()
         const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
         const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
-        console.log(event.pageX, event.pageY)
         this.tooltip
           .style("left", event.pageX - tt_width / 2 + "px")
           .style("top", event.pageY - tt_height - 10 + "px")
