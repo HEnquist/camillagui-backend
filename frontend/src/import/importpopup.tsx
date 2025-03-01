@@ -173,7 +173,9 @@ function ConfigItemSelection(props: {
           {valueAppended(config[parentKey])}
           <br />
           {isComplexObject(subElement)
-            && Object.entries(subElement).map(([key, subValue]) => {
+            && Object.entries(subElement)
+                  .filter(([key, subValue]) => subValue !== null)
+                  .map(([key, subValue]) => {
               return <div key={key} style={{ marginLeft: margin(2) }}>
                 <CheckBox text={key}
                   editable={configImport.isSecondLevelElementEditable(parentKey, key)}
