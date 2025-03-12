@@ -347,7 +347,7 @@ function MappingMatrix(props: {
 
       <tr>
         {Range(0, channels.in).map(src => {
-          return (<td className="rotate matrix-cell" key={"header"+src}><div>{getLabelForChannel(inputLabels, src, true)}</div></td>) })}
+          return (<td className="rotate matrix-cell" key={"header"+src}><div>{getLabelForChannel(inputLabels, src, true, true)}</div></td>) })}
       </tr>
       <tr>
         {Range(0, channels.in).map(src => {

@@ -351,7 +351,7 @@ class PipelinePlot extends React.Component<Props, State> {
     }
     for (let n = 0; n < active_channels; n++) {
       const labels = cap_params.labels
-      channel_labels.push(getLabelForChannel(labels, n))
+      channel_labels.push(getLabelForChannel(labels, n, true, false))
     }
     for (let n = 0; n < active_channels; n++) {
       var label = channel_labels[n]
@@ -472,7 +472,7 @@ class PipelinePlot extends React.Component<Props, State> {
         )
         channel_labels = []
         for (let n = 0; n < mixconf.channels.out; n++) {
-          label = getLabelForChannel(mixconf.labels, n)
+          label = getLabelForChannel(mixconf.labels, n, true, false)
           channel_labels.push(label)
         }
         for (let m = 0; m < mixconf.channels.out; m++) {

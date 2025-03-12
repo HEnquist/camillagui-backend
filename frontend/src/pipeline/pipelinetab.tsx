@@ -372,7 +372,8 @@ function FilterStepView(props: {
       maxChannelCount={maxChannels}
       label='channels'
       setChannels={channels => update(step => step.channels = channels)}
-      labels={props.labels} />
+      labels={props.labels}
+      multiSelect={true} />
     <OptionalBoolOption
       value={filterStep.bypassed}
       desc="bypassed"

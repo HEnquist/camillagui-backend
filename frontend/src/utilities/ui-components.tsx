@@ -1278,7 +1278,7 @@ export function ChannelSelection(props: {
                     <tr>
                         {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map(col => (
                             <td>
-                                <ChannelButton key={rowSize * row + col} channel={getLabelForChannel(labels, rowSize * row + col)} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
+                                <ChannelButton key={rowSize * row + col} channel={getLabelForChannel(labels, rowSize * row + col, true, false)} tooltip={getLabelForChannel(labels, rowSize * row + col, false)} selected={channels !== null && channels.includes(rowSize * row + col)} onClick={() => toggleChannel(rowSize * row + col)} />
                             </td>
                         ))}
                     </tr>
@@ -1290,9 +1290,9 @@ export function ChannelSelection(props: {
     if (rows === 1) {
         return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
-            {multiSelect && <ChannelButton key={-1} channel='all' selected={channels === null} onClick={toggleAllChannels} />}
+            {multiSelect && <ChannelButton key={-1} channel='all' tooltip='apply to all channels' selected={channels === null} onClick={toggleAllChannels} />}
             {Range(0, maxChannelCount).map(index =>
-                <ChannelButton key={index} channel={getLabelForChannel(labels, index)} selected={channels !== null && channels !== undefined && channels.includes(index)} onClick={() => toggleChannel(index)} />
+                <ChannelButton key={index} channel={getLabelForChannel(labels, index, true, false)} tooltip={getLabelForChannel(labels, index, false)} selected={channels !== null && channels !== undefined && channels.includes(index)} onClick={() => toggleChannel(index)} />
             )}
         </div>
     }
@@ -1301,9 +1301,9 @@ export function ChannelSelection(props: {
         return <div style={{ marginRight: '10px', display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
             {label && <span style={{ marginRight: '5px' }}>{label}</span>}
             <CompactChannelIndicator channels={channels} channelCount={maxChannelCount} />
-            <ChannelButton key='all' channel='all' selected={channels === null} onClick={toggleAllChannels} />
+            <ChannelButton key='all' channel='all' tooltip='apply to all channels' selected={channels === null} onClick={toggleAllChannels} />
             <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
-                <ChannelButton key='expand' channel='▼' selected={expanded} onClick={toggleExpanded} />
+                <ChannelButton key='expand' channel='▼' tooltip='show channel selection dropdown' selected={expanded} onClick={toggleExpanded} />
                 {expanded && makeDropdown()}
             </div>
         </div>
@@ -1325,16 +1325,18 @@ function CompactChannelIndicator(props: {
 
 export function ChannelButton(props: {
     channel: number | string
+    tooltip?: string
     selected: boolean
     onClick: () => void
     erroneousChannel?: boolean
 }) {
-    const { channel, selected, onClick, erroneousChannel } = props
+    const { channel, selected, onClick, erroneousChannel, tooltip} = props
     return <Button
         text={channel.toString()}
         onClick={onClick}
         highlighted={selected}
         className='setting-button'
+        tooltip={tooltip ? tooltip : channel.toString()}
         style={{
             height: '28px',
             marginRight: '5px',

@@ -788,9 +788,9 @@ export function getOutputLabels(config: Config): (string|null)[]|null {
     return getChannelLabels(config, pipeline_length)
 }
 
-export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number, compact?: boolean): string {
+export function getLabelForChannel(labels: (string|null)[] | null | undefined, channel: number, compact?: boolean, nullable?: boolean): string {
     var result = ""
-    if (!compact) {
+    if (!compact || !nullable) {
         result = channel.toString()
     }
     if (labels === undefined || labels === null || labels.length <= channel) {
