@@ -625,7 +625,7 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 export type CaptureDevice =
     { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
     | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
     | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
     | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
@@ -646,7 +646,7 @@ export type CaptureDevice =
     }
 
 export type PlaybackDevice =
-    { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null }
+    { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null }
     | { type: 'Jack', channels: number, device: string }
     | { type: 'Alsa', channels: number, format: Format | null, device: string }
     | { type: 'Pulse', channels: number, format: Format, device: string }

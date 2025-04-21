@@ -522,17 +522,17 @@ export function LabelListOption(props: {
         props.onChange(labels)
       }
 
-    return <div className="setting" data-tooltip-html="Name of device" data-tooltip-id="main-tooltip">
+    return <div className="setting" data-tooltip-html="Optional labels for individual channels" data-tooltip-id="main-tooltip">
       <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
       <OptionalTextInput
           value={props.value}
-          tooltip="Name of device"
+          tooltip="Optional labels for individual channels"
           className="setting-input"
           style={{width: '87%'}}
           onChange={updateChannelLabels}/>
       <MdiButton
           icon={mdiMenuDown}
-          tooltip="Pick a device"
+          tooltip="Expand channel list"
           onClick={props.onButtonClick}
           className='setting-button'
           style={{width: '13%'}}

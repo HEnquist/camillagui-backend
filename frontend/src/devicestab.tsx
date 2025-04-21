@@ -510,7 +510,7 @@ function CaptureOptions(props: {
     Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
     Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something', labels: null },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: false, loopback: false, labels: null},
+    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null, polling: null, loopback: false, labels: null},
     Jack: { type: 'Jack', channels: 2, device: 'default', labels: null},
     Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
     RawFile: { type: 'RawFile', channels: 2, format: 'S32LE', filename: '/path/to/file',
@@ -702,6 +702,14 @@ function CaptureOptions(props: {
                 devices.capture.exclusive = exclusive
             )}/>
         <OptionalBoolOption
+            value={capture.polling}
+            error={errors.messageFor('polling')}
+            desc="polling"
+            tooltip="Use polling instead of event driven mode"
+            onChange={polling => onChange(devices => // @ts-ignore
+                devices.capture.polling = polling
+            )}/>
+        <OptionalBoolOption
             value={capture.loopback}
             error={errors.messageFor('loopback')}
             desc="loopback"
@@ -795,7 +803,7 @@ function PlaybackOptions(props: {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0"},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null},
     Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
-    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null},
+    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null, polling: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
     File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file', wav_header: false},
@@ -907,6 +915,16 @@ function PlaybackOptions(props: {
         tooltip="Use exclusive mode"
         onChange={exclusive => onChange(devices => // @ts-ignore
             devices.playback.exclusive = exclusive
+        )}/>
+    }
+    {(playback.type === 'Wasapi') &&
+    <OptionalBoolOption
+        value={playback.polling}
+        error={errors.messageFor('polling')}
+        desc="polling"
+        tooltip="Use polling instead of event driven mode"
+        onChange={polling => onChange(devices => // @ts-ignore
+            devices.playback.polling = polling
         )}/>
     }
     {playback.type === 'File' && <>
