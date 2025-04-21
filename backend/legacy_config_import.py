@@ -148,6 +148,33 @@ def _modify_pipeline_filter_steps(config):
                     step["channels"] = [step["channel"]]
                     del step["channel"]
 
+# Starting from v4, there can only be one mapping per desitiantion channel,
+# and within a mapping, each source channel can only be used once.
+# Migrate by merging mappings for the same destination.
+# If a mapping ends up containing the same source channel more than once,
+# drop the extras.
+def _modify_mixers(config):
+    if "mixers" not in config or config["mixers"] is None:
+        return
+    for _, mixer in config["mixers"].items():
+        merged_mappings = []
+        # step 1, merge mappings
+        for mapping in mixer["mapping"]:
+            existing = next((m for m in merged_mappings if m["dest"] == mapping["dest"]), None)
+            if existing is not None:
+                existing["sources"].extend(mapping["sources"])
+            else:
+                merged_mappings.append(mapping)
+        #step 2: remove duplicated sources in each mapping
+        for mapping in merged_mappings:
+            cleaned_sources = []
+            for source in mapping["sources"]:
+                if any(s["channel"] == source["channel"] for s in cleaned_sources):
+                    continue
+                else:
+                    cleaned_sources.append(source)
+            mapping["sources"] = cleaned_sources
+        mixer["mapping"] = merged_mappings
 
 def migrate_legacy_config(config):
     """
@@ -160,6 +187,7 @@ def migrate_legacy_config(config):
     _modify_dither(config)
     _modify_devices(config)
     _modify_pipeline_filter_steps(config)
+    _modify_mixers(config)
 
 
 def _look_for_v1_volume(config):
@@ -206,6 +234,24 @@ def _look_for_v2_pipeline(config):
                     return True
     return False
 
+def _look_for_v3_mixer(config):
+    if "mixers" in config and isinstance(config["mixers"], dict):
+        for mixer in config["mixers"]:
+            output_channels = set()
+            for mapping in mixer["mapping"]:
+                # Check that there is no more than one mapping for each output channel
+                if mapping["dest"] in output_channels:
+                    return True
+                output_channels.add(mapping["dest"])
+
+                input_channels = set()
+                for source in mapping["sources"]:
+                    # Check that each input channel is not listed more than once in a mapping
+                    if source["channel"] in input_channels:
+                        return True
+                    input_channels.add(source["channel"])
+    return False
+
 def identify_version(config):
     if _look_for_v1_volume(config):
         return 1
@@ -221,4 +267,6 @@ def identify_version(config):
         return 2
     if _look_for_v2_devices(config):
         return 2
-    return 3
+    if _look_for_v3_mixer(config):
+        return 3
+    return 4
