@@ -40,6 +40,7 @@ from .views import (
     rename_config_file,
     rename_coeff_file,
 )
+from .statics import NoCacheStaticResource
 
 
 def setup_routes(app):
@@ -88,6 +89,6 @@ def setup_routes(app):
 
 
 def setup_static_routes(app):
-    app.router.add_static("/gui/", path=BASEPATH / "build")
+    app.router.register_resource(NoCacheStaticResource("/gui", BASEPATH / "build"))
     app.router.add_static("/config/", path=app["config_dir"])
     app.router.add_static("/coeff/", path=app["coeff_dir"])
