@@ -97,12 +97,12 @@ def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_i
         parameters = filter["parameters"]
         if filter["type"] == "Conv" and parameters["type"] in {"Raw", "Wav"}:
             filename = parameters["filename"]
-            samplerates_and_channels_for_filter[
-                filter_name
-            ] = samplerate_and_channel_pairs_from_options(
-                filter_plot_options(filter_file_names, filename),
-                default_samplerate,
-                default_channels,
+            samplerates_and_channels_for_filter[filter_name] = (
+                samplerate_and_channel_pairs_from_options(
+                    filter_plot_options(filter_file_names, filename),
+                    default_samplerate,
+                    default_channels,
+                )
             )
     return samplerates_and_channels_for_filter
 

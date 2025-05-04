@@ -72,37 +72,24 @@ GUI_CONFIG_SCHEMA = {
                                             "path": {
                                                 "type": "array",
                                                 "items": {"type": "string"},
-                                                "minLength": 1
+                                                "minLength": 1,
                                             },
                                             "reverse": {"type": ["boolean", "null"]},
                                         },
                                         "required": ["path"],
-                                    }
+                                    },
                                 },
                                 "range_from": {"type": "number"},
                                 "range_to": {"type": "number"},
                                 "step": {"type": "number", "exclusiveMinimum": 0},
                                 "type": {
                                     "type": ["string", "null"],
-                                    "enum": ["boolean", "number"]
+                                    "enum": ["boolean", "number"],
                                 },
                             },
-                            "if": {
-                                "properties": {
-                                    "type": {
-                                        "const": "number"
-                                    }
-                                }
-                            },
-                            "then": {
-                                "required": [
-                                    "range_from", "range_to", "step"
-                                ]
-                            },
-                            "required": [
-                                "name",
-                                "config_elements"
-                            ],
+                            "if": {"properties": {"type": {"const": "number"}}},
+                            "then": {"required": ["range_from", "range_to", "step"]},
+                            "required": ["name", "config_elements"],
                         },
                     },
                 },
@@ -112,4 +99,3 @@ GUI_CONFIG_SCHEMA = {
     },
     "required": [],
 }
-

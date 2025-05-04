@@ -172,78 +172,34 @@ def test_rew_export(basic_config):
     migrate_legacy_config(basic_config)
     assert len(basic_config["pipeline"]) == 1
 
+
 def test_merge_mixer_mappings(basic_config):
     config = basic_config
     # Insert a mixer with multiple mappings and sources per channel
     config["mixers"]["test"] = {
         "channels": {"in": 4, "out": 2},
         "mapping": [
-            {
-                "dest": 0,
-                "sources": [
-                    {
-                        "channel": 0,
-                        "gain": -1
-                    }
-                ]
-            },
+            {"dest": 0, "sources": [{"channel": 0, "gain": -1}]},
             # this should get merged into the previous
-            {
-                "dest": 0,
-                "sources": [
-                    {
-                        "channel": 1,
-                        "gain": -2
-                    }
-                ]
-            },
-            {
-                "dest": 1,
-                "sources": [
-                    {
-                        "channel": 2,
-                        "gain": -3
-                    }
-                ]
-            },
+            {"dest": 0, "sources": [{"channel": 1, "gain": -2}]},
+            {"dest": 1, "sources": [{"channel": 2, "gain": -3}]},
             # this should get dropped
-            {
-                "dest": 1,
-                "sources": [
-                    {
-                        "channel": 2,
-                        "gain": -4
-                    }
-                ]
-            },
-        ]
+            {"dest": 1, "sources": [{"channel": 2, "gain": -4}]},
+        ],
     }
 
     _modify_mixers(config)
-    assert config["mixers"]["test"] == config["mixers"]["test"] == {
-        "channels": {"in": 4, "out": 2},
-        "mapping": [
-            {
-                "dest": 0,
-                "sources": [
-                    {
-                        "channel": 0,
-                        "gain": -1
-                    },
-                    {
-                        "channel": 1,
-                        "gain": -2
-                    }
-                ]
-            },
-            {
-                "dest": 1,
-                "sources": [
-                    {
-                        "channel": 2,
-                        "gain": -3
-                    }
-                ]
-            },
-        ]
-    }
+    assert (
+        config["mixers"]["test"]
+        == config["mixers"]["test"]
+        == {
+            "channels": {"in": 4, "out": 2},
+            "mapping": [
+                {
+                    "dest": 0,
+                    "sources": [{"channel": 0, "gain": -1}, {"channel": 1, "gain": -2}],
+                },
+                {"dest": 1, "sources": [{"channel": 2, "gain": -3}]},
+            ],
+        }
+    )

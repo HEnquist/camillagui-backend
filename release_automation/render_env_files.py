@@ -12,7 +12,9 @@ with open(os.path.join(script_dir, "versions.yml")) as f:
 
 versions["backend_version"] = ".".join(str(v) for v in VERSION)
 
-environment = Environment(loader=FileSystemLoader(os.path.join(script_dir, "templates/")))
+environment = Environment(
+    loader=FileSystemLoader(os.path.join(script_dir, "templates/"))
+)
 
 filenames = [
     "requirements.txt",

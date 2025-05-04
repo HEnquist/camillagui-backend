@@ -72,7 +72,9 @@ async def store_files(folder, request):
     return web.Response(text="Saved {} file(s)".format(i))
 
 
-def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, validator=None):
+def list_of_files_in_directory(
+    folder, file_stats=True, title_and_desc=False, validator=None
+):
     """
     Return a list of files (name and modification date) in a folder.
     """
@@ -113,9 +115,14 @@ def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, va
                             valid = True
                     elif version < 3:
                         valid = False
-                        errors = [([], f"This config is made for the previous version {version} of CamillaDSP.")]
+                        errors = [
+                            (
+                                [],
+                                f"This config is made for the previous version {version} of CamillaDSP.",
+                            )
+                        ]
                 except yaml.YAMLError as e:
-                    if hasattr(e, 'problem_mark'):
+                    if hasattr(e, "problem_mark"):
                         mark = e.problem_mark
                         errordesc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
                     else:
@@ -137,7 +144,9 @@ def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, va
 
 
 def list_of_filenames_in_directory(folder):
-    return [file["name"] for file in list_of_files_in_directory(folder, file_stats=False)]
+    return [
+        file["name"] for file in list_of_files_in_directory(folder, file_stats=False)
+    ]
 
 
 def delete_files(folder, files):
@@ -449,4 +458,3 @@ def rename_coeff_or_return_error(request, source, target) -> Optional[str]:
     if os.path.isfile(target_file):
         return "File " + target + " already exists"
     rename(source_file, target_file)
-

@@ -136,7 +136,7 @@ async def get_status(request):
                     }
                 )
         except IOError as e:
-            #print("TODO safe to remove this try-except? error:", e)
+            # print("TODO safe to remove this try-except? error:", e)
             pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
@@ -184,6 +184,7 @@ async def get_param(request):
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result), headers=HEADERS)
 
+
 async def get_param_json(request):
     """
     Combined getter for several parameters, returns json.
@@ -195,6 +196,7 @@ async def get_param_json(request):
     else:
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.json_response(result, headers=HEADERS)
+
 
 async def get_list_param(request):
     """
@@ -255,6 +257,7 @@ async def set_param_index(request):
             raise web.HTTPBadRequest(text=f"Invalid boolean value {value}")
     return web.Response(text="OK", headers=HEADERS)
 
+
 async def eval_filter_values(request):
     """
     Evaluate a filter. Returns values for plotting.
@@ -279,7 +282,7 @@ async def eval_filter_values(request):
             name=(content["name"]),
             samplerate=samplerate,
             npoints=1000,
-            volume=volume
+            volume=volume,
         )
         data["channels"] = channels
         data["options"] = options
@@ -557,6 +560,7 @@ async def get_wav_info(request):
     wav_info = read_wav_header(filename)
     return web.json_response(wav_info, headers=HEADERS)
 
+
 async def store_coeffs(request):
     """
     Store a FIR coefficients file to coeff_dir.
@@ -588,7 +592,9 @@ async def get_stored_configs(request):
     """
     config_dir = request.app["config_dir"]
     validator = request.app["VALIDATOR"]
-    configs = list_of_files_in_directory(config_dir, title_and_desc=True, validator=validator)
+    configs = list_of_files_in_directory(
+        config_dir, title_and_desc=True, validator=validator
+    )
     return web.json_response(configs, headers=HEADERS)
 
 

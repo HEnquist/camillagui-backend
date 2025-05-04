@@ -19,6 +19,7 @@ def _remove_volume_filters(config):
                     if len(step["names"]) == 0:
                         config["pipeline"].remove(step)
 
+
 # v1->v2 removes "ramp_time" from loudness filters
 def _modify_loundness_filters(config):
     """
@@ -95,6 +96,7 @@ def _modify_devices(config):
         # Resampler
         _modify_resampler(config)
 
+
 # v1->v2 removes the "change_format" and makes "format" optional
 def _modify_coreaudio_device(dev):
     if dev["type"] == "CoreAudio":
@@ -105,10 +107,12 @@ def _modify_coreaudio_device(dev):
         else:
             dev["format"] = None
 
+
 # vx-vx changes some of the file playback types
 def _modify_file_playback_device(dev):
     if dev["type"] == "File":
         dev["type"] = "RawFile"
+
 
 # v1->v2 changes some names for dither filters
 def _modify_dither(config):
@@ -148,6 +152,7 @@ def _modify_pipeline_filter_steps(config):
                     step["channels"] = [step["channel"]]
                     del step["channel"]
 
+
 # Starting from v4, there can only be one mapping per desitiantion channel,
 # and within a mapping, each source channel can only be used once.
 # Migrate by merging mappings for the same destination.
@@ -160,12 +165,14 @@ def _modify_mixers(config):
         merged_mappings = []
         # step 1, merge mappings
         for mapping in mixer["mapping"]:
-            existing = next((m for m in merged_mappings if m["dest"] == mapping["dest"]), None)
+            existing = next(
+                (m for m in merged_mappings if m["dest"] == mapping["dest"]), None
+            )
             if existing is not None:
                 existing["sources"].extend(mapping["sources"])
             else:
                 merged_mappings.append(mapping)
-        #step 2: remove duplicated sources in each mapping
+        # step 2: remove duplicated sources in each mapping
         for mapping in merged_mappings:
             cleaned_sources = []
             for source in mapping["sources"]:
@@ -175,6 +182,7 @@ def _modify_mixers(config):
                     cleaned_sources.append(source)
             mapping["sources"] = cleaned_sources
         mixer["mapping"] = merged_mappings
+
 
 def migrate_legacy_config(config):
     """
@@ -197,6 +205,7 @@ def _look_for_v1_volume(config):
                 return True
     return False
 
+
 def _look_for_v1_loudness(config):
     if "filters" in config and isinstance(config["filters"], dict):
         for name, params in config["filters"].items():
@@ -204,19 +213,33 @@ def _look_for_v1_loudness(config):
                 return True
     return False
 
+
 def _look_for_v1_resampler(config):
     return "devices" in config and "enable_resampling" in config["devices"]
+
 
 def _look_for_v1_devices(config):
     if "devices" in config:
         for direction in ("capture", "playback"):
-            if direction in config["devices"] and "type" in config["devices"][direction]:
-                if config["devices"][direction]["type"] == "CoreAudio" and "change_format" in config["devices"][direction]:
+            if (
+                direction in config["devices"]
+                and "type" in config["devices"][direction]
+            ):
+                if (
+                    config["devices"][direction]["type"] == "CoreAudio"
+                    and "change_format" in config["devices"][direction]
+                ):
                     return True
     return False
 
+
 def _look_for_v2_devices(config):
-    return "devices" in config and "capture" in config["devices"] and config["devices"]["capture"]["type"] == "File"
+    return (
+        "devices" in config
+        and "capture" in config["devices"]
+        and config["devices"]["capture"]["type"] == "File"
+    )
+
 
 def _look_for_v1_dither(config):
     if "filters" in config and isinstance(config["filters"], dict):
@@ -226,6 +249,7 @@ def _look_for_v1_dither(config):
                     return True
     return False
 
+
 def _look_for_v2_pipeline(config):
     if "pipeline" in config and isinstance(config["pipeline"], list):
         for step in config["pipeline"]:
@@ -233,6 +257,7 @@ def _look_for_v2_pipeline(config):
                 if "channel" in step:
                     return True
     return False
+
 
 def _look_for_v3_mixer(config):
     if "mixers" in config and isinstance(config["mixers"], dict):
@@ -251,6 +276,7 @@ def _look_for_v3_mixer(config):
                         return True
                     input_channels.add(source["channel"])
     return False
+
 
 def identify_version(config):
     if _look_for_v1_volume(config):

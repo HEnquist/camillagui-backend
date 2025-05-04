@@ -67,9 +67,12 @@ def _read_and_validate_file(path, schema):
     if len(errors) > 0:
         logging.error(f"Error in config file '{path}'")
         for e in errors:
-            logging.error(f"Parameter '{'/'.join([str(p) for p in e.path])}': {e.message}")
+            logging.error(
+                f"Parameter '{'/'.join([str(p) for p in e.path])}': {e.message}"
+            )
         return None
     return config
+
 
 def get_config(path):
     """
@@ -83,15 +86,17 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
-    config["gui_config_file"] = absolute_path_or_none_if_empty(config["gui_config_file"])
+    config["gui_config_file"] = absolute_path_or_none_if_empty(
+        config["gui_config_file"]
+    )
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
     logging.debug("Backend configuration:")
     logging.debug(yaml.dump(config))
-    
+
     config["can_update_active_config"] = can_update_active_config(config)
-    
+
     # Read the gui config.
     # This is only to validate the file and log any problems.
     # The result is not used.
@@ -172,4 +177,3 @@ def get_gui_config_or_defaults(path):
     else:
         logging.warning("Unable to read gui config file, using defaults")
         return GUI_CONFIG_DEFAULTS
-

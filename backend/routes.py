@@ -89,6 +89,13 @@ def setup_routes(app):
 
 
 def setup_static_routes(app):
-    app.router.register_resource(NoCacheStaticResource("/gui", BASEPATH / "build"))
+    # Set no-cache for html and css to make sure they get updated.
+    # Without this browsers may continue running the old front end
+    # from cache after the gui was upgraded to a new version.  
+    app.router.register_resource(
+        NoCacheStaticResource(
+            "/gui", BASEPATH / "build", file_endings=(".html", ".css")
+        )
+    )
     app.router.add_static("/config/", path=app["config_dir"])
     app.router.add_static("/coeff/", path=app["coeff_dir"])
