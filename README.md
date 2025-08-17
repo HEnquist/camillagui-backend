@@ -23,7 +23,7 @@ A suggestion is to create a directory named `camilladsp`
 in you home directory, and place the `camillagui_backend` in it.
 Also create directories named `configs` and `coeffs` in the `camilladsp` directory.
 
-### Configureing the bundled gui
+### Configuring the bundled gui
 The gui configuration is stored in the bundle,
 at `camillagui_backend/_internal/config/camillagui.yml`.
 See [Configuration](#configuration) for an explanation of the options.
@@ -68,8 +68,11 @@ for more information.
 
 ## Configuration
 
-The backend configuration is stored in `config/camillagui.yml` by default.
+The backend configuration is stored in `camillagui_backend/config/camillagui.yml` by default.
+Note that in the [bundled executable](#configuring-the-bundled-gui),
+it is instead located at `camillagui_backend/_internal/config/camillagui.yml`.
 
+Example:
 ```yaml
 ---
 camilla_host: "0.0.0.0"
@@ -183,15 +186,15 @@ As an example, read a filename from a text file: `on_get_active_config: "cat myc
 
 
 ## Customizing the GUI
-Some functionality of the GUI can be customized by editing `config/gui-config.yml`.
-The styling can be customized by editing `build/css-variables.css`.
+Some functionality of the GUI can be customized by editing `camillagui_backend/config/gui-config.yml`.
+The styling can be customized by editing `camillagui_backend/build/css-variables.css`.
 
 ### Adding custom shortcut settings
 It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
 The included config file contains the default Bass and Treble filters,
 as well as a few commented out examples.
 
-To add more, edit the file `config/gui-config.yml` to add
+To add more, edit the file `camillagui_backend/config/gui-config.yml` to add
 the new shortcuts to the list under `custom_shortcuts`.
 
 Here is an example config to set the gain of the filters called `MyFilter` and `MyOtherFilter`.
@@ -235,7 +238,7 @@ The same happens if any of the others is missing in the config.
 The control can then still be used, but may not give the wanted result.
 
 ### Hiding GUI Options
-Options can be hidden from your users by editing `config/gui-config.yml`.
+Options can be hidden from your users by editing `camillagui_backend/config/gui-config.yml`.
 Setting any of the options to `true` hides the corresponding option or section.
 These are all optional, and default to `false` if left out.
 ```yaml
@@ -248,12 +251,12 @@ hide_multithreading: false
 ```
 
 ### Styling the GUI
-The UI can be styled by editing `build/css-variables.css`.
+The UI can be styled by editing `camillagui_backend/build/css-variables.css`.
 Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
 
 ### Other GUI Options
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
-To enable it by default, in `config/gui-config.yml` set `apply_config_automatically` to `true`.
+To enable it by default, in `camillagui_backend/config/gui-config.yml` set `apply_config_automatically` to `true`.
 
 The update rate of the level meters can be adjusted by changing the `status_update_interval` setting.
 The value is in milliseconds, and the default value is 100 ms.
