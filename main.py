@@ -1,15 +1,15 @@
-from aiohttp import web
 import argparse
-import ssl
 import logging
-import sys
-import camilladsp
-from camilladsp_plot.validate_config import CamillaValidator
-from camilladsp_plot import VERSION as plot_version
+import ssl
 
-from backend.version import VERSION
+import camilladsp
+from aiohttp import web
+from camilladsp_plot import VERSION as plot_version
+from camilladsp_plot.validate_config import CamillaValidator
+
 from backend.routes import setup_routes, setup_static_routes
-from backend.settings import get_config, CONFIG_PATH
+from backend.settings import CONFIG_PATH, get_config
+from backend.version import VERSION
 from backend.views import version_string
 
 LOG_LEVELS = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]

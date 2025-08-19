@@ -1,16 +1,16 @@
 import json
-import pytest
-from unittest.mock import MagicMock, patch
-import pytest
-from aiohttp import web, FormData
 import os
-import yaml
 import random
 import string
+from unittest.mock import MagicMock, patch
+
+import camilladsp
+import pytest
+import yaml
+from aiohttp import FormData, web
 
 import main
 from backend import views
-import camilladsp
 
 TESTFILE_DIR = os.path.join(os.path.dirname(__file__), "testfiles")
 SAMPLE_CONFIG_PATH = os.path.join(TESTFILE_DIR, "config.yml")

@@ -26,7 +26,7 @@ def _modify_loundness_filters(config):
     Modify Loudness filters
     """
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in config["filters"].items():
+        for _name, params in config["filters"].items():
             if params["type"] == "Loudness":
                 if "ramp_time" in params["parameters"]:
                     del params["parameters"]["ramp_time"]
@@ -178,8 +178,7 @@ def _modify_mixers(config):
             for source in mapping["sources"]:
                 if any(s["channel"] == source["channel"] for s in cleaned_sources):
                     continue
-                else:
-                    cleaned_sources.append(source)
+                cleaned_sources.append(source)
             mapping["sources"] = cleaned_sources
         mixer["mapping"] = merged_mappings
 
@@ -200,7 +199,7 @@ def migrate_legacy_config(config):
 
 def _look_for_v1_volume(config):
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in list(config["filters"].items()):
+        for _name, params in list(config["filters"].items()):
             if params["type"] == "Volume" and "fader" not in params["parameters"]:
                 return True
     return False
@@ -208,7 +207,7 @@ def _look_for_v1_volume(config):
 
 def _look_for_v1_loudness(config):
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in config["filters"].items():
+        for _name, params in config["filters"].items():
             if params["type"] == "Loudness" and "ramp_time" in params["parameters"]:
                 return True
     return False

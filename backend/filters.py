@@ -1,5 +1,5 @@
 import re
-from os.path import splitext, basename
+from os.path import basename, splitext
 
 FORMAT_MAP = {
     ".txt": "TEXT",
@@ -25,15 +25,14 @@ def defaults_for_filter(file_path):
     extension = splitext(file_path)[1].lower()
     if extension == ".wav":
         return {"type": "Wav"}
-    elif extension in FORMAT_MAP.keys():
+    if extension in FORMAT_MAP:
         return {
             "type": "Raw",
             "format": FORMAT_MAP[extension],
             "skip_bytes_lines": 0,
             "read_bytes_lines": 0,
         }
-    else:
-        return {}
+    return {}
 
 
 def filter_plot_options(filter_file_names, filename):
@@ -93,9 +92,9 @@ def map_of_samplerates_and_channels_per_filter(config, filter_file_names, step_i
     default_channels = config["devices"]["capture"]["channels"]
     samplerates_and_channels_for_filter = {}
     for filter_name in step_filters:
-        filter = config["filters"][filter_name]
-        parameters = filter["parameters"]
-        if filter["type"] == "Conv" and parameters["type"] in {"Raw", "Wav"}:
+        filt = config["filters"][filter_name]
+        parameters = filt["parameters"]
+        if filt["type"] == "Conv" and parameters["type"] in {"Raw", "Wav"}:
             filename = parameters["filename"]
             samplerates_and_channels_for_filter[filter_name] = (
                 samplerate_and_channel_pairs_from_options(

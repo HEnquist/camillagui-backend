@@ -1,46 +1,46 @@
 from .settings import BASEPATH
+from .statics import NoCacheStaticResource
 from .views import (
-    get_param,
-    get_list_param,
-    get_param_json,
-    set_param,
-    set_param_index,
-    eval_filter_values,
-    eval_filterstep_values,
-    get_config,
-    set_config,
-    get_active_config_file,
-    get_default_config_file,
-    set_active_config_name,
     config_to_yml,
-    yaml_to_json,
-    translate_convolver_to_json,
-    translate_eqapo_to_json,
-    parse_and_validate_yml_config_to_json,
-    validate_config,
-    get_gui_index,
-    get_stored_coeffs,
-    get_stored_configs,
-    store_configs,
-    store_coeffs,
     delete_coeffs,
     delete_configs,
     download_coeffs_zip,
     download_configs_zip,
-    get_gui_config,
-    get_config_file,
-    save_config_file,
-    get_defaults_for_coeffs,
-    get_status,
-    get_log_file,
-    get_capture_devices,
-    get_playback_devices,
+    eval_filter_values,
+    eval_filterstep_values,
+    get_active_config_file,
     get_backends,
+    get_capture_devices,
+    get_config,
+    get_config_file,
+    get_default_config_file,
+    get_defaults_for_coeffs,
+    get_gui_config,
+    get_gui_index,
+    get_list_param,
+    get_log_file,
+    get_param,
+    get_param_json,
+    get_playback_devices,
+    get_status,
+    get_stored_coeffs,
+    get_stored_configs,
     get_wav_info,
-    rename_config_file,
+    parse_and_validate_yml_config_to_json,
     rename_coeff_file,
+    rename_config_file,
+    save_config_file,
+    set_active_config_name,
+    set_config,
+    set_param,
+    set_param_index,
+    store_coeffs,
+    store_configs,
+    translate_convolver_to_json,
+    translate_eqapo_to_json,
+    validate_config,
+    yaml_to_json,
 )
-from .statics import NoCacheStaticResource
 
 
 def setup_routes(app):
@@ -91,7 +91,7 @@ def setup_routes(app):
 def setup_static_routes(app):
     # Set no-cache for html and css to make sure they get updated.
     # Without this browsers may continue running the old front end
-    # from cache after the gui was upgraded to a new version.  
+    # from cache after the gui was upgraded to a new version.
     app.router.register_resource(
         NoCacheStaticResource(
             "/gui", BASEPATH / "build", file_endings=(".html", ".css")

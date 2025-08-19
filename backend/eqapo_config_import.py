@@ -1,5 +1,5 @@
-from copy import copy, deepcopy
 import logging
+from copy import copy
 
 
 class EqAPO:
@@ -69,7 +69,7 @@ class EqAPO:
             channel = int(label) - 1
         else:
             logging.warning(
-                f"Virtual channels are not supported, skipping channel {label}"
+                "Virtual channels are not supported, skipping channel %s", label
             )
             channel = None
         return channel
@@ -79,7 +79,8 @@ class EqAPO:
             return float(value_str)
         except ValueError:
             logging.warning(
-                f"Unable to parse '{value_str}' as number, inline expressions are not supported."
+                "Unable to parse '%s' as number, inline expressions are not supported.",
+                value_str,
             )
             return None
 
@@ -107,18 +108,19 @@ class EqAPO:
             value = self.parse_number(params[2])
             parsed = {"bandwidth": value}
         else:
-            logging.warning("Skipping unknown token:", params[0])
+            logging.warning("Skipping unknown token: %s", params[0])
             return {}, params[1:]
         return parsed, params[nbr_tokens:]
 
     # Parse the parameters for a command
     def parse_filter_params(self, param_str):
         params = param_str.split()
-        enabled = params[0] == "ON"
+        # TODO skip this command if OFF
+        # enabled = params[0] == "ON"
         ftype = params[1]
         ftype_c = self.filter_types.get(ftype)
         if not ftype_c:
-            logging.warning(f"Unsupported filter type '{ftype}'")
+            logging.warning("Unsupported filter type '%s'", ftype)
             return None
         param_dict = {"type": ftype_c}
         tokens = params[2:]
@@ -132,8 +134,8 @@ class EqAPO:
         params = param_str.split()
         gain = self.parse_number(params[0])
         if params[1].lower() != "db":
-            logging.warning("invalid preamp line:", param_str)
-            return
+            logging.warning("invalid preamp line: %s", param_str)
+            return None
         return {"type": "Gain", "parameters": {"gain": gain, "scale": "dB"}}
 
     # Parse a Delay command to a filter
@@ -158,7 +160,7 @@ class EqAPO:
             dest_ch, expr = dest.split("=")
             dest_ch = self.lookup_channel_index(dest_ch)
             handled_channels.add(dest_ch)
-            logging.debug("dest", dest_ch)
+            logging.debug("dest %s", dest_ch)
             mapping = {"dest": dest_ch, "mute": False, "sources": []}
             mixer["mapping"].append(mapping)
             sources = expr.split("+")
@@ -175,6 +177,8 @@ class EqAPO:
                     # EqAPO supports setting channels to an arbitrary constant.
                     # Here only 0.0 is supported, as other values have no practical use.
                     channel = None
+                    scale = None
+                    gain = None
                 else:
                     gain = 0
                     scale = "dB"
@@ -182,7 +186,7 @@ class EqAPO:
                 if channel is not None:
                     channel = self.lookup_channel_index(channel)
                     # TODO make a mixer config
-                    logging.debug("source", channel, gain, scale)
+                    logging.debug("source channel: %s, gain: %f, scale: %s", channel, gain, scale)
                     source = {
                         "channel": channel,
                         "gain": gain,
@@ -191,7 +195,7 @@ class EqAPO:
                     }
                     mapping["sources"].append(source)
         for dest_ch in set(range(self.nbr_channels)) - handled_channels:
-            logging.debug("pass through", dest_ch)
+            logging.debug("pass through %s", dest_ch)
             mapping = {
                 "dest": dest_ch,
                 "mute": False,
@@ -214,27 +218,28 @@ class EqAPO:
         filtname = None
         command_name, params = line.split(":", 1)
         command = command_name.split()[0]
-        logging.debug("Parse command:", command)
+        logging.debug("Parse command: %s", command)
         if command in ("Filter", "Convolution", "Preamp", "Delay"):
+            filt = {}
             if command == "Filter":
                 filterparams = self.parse_filter_params(params)
                 if not filterparams:
                     return
-                filter = {"type": "Biquad", "parameters": filterparams}
+                filt = {"type": "Biquad", "parameters": filterparams}
             elif command == "Convolution":
                 filename = params.strip()
-                filter = {
+                filt = {
                     "type": "Conv",
                     "parameters": {"filename": filename, "type": "wav"},
                 }
             elif command == "Preamp":
-                filter = self.parse_gain(params)
+                filt = self.parse_gain(params)
             elif command == "Delay":
-                filter = self.parse_delay(params)
-            filter["description"] = line.strip()
+                filt = self.parse_delay(params)
+            filt["description"] = line.strip()
             filtname = f"{command}_{self.name_index[command]}"
             self.name_index[command] += 1
-            self.filters[filtname] = filter
+            self.filters[filtname] = filt
             self.pipeline[-1]["names"].append(filtname)
         elif command == "Channel":
             if params.strip() == "all":
@@ -279,14 +284,14 @@ class EqAPO:
             "Stage",
             "GraphicEQ",
         ):
-            logging.warning(f"Command '{command}' is not supported, skipping.")
+            logging.warning("Command '%s' is not supported, skipping.", command)
         else:
-            logging.warning(f"Skipping unrecognized command '{command}'")
+            logging.warning("Skipping unrecognized command '%s'", command)
 
     def postprocess(self):
         for idx, step in enumerate(list(self.pipeline)):
             if step["type"] == "Filter" and len(step["names"]) == 0:
-                logging.debug("remove", step)
+                logging.debug("remove %s", step)
                 self.pipeline.remove(step)
         for _, mixer in self.mixers.items():
             for idx, dest in enumerate(list(mixer["mapping"])):
@@ -302,7 +307,7 @@ class EqAPO:
         return config
 
     def translate_file(self):
-        for idx, line in enumerate(self.lines):
+        for line in self.lines:
             self.parse_line(line)
         self.postprocess()
         config = self.build_config()

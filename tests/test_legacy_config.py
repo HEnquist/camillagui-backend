@@ -1,15 +1,15 @@
 import pytest
+from camilladsp_plot.validate_config import CamillaValidator
 
 from backend.legacy_config_import import (
     _modify_devices,
-    _remove_volume_filters,
-    _modify_loundness_filters,
     _modify_dither,
-    _modify_pipeline_filter_steps,
+    _modify_loundness_filters,
     _modify_mixers,
+    _modify_pipeline_filter_steps,
+    _remove_volume_filters,
     migrate_legacy_config,
 )
-from camilladsp_plot.validate_config import CamillaValidator
 
 
 @pytest.fixture
