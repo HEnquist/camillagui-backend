@@ -119,44 +119,39 @@ def mock_offline_app(mock_camillaclient):
 
 
 @pytest.fixture
-def server(event_loop, aiohttp_client, mock_app):
-    return event_loop.run_until_complete(aiohttp_client(mock_app))
+async def server(aiohttp_client, mock_app):
+    return await aiohttp_client(mock_app)
 
 
 @pytest.fixture
-def offline_server(event_loop, aiohttp_client, mock_offline_app):
-    return event_loop.run_until_complete(aiohttp_client(mock_offline_app))
+async def offline_server(aiohttp_client, mock_offline_app):
+    return await aiohttp_client(mock_offline_app)
 
 
-@pytest.mark.asyncio
 async def test_read_volume(mock_request):
     mock_request.match_info = {"name": "volume"}
     reply = await views.get_param(mock_request)
     assert reply.body == "-20.0"
 
 
-@pytest.mark.asyncio
 async def test_read_peaks(mock_request):
     mock_request.match_info = {"name": "capturesignalpeak"}
     reply = await views.get_list_param(mock_request)
     assert json.loads(reply.body) == [-2.0, -3.0]
 
 
-@pytest.mark.asyncio
 async def test_read_volume(server):
     resp = await server.get("/api/getparam/volume")
     assert resp.status == 200
     assert await resp.text() == "-20.0"
 
 
-@pytest.mark.asyncio
 async def test_read_peaks(server):
     resp = await server.get("/api/getlistparam/capturesignalpeak")
     assert resp.status == 200
     assert await resp.json() == [-2.0, -3.0]
 
 
-@pytest.mark.asyncio
 async def test_read_status(server):
     resp = await server.get("/api/status")
     assert resp.status == 200
@@ -184,7 +179,6 @@ async def test_read_status(server):
         ("/api/backends", None),
     ],
 )
-@pytest.mark.asyncio
 async def test_all_get_endpoints_ok(server, endpoint, parameters):
     if parameters:
         resp = await server.get(endpoint, params=parameters)
@@ -200,7 +194,6 @@ async def test_all_get_endpoints_ok(server, endpoint, parameters):
         ("/api/uploadcoeffs", "/api/deletecoeffs", "/coeff/"),
     ],
 )
-@pytest.mark.asyncio
 async def test_upload_and_delete(server, upload, delete, getfile):
     filename = "".join(random.choice(string.ascii_lowercase) for i in range(10))
     filedata = "".join(random.choice(string.ascii_lowercase) for i in range(10))
@@ -230,7 +223,6 @@ async def test_upload_and_delete(server, upload, delete, getfile):
     assert resp.status == 404
 
 
-@pytest.mark.asyncio
 async def test_active_config_online(server):
     resp = await server.get("/api/getactiveconfigfile")
     assert resp.status == 200
@@ -240,7 +232,6 @@ async def test_active_config_online(server):
     assert content["config"]["devices"]["samplerate"] == 44100
 
 
-@pytest.mark.asyncio
 async def test_active_config_offline(offline_server):
     resp = await offline_server.get("/api/getactiveconfigfile")
     assert resp.status == 200
@@ -250,7 +241,6 @@ async def test_active_config_offline(offline_server):
     assert content["config"]["devices"]["samplerate"] == 48000
 
 
-@pytest.mark.asyncio
 async def test_translate_eqapo(server):
     from test_eqapo_config_import import EXAMPLE
 
@@ -260,13 +250,11 @@ async def test_translate_eqapo(server):
     assert "filters" in content
 
 
-@pytest.mark.asyncio
 async def test_translate_eqapo_bad(server):
     resp = await server.post("/api/eqapotojson", data="blank")
     assert resp.status == 400
 
 
-@pytest.mark.asyncio
 async def test_translate_convolver(server):
     resp = await server.post("/api/convolvertojson", data="96000 1 2 0\n0\n0")
     assert resp.status == 200
