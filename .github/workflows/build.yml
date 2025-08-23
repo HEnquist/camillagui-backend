@@ -53,8 +53,16 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install jinja2 PyYAML
 
+    - name: Rename original pyproject.toml
+      run: mv pyproject.toml pyproject.toml.orig
+
     - name: Render scripts from templates
       run: python -Bm release_automation.render_env_files
+
+    - name: Rename rendered pyproject.toml and restore original
+      run: |
+        mv pyproject.toml pyproject.toml.rendered
+        mv pyproject.toml.orig pyproject.toml
 
     - name: Install requirements
       run: python -m pip install -r requirements.txt
@@ -64,6 +72,11 @@ jobs:
 
     - name: Run python tests
       run: python -Bm pytest
+
+    - name: Replace original pyproject.toml with rendered
+      run: |
+        rm pyproject.toml
+        mv pyproject.toml.rendered pyproject.toml
 
     - name: Clean up
       run: |
