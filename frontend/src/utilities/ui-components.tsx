@@ -214,7 +214,7 @@ export function UploadButton(
  */
 export function MdiButton(props: {
     icon: string
-    tooltip: string
+    tooltip?: string
     className?: string
     style?: CSSProperties
     enabled?: boolean

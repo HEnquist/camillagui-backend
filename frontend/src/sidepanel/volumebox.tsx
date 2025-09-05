@@ -2,7 +2,7 @@ import React from "react"
 import "../index.css"
 import {VuMeterGroup} from "./vumeter"
 import {Box, MdiButton} from "../utilities/ui-components"
-import {mdiVolumeMedium, mdiVolumeOff} from "@mdi/js"
+import {mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus} from "@mdi/js"
 import {VuMeterStatus} from "../camilladsp/status"
 import {throttle} from "lodash"
 import {GuiConfig} from "../guiconfig"
@@ -88,6 +88,7 @@ export class VolumeBox extends React.Component<Props, State> {
         super(props)
         this.toggleMute = this.toggleMute.bind(this)
         this.toggleDim = this.toggleDim.bind(this)
+        this.adjustVolume = this.adjustVolume.bind(this)
         this.setDspVolumeDebounced = throttle(this.setDspVolume, 250)
         this.state = { volume: Number.NEGATIVE_INFINITY, mute: false, dim: false, send_to_dsp: false }
     }
@@ -131,10 +132,29 @@ export class VolumeBox extends React.Component<Props, State> {
         }))
     }
 
+    private adjustVolume(delta: number) {
+        const currentVol = this.state.volume
+        var targetVol = currentVol + delta
+        const maxVol = this.props.guiConfig.volume_max
+        const minVol = maxVol - this.props.guiConfig.volume_range
+        if (targetVol >= maxVol) {
+            targetVol = maxVol
+        } else if (targetVol <= minVol) {
+            targetVol = minVol
+        }
+        this.changeVolume(targetVol)
+    }
+
     private changeVolume(volume: number) {
         this.volumePoller.restart_timer()
+        const current_volume = this.state.volume
+        var new_volume = volume
+        if (new_volume > current_volume + 3)
+            new_volume = current_volume + 3
+        else if (new_volume < current_volume - 3)
+            new_volume = current_volume - 3
         this.setState({
-            volume: volume,
+            volume: new_volume,
             dim: false,
             send_to_dsp: true
         })
@@ -186,6 +206,16 @@ export class VolumeBox extends React.Component<Props, State> {
                     highlighted={dim}
                     enabled={(dim && volume <= (maxVol - 20)) || (!dim && volume >= (minVol + 20))}
                     onClick={this.toggleDim} />
+                <MdiButton
+                    icon={mdiVolumeMinus}
+                    tooltip="Lower volume by 1 dB"
+                    buttonSize="small"
+                    onClick={() => this.adjustVolume(-1)} />
+                <MdiButton
+                    icon={mdiVolumePlus}
+                    tooltip="Raise volume by 1 dB"
+                    buttonSize="small"
+                    onClick={() => this.adjustVolume(1)} />
             </>
         }>
             <VuMeterGroup
