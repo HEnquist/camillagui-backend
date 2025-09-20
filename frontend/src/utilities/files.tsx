@@ -68,8 +68,18 @@ export function loadDefaultConfigJson(): Promise<Response> {
   return fetch(`/api/getdefaultconfigfile`)
 }
 
-export function loadActiveConfig(): Promise<{ configFileName: string, config: Config }> {
-  return fetch("/api/getactiveconfigfile")
+export function loadStartupConfig(): Promise<{ configFileName: string|null, config: Config, source: string }> {
+  return fetch("/api/getstartconfig")
+      .then(response => {
+        if (!response.ok) {
+          throw Error(response.statusText)
+        }
+        return response.json()
+      })
+}
+
+export function loadActiveConfigFilename(): Promise<{ configFileName: string|null}> {
+  return fetch("/api/getactiveconfigfilename")
       .then(response => {
         if (!response.ok) {
           throw Error(response.statusText)

@@ -479,7 +479,7 @@ div .popup-content {
   display: inline-block;
   width: 7ch;
   text-align: right;
-  margin-left: 5px;
+  margin-left: 0px;
 }
 
 .db-label-muted {
@@ -488,7 +488,7 @@ div .popup-content {
   display: inline-block;
   width: 7ch;
   text-align: right;
-  margin-left: 5px;
+  margin-left: 0px;
   color: var(--neutral-text-color);
   font-style: italic;
 }

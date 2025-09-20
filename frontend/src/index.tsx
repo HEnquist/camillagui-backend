@@ -27,7 +27,7 @@ import {SidePanel} from "./sidepanel/sidepanel"
 import {Update} from "./utilities/common"
 import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
 import {UndoRedo} from "./main/UndoRedo"
-import {loadActiveConfig} from "./utilities/files"
+import {loadStartupConfig} from "./utilities/files"
 import { createTheme } from 'react-data-table-component'
 
 class CamillaConfig extends React.Component<
@@ -71,7 +71,7 @@ class CamillaConfig extends React.Component<
       unappliedChanges: true,
     }
     this.loadGuiConfig()
-    this.loadCurrentConfig()
+    this.loadConfigAtStart()
     createTheme(
       'camilla',
       {
@@ -106,11 +106,22 @@ class CamillaConfig extends React.Component<
         .then(json => this.setState({guiConfig: json}), err => {console.log('Failed to parse guiconfig as json', err)})
   }
 
-  private async loadCurrentConfig() {
+  private async loadConfigAtStart() {
     try {
-      const json = await loadActiveConfig()
-      this.setCurrentConfig(json.configFileName, json.config)
-      this.setState({message: 'OK'})
+      const json = await loadStartupConfig()
+      this.setCurrentConfig(json.configFileName ? json.configFileName : undefined, json.config)
+      let message = ""
+      if (json.source === "dsp") {
+        message = "Loaded from DSP"
+      }
+      else if (json.source === "active") {
+        message = "Loaded active"
+      }
+      else if (json.source === "default") {
+        message = "Loaded default"
+      }
+
+      this.setState({message: message})
     }
     catch(err) {
       console.log("Failed getting active config:", err)

@@ -189,7 +189,7 @@ export class VolumeBox extends React.Component<Props, State> {
         const minVol = maxVol - this.props.guiConfig.volume_range
         return <Box title={
             <>
-                Volume
+                Vol:
                 <div className={mute ? "db-label-muted" : "db-label"}>
                     {volume.toFixed(1)}dB
                 </div>

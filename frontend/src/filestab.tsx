@@ -30,7 +30,7 @@ import {
   FileInfo,
   fileNamesOf,
   fileStatusDesc,
-  loadActiveConfig,
+  loadActiveConfigFilename,
   loadConfigJson,
   loadDefaultConfigJson,
   loadFiles
@@ -106,7 +106,7 @@ class FileTable extends Component<
     {
       files: FileInfo[]
       selectedFiles: FileInfo[]
-      activeConfigFileName: string
+      activeConfigFileName: string | null
       newFileName: string
       fileStatus: FileStatus | null
       stopTimer: () => void
@@ -132,7 +132,7 @@ class FileTable extends Component<
     this.state = {
       files: [],
       selectedFiles: [],
-      activeConfigFileName: '',
+      activeConfigFileName: null,
       newFileName: 'New config.yml',
       fileStatus: null,
       stopTimer: () => {},
@@ -222,7 +222,7 @@ class FileTable extends Component<
 
   private async loadActiveConfigName() {
     try {
-      const json = await loadActiveConfig()
+      const json = await loadActiveConfigFilename()
       this.setState({activeConfigFileName: json.configFileName})
     }
     catch (err) {
