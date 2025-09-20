@@ -8,7 +8,8 @@ from .views import (
     download_configs_zip,
     eval_filter_values,
     eval_filterstep_values,
-    get_active_config_file,
+    get_config_at_gui_start,
+    get_active_config_name,
     get_backends,
     get_capture_devices,
     get_config,
@@ -54,7 +55,8 @@ def setup_routes(app):
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
-    app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
+    app.router.add_get("/api/getstartconfig", get_config_at_gui_start)
+    app.router.add_get("/api/getactiveconfigfilename", get_active_config_name)
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
     app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)

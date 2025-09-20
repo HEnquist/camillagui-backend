@@ -381,18 +381,41 @@ async def get_default_config_file(request):
     return web.json_response(config_object, headers=HEADERS)
 
 
-async def get_active_config_file(request):
+async def get_config_at_gui_start(request):
     """
-    Get the active config. If no config is active, return the default config.
+    Get the config to load into the gui when starting.
+    Priority order:
+    - config directly from the dsp
+    - loaded from file using the active file name
+    - loaded from file using the default config file name
     """
+    # get from dsp
+    cdsp = request.app["CAMILLA"]
+    dsp_config = None
+    try:
+        dsp_config = cdsp.config.active()
+    except Exception:
+        try:
+            cdsp.connect()
+            dsp_config = cdsp.config.active()
+        except Exception:
+            pass
+    if dsp_config is not None:
+        return web.json_response({"config": dsp_config, "source": "dsp"}, headers=HEADERS)
+
     active_config_path = get_active_config_path(request)
-    logging.debug(active_config_path)
+    logging.debug("Active config file path: %s", active_config_path)
     default_config_path = request.app["default_config"]
     config_dir = request.app["config_dir"]
+
     if active_config_path and isfile(join(config_dir, active_config_path)):
+        logging.debug("Loading active config")
         config = join(config_dir, active_config_path)
+        source = "active"
     elif default_config_path and isfile(default_config_path):
+        logging.debug("Loading default config")
         config = default_config_path
+        source = "default"
     else:
         raise web.HTTPNotFound(text="No active or default config")
     try:
@@ -407,11 +430,19 @@ async def get_active_config_file(request):
         traceback.print_exc()
         raise web.HTTPInternalServerError(text=str(e))
     if active_config_path:
-        data = {"configFileName": active_config_path, "config": config_object}
+        data = {"configFileName": active_config_path, "config": config_object, "source": source}
     else:
-        data = {"config": config_object}
+        data = {"config": config_object, "source": source}
     return web.json_response(data, headers=HEADERS)
 
+async def get_active_config_name(request):
+    """
+    Get the active config file name. If no config is active, return null.
+    """
+    active_config_path = get_active_config_path(request)
+    logging.debug(active_config_path)
+    data = {"configFileName": active_config_path}
+    return web.json_response(data, headers=HEADERS)
 
 async def set_active_config_name(request):
     """
@@ -426,7 +457,7 @@ async def set_active_config_name(request):
 
 async def get_config_file(request):
     """
-    Read and return a config file. Takes a filname and tries to load the file from config_dir.
+    Read and return a config file. Takes a filename and tries to load the file from config_dir.
     """
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
