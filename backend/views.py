@@ -395,14 +395,18 @@ async def get_config_at_gui_start(request):
     try:
         dsp_config = cdsp.config.active()
     except Exception:
+        # if the request failed, reconnect and retry
         try:
             cdsp.connect()
             dsp_config = cdsp.config.active()
         except Exception:
             pass
     if dsp_config is not None:
-        return web.json_response({"config": dsp_config, "source": "dsp"}, headers=HEADERS)
+        return web.json_response(
+            {"config": dsp_config, "source": "dsp"}, headers=HEADERS
+        )
 
+    # get from file
     active_config_path = get_active_config_path(request)
     logging.debug("Active config file path: %s", active_config_path)
     default_config_path = request.app["default_config"]
@@ -430,10 +434,15 @@ async def get_config_at_gui_start(request):
         traceback.print_exc()
         raise web.HTTPInternalServerError(text=str(e))
     if active_config_path:
-        data = {"configFileName": active_config_path, "config": config_object, "source": source}
+        data = {
+            "configFileName": active_config_path,
+            "config": config_object,
+            "source": source,
+        }
     else:
         data = {"config": config_object, "source": source}
     return web.json_response(data, headers=HEADERS)
+
 
 async def get_active_config_name(request):
     """
@@ -443,6 +452,7 @@ async def get_active_config_name(request):
     logging.debug(active_config_path)
     data = {"configFileName": active_config_path}
     return web.json_response(data, headers=HEADERS)
+
 
 async def set_active_config_name(request):
     """

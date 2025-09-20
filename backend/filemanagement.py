@@ -222,13 +222,14 @@ def get_active_config_path(request):
             if dsp_statefile_path:
                 fpath = cdsp.config.file_path()
                 filename = _verify_path_in_config_dir(fpath, config_dir)
-                logging.debug(filename)
+                logging.debug("Config path from statefile: %s", filename)
                 return filename
             logging.error(
                 "CamillaDSP runs without state file and is unable to persistently store config file path"
             )
             return None
         if statefile_path:
+            logging.debug("Getting config from statefile: %s", statefile_path)
             confpath = _read_statefile_config_path(statefile_path)
             return _verify_path_in_config_dir(confpath, config_dir)
         logging.error(

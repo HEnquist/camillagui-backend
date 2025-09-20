@@ -110,6 +110,9 @@ def mock_app(mock_camillaclient):
 @pytest.fixture
 def mock_offline_app(mock_camillaclient):
     mock_camillaclient._client.config.file_path = MagicMock(return_value=None)
+    mock_camillaclient._client.config.active = MagicMock(
+        side_effect=camilladsp.CamillaError
+    )
     mock_camillaclient._client.general.state = MagicMock(
         side_effect=camilladsp.CamillaError
     )
@@ -166,7 +169,7 @@ async def test_read_status(server):
         ("/api/getparam/mute", None),
         ("/api/getlistparam/playbacksignalpeak", None),
         ("/api/getconfig", None),
-        ("/api/getactiveconfigfile", None),
+        ("/api/getstartconfig", None),
         ("/api/getdefaultconfigfile", None),
         ("/api/storedconfigs", None),
         ("/api/storedcoeffs", None),
@@ -223,22 +226,24 @@ async def test_upload_and_delete(server, upload, delete, getfile):
     assert resp.status == 404
 
 
-async def test_active_config_online(server):
-    resp = await server.get("/api/getactiveconfigfile")
+async def test_startup_config_online(server):
+    resp = await server.get("/api/getstartconfig")
     assert resp.status == 200
     content = await resp.json()
     print(content)
-    assert content["configFileName"] == "config.yml"
     assert content["config"]["devices"]["samplerate"] == 44100
+    assert content["source"] == "dsp"
+    assert "configFileName" not in content
 
 
-async def test_active_config_offline(offline_server):
-    resp = await offline_server.get("/api/getactiveconfigfile")
+async def test_startup_config_offline(offline_server):
+    resp = await offline_server.get("/api/getstartconfig")
     assert resp.status == 200
     content = await resp.json()
     print(content)
-    assert content["configFileName"] == "config2.yml"
     assert content["config"]["devices"]["samplerate"] == 48000
+    assert content["source"] == "active"
+    assert content["configFileName"] == "config2.yml"
 
 
 async def test_translate_eqapo(server):

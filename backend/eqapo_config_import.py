@@ -186,7 +186,9 @@ class EqAPO:
                 if channel is not None:
                     channel = self.lookup_channel_index(channel)
                     # TODO make a mixer config
-                    logging.debug("source channel: %s, gain: %f, scale: %s", channel, gain, scale)
+                    logging.debug(
+                        "source channel: %s, gain: %f, scale: %s", channel, gain, scale
+                    )
                     source = {
                         "channel": channel,
                         "gain": gain,
