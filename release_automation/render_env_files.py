@@ -1,6 +1,6 @@
-import yaml
 import os
 
+import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from backend.version import VERSION

@@ -83,6 +83,11 @@ class Filter:
 
 
 class ConvolverConfig:
+    """
+    A class representing a convolver config.
+    See https://convolver.sourceforge.net/config.html
+    """
+
     _samplerate: int
     _input_channels: int
     _output_channels: int
@@ -92,7 +97,7 @@ class ConvolverConfig:
 
     def __init__(self, config_text: str):
         """
-        :param config_text: a convolver config (https://convolver.sourceforge.net/config.html) as string
+        :param config_text: a convolver config as a string
         """
         lines = config_text.splitlines()
         first_line_items = lines[0].split()

@@ -1,44 +1,45 @@
-from os.path import isfile, expanduser, join
-import yaml
+import logging
 import threading
 import time
+import traceback
+from os.path import expanduser, isfile, join
+
+import yaml
 from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
 from camilladsp_plot.audiofileread import read_wav_header
-import logging
-import traceback
 
+from .convolver_config_import import ConvolverConfig
+from .eqapo_config_import import EqAPO
 from .filemanagement import (
-    path_of_config_file,
-    store_files,
-    list_of_files_in_directory,
-    delete_files,
-    zip_response,
-    zip_of_files,
-    read_yaml_from_path_to_object,
-    set_path_as_active_config,
-    get_active_config_path,
-    save_config_to_yaml_file,
-    make_config_filter_paths_absolute,
     coeff_dir_relative_to_config_dir,
-    replace_relative_filter_path_with_absolute_paths,
-    make_config_filter_paths_relative,
-    make_absolute,
-    replace_tokens_in_filter_config,
+    delete_files,
+    get_active_config_path,
     list_of_filenames_in_directory,
-    rename_config_or_return_error,
+    list_of_files_in_directory,
+    make_absolute,
+    make_config_filter_paths_absolute,
+    make_config_filter_paths_relative,
+    path_of_config_file,
+    read_yaml_from_path_to_object,
     rename_coeff_or_return_error,
+    rename_config_or_return_error,
+    replace_relative_filter_path_with_absolute_paths,
+    replace_tokens_in_filter_config,
+    save_config_to_yaml_file,
+    set_path_as_active_config,
+    store_files,
+    zip_of_files,
+    zip_response,
 )
 from .filters import (
     defaults_for_filter,
     filter_plot_options,
     pipeline_step_plot_options,
 )
-from .settings import get_gui_config_or_defaults, GUI_CONFIG_PATH
-from .convolver_config_import import ConvolverConfig
-from .eqapo_config_import import EqAPO
 from .legacy_config_import import migrate_legacy_config
+from .settings import GUI_CONFIG_PATH, get_gui_config_or_defaults
 
 OFFLINE_CACHE = {
     "cdsp_status": "Offline",
@@ -73,17 +74,17 @@ def _reconnect(cdsp, cache, validator):
             backends = cdsp.general.supported_device_types()
             cache["backends"] = backends
             pb_backends, cap_backends = backends
-            logging.debug(f"Updated backends: {backends}")
+            logging.debug("Updated backends: %s", backends)
             validator.set_supported_capture_types(cap_backends)
             validator.set_supported_playback_types(pb_backends)
             # Update playback and capture devices
             for pb_backend in pb_backends:
                 pb_devs = cdsp.general.list_playback_devices(pb_backend)
-                logging.debug(f"Updated {pb_backend} playback devices: {pb_devs}")
+                logging.debug("Updated %s playback devices: %s", pb_backend, pb_devs)
                 cache["playback_devices"][pb_backend] = pb_devs
             for cap_backend in cap_backends:
                 cap_devs = cdsp.general.list_capture_devices(cap_backend)
-                logging.debug(f"Updated {cap_backend} capture devices: {cap_devs}")
+                logging.debug("Updated %s capture devices: %s", cap_backend, cap_devs)
                 cache["capture_devices"][cap_backend] = cap_devs
             done = True
         except IOError:
@@ -103,41 +104,37 @@ async def get_status(request):
     validator = request.app["VALIDATOR"]
     try:
         levels_since = float(request.query.get("since"))
-    except:
+    except Exception:
         levels_since = None
     try:
         state = cdsp.general.state()
         state_str = state.name
         cache["cdsp_status"] = state_str
-        try:
-            if levels_since is not None:
-                levels = cdsp.levels.levels_since(levels_since)
-            else:
-                levels = cdsp.levels.levels()
+        if levels_since is not None:
+            levels = cdsp.levels.levels_since(levels_since)
+        else:
+            levels = cdsp.levels.levels()
+        cache.update(
+            {
+                "capturesignalrms": levels["capture_rms"],
+                "capturesignalpeak": levels["capture_peak"],
+                "playbacksignalrms": levels["playback_rms"],
+                "playbacksignalpeak": levels["playback_peak"],
+            }
+        )
+        now = time.time()
+        # These values don't change that fast, let's update them only once per second.
+        if now - cachetime > 1.0:
+            request.app["STORE"]["cache_time"] = now
             cache.update(
                 {
-                    "capturesignalrms": levels["capture_rms"],
-                    "capturesignalpeak": levels["capture_peak"],
-                    "playbacksignalrms": levels["playback_rms"],
-                    "playbacksignalpeak": levels["playback_peak"],
+                    "capturerate": cdsp.rate.capture(),
+                    "rateadjust": cdsp.status.rate_adjust(),
+                    "bufferlevel": cdsp.status.buffer_level(),
+                    "clippedsamples": cdsp.status.clipped_samples(),
+                    "processingload": cdsp.status.processing_load(),
                 }
             )
-            now = time.time()
-            # These values don't change that fast, let's update them only once per second.
-            if now - cachetime > 1.0:
-                request.app["STORE"]["cache_time"] = now
-                cache.update(
-                    {
-                        "capturerate": cdsp.rate.capture(),
-                        "rateadjust": cdsp.status.rate_adjust(),
-                        "bufferlevel": cdsp.status.buffer_level(),
-                        "clippedsamples": cdsp.status.clipped_samples(),
-                        "processingload": cdsp.status.processing_load(),
-                    }
-                )
-        except IOError as e:
-            # print("TODO safe to remove this try-except? error:", e)
-            pass
     except IOError:
         if reconnect_thread is None or not reconnect_thread.is_alive():
             cache.update(OFFLINE_CACHE)
@@ -287,8 +284,8 @@ async def eval_filter_values(request):
         data["channels"] = channels
         data["options"] = options
         return web.json_response(data, headers=HEADERS)
-    except FileNotFoundError:
-        raise web.HTTPNotFound(text="Filter coefficient file not found")
+    except FileNotFoundError as e:
+        raise web.HTTPNotFound(text="Filter coefficient file not found") from e
     except Exception as e:
         raise web.HTTPBadRequest(text=str(e))
 
@@ -314,14 +311,14 @@ async def eval_filterstep_values(request):
         data = eval_filterstep(
             plot_config,
             step_index,
-            name="Filterstep {}".format(step_index),
+            name=f"Filterstep {step_index}",
             npoints=1000,
         )
         data["channels"] = channels
         data["options"] = options
         return web.json_response(data, headers=HEADERS)
-    except FileNotFoundError:
-        raise web.HTTPNotFound(text="Filter coefficient file not found")
+    except FileNotFoundError as e:
+        raise web.HTTPNotFound(text="Filter coefficient file not found") from e
     except Exception as e:
         raise web.HTTPBadRequest(text=str(e))
 
@@ -351,7 +348,7 @@ async def set_config(request):
         try:
             cdsp.config.set_active(config_object_with_absolute_filter_paths)
         except CamillaError as e:
-            raise web.HTTPInternalServerError(text=str(e))
+            raise web.HTTPUnprocessableEntity(text=str(e))
     else:
         validator.validate_config(config_object_with_absolute_filter_paths)
         errors = validator.get_errors()
@@ -375,7 +372,7 @@ async def get_default_config_file(request):
             read_yaml_from_path_to_object(request, config), config_dir
         )
     except CamillaError as e:
-        logging.error(f"Failed to get default config file, error: {e}")
+        logging.error("Failed to get default config file, error: %s", e)
         raise web.HTTPInternalServerError(text=str(e))
     except Exception as e:
         logging.error("Failed to get default config file")
@@ -384,18 +381,45 @@ async def get_default_config_file(request):
     return web.json_response(config_object, headers=HEADERS)
 
 
-async def get_active_config_file(request):
+async def get_config_at_gui_start(request):
     """
-    Get the active config. If no config is active, return the default config.
+    Get the config to load into the gui when starting.
+    Priority order:
+    - config directly from the dsp
+    - loaded from file using the active file name
+    - loaded from file using the default config file name
     """
+    # get from dsp
+    cdsp = request.app["CAMILLA"]
+    dsp_config = None
+    try:
+        dsp_config = cdsp.config.active()
+    except Exception:
+        # if the request failed, reconnect and retry
+        try:
+            cdsp.connect()
+            dsp_config = cdsp.config.active()
+        except Exception:
+            pass
+    if dsp_config is not None:
+        return web.json_response(
+            {"config": dsp_config, "source": "dsp"}, headers=HEADERS
+        )
+
+    # get from file
     active_config_path = get_active_config_path(request)
-    logging.debug(active_config_path)
+    logging.debug("Active config file path: %s", active_config_path)
     default_config_path = request.app["default_config"]
     config_dir = request.app["config_dir"]
+
     if active_config_path and isfile(join(config_dir, active_config_path)):
+        logging.debug("Loading active config")
         config = join(config_dir, active_config_path)
+        source = "active"
     elif default_config_path and isfile(default_config_path):
+        logging.debug("Loading default config")
         config = default_config_path
+        source = "default"
     else:
         raise web.HTTPNotFound(text="No active or default config")
     try:
@@ -403,16 +427,30 @@ async def get_active_config_file(request):
             read_yaml_from_path_to_object(request, config), config_dir
         )
     except CamillaError as e:
-        logging.error(f"Failed to get active config from CamillaDSP, error: {e}")
+        logging.error("Failed to get active config from CamillaDSP, error: %s", e)
         raise web.HTTPInternalServerError(text=str(e))
     except Exception as e:
-        logging.error(f"Failed to get active config")
+        logging.error("Failed to get active config")
         traceback.print_exc()
         raise web.HTTPInternalServerError(text=str(e))
     if active_config_path:
-        data = {"configFileName": active_config_path, "config": config_object}
+        data = {
+            "configFileName": active_config_path,
+            "config": config_object,
+            "source": source,
+        }
     else:
-        data = {"config": config_object}
+        data = {"config": config_object, "source": source}
+    return web.json_response(data, headers=HEADERS)
+
+
+async def get_active_config_name(request):
+    """
+    Get the active config file name. If no config is active, return null.
+    """
+    active_config_path = get_active_config_path(request)
+    logging.debug(active_config_path)
+    data = {"configFileName": active_config_path}
     return web.json_response(data, headers=HEADERS)
 
 
@@ -429,7 +467,7 @@ async def set_active_config_name(request):
 
 async def get_config_file(request):
     """
-    Read and return a config file. Takes a filname and tries to load the file from config_dir.
+    Read and return a config file. Takes a filename and tries to load the file from config_dir.
     """
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
@@ -442,7 +480,7 @@ async def get_config_file(request):
         if migrate:
             migrate_legacy_config(config_object)
     except CamillaError as e:
-        raise web.HTTPInternalServerError(text=str(e))
+        raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     return web.json_response(config_object, headers=HEADERS)
 
 
@@ -460,7 +498,7 @@ async def rename_config_file(request):
     target = request.query["target"]
     error = rename_config_or_return_error(request, source, target)
     if error:
-        return web.Response(status=500, text=error, headers=HEADERS)
+        raise web.HTTPBadRequest(text=error, headers=HEADERS)
     return web.Response(text="OK", headers=HEADERS)
 
 
@@ -469,7 +507,7 @@ async def rename_coeff_file(request):
     target = request.query["target"]
     error = rename_coeff_or_return_error(request, source, target)
     if error:
-        return web.Response(status=500, text=error, headers=HEADERS)
+        raise web.HTTPBadRequest(text=error, headers=HEADERS)
     return web.Response(text="OK", headers=HEADERS)
 
 
@@ -523,7 +561,7 @@ async def translate_eqapo_to_json(request):
     try:
         channels = int(request.rel_url.query.get("channels", None))
     except (ValueError, TypeError) as e:
-        raise web.HTTPBadRequest(reason=str(e))
+        raise web.HTTPBadRequest(reason=str(e), headers=HEADERS)
     config = await request.text()
     converter = EqAPO(config, channels)
     converter.translate_file()
@@ -547,7 +585,7 @@ async def validate_config(request):
     if len(errors) > 0:
         logging.debug("Config has errors")
         logging.debug(errors)
-        return web.json_response(status=406, data=errors)
+        return web.json_response(status=406, data=errors, headers=HEADERS)
     logging.debug("Validated config, ok")
     return web.Response(text="OK", headers=HEADERS)
 
@@ -650,7 +688,7 @@ async def get_gui_config(request):
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     gui_config["can_update_active_config"] = request.app["can_update_active_config"]
-    logging.debug(f"GUI config: {str(gui_config)}")
+    logging.debug("GUI config: %s", gui_config)
     return web.json_response(gui_config, headers=HEADERS)
 
 
@@ -670,11 +708,11 @@ async def get_log_file(request):
     """
     log_file_path = request.app["log_file"]
     try:
-        with open(expanduser(log_file_path)) as log_file:
+        with open(expanduser(log_file_path), encoding="utf-8") as log_file:
             text = log_file.read()
             return web.Response(body=text, headers=HEADERS)
     except OSError:
-        logging.error("Unable to read logfile at " + log_file_path)
+        logging.error("Unable to read logfile at %s", log_file_path)
     if log_file_path:
         error_message = "Please configure CamillaDSP to log to: " + log_file_path
     else:

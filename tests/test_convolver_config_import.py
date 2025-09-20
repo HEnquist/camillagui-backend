@@ -1,8 +1,9 @@
 from textwrap import dedent
+
 from backend.convolver_config_import import (
     ConvolverConfig,
-    filename_of_path,
     channels_factors_and_inversions_as_list,
+    filename_of_path,
 )
 
 

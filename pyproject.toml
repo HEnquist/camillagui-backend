@@ -1,0 +1,19 @@
+[tool.pylint]
+disable = [
+    "missing-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "fixme",
+    "broad-exception-caught",
+    "too-many-positional-arguments",
+    "too-many-return-statements",
+    "too-many-instance-attributes",
+    "too-many-branches",
+]
+
+max-line-length = 120
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
