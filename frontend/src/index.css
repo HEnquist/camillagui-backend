@@ -296,6 +296,33 @@ div .popup-content {
   gap: 5px;
 }
 
+.diff-table {
+  border-collapse: collapse;
+}
+
+.diff-table > td {
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.diff-cell {
+  text-align: left;
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.diff-filename {
+  text-align: center;
+  border-collapse: collapse;
+}
+
+.diff-section-header {
+  text-align: left;
+  border-collapse: collapse;
+  font-weight: bold;
+  padding-top: 20px;
+}
+
 .mixer-table {
   border-collapse: collapse;
 }

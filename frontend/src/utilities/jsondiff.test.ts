@@ -1,15 +1,15 @@
 import {expect, test} from 'vitest';
-import {jsonDiff} from "./jsondiff"
+import {jsonUndoDiff} from "./jsondiff"
 
 test('diff with one property', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {unchanged: true, a: {b: 1}},
       {unchanged: true, a: {b: 2}}
   )).toBe("a > b: 1 => 2")
 })
 
 test('diff with multiple properties', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {a: {b: 1, c: {d: 10}, oldProperty: 'isDeleted'}},
       {a: {b: 2, c: {d: 20}, newProperty: 'isNew'}}
   )).toBe(
@@ -21,27 +21,27 @@ test('diff with multiple properties', () => {
 })
 
 test('property added', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {a: {}},
       {a: {newProperty: true}}
   )).toBe("a > newProperty: *added* => true")
 })
 
 test('property removed', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {a: {oldProperty: true}},
       {a: {}}
   )).toBe("a > oldProperty: *removed* => true")
 })
 
 test('object property added', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {}, {a: {b: 1, c: 2}}
   )).toBe("a: *added* => {b:1,c:2}")
 })
 
 test('objects in array changed', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {objects: [{child1: 0}, {child2: 2}]},
       {objects: [{child1: 1}, {child3: 3}]}
   )).toBe(
@@ -52,21 +52,21 @@ test('objects in array changed', () => {
 })
 
 test('object in array added', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {objects: []},
       {objects: [{child1: 1}]}
   )).toBe("objects > -: *added* => {child1:1}")
 })
 
 test('object in array removed', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {objects: [{child1: 1}]},
       {objects: []}
   )).toBe("objects > 0: *removed* => {child1:1}")
 })
 
 test('object in array moved', () => {
-  expect(jsonDiff(
+  expect(jsonUndoDiff(
       {objects: [{child1: 1}, {child2: 2}]},
       {objects: [{child2: 2}, {child1: 1}]}
   )).toBe(

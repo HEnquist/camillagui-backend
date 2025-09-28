@@ -1,4 +1,4 @@
-import {jsonDiff} from "../utilities/jsondiff"
+import {jsonUndoDiff} from "../utilities/jsondiff"
 
 export class UndoRedo<T> {
 
@@ -47,7 +47,7 @@ export class UndoRedo<T> {
 
   undoDiff(): string {
     return this.canUndo() ?
-        jsonDiff(this.undoItems[this.undoItems.length-1], this.currentItem)
+        jsonUndoDiff(this.undoItems[this.undoItems.length-1], this.currentItem)
         : ""
   }
 
@@ -68,7 +68,7 @@ export class UndoRedo<T> {
 
   redoDiff(): string {
     return this.canRedo() ?
-        jsonDiff(this.currentItem, this.redoItems[this.redoItems.length-1])
+        jsonUndoDiff(this.currentItem, this.redoItems[this.redoItems.length-1])
         : ""
   }
 

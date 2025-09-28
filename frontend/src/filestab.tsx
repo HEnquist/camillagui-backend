@@ -2,12 +2,14 @@ import React, {Component} from "react"
 import {
   Box,
   Button,
+  CloseButton,
   ErrorBoundary,
   fileDateSort,
   fileNameSort,
   fileTitleSort,
   fileValidSort,
   MdiButton,
+  PlotButton,
   UploadButton
 } from "./utilities/ui-components"
 import {GuiConfig} from "./guiconfig"
@@ -19,6 +21,7 @@ import {
   mdiDownload,
   mdiPencil,
   mdiRefresh,
+  mdiScaleUnbalanced,
   mdiStar,
   mdiStarOutline,
   mdiUpload
@@ -35,12 +38,14 @@ import {
   loadDefaultConfigJson,
   loadFiles
 } from "./utilities/files"
+import { PipelinePopup } from './pipeline/pipelineplotter'
 import {ImportPopup, ImportPopupProps} from "./import/importpopup"
 import {Update} from "./utilities/common"
 import DataTable from 'react-data-table-component'
 import {isEqual} from "lodash"
+import { DiffPopup } from "./utilities/diffpopup"
 
-const CURRENT_VERSION = 3
+const CURRENT_VERSION = 4
 
 
 export function Files(props: {
@@ -111,6 +116,13 @@ class FileTable extends Component<
       fileStatus: FileStatus | null
       stopTimer: () => void
       filterText: string
+      showDiffPopup: boolean,
+      diffConfigLeft: Config,
+      diffConfigRight: Config,
+      diffFileNameLeft: string,
+      diffFileNameRight: string,
+      showPipelinePlot: boolean,
+      configToPlot: Config
     }> {
 
   private readonly type: FileType = this.props.type
@@ -126,6 +138,9 @@ class FileTable extends Component<
     this.overwriteConfig = this.overwriteConfig.bind(this)
     this.saveConfig = this.saveConfig.bind(this)
     this.loadConfig = this.loadConfig.bind(this)
+    this.compareConfig = this.compareConfig.bind(this)
+    this.compareConfigFiles = this.compareConfigFiles.bind(this)
+    this.plotConfig = this.plotConfig.bind(this)
     this.setSelected = this.setSelected.bind(this)
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.rename = this.rename.bind(this)
@@ -136,7 +151,14 @@ class FileTable extends Component<
       newFileName: 'New config.yml',
       fileStatus: null,
       stopTimer: () => {},
-      filterText: ''
+      filterText: '',
+      showDiffPopup: false,
+      diffConfigLeft: {} as Config,
+      diffConfigRight: {} as Config,
+      diffFileNameLeft: '',
+      diffFileNameRight: '',
+      showPipelinePlot: false,
+      configToPlot: {} as Config
     }
   }
 
@@ -206,6 +228,38 @@ class FileTable extends Component<
       this.props.setCurrentConfig!(name, jsonConfig as Config)
       this.showSuccess(name, 'load')
     } catch(e) {
+      this.showErrorMessage(name, 'load', e as string)
+    }
+  }
+
+  private async compareConfig(name: string) {
+    try {
+      const otherConfig = await loadConfigJson(name, reason => this.showErrorMessage(name, 'load', reason))
+      const guiConfig = this.props.config
+      this.setState({showDiffPopup: true, diffConfigLeft: guiConfig ? guiConfig : {} as Config, diffConfigRight: otherConfig, diffFileNameLeft: name, diffFileNameRight: "GUI"})
+    } catch(e) {
+      console.log(e)
+      this.showErrorMessage(name, 'load', e as string)
+    }
+  }
+
+  private async compareConfigFiles(name_left: string, name_right: string) {
+    try {
+      const leftConfig = await loadConfigJson(name_left, reason => this.showErrorMessage(name_left, 'load', reason))
+      const rightConfig = await loadConfigJson(name_right, reason => this.showErrorMessage(name_right, 'load', reason))
+      this.setState({showDiffPopup: true, diffConfigLeft: leftConfig, diffConfigRight: rightConfig, diffFileNameLeft: name_left, diffFileNameRight: name_right})
+    } catch(e) {
+      console.log(e)
+      this.showErrorMessage(name_left + " and " + name_right, 'load', e as string)
+    }
+  }
+
+  private async plotConfig(name: string) {
+    try {
+      const config = await loadConfigJson(name, reason => this.showErrorMessage(name, 'load', reason))
+      this.setState({showPipelinePlot: true, configToPlot: config})
+    } catch(e) {
+      console.log(e)
       this.showErrorMessage(name, 'load', e as string)
     }
   }
@@ -297,7 +351,7 @@ class FileTable extends Component<
   }
 
   render() {
-    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName, filterText} = this.state
+    const {files, selectedFiles, fileStatus, newFileName, activeConfigFileName, filterText, showDiffPopup, diffFileNameLeft, diffFileNameRight, showPipelinePlot, configToPlot} = this.state
     let columns: any = []
     if (this.type === "coeff") {
       columns.push({
@@ -353,10 +407,20 @@ class FileTable extends Component<
               valid={row.valid}
               for_version={row.version}
               loadConfig={this.loadConfig}/>
+          <CompareToGUIButton
+              key={'compare'+id}
+              filename={row.name}
+              valid={row.valid}
+              compareConfig={this.compareConfig}/>
+           <PlotButton
+              tooltip="Plot the pipeline"
+              pipeline={true}
+              enabled={row.valid}
+              onClick={() => this.plotConfig(row.name)} />
         </div>),
         sortable: false,
         compact: true,
-        width: '150px'
+        width: '200px'
       })
       columns.push(
         {
@@ -428,7 +492,8 @@ class FileTable extends Component<
     const filteredFiles = files.filter(
       item => item.name.toLowerCase().includes(filterText.toLowerCase()) || (item.title && item.title.toLowerCase().includes(filterText.toLowerCase())),
     )
-    
+    console.log(filteredFiles)
+
     return (
       <Box title={this.props.title}>
         <div>
@@ -437,6 +502,12 @@ class FileTable extends Component<
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
           <DownloadFilesAsZipButton selectedFiles={selectedFiles.map(f => f.name)} downloadAsZip={this.downloadAsZip}/>
           <DeleteFilesButton selectedFiles={selectedFiles.map(f => f.name)} delete={this.delete}/>
+          {this.props.type === "config" &&
+            <CompareFilesButton
+              key='comparefiles'
+              selectedFiles={selectedFiles}
+              compareConfigs={this.compareConfigFiles}/>
+          }
           <UploadFilesButton fileStatus={fileStatus} upload={this.upload}/>
           <input type="search" placeholder="Filter on name.."
             value={filterText}
@@ -470,6 +541,18 @@ class FileTable extends Component<
           </>
           }
         </div>
+        <DiffPopup
+          open={showDiffPopup}
+          onClose={() => this.setState({showDiffPopup: false, diffFileNameLeft: '', diffConfigLeft: {} as Config, diffConfigRight: {} as Config, diffFileNameRight: ''})}
+          left_config={this.state.diffConfigLeft}
+          left_name={this.state.diffFileNameLeft}
+          right_config={this.state.diffConfigRight}
+          right_name={this.state.diffFileNameRight}/>
+        <PipelinePopup
+          key={showPipelinePlot as any}
+          open={showPipelinePlot}
+          config={configToPlot}
+          onClose={() => this.setState({ showPipelinePlot: false, configToPlot: {} as Config })} />
       </Box>
     )
   }
@@ -624,6 +707,52 @@ function LoadButton(
       tooltip={`Load into GUI from ${filename}${disabled_reason}`}
       enabled={!disabled_reason}
       onClick={() => loadConfig(filename)}/>
+}
+
+function CompareToGUIButton(
+    props: {
+      filename: string,
+      compareConfig: (filename: string) => void
+      valid: boolean | undefined
+    }
+) {
+  const { filename, compareConfig, valid } = props
+  let loadIcon: { icon: string, className?: string } =
+      {icon: mdiScaleUnbalanced}
+  let disabled_reason = ""
+  if (!valid) {
+    disabled_reason = "<br>Disabled because this config file is invalid."
+  }
+  return <MdiButton
+      icon={loadIcon.icon}
+      className={loadIcon.className}
+      tooltip={`Compare ${filename} with config in GUI${disabled_reason}`}
+      enabled={valid}
+      onClick={() => compareConfig(filename)}/>
+}
+
+function CompareFilesButton(
+    props: {
+      selectedFiles: FileInfo[],
+      compareConfigs: (name_left: string, name_right: string) => void
+    }
+) {
+  const { selectedFiles, compareConfigs } = props
+  let loadIcon: { icon: string, className?: string } =
+      {icon: mdiScaleUnbalanced}
+  const enabled = selectedFiles.length === 2 && selectedFiles[0].valid && selectedFiles[1].valid
+  let tooltip
+  if (enabled) {
+    tooltip = `Compare ${selectedFiles[0].name} and ${selectedFiles[1].name}`
+  } else {
+    tooltip = "Select two valid files to compare"
+  } 
+  return <MdiButton
+      icon={loadIcon.icon}
+      className={loadIcon.className}
+      tooltip={tooltip}
+      enabled={enabled}
+      onClick={() => compareConfigs(selectedFiles[0].name, selectedFiles[1].name)}/>
 }
 
 function FileDownloadLink(props: { type: string, filename: string, isCurrentConfig: boolean }) {

@@ -166,11 +166,13 @@ export function PlotButton(props: {
     tooltip: string
     pipeline?: boolean
     onClick: () => void
+    enabled?: boolean
 }) {
     return <MdiButton
         icon={props.pipeline ? mdiSitemapOutline : mdiChartBellCurveCumulative}
         tooltip={props.tooltip}
         onClick={props.onClick}
+        enabled={props.enabled}
         rotation={props.pipeline ? 270 : 0} />
 }
 
