@@ -1,3 +1,6 @@
+CURRENT_VERSION = 4
+
+
 # v1->v2 introduces the default volume control, remove old volume filters
 def _remove_volume_filters(config):
     """
@@ -294,4 +297,4 @@ def identify_version(config):
         return 2
     if _look_for_v3_mixer(config):
         return 3
-    return 4
+    return CURRENT_VERSION

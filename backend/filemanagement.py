@@ -24,7 +24,7 @@ from aiohttp import web
 from camilladsp import CamillaError
 from yaml.scanner import ScannerError
 
-from .legacy_config_import import identify_version
+from .legacy_config_import import identify_version, CURRENT_VERSION
 
 DEFAULT_STATEFILE = {
     "config_path": None,
@@ -106,7 +106,7 @@ def _get_title_and_desc(filepath, file_data, folder, validator=None):
             file_data["title"] = parsed.get("title")
             file_data["description"] = parsed.get("description")
             file_data["version"] = identify_version(parsed)
-            if file_data["version"] == 3 and validator is not None:
+            if file_data["version"] == CURRENT_VERSION and validator is not None:
                 parsed_abs = make_config_filter_paths_absolute(parsed, folder)
                 validator.validate_config(parsed_abs)
                 error_list = validator.get_errors()
@@ -114,7 +114,7 @@ def _get_title_and_desc(filepath, file_data, folder, validator=None):
                     file_data["errors"] = error_list
                 else:
                     file_data["valid"] = True
-            elif file_data["version"] < 3:
+            elif file_data["version"] < CURRENT_VERSION:
                 file_data["valid"] = False
                 file_data["errors"] = [
                     (
