@@ -46,6 +46,7 @@ def build_app(backend_config):
         "backends": [],
         "playback_devices": {},
         "capture_devices": {},
+        "labels": {"playback": None, "capture": None},
     }
     app["STORE"] = {
         "reconnect_thread": None,
