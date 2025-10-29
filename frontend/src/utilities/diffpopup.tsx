@@ -108,28 +108,28 @@ function renderDiff(left_config: Config, right_config: Config, left_name: string
       })
     }
   }
-  return displayrows.map(row => {
+  return displayrows.map((row, idx) => {
     if (row.type === "prop") {
-      return <tr>
+      return <tr key={"diffrow"+idx}>
         <td className="diff-cell">{row.label}</td>
         <td className="diff-cell"><pre>{row.left}</pre></td>
         <td className="diff-cell"><pre>{row.right}</pre></td>
       </tr>
     }
     else if (row.type === "section") {
-      return <tr>
+      return <tr key={"diffrow"+idx}>
         <td colSpan={3} className="diff-section-header">{row.label}</td>
       </tr>
     }
     else if (row.type === "header") {
-      return <tr>
+      return <tr key={"diffrow"+idx}>
         <td className="diff-filename">{row.label}</td>
         <td className="diff-filename">{row.left}</td>
         <td className="diff-filename">{row.right}</td>
       </tr>
     }
     else {
-      return <tr>
+      return <tr key={"diffrow"+idx}>
         <td colSpan={3} className="diff-comment">{row.label}</td>
       </tr>
     }
