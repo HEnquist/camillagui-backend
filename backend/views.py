@@ -93,7 +93,7 @@ def _reconnect(cdsp, cache, validator):
 
 async def get_status(request):
     """
-    Get the state and singnal levels etc.
+    Get the state and signal levels etc.
     If this fails it spawns a thread that tries to reconnect
     to the camilladsp process.
     """
@@ -133,6 +133,7 @@ async def get_status(request):
                     "bufferlevel": cdsp.status.buffer_level(),
                     "clippedsamples": cdsp.status.clipped_samples(),
                     "processingload": cdsp.status.processing_load(),
+                    "labels": cdsp.levels.labels(),
                 }
             )
     except IOError:
