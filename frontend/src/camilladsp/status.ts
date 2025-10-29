@@ -7,6 +7,11 @@ export interface VuMeterStatus {
   playbacksignalpeak: number[]
 }
 
+export interface Labels {
+  capture: (string|null)[] | null,
+  playback: (string|null)[] | null,
+}
+
 export interface Status extends Versions, VuMeterStatus {
   cdsp_status: string
   capturerate: number | ''
@@ -14,6 +19,7 @@ export interface Status extends Versions, VuMeterStatus {
   bufferlevel: number | ''
   clippedsamples: number | ''
   processingload: number | ''
+  labels: Labels
 }
 
 export function defaultStatus(): Status {
@@ -32,6 +38,7 @@ export function defaultStatus(): Status {
     py_cdsp_version: '',
     py_cdsp_plot_version: '',
     backend_version: '',
+    labels: {playback: null, capture: null},
   }
 }
 

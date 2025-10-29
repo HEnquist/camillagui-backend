@@ -2,7 +2,6 @@ import React, {Component} from "react"
 import {
   Box,
   Button,
-  CloseButton,
   ErrorBoundary,
   fileDateSort,
   fileNameSort,
@@ -236,7 +235,7 @@ class FileTable extends Component<
     try {
       const otherConfig = await loadConfigJson(name, reason => this.showErrorMessage(name, 'load', reason))
       const guiConfig = this.props.config
-      this.setState({showDiffPopup: true, diffConfigLeft: guiConfig ? guiConfig : {} as Config, diffConfigRight: otherConfig, diffFileNameLeft: name, diffFileNameRight: "GUI"})
+      this.setState({showDiffPopup: true, diffConfigLeft: otherConfig, diffConfigRight: guiConfig ? guiConfig : {} as Config, diffFileNameLeft: name, diffFileNameRight: "GUI"})
     } catch(e) {
       console.log(e)
       this.showErrorMessage(name, 'load', e as string)

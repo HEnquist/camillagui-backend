@@ -1,16 +1,18 @@
 import React from "react"
 import "../index.css"
 import isEqual from "lodash/isEqual"
+import {mdiScaleUnbalanced} from "@mdi/js"
 import camillalogo from "./camilladsp.svg"
 import {VolumeBox} from "./volumebox"
 import { AuxFadersBox } from "./auxfaderbox"
-import {Box, Button, delayedExecutor, SuccessFailureButton} from "../utilities/ui-components"
+import {Box, Button, delayedExecutor, SuccessFailureButton, MdiButton} from "../utilities/ui-components"
 import {Config, getOutputLabels} from "../camilladsp/config"
 import {GuiConfig} from "../guiconfig"
 import {LogFileViewerPopup} from "./logfileviewer"
 import {defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller} from "../camilladsp/status"
 import {VersionLabels} from "../camilladsp/versions"
 import {Configcheckmessage} from "./configcheckmessage"
+import { DiffPopup } from "../utilities/diffpopup"
 
 interface SidePanelProps {
   config: Config
@@ -26,6 +28,7 @@ interface SidePanelProps {
   unappliedChanges: boolean
 }
 
+
 export class SidePanel extends React.Component<
   SidePanelProps,
   {
@@ -34,6 +37,9 @@ export class SidePanel extends React.Component<
     saveConfigAutomatically: boolean
     msg: string
     logFileViewerOpen: boolean
+    diffConfigDSP: Config
+    diffConfigGUI: Config
+    showDiffPopup: boolean
   }
 > {
 
@@ -49,7 +55,10 @@ export class SidePanel extends React.Component<
       applyConfigAutomatically: props.guiConfig.apply_config_automatically,
       saveConfigAutomatically: props.guiConfig.save_config_automatically,
       msg: '',
-      logFileViewerOpen: false
+      logFileViewerOpen: false,
+      diffConfigDSP: {} as Config,
+      diffConfigGUI: {} as Config,
+      showDiffPopup: false
     }
   }
 
@@ -85,8 +94,8 @@ export class SidePanel extends React.Component<
             && <VolumeBox
                     vuMeterStatus={this.state.cdspStatus}
                     setMessage={message => this.setState({msg: message})}
-                    inputLabels={this.props.config.devices.capture.labels}
-                    outputLabels={getOutputLabels(this.props.config)}
+                    inputLabels={this.state.cdspStatus.labels.capture}
+                    outputLabels={this.state.cdspStatus.labels.playback}
                     guiConfig={this.props.guiConfig}/>
         }
         {isCdspOnline(this.state.cdspStatus)
@@ -94,6 +103,13 @@ export class SidePanel extends React.Component<
         }
         {this.cdspStateBox()}
         {this.configBox()}
+        <DiffPopup
+                  open={this.state.showDiffPopup}
+                  onClose={() => this.setState({showDiffPopup: false})}
+                  left_config={this.state.diffConfigDSP}
+                  left_name="DSP"
+                  right_config={this.state.diffConfigGUI}
+                  right_name="GUI"/>
         <VersionLabels versions={this.state.cdspStatus}/>
       </section>
     )
@@ -145,7 +161,15 @@ export class SidePanel extends React.Component<
     let saveButtonTooltip = 'No active file selected'
     if (activeConfigFile)
       saveButtonTooltip = `Save to active config file: ${activeConfigFile}`
-    return <Box title="Config">
+    return <Box title={<>
+        Config
+        <MdiButton
+          icon={mdiScaleUnbalanced}
+          tooltip={`Compare configs in DSP and GUI`}
+          enabled={true}
+          onClick={() => this.compareConfig()}
+          buttonSize="small"/>
+      </>}>
       <div style={{width: '220px', overflowWrap: 'break-word', textAlign: 'center', margin: '0 auto 5px'}}>
         {activeConfigFile? activeConfigFile : "(no config selected as active)"}
       </div>
@@ -202,5 +226,25 @@ export class SidePanel extends React.Component<
       </div>
       <Configcheckmessage config={this.props.config} setErrors={this.props.setErrors}/>
     </Box>
+  }
+
+  private async fetchDSPConfig() {
+    const conf_req = await fetch("/api/getconfig")
+    if (!conf_req.ok) {
+      const errorMessage = await conf_req.text()
+      throw new Error(errorMessage)
+    }
+    const config = await conf_req.json()
+    return config
+  }
+
+  private async compareConfig() {
+    try {
+      const dspConfig = await this.fetchDSPConfig()
+      const guiConfig = this.props.config
+      this.setState({showDiffPopup: true, diffConfigDSP: dspConfig as Config, diffConfigGUI: guiConfig})
+    } catch(e) {
+      console.log(e)
+    }
   }
 }

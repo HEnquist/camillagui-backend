@@ -298,6 +298,7 @@ div .popup-content {
 
 .diff-table {
   border-collapse: collapse;
+  min-width: 30vw;
 }
 
 .diff-table > td {
@@ -309,18 +310,26 @@ div .popup-content {
   text-align: left;
   border: var(--box-border);
   border-collapse: collapse;
+  padding: 5px;
 }
 
 .diff-filename {
   text-align: center;
   border-collapse: collapse;
+  padding: 5px;
 }
 
 .diff-section-header {
   text-align: left;
   border-collapse: collapse;
   font-weight: bold;
-  padding-top: 20px;
+  padding: 20px 5px 5px 5px;
+}
+
+.diff-comment {
+  text-align: center;
+  border-collapse: collapse;
+  padding: 5px 5px 5px 5px;
 }
 
 .mixer-table {
