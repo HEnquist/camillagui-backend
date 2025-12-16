@@ -14,6 +14,7 @@ import {
   FilterSortKeys,
   VolumeFaders,
   LoudnessFaders,
+  ConvBinaryFormatOptions,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -755,7 +756,7 @@ class FilterParams extends React.Component<{
       type: 'enum'
       desc: string
       tooltip: string
-      options: string[]
+      options: string[] | { [option: string]: string }[]
     }
   } = {
       a: {
@@ -834,7 +835,7 @@ class FilterParams extends React.Component<{
       format: {
         type: "enum",
         desc: "format",
-        options: ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
+        options: ConvBinaryFormatOptions,
         tooltip: "Sample format",
       },
       freq: { type: "float", desc: "freq", tooltip: "Frequency" },

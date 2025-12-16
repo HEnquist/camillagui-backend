@@ -34,8 +34,8 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
-            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
+            capture: { type: 'Alsa', channels: 2, format: null, device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
+            playback: { type: 'Alsa', channels: 2, format: null, device: "hw:0" },
         },
         filters: {},
         mixers: {},
@@ -566,8 +566,7 @@ export interface Devices {
     playback: PlaybackDevice,
 }
 
-export type ResamplerType = 'AsyncSinc' | 'AsyncPoly' | 'Synchronous'
-export const ResamplerTypes: ResamplerType[] = ["AsyncSinc", "AsyncPoly", "Synchronous"]
+export type ResamplerType = null | 'AsyncSinc' | 'AsyncPoly' | 'Synchronous'
 export type AsyncSincProfile = 'VeryFast' | 'Fast' | 'Balanced' | 'Accurate' | 'Free'
 export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]
 export type AsyncSincInterpolation = 'Nearest' | 'Linear' | 'Quadratic' | 'Cubic'
@@ -576,6 +575,25 @@ export type AsyncPolyInterpolation = 'Linear' | 'Cubic' | 'Quintic' | 'Septic'
 export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = ['Linear', 'Cubic', 'Quintic', 'Septic']
 export type AsyncSincWindow = 'Blackman' | 'Blackman2' | 'BlackmanHarris' | 'BlackmanHarris2' | 'Hann' | 'Hann2'
 export const AsyncSincWindows = ['Blackman', 'Blackman2', 'BlackmanHarris', 'BlackmanHarris2', 'Hann', 'Hann2']
+
+export const ResamplerTypeOptions: { value: ResamplerType, label: string }[] = [
+    {
+        value: null,
+        label: "None"
+    },
+    {
+        value: 'AsyncSinc',
+        label: 'Asynchronous Sinc'
+    },
+    {
+        value: 'AsyncPoly',
+        label: 'Asynchronous Polynomial'
+    },
+    {
+        value: 'Synchronous',
+        label: 'Synchronous'
+    },
+]
 
 
 export type Resampler =
@@ -624,38 +642,200 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    { type: 'Alsa', channels: number, format: AlsaFormat | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
+    | { type: 'Wasapi', channels: number, format: WasapiFormat | null, device: string | null, exclusive: boolean | null, polling: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
     | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
-    | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
+    | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, labels: (string|null)[] | null }
+    | { type: 'Pulse', channels: number, device: string, labels: (string|null)[] | null }
     | {
-        type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
+        type: 'RawFile', channels: number, format: BinaryFormat, filename: '/path/to/file',
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
         labels: (string|null)[] | null
     }
     | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null, labels: (string|null)[] | null }
     | {
-        type: 'Stdin', channels: number, format: Format,
+        type: 'Stdin', channels: number, format: BinaryFormat,
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
         labels: (string|null)[] | null
     } | {
-        type: 'Bluez', channels: number, format: Format,
+        type: 'Bluez', channels: number, format: BinaryFormat,
         service: string | null, dbus_path: string,
         labels: (string|null)[] | null
     }
 
 export type PlaybackDevice =
-    { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null }
+    { type: 'Wasapi', channels: number, format: WasapiFormat | null, device: string | null, exclusive: boolean | null, polling: boolean | null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa', channels: number, format: Format | null, device: string }
-    | { type: 'Pulse', channels: number, format: Format, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
-    | { type: 'File', channels: number, format: Format, filename: string, wav_header: boolean | null }
-    | { type: 'Stdout', channels: number, format: Format }
+    | { type: 'Alsa', channels: number, format: AlsaFormat | null, device: string }
+    | { type: 'Pulse', channels: number, device: string }
+    | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, exclusive: boolean | null }
+    | { type: 'File', channels: number, format: BinaryFormat, filename: string, wav_header: boolean | null }
+    | { type: 'Stdout', channels: number, format: BinaryFormat }
 
-export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
-export const Formats: Format[] = ['S16LE', 'S24LE', 'S24LE3', 'S32LE', 'FLOAT32LE', 'FLOAT64LE']
+export type BinaryFormat = 'S16_LE' | 'S24_3_LE' | 'S24_4_LJ_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE'
+
+export type ConvBinaryFormat = 'S16_LE' | 'S24_3_LE' | 'S24_4_LJ_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE' | 'TEXT'
+
+export type AlsaFormat = null | 'S16_LE' | 'S24_3_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE'
+
+export type WasapiFormat = null | 'S16' | 'S24' | 'S32' | 'F32'
+
+export type CoreAudioFormat = null | 'S16' | 'S24' | 'S32' | 'F32'
+
+export const CoreAudioFormatOptions: { value: CoreAudioFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Leave at current device setting"
+    },
+    {
+        value: 'S16',
+        label: "S16 : 16 bit integer"
+    },
+    {
+        value: 'S24',
+        label: "S24 : 24 bit integer"
+    },
+    {
+        value: 'S32',
+        label: "S32 : 32 bit integer"
+    },
+    {
+        value: 'F32',
+        label: "F32 : 32 bit float"
+    }
+]
+
+export const WasapiFormatOptions: { value: WasapiFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Automatic"
+    },
+    {
+        value: 'S16',
+        label: "S16 : 16 bit integer"
+    },
+    {
+        value: 'S24',
+        label: "S24 : 24 bit integer"
+    },
+    {
+        value: 'S32',
+        label: "S32 : 32 bit integer"
+    },
+    {
+        value: 'F32',
+        label: "F32 : 32 bit float"
+    }
+]
+
+export const AlsaFormatOptions: { value: AlsaFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Automatic"
+    },
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    }
+]
+
+export const BinaryFormatOptions: { value: BinaryFormat, label: string }[] = [
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S24_4_LJ_LE',
+        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    }
+]
+
+export const ConvBinaryFormatOptions: { value: ConvBinaryFormat, label: string }[] = [
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S24_4_LJ_LE',
+        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    },
+    {
+        value: 'TEXT',
+        label: "TEXT : Text, one value per row"
+    }
+]
+
+
+export function getFormatOptions(backend: string): {[key: string]: any} {
+    if (backend === 'Alsa') {
+        return AlsaFormatOptions
+    } else if (backend === 'Wasapi') {
+        return WasapiFormatOptions
+    } else if (backend === 'CoreAudio') {
+        return CoreAudioFormatOptions
+    }
+    return BinaryFormatOptions
+}
 
 export type GainScale = 'linear' | 'dB'
 export const GainScales: GainScale[] = ['linear', 'dB']

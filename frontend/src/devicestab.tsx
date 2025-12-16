@@ -11,16 +11,16 @@ import {
   defaultResampler,
   defaultSincResampler,
   Devices,
-  Formats,
   getCaptureDeviceChannelCount,
   PlaybackDevice,
   Resampler,
   ResamplerType,
-  ResamplerTypes
+  ResamplerTypeOptions,
+  getFormatOptions
 } from "./camilladsp/config"
 import {CaptureType, GuiConfig, PlaybackType} from "./guiconfig"
 import {
-  add_default_option,
+  add_default_option_inplace,
   Box,
   default_to_null,
   EnumInput,
@@ -34,7 +34,6 @@ import {
   MdiButton,
   null_to_default,
   OptionalBoolOption,
-  OptionalEnumOption,
   OptionalFloatOption,
   OptionalIntInput,
   OptionalIntOption,
@@ -214,7 +213,7 @@ function OptionalSamplerateOption(props: {
   else
     value = samplerate.toString()
   const options = defaultSampleRates.map(samplerate => samplerate.toString()).concat([other])
-  add_default_option(options, "default")
+  add_default_option_inplace(options, "default")
   return <div className="setting" data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={{padding: padding}}>
     <label htmlFor={props.desc} className="setting-label">{props.desc}</label>
     <EnumInput
@@ -336,13 +335,12 @@ function ResamplingOptions(props: {
 }) {
   const {devices, errors} = props
   return <Box title="Resampling">
-    <OptionalEnumOption
+    <EnumOption
         value={devices.resampler? devices.resampler.type : null}
         error={errors.messageFor('resampler.type')}
-        options={ResamplerTypes}
+        options={ResamplerTypeOptions}
         desc="resampler_type"
         tooltip="Resampler type"
-        placeholder="none"
         onChange={resamplerType => props.onChange(devices => devices.resampler = changeResamplerType(resamplerType))}/>
     {devices.resampler && devices.resampler.type === 'AsyncSinc' &&
     <EnumOption
@@ -507,16 +505,16 @@ function CaptureOptions(props: {
   if (props.hide_capture_device)
     return null
   const defaults: { [type: string]: CaptureDevice } = {
-    Alsa: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
+    Alsa: { type: 'Alsa', channels: 2, format: null, device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
-    Pulse: { type: 'Pulse', channels: 2, format: 'S32LE', device: 'something', labels: null },
-    Wasapi: { type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null, polling: null, loopback: false, labels: null},
+    Pulse: { type: 'Pulse', channels: 2, device: 'something', labels: null },
+    Wasapi: { type: 'Wasapi', channels: 2, format: null, device: null, exclusive: null, polling: null, loopback: false, labels: null},
     Jack: { type: 'Jack', channels: 2, device: 'default', labels: null},
-    Stdin: { type: 'Stdin', channels: 2, format: 'S32LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
-    RawFile: { type: 'RawFile', channels: 2, format: 'S32LE', filename: '/path/to/file',
+    Stdin: { type: 'Stdin', channels: 2, format: 'S32_LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
+    RawFile: { type: 'RawFile', channels: 2, format: 'S32_LE', filename: '/path/to/file',
       extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
     WavFile: { type: 'WavFile', filename: '/path/to/file', extra_samples: null, labels: null },
-    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16LE', channels: 2, labels: null}
+    Bluez: { type: 'Bluez', service: null, dbus_path: 'dbus_path', format: 'S16_LE', channels: 2, labels: null}
   }
 
   const {capture, onChange, errors, supported_capture_types} = props
@@ -604,28 +602,16 @@ function CaptureOptions(props: {
         // @ts-ignore
         onChange={channels => onChange(devices => devices.capture.channels = channels)}/>
     }
-    {(capture.type !== 'Jack' && capture.type !== 'CoreAudio' && capture.type !== 'WavFile' && capture.type !== 'Alsa') &&
+    {(capture.type === 'Bluez' || capture.type === 'RawFile' || capture.type === 'Stdin' || capture.type === 'CoreAudio' || capture.type === 'Alsa' || capture.type === 'Wasapi') &&
     <EnumOption
         value={capture.format}
         error={errors.messageFor('format')}
-        options={Formats}
+        options={getFormatOptions(capture.type)}
         desc="sampleformat"
-        tooltip="Sample format"
+        tooltip="Sample format" 
         onChange={format => onChange(devices => // @ts-ignore
             devices.capture.format = format
         )}/>
-    }
-    {(capture.type === 'CoreAudio' || capture.type === 'Alsa') &&
-    <OptionalEnumOption
-        value={capture.format}
-        error={errors.messageFor('format')}
-        options={Formats}
-        desc="sampleformat"
-        tooltip="Sample format"
-        onChange={format => onChange(devices => // @ts-ignore
-            devices.capture.format = format
-        )}
-        />
     }
     {(capture.type === 'Alsa') &&  <>
       <DeviceOption
@@ -800,13 +786,13 @@ function PlaybackOptions(props: {
   if (props.hide_playback_device)
     return null
   const defaults: { [type: string]: PlaybackDevice } = {
-    Alsa: {type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0"},
+    Alsa: {type: 'Alsa', channels: 2, format: 'S32_LE', device: "hw:0"},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null},
-    Pulse: {type: 'Pulse', channels: 2, format: 'S32LE', device: 'something'},
-    Wasapi: {type: 'Wasapi', channels: 2, format: 'FLOAT32LE', device: null, exclusive: null, polling: null},
+    Pulse: {type: 'Pulse', channels: 2, device: 'something'},
+    Wasapi: {type: 'Wasapi', channels: 2, format: null, device: null, exclusive: null, polling: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
-    Stdout: {type: 'Stdout', channels: 2, format: 'S32LE'},
-    File: {type: 'File', channels: 2, format: 'S32LE', filename: '/path/to/file', wav_header: false},
+    Stdout: {type: 'Stdout', channels: 2, format: 'S32_LE'},
+    File: {type: 'File', channels: 2, format: 'S32_LE', filename: '/path/to/file', wav_header: false},
   }
   const {onChange, playback, errors, supported_playback_types} = props
   const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[]
@@ -845,22 +831,11 @@ function PlaybackOptions(props: {
         withControls={true}
         min={1}
         onChange={channels => onChange(devices => devices.playback.channels = channels)}/>
-    {(playback.type !== 'Jack' && playback.type !== 'CoreAudio' && playback.type !== 'Alsa') &&
+    {(playback.type === 'File' || playback.type === 'Stdout' || playback.type === 'CoreAudio' || playback.type === 'Alsa' || playback.type === 'Wasapi') &&
     <EnumOption
         value={playback.format}
         error={errors.messageFor('format')}
-        options={Formats}
-        desc="sampleformat"
-        tooltip="Sample format"
-        onChange={format => onChange(devices =>  // @ts-ignore
-          devices.playback.format = format
-        )}/>
-    }
-    {(playback.type === 'CoreAudio' || playback.type === 'Alsa') &&
-    <OptionalEnumOption
-        value={playback.format}
-        error={errors.messageFor('format')}
-        options={Formats}
+        options={getFormatOptions(playback.type)}
         desc="sampleformat"
         tooltip="Sample format"
         onChange={format => onChange(devices =>  // @ts-ignore
