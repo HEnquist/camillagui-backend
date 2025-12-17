@@ -1,3 +1,4 @@
+import _ from "lodash"
 import { sortedAlphabetically } from "../utilities/arrays"
 import {List} from "immutable"
 
@@ -261,8 +262,87 @@ function newName(prefix: string, existingNames: string[]): string {
             return prefix + i.toString()
 }
 
+export type FilterType = 'Biquad' | 'BiquadCombo' | 'Conv' | 'Delay' | 'Gain' | 'Volume' | 'Loudness' | 'DiffEq' | 'Limiter' | 'Dither'
+
+export const FilterTypeOptions: { value: FilterType, label: string }[] = [
+    { value: 'Biquad', label: 'Biquad : Single biquad'},
+    { value: 'BiquadCombo', label: 'BiquadCombo : Combination of several biquads'},
+    { value: 'Conv', label: 'Conv : Convolution'},
+    { value: 'Delay', label: 'Delay : Delay with optional subsample precision'},
+    { value: 'Gain', label: 'Gain : Gain and invert control'},
+    { value: 'Volume', label: 'Volume : Volume control'},
+    { value: 'Loudness', label: 'Loudness: Loudness control'},
+    { value: 'DiffEq', label: 'DiffEq : Generic difference equation'},
+    { value: 'Limiter', label: 'Limiter : Limit by soft or hard clipping'},
+    { value: 'Dither', label: 'Dither : Apply dither and truncate'},
+]
+
+export type FilterSubtype = 'Lowpass' | 'Highpass' | 'Lowshelf' | 'Highshelf' | 'LowpassFO' | 'HighpassFO' | 'LowshelfFO' | 'HighshelfFO' | 'Peaking' | 'Notch' | 'GeneralNotch' | 'Bandpass' | 'Allpass' | 'AllpassFO' | 'LinkwitzTransform' | 'Free' |'ButterworthLowpass' | 'ButterworthHighpass' | 'LinkwitzRileyLowpass' | 'LinkwitzRileyHighpass' | 'Tilt' | 'GraphicEqualizer' | 'Raw' | 'Wav' | 'Values' | 'Dummy' | 'None' | 'Flat' | 'Highpass' | 'Fweighted441' | 'FweightedLong441' | 'FweightedShort441' | 'Gesemann441' | 'Gesemann48' | 'Lipshitz441' | 'LipshitzLong441' | 'Shibata441' | 'ShibataHigh441' | 'ShibataLow441' | 'Shibata48' | 'ShibataHigh48' | 'ShibataLow48' | 'Shibata882' | 'ShibataLow882' | 'Shibata96' | 'ShibataLow96' | 'Shibata192' | 'ShibataLow192'
+
+export const BiquadFilterSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'Lowpass', label: 'Lowpass : 2nd order lowpass' },
+    { value: 'Highpass', label: 'Highpass : 2nd order highpass' },
+    { value: 'Lowshelf', label: 'Lowshelf : 2nd order lowshelf' },
+    { value: 'Highshelf', label: 'Highshelf : 2nd order high shelf' },
+    { value: 'LowpassFO', label: 'LowpassFO : 1st order lowpass' },
+    { value: 'HighpassFO', label: 'HighpassFO : 1st order highpass' },
+    { value: 'LowshelfFO', label: 'LowshelfFO : 1st order lowshelf' },
+    { value: 'HighshelfFO', label: 'HighshelfFO : 1st order high shelf' },
+    { value: 'Peaking', label: 'Peaking : 2nd order peaking' },
+    { value: 'Notch', label: 'Notch : 2nd order notch' },
+    { value: 'GeneralNotch', label: 'GeneralNotch : 2nd order general notch' },
+    { value: 'Bandpass', label: 'Bandpass : 2nd order bandpass' },
+    { value: 'Allpass', label: 'Allpass : 2nd order allpass' },
+    { value: 'AllpassFO', label: 'AllpassFO : 1st order allpass' },
+    { value: 'LinkwitzTransform', label: 'LinkwitzTransform : Linkwitz Transform' },
+    { value: 'Free', label: 'Free : Biquad coefficients' },
+]
+
+export const BiquadComboSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'ButterworthLowpass', label: 'ButterworthLowpass : Butterworth lowpass' },
+    { value: 'ButterworthHighpass', label: 'ButterworthHighpass : Butterworth highpass' },
+    { value: 'LinkwitzRileyLowpass', label: 'LinkwitzRileyLowpass : Linkwitz-Riley lowpass' },
+    { value: 'LinkwitzRileyHighpass', label: 'LinkwitzRileyHighpass : Linkwitz-Riley highpass' },
+    { value: 'Tilt', label: 'Tilt : Tilt equalizer' },
+    { value: 'GraphicEqualizer', label: 'GraphicEqualizer : N-band graphic equalizer' },
+]
+
+export const ConvSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'Raw', label: 'Raw : Coefficients from raw (headerless) file' },
+    { value: 'Wav', label: 'Wav : Coefficients from wav file' },
+    { value: 'Values', label: 'Values : Enter coefficients manually' },
+    { value: 'Dummy', label: 'Dummy : Dummy coefficients for load testing' },
+]
+
+export const DitherSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'None', label: 'None : No dither, only truncate' },
+    { value: 'Flat', label: 'Flat : Flat dither' },
+    { value: 'Highpass', label: 'Highpass : Highpass dither' },
+    { value: 'Fweighted441', label: 'Fweighted441 : F-weighted 44.1 kHz' },
+    { value: 'FweightedLong441', label: 'FweightedLong441 : F-weighted 44.1 kHz long' },
+    { value: 'FweightedShort441', label: 'FweightedShort441 : F-weighted 44.1 kHz short' },
+    { value: 'Gesemann441', label: 'Gesemann441 : Gesemann 44.1 kHz' },
+    { value: 'Gesemann48', label: 'Gesemann48 : Gesemann 48 kHz' },
+    { value: 'Lipshitz441', label: 'Lipshitz441 : Lipshitz 44.1 kHz' },
+    { value: 'LipshitzLong441', label: 'LipshitzLong441 : Lipshitz 44.1 kHz long' },
+    { value: 'Shibata441', label: 'Shibata441 : Shibata 44.1 kHz' },
+    { value: 'ShibataHigh441', label: 'ShibataHigh441 : Shibata 44.1 kHz high' },
+    { value: 'ShibataLow441', label: 'ShibataLow441 : Shibata 44.1 kHz low' },
+    { value: 'Shibata48', label: 'Shibata48 : Shibata 48 kHz' },
+    { value: 'ShibataHigh48', label: 'ShibataHigh48 : Shibata 48 kHz high' },
+    { value: 'ShibataLow48', label: 'ShibataLow48 : Shibata 48 kHz low' },
+    { value: 'Shibata882', label: 'Shibata882 : Shibata 88.2 kHz' },
+    { value: 'ShibataLow882', label: 'ShibataLow882 : Shibata 88.2 kHz low' },
+    { value: 'Shibata96', label: 'Shibata96 : Shibata 96 kHz' },
+    { value: 'ShibataLow96', label: 'ShibataLow96 : Shibata 96 kHz low' },
+    { value: 'Shibata192', label: 'Shibata192 : Shibata 192 kHz' },
+    { value: 'ShibataLow192', label: 'ShibataLow192 : Shibata 192 kHz low' },
+]
+
+
+
 export const DefaultFilterParameters: {
-    [type: string]: {
+    [key in FilterType]: {
         [subtype: string]: {
             [parameter: string]: string | number | number[] | boolean | null
         }

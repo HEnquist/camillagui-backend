@@ -7,6 +7,7 @@ import {
   defaultFilter,
   DefaultFilterParameters,
   Filter,
+  FilterTypeOptions,
   newFilterName,
   removeFilter,
   renameFilter,
@@ -15,6 +16,10 @@ import {
   VolumeFaders,
   LoudnessFaders,
   ConvBinaryFormatOptions,
+  BiquadFilterSubtypeOptions,
+  BiquadComboSubtypeOptions,
+  ConvSubtypeOptions,
+  DitherSubtypeOptions,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -597,16 +602,33 @@ class FilterParams extends React.Component<{
     })
   }
 
-  render() {
-    const { filter, errors } = this.props
+  private getSubtypeOptions(filtertype: string) {
+    if (filtertype == 'Biquad') {
+      return BiquadFilterSubtypeOptions
+    }
+    if (filtertype === 'BiquadCombo') {
+      return BiquadComboSubtypeOptions
+    }
+    if (filtertype === 'Conv') {
+      return ConvSubtypeOptions
+    }
+    if (filtertype === 'Dither') {
+      return DitherSubtypeOptions
+    }
     const defaults = DefaultFilterParameters[filter.type]
     const subtypeOptions = defaults ? Object.keys(defaults) : []
+    return subtypeOptions
+  }
+
+  render() {
+    const { filter, errors } = this.props
+    const subtypeOptions = this.getSubtypeOptions(filter.type)
     return <div style={{ width: '100%', textAlign: 'right' }}>
       <ErrorMessage message={errors.rootMessage()} />
       <EnumOption
         value={filter.type}
         error={errors.messageFor('type')}
-        options={Object.keys(DefaultFilterParameters)}
+        options={FilterTypeOptions}
         desc="type"
         tooltip="Filter type"
         onChange={this.onTypeChange} />
