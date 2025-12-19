@@ -2,6 +2,8 @@ import React, {useEffect, useState} from "react"
 import "./index.css"
 import {
   AsyncPolyInterpolations,
+  AsyncPolyDegreeOptions,
+  AsyncSincInterpolationOptions,
   AsyncSincInterpolations,
   AsyncSincProfile,
   AsyncSincProfiles,
@@ -358,7 +360,7 @@ function ResamplingOptions(props: {
         // @ts-ignore
         value={devices.resampler.interpolation}
         error={errors.messageFor('interpolation')}
-        options={AsyncSincInterpolations}
+        options={AsyncSincInterpolationOptions}
         desc="interpolation"
         tooltip="Interpolation order"
         // @ts-ignore
@@ -402,7 +404,7 @@ function ResamplingOptions(props: {
       // @ts-ignore
       value={devices.resampler.interpolation}
       error={errors.messageFor('interpolation')}
-      options={AsyncPolyInterpolations}
+      options={AsyncPolyDegreeOptions}
       desc="interpolation"
       tooltip="Interpolation order"
       // @ts-ignore

@@ -315,9 +315,9 @@ export const ConvSubtypeOptions: { value: FilterSubtype, label: string }[] = [
 ]
 
 export const DitherSubtypeOptions: { value: FilterSubtype, label: string }[] = [
-    { value: 'None', label: 'None : No dither, only truncate' },
-    { value: 'Flat', label: 'Flat : Flat dither' },
-    { value: 'Highpass', label: 'Highpass : Highpass dither' },
+    { value: 'None', label: 'None : No dither, only truncation' },
+    { value: 'Flat', label: 'Flat : Flat (unshaped) dither' },
+    { value: 'Highpass', label: 'Highpass : Simple highpass dither' },
     { value: 'Fweighted441', label: 'Fweighted441 : F-weighted 44.1 kHz' },
     { value: 'FweightedLong441', label: 'FweightedLong441 : F-weighted 44.1 kHz long' },
     { value: 'FweightedShort441', label: 'FweightedShort441 : F-weighted 44.1 kHz short' },
@@ -674,6 +674,46 @@ export const ResamplerTypeOptions: { value: ResamplerType, label: string }[] = [
         label: 'Synchronous'
     },
 ]
+
+export const AsyncSincInterpolationOptions: { value: AsyncSincInterpolation, label: string }[] = [
+    {
+        value: 'Nearest',
+        label: 'Nearest (no interpolation)'
+    },
+    {
+        value: 'Linear',
+        label: 'Linear (1st order)'
+    },
+    {
+        value: 'Quadratic',
+        label: 'Quadratic (2nd order)'
+    },
+    {
+        value: 'Cubic',
+        label: 'Cubic (3rd order)'
+    },
+]
+
+export const AsyncPolyDegreeOptions: { value: AsyncPolyInterpolation, label: string }[] = [
+    {
+        value: 'Linear',
+        label: 'Linear (1st order)'
+    },
+    {
+        value: 'Cubic',
+        label: 'Cubic (3rd order)'
+    },
+    {
+        value: 'Quintic',
+        label: 'Quintic (5th order)'
+    },
+    {
+        value: 'Septic',
+        label: 'Septic (7th order)'
+    },
+]
+
+
 
 
 export type Resampler =
