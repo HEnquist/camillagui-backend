@@ -946,7 +946,7 @@ export const ConvBinaryFormatOptions: { value: ConvBinaryFormat, label: string }
 ]
 
 
-export function getFormatOptions(backend: string): {[key: string]: any} {
+export function getFormatOptions(backend: string): {value: string | null, label: string}[] {
     if (backend === 'Alsa') {
         return AlsaFormatOptions
     } else if (backend === 'Wasapi') {
