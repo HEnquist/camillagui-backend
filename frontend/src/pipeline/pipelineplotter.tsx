@@ -297,6 +297,8 @@ class PipelinePlot extends React.Component<Props, State> {
       return device.device === null ? "default" : device.device
     else if ('filename' in device)
       return device.filename
+    else if ('node_name' in device)
+      return device.node_name === null ? "default" : device.node_name
     else
       return device.type
   }

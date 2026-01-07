@@ -17,9 +17,9 @@ export interface GuiConfig {
     volume_range: number
 }
 
-export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
+export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'PipeWire' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
 
-export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'File' | 'Stdout'
+export type PlaybackType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'PipeWire' | 'File' | 'Stdout'
 
 export interface ShortcutSection {
     section: string

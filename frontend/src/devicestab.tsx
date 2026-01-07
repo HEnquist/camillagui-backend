@@ -1,10 +1,8 @@
 import React, {useEffect, useState} from "react"
 import "./index.css"
 import {
-  AsyncPolyInterpolations,
   AsyncPolyDegreeOptions,
   AsyncSincInterpolationOptions,
-  AsyncSincInterpolations,
   AsyncSincProfile,
   AsyncSincProfiles,
   AsyncSincWindows,
@@ -510,6 +508,7 @@ function CaptureOptions(props: {
     Alsa: { type: 'Alsa', channels: 2, format: null, device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
     CoreAudio: { type: 'CoreAudio', channels: 2, format: null, device: null, labels: null },
     Pulse: { type: 'Pulse', channels: 2, device: 'something', labels: null },
+    PipeWire: { type: 'PipeWire', channels: 2, node_name: null, node_description: null, node_group_name: null, autoconnect_to: null, labels:  null },
     Wasapi: { type: 'Wasapi', channels: 2, format: null, device: null, exclusive: null, polling: null, loopback: false, labels: null},
     Jack: { type: 'Jack', channels: 2, device: 'default', labels: null},
     Stdin: { type: 'Stdin', channels: 2, format: 'S32_LE', extra_samples: null, skip_bytes: null, read_bytes: null, labels: null },
@@ -765,6 +764,41 @@ function CaptureOptions(props: {
           )}/>
     </>
     }
+    {capture.type === 'PipeWire' && <>
+      <OptionalTextOption
+          value={capture.node_name}
+          error={errors.messageFor('node_name')}
+          desc="node_name"
+          tooltip="Name of node"
+          onChange={node_name => onChange(devices => // @ts-ignore
+              devices.capture.node_name = node_name
+          )}/>
+      <OptionalTextOption
+          value={capture.node_description}
+          error={errors.messageFor('node_description')}
+          desc="node_description"
+          tooltip="Description of node"
+          onChange={node_description => onChange(devices => // @ts-ignore
+              devices.capture.node_description = node_description
+          )}/>
+      <OptionalTextOption
+          value={capture.node_group_name}
+          error={errors.messageFor('node_group_name')}
+          desc="node_group_name"
+          tooltip="Name of node group"
+          onChange={node_group_name => onChange(devices => // @ts-ignore
+              devices.capture.node_group_name = node_group_name
+          )}/>
+      <OptionalTextOption
+          value={capture.autoconnect_to}
+          error={errors.messageFor('autoconnect_to')}
+          desc="autoconnect_to"
+          tooltip="Name of node to autoconnect to"
+          onChange={autoconnect_to => onChange(devices => // @ts-ignore
+              devices.capture.autoconnect_to = autoconnect_to
+          )}/>
+      </>
+    }
     <LabelListOption
       value={capture.labels ? capture.labels.map(lab => lab ? lab : "").join(",") : ""}
       error={errors.messageFor('labels')}
@@ -791,6 +825,7 @@ function PlaybackOptions(props: {
     Alsa: {type: 'Alsa', channels: 2, format: 'S32_LE', device: "hw:0"},
     CoreAudio: {type: 'CoreAudio', channels: 2, format: null, device: null, exclusive: null},
     Pulse: {type: 'Pulse', channels: 2, device: 'something'},
+    PipeWire: { type: 'PipeWire', channels: 2, node_name: null, node_description: null, node_group_name: null, autoconnect_to: null },
     Wasapi: {type: 'Wasapi', channels: 2, format: null, device: null, exclusive: null, polling: null},
     Jack: {type: 'Jack', channels: 2, device: 'default'},
     Stdout: {type: 'Stdout', channels: 2, format: 'S32_LE'},
@@ -922,6 +957,41 @@ function PlaybackOptions(props: {
             devices.playback.wav_header = wav_header
         )}/>
       </>
+    }
+    {playback.type === 'PipeWire' && <>
+    <OptionalTextOption
+        value={playback.node_name}
+        error={errors.messageFor('node_name')}
+        desc="node_name"
+        tooltip="Name of node"
+        onChange={node_name => onChange(devices => // @ts-ignore
+            devices.playback.node_name = node_name
+        )}/>
+    <OptionalTextOption
+        value={playback.node_description}
+        error={errors.messageFor('node_description')}
+        desc="node_description"
+        tooltip="Description of node"
+        onChange={node_description => onChange(devices => // @ts-ignore
+            devices.playback.node_description = node_description
+        )}/>
+    <OptionalTextOption
+        value={playback.node_group_name}
+        error={errors.messageFor('node_group_name')}
+        desc="node_group_name"
+        tooltip="Name of node group"
+        onChange={node_group_name => onChange(devices => // @ts-ignore
+            devices.playback.node_group_name = node_group_name
+        )}/>
+    <OptionalTextOption
+        value={playback.autoconnect_to}
+        error={errors.messageFor('autoconnect_to')}
+        desc="autoconnect_to"
+        tooltip="Name of node to autoconnect to"
+        onChange={autoconnect_to => onChange(devices => // @ts-ignore
+            devices.playback.autoconnect_to = autoconnect_to
+        )}/>
+    </>
     }
   </Box>
 }

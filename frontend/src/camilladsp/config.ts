@@ -767,6 +767,7 @@ export type CaptureDevice =
     | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
     | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, labels: (string|null)[] | null }
     | { type: 'Pulse', channels: number, device: string, labels: (string|null)[] | null }
+    | { type: 'PipeWire', channels: number, node_name: string | null, node_description: string | null, node_group_name: string | null, autoconnect_to: string | null, labels: (string|null)[] | null }
     | {
         type: 'RawFile', channels: number, format: BinaryFormat, filename: '/path/to/file',
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
@@ -788,6 +789,7 @@ export type PlaybackDevice =
     | { type: 'Jack', channels: number, device: string }
     | { type: 'Alsa', channels: number, format: AlsaFormat | null, device: string }
     | { type: 'Pulse', channels: number, device: string }
+    | { type: 'PipeWire', channels: number, node_name: string | null, node_description: string | null, node_group_name: string | null, autoconnect_to: string | null }
     | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, exclusive: boolean | null }
     | { type: 'File', channels: number, format: BinaryFormat, filename: string, wav_header: boolean | null }
     | { type: 'Stdout', channels: number, format: BinaryFormat }
