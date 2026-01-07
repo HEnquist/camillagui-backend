@@ -342,7 +342,7 @@ export const DitherSubtypeOptions: { value: FilterSubtype, label: string }[] = [
 
 
 export const DefaultFilterParameters: {
-    [key in FilterType]: {
+    [type: string]: {
         [subtype: string]: {
             [parameter: string]: string | number | number[] | boolean | null
         }

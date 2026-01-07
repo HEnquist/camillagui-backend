@@ -615,7 +615,7 @@ class FilterParams extends React.Component<{
     if (filtertype === 'Dither') {
       return DitherSubtypeOptions
     }
-    const defaults = DefaultFilterParameters[filter.type]
+    const defaults = DefaultFilterParameters[filtertype]
     const subtypeOptions = defaults ? Object.keys(defaults) : []
     return subtypeOptions
   }
@@ -995,11 +995,11 @@ class FilterParams extends React.Component<{
     onChange: (value: number) => void
   }) {
     const { parameter, parameters, desc, value, error, onDescChange, onChange } = props
-    let descOptions: { [parameter: string]: string } = {}
+    let descOptions: { value: string, label: string }[] = []
     if (this.qAndSlopeFilters.includes(parameters.type))
-      ['q', 'slope'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+      descOptions = ['q', 'slope'].map(p => ({'value': p, 'label': this.parameterInfos[p].desc}))
     else if (this.qAndBandwidthFilters.includes(parameters.type))
-      ['q', 'bandwidth'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+      descOptions = ['q', 'bandwidth'].map(p => ({'value': p, 'label': this.parameterInfos[p].desc}))
     else
       return <ErrorMessage message={error} />
     return <>
