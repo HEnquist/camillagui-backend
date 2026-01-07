@@ -1,3 +1,4 @@
+import _ from "lodash"
 import { sortedAlphabetically } from "../utilities/arrays"
 import {List} from "immutable"
 
@@ -34,8 +35,8 @@ export function defaultConfig(): Config {
             volume_ramp_time: null,
             volume_limit: null,
 
-            capture: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
-            playback: { type: 'Alsa', channels: 2, format: 'S32LE', device: "hw:0" },
+            capture: { type: 'Alsa', channels: 2, format: null, device: "hw:0", stop_on_inactive: null, link_volume_control: null, link_mute_control: null, labels: null },
+            playback: { type: 'Alsa', channels: 2, format: null, device: "hw:0" },
         },
         filters: {},
         mixers: {},
@@ -260,6 +261,85 @@ function newName(prefix: string, existingNames: string[]): string {
         if (!nameIsAlreadyPresent(i))
             return prefix + i.toString()
 }
+
+export type FilterType = 'Biquad' | 'BiquadCombo' | 'Conv' | 'Delay' | 'Gain' | 'Volume' | 'Loudness' | 'DiffEq' | 'Limiter' | 'Dither'
+
+export const FilterTypeOptions: { value: FilterType, label: string }[] = [
+    { value: 'Biquad', label: 'Biquad : Single biquad'},
+    { value: 'BiquadCombo', label: 'BiquadCombo : Combination of several biquads'},
+    { value: 'Conv', label: 'Conv : Convolution'},
+    { value: 'Delay', label: 'Delay : Delay with optional subsample precision'},
+    { value: 'Gain', label: 'Gain : Gain and invert control'},
+    { value: 'Volume', label: 'Volume : Volume control'},
+    { value: 'Loudness', label: 'Loudness: Loudness control'},
+    { value: 'DiffEq', label: 'DiffEq : Generic difference equation'},
+    { value: 'Limiter', label: 'Limiter : Limit by soft or hard clipping'},
+    { value: 'Dither', label: 'Dither : Apply dither and truncate'},
+]
+
+export type FilterSubtype = 'Lowpass' | 'Highpass' | 'Lowshelf' | 'Highshelf' | 'LowpassFO' | 'HighpassFO' | 'LowshelfFO' | 'HighshelfFO' | 'Peaking' | 'Notch' | 'GeneralNotch' | 'Bandpass' | 'Allpass' | 'AllpassFO' | 'LinkwitzTransform' | 'Free' |'ButterworthLowpass' | 'ButterworthHighpass' | 'LinkwitzRileyLowpass' | 'LinkwitzRileyHighpass' | 'Tilt' | 'GraphicEqualizer' | 'Raw' | 'Wav' | 'Values' | 'Dummy' | 'None' | 'Flat' | 'Highpass' | 'Fweighted441' | 'FweightedLong441' | 'FweightedShort441' | 'Gesemann441' | 'Gesemann48' | 'Lipshitz441' | 'LipshitzLong441' | 'Shibata441' | 'ShibataHigh441' | 'ShibataLow441' | 'Shibata48' | 'ShibataHigh48' | 'ShibataLow48' | 'Shibata882' | 'ShibataLow882' | 'Shibata96' | 'ShibataLow96' | 'Shibata192' | 'ShibataLow192'
+
+export const BiquadFilterSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'Lowpass', label: 'Lowpass : 2nd order lowpass' },
+    { value: 'Highpass', label: 'Highpass : 2nd order highpass' },
+    { value: 'Lowshelf', label: 'Lowshelf : 2nd order lowshelf' },
+    { value: 'Highshelf', label: 'Highshelf : 2nd order high shelf' },
+    { value: 'LowpassFO', label: 'LowpassFO : 1st order lowpass' },
+    { value: 'HighpassFO', label: 'HighpassFO : 1st order highpass' },
+    { value: 'LowshelfFO', label: 'LowshelfFO : 1st order lowshelf' },
+    { value: 'HighshelfFO', label: 'HighshelfFO : 1st order high shelf' },
+    { value: 'Peaking', label: 'Peaking : 2nd order peaking' },
+    { value: 'Notch', label: 'Notch : 2nd order notch' },
+    { value: 'GeneralNotch', label: 'GeneralNotch : 2nd order general notch' },
+    { value: 'Bandpass', label: 'Bandpass : 2nd order bandpass' },
+    { value: 'Allpass', label: 'Allpass : 2nd order allpass' },
+    { value: 'AllpassFO', label: 'AllpassFO : 1st order allpass' },
+    { value: 'LinkwitzTransform', label: 'LinkwitzTransform : Linkwitz Transform' },
+    { value: 'Free', label: 'Free : Biquad coefficients' },
+]
+
+export const BiquadComboSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'ButterworthLowpass', label: 'ButterworthLowpass : Butterworth lowpass' },
+    { value: 'ButterworthHighpass', label: 'ButterworthHighpass : Butterworth highpass' },
+    { value: 'LinkwitzRileyLowpass', label: 'LinkwitzRileyLowpass : Linkwitz-Riley lowpass' },
+    { value: 'LinkwitzRileyHighpass', label: 'LinkwitzRileyHighpass : Linkwitz-Riley highpass' },
+    { value: 'Tilt', label: 'Tilt : Tilt equalizer' },
+    { value: 'GraphicEqualizer', label: 'GraphicEqualizer : N-band graphic equalizer' },
+]
+
+export const ConvSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'Raw', label: 'Raw : Coefficients from raw (headerless) file' },
+    { value: 'Wav', label: 'Wav : Coefficients from wav file' },
+    { value: 'Values', label: 'Values : Enter coefficients manually' },
+    { value: 'Dummy', label: 'Dummy : Dummy coefficients for load testing' },
+]
+
+export const DitherSubtypeOptions: { value: FilterSubtype, label: string }[] = [
+    { value: 'None', label: 'None : No dither, only truncation' },
+    { value: 'Flat', label: 'Flat : Flat (unshaped) dither' },
+    { value: 'Highpass', label: 'Highpass : Simple highpass dither' },
+    { value: 'Fweighted441', label: 'Fweighted441 : F-weighted 44.1 kHz' },
+    { value: 'FweightedLong441', label: 'FweightedLong441 : F-weighted 44.1 kHz long' },
+    { value: 'FweightedShort441', label: 'FweightedShort441 : F-weighted 44.1 kHz short' },
+    { value: 'Gesemann441', label: 'Gesemann441 : Gesemann 44.1 kHz' },
+    { value: 'Gesemann48', label: 'Gesemann48 : Gesemann 48 kHz' },
+    { value: 'Lipshitz441', label: 'Lipshitz441 : Lipshitz 44.1 kHz' },
+    { value: 'LipshitzLong441', label: 'LipshitzLong441 : Lipshitz 44.1 kHz long' },
+    { value: 'Shibata441', label: 'Shibata441 : Shibata 44.1 kHz' },
+    { value: 'ShibataHigh441', label: 'ShibataHigh441 : Shibata 44.1 kHz high' },
+    { value: 'ShibataLow441', label: 'ShibataLow441 : Shibata 44.1 kHz low' },
+    { value: 'Shibata48', label: 'Shibata48 : Shibata 48 kHz' },
+    { value: 'ShibataHigh48', label: 'ShibataHigh48 : Shibata 48 kHz high' },
+    { value: 'ShibataLow48', label: 'ShibataLow48 : Shibata 48 kHz low' },
+    { value: 'Shibata882', label: 'Shibata882 : Shibata 88.2 kHz' },
+    { value: 'ShibataLow882', label: 'ShibataLow882 : Shibata 88.2 kHz low' },
+    { value: 'Shibata96', label: 'Shibata96 : Shibata 96 kHz' },
+    { value: 'ShibataLow96', label: 'ShibataLow96 : Shibata 96 kHz low' },
+    { value: 'Shibata192', label: 'Shibata192 : Shibata 192 kHz' },
+    { value: 'ShibataLow192', label: 'ShibataLow192 : Shibata 192 kHz low' },
+]
+
+
 
 export const DefaultFilterParameters: {
     [type: string]: {
@@ -566,8 +646,7 @@ export interface Devices {
     playback: PlaybackDevice,
 }
 
-export type ResamplerType = 'AsyncSinc' | 'AsyncPoly' | 'Synchronous'
-export const ResamplerTypes: ResamplerType[] = ["AsyncSinc", "AsyncPoly", "Synchronous"]
+export type ResamplerType = null | 'AsyncSinc' | 'AsyncPoly' | 'Synchronous'
 export type AsyncSincProfile = 'VeryFast' | 'Fast' | 'Balanced' | 'Accurate' | 'Free'
 export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]
 export type AsyncSincInterpolation = 'Nearest' | 'Linear' | 'Quadratic' | 'Cubic'
@@ -576,6 +655,65 @@ export type AsyncPolyInterpolation = 'Linear' | 'Cubic' | 'Quintic' | 'Septic'
 export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = ['Linear', 'Cubic', 'Quintic', 'Septic']
 export type AsyncSincWindow = 'Blackman' | 'Blackman2' | 'BlackmanHarris' | 'BlackmanHarris2' | 'Hann' | 'Hann2'
 export const AsyncSincWindows = ['Blackman', 'Blackman2', 'BlackmanHarris', 'BlackmanHarris2', 'Hann', 'Hann2']
+
+export const ResamplerTypeOptions: { value: ResamplerType, label: string }[] = [
+    {
+        value: null,
+        label: "None"
+    },
+    {
+        value: 'AsyncSinc',
+        label: 'Asynchronous Sinc'
+    },
+    {
+        value: 'AsyncPoly',
+        label: 'Asynchronous Polynomial'
+    },
+    {
+        value: 'Synchronous',
+        label: 'Synchronous'
+    },
+]
+
+export const AsyncSincInterpolationOptions: { value: AsyncSincInterpolation, label: string }[] = [
+    {
+        value: 'Nearest',
+        label: 'Nearest (no interpolation)'
+    },
+    {
+        value: 'Linear',
+        label: 'Linear (1st order)'
+    },
+    {
+        value: 'Quadratic',
+        label: 'Quadratic (2nd order)'
+    },
+    {
+        value: 'Cubic',
+        label: 'Cubic (3rd order)'
+    },
+]
+
+export const AsyncPolyDegreeOptions: { value: AsyncPolyInterpolation, label: string }[] = [
+    {
+        value: 'Linear',
+        label: 'Linear (1st order)'
+    },
+    {
+        value: 'Cubic',
+        label: 'Cubic (3rd order)'
+    },
+    {
+        value: 'Quintic',
+        label: 'Quintic (5th order)'
+    },
+    {
+        value: 'Septic',
+        label: 'Septic (7th order)'
+    },
+]
+
+
 
 
 export type Resampler =
@@ -624,38 +762,200 @@ export const VolumeFaders: Fader[] = ['Aux1', 'Aux2', 'Aux3', 'Aux4']
 
 
 export type CaptureDevice =
-    { type: 'Alsa', channels: number, format: Format | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
-    | { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
+    { type: 'Alsa', channels: number, format: AlsaFormat | null, device: string, stop_on_inactive: boolean | null, link_volume_control: string | null, link_mute_control: string | null, labels: (string|null)[] | null }
+    | { type: 'Wasapi', channels: number, format: WasapiFormat | null, device: string | null, exclusive: boolean | null, polling: boolean | null, loopback: boolean | null, labels: (string|null)[] | null }
     | { type: 'Jack', channels: number, device: string, labels: (string|null)[] | null }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, labels: (string|null)[] | null }
-    | { type: 'Pulse', channels: number, format: Format, device: string, labels: (string|null)[] | null }
+    | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, labels: (string|null)[] | null }
+    | { type: 'Pulse', channels: number, device: string, labels: (string|null)[] | null }
     | {
-        type: 'RawFile', channels: number, format: Format, filename: '/path/to/file',
+        type: 'RawFile', channels: number, format: BinaryFormat, filename: '/path/to/file',
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
         labels: (string|null)[] | null
     }
     | { type: 'WavFile', filename: '/path/to/file', extra_samples: number | null, labels: (string|null)[] | null }
     | {
-        type: 'Stdin', channels: number, format: Format,
+        type: 'Stdin', channels: number, format: BinaryFormat,
         extra_samples: number | null, skip_bytes: number | null, read_bytes: number | null,
         labels: (string|null)[] | null
     } | {
-        type: 'Bluez', channels: number, format: Format,
+        type: 'Bluez', channels: number, format: BinaryFormat,
         service: string | null, dbus_path: string,
         labels: (string|null)[] | null
     }
 
 export type PlaybackDevice =
-    { type: 'Wasapi', channels: number, format: Format, device: string | null, exclusive: boolean | null, polling: boolean | null }
+    { type: 'Wasapi', channels: number, format: WasapiFormat | null, device: string | null, exclusive: boolean | null, polling: boolean | null }
     | { type: 'Jack', channels: number, device: string }
-    | { type: 'Alsa', channels: number, format: Format | null, device: string }
-    | { type: 'Pulse', channels: number, format: Format, device: string }
-    | { type: 'CoreAudio', channels: number, format: Format | null, device: string | null, exclusive: boolean | null }
-    | { type: 'File', channels: number, format: Format, filename: string, wav_header: boolean | null }
-    | { type: 'Stdout', channels: number, format: Format }
+    | { type: 'Alsa', channels: number, format: AlsaFormat | null, device: string }
+    | { type: 'Pulse', channels: number, device: string }
+    | { type: 'CoreAudio', channels: number, format: CoreAudioFormat | null, device: string | null, exclusive: boolean | null }
+    | { type: 'File', channels: number, format: BinaryFormat, filename: string, wav_header: boolean | null }
+    | { type: 'Stdout', channels: number, format: BinaryFormat }
 
-export type Format = 'S16LE' | 'S24LE' | 'S24LE3' | 'S32LE' | 'FLOAT32LE' | 'FLOAT64LE'
-export const Formats: Format[] = ['S16LE', 'S24LE', 'S24LE3', 'S32LE', 'FLOAT32LE', 'FLOAT64LE']
+export type BinaryFormat = 'S16_LE' | 'S24_3_LE' | 'S24_4_LJ_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE'
+
+export type ConvBinaryFormat = 'S16_LE' | 'S24_3_LE' | 'S24_4_LJ_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE' | 'TEXT'
+
+export type AlsaFormat = null | 'S16_LE' | 'S24_3_LE' | 'S24_4_RJ_LE' | 'S32_LE' | 'F32_LE' | 'F64_LE'
+
+export type WasapiFormat = null | 'S16' | 'S24' | 'S32' | 'F32'
+
+export type CoreAudioFormat = null | 'S16' | 'S24' | 'S32' | 'F32'
+
+export const CoreAudioFormatOptions: { value: CoreAudioFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Leave at current device setting"
+    },
+    {
+        value: 'S16',
+        label: "S16 : 16 bit integer"
+    },
+    {
+        value: 'S24',
+        label: "S24 : 24 bit integer"
+    },
+    {
+        value: 'S32',
+        label: "S32 : 32 bit integer"
+    },
+    {
+        value: 'F32',
+        label: "F32 : 32 bit float"
+    }
+]
+
+export const WasapiFormatOptions: { value: WasapiFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Automatic"
+    },
+    {
+        value: 'S16',
+        label: "S16 : 16 bit integer"
+    },
+    {
+        value: 'S24',
+        label: "S24 : 24 bit integer"
+    },
+    {
+        value: 'S32',
+        label: "S32 : 32 bit integer"
+    },
+    {
+        value: 'F32',
+        label: "F32 : 32 bit float"
+    }
+]
+
+export const AlsaFormatOptions: { value: AlsaFormat, label: string }[] = [
+    {
+        value: null,
+        label: "Automatic"
+    },
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    }
+]
+
+export const BinaryFormatOptions: { value: BinaryFormat, label: string }[] = [
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S24_4_LJ_LE',
+        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    }
+]
+
+export const ConvBinaryFormatOptions: { value: ConvBinaryFormat, label: string }[] = [
+    {
+        value: 'S16_LE',
+        label: "S16_LE : 16 bit integer, little-endian"
+    },
+    {
+        value: 'S24_3_LE',
+        label: "S24_3_LE : 24 bit integer, packed, little-endian"
+    },
+    {
+        value: 'S24_4_RJ_LE',
+        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian"
+    },
+    {
+        value: 'S24_4_LJ_LE',
+        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian"
+    },
+    {
+        value: 'S32_LE',
+        label: "S32_LE : 32 bit integer, little-endian"
+    },
+    {
+        value: 'F32_LE',
+        label: "F32_LE : 32 bit float, little-endian"
+    },
+    {
+        value: 'F64_LE',
+        label: "F64_LE : 64 bit float, little-endian"
+    },
+    {
+        value: 'TEXT',
+        label: "TEXT : Text, one value per row"
+    }
+]
+
+
+export function getFormatOptions(backend: string): {value: string | null, label: string}[] {
+    if (backend === 'Alsa') {
+        return AlsaFormatOptions
+    } else if (backend === 'Wasapi') {
+        return WasapiFormatOptions
+    } else if (backend === 'CoreAudio') {
+        return CoreAudioFormatOptions
+    }
+    return BinaryFormatOptions
+}
 
 export type GainScale = 'linear' | 'dB'
 export const GainScales: GainScale[] = ['linear', 'dB']

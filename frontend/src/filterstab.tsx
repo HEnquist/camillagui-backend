@@ -7,6 +7,7 @@ import {
   defaultFilter,
   DefaultFilterParameters,
   Filter,
+  FilterTypeOptions,
   newFilterName,
   removeFilter,
   renameFilter,
@@ -14,6 +15,11 @@ import {
   FilterSortKeys,
   VolumeFaders,
   LoudnessFaders,
+  ConvBinaryFormatOptions,
+  BiquadFilterSubtypeOptions,
+  BiquadComboSubtypeOptions,
+  ConvSubtypeOptions,
+  DitherSubtypeOptions,
 } from "./camilladsp/config"
 import {
   AddButton,
@@ -596,16 +602,33 @@ class FilterParams extends React.Component<{
     })
   }
 
+  private getSubtypeOptions(filtertype: string) {
+    if (filtertype == 'Biquad') {
+      return BiquadFilterSubtypeOptions
+    }
+    if (filtertype === 'BiquadCombo') {
+      return BiquadComboSubtypeOptions
+    }
+    if (filtertype === 'Conv') {
+      return ConvSubtypeOptions
+    }
+    if (filtertype === 'Dither') {
+      return DitherSubtypeOptions
+    }
+    const defaults = DefaultFilterParameters[filtertype]
+    const subtypeOptions = defaults ? Object.keys(defaults) : []
+    return subtypeOptions
+  }
+
   render() {
     const { filter, errors } = this.props
-    const defaults = DefaultFilterParameters[filter.type]
-    const subtypeOptions = defaults ? Object.keys(defaults) : []
+    const subtypeOptions = this.getSubtypeOptions(filter.type)
     return <div style={{ width: '100%', textAlign: 'right' }}>
       <ErrorMessage message={errors.rootMessage()} />
       <EnumOption
         value={filter.type}
         error={errors.messageFor('type')}
-        options={Object.keys(DefaultFilterParameters)}
+        options={FilterTypeOptions}
         desc="type"
         tooltip="Filter type"
         onChange={this.onTypeChange} />
@@ -755,7 +778,7 @@ class FilterParams extends React.Component<{
       type: 'enum'
       desc: string
       tooltip: string
-      options: string[]
+      options: string[] | { [option: string]: string }[]
     }
   } = {
       a: {
@@ -834,7 +857,7 @@ class FilterParams extends React.Component<{
       format: {
         type: "enum",
         desc: "format",
-        options: ["S16LE", "S24LE", "S24LE3", "S32LE", "FLOAT32LE", "FLOAT64LE", "TEXT"],
+        options: ConvBinaryFormatOptions,
         tooltip: "Sample format",
       },
       freq: { type: "float", desc: "freq", tooltip: "Frequency" },
@@ -972,11 +995,11 @@ class FilterParams extends React.Component<{
     onChange: (value: number) => void
   }) {
     const { parameter, parameters, desc, value, error, onDescChange, onChange } = props
-    let descOptions: { [parameter: string]: string } = {}
+    let descOptions: { value: string, label: string }[] = []
     if (this.qAndSlopeFilters.includes(parameters.type))
-      ['q', 'slope'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+      descOptions = ['q', 'slope'].map(p => ({'value': p, 'label': this.parameterInfos[p].desc}))
     else if (this.qAndBandwidthFilters.includes(parameters.type))
-      ['q', 'bandwidth'].forEach(p => descOptions[p] = this.parameterInfos[p].desc)
+      descOptions = ['q', 'bandwidth'].map(p => ({'value': p, 'label': this.parameterInfos[p].desc}))
     else
       return <ErrorMessage message={error} />
     return <>

@@ -795,8 +795,8 @@ export function OptionalBoolOption(props: {
 }
 
 export function EnumOption<OPTION extends string>(props: {
-    value: OPTION
-    options: OPTION[]
+    value: OPTION | null
+    options: OPTION[] | { value: string | null, label: string }[]
     error?: string
     desc: string
     tooltip: string
@@ -813,7 +813,7 @@ export function EnumOption<OPTION extends string>(props: {
 }
 
 
-export function add_default_option<OPTION extends string>(options: OPTION[], defaultValue: string): void {
+export function add_default_option_inplace<OPTION extends string>(options: OPTION[], defaultValue: string): void {
     options.unshift(defaultValue as OPTION)
 }
 
@@ -829,40 +829,23 @@ export function default_to_null<OPTION extends string>(value: OPTION, defaultVal
     return value
 }
 
-export function OptionalEnumOption<OPTION extends string>(props: {
-    value: OPTION | null
-    options: OPTION[]
-    error?: string
-    desc: string
-    tooltip: string
-    className?: string
-    placeholder?: string
-    onChange: (value: OPTION | null) => void
-}) {
-    const defaultValue = props.placeholder ? props.placeholder : "default"
-    const className = 'setting-input' + (props.className ? ' ' + props.className : '')
-    add_default_option(props.options, defaultValue)
-    return <>
-        <OptionLine desc={props.desc} tooltip={props.tooltip}>
-            <EnumInput
-                value={null_to_default(props.value, defaultValue)}
-                options={props.options}
-                desc={props.desc}
-                tooltip={props.tooltip}
-                onChange={(e) => props.onChange(default_to_null(e, defaultValue))}
-                className={className}
-                style={props.error ? ERROR_BACKGROUND_STYLE : undefined} />
-        </OptionLine>
-        <ErrorMessage message={props.error} />
-    </>
+
+// <select> does not want null as value, map to/from a placeholder string
+function null_to_string(value: string | null): string {
+    if (value === null)
+        return "null"
+    return value
 }
 
-/*
- options - list of options OR object with value to display text mapping
- */
+function string_to_null(value: string): string | null {
+    if (value === "null")
+        return null
+    return value
+}
+
 export function EnumInput<OPTION extends string>(props: {
-    value: OPTION
-    options: OPTION[] | { [key: string]: string }
+    value: OPTION | null
+    options: OPTION[] | { value: string | null, label: string }[]
     desc: string
     tooltip: string
     style?: CSSProperties
@@ -870,45 +853,52 @@ export function EnumInput<OPTION extends string>(props: {
     onChange: (value: OPTION) => void
 }) {
     const { options, value } = props
-    const optionsMap = Array.isArray(options) ? toMap(options) : options
-    if (!Object.keys(optionsMap).includes(value))
-        optionsMap[value] = value
+
+    // convert array of strings to array of objects with value and label
+    const optionsArray = options.map(option => {
+        if (typeof option === 'string') {
+            return { value: option, label: option }
+        }
+        return option
+    })
+    //const optionsMap = toMap(optionsArray)
     return <select
         id={props.desc}
         name={props.desc}
-        value={value}
+        value={null_to_string(value)}
         data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
-        onChange={e => props.onChange(e.target.value as OPTION)}
+        onChange={e => props.onChange(string_to_null(e.target.value) as OPTION)}
         style={props.style}
         className={value === "default" ? props.className + "-default" : props.className}
     >
-        {Object.keys(optionsMap).map(key => <option key={key} value={key}>{optionsMap[key]}</option>)}
+        {optionsArray.map(row => <option key={row.label} value={null_to_string(row.value)} label={row.label}></option>)}
     </select>
 }
 
-function string_to_bool(valuestr: string): boolean | null {
+function optional_bool_to_string(value: boolean | null): string {
+    switch (value) {
+        case null:
+            return "null"
+        case true:
+            return "true"
+        case false:
+            return "false"
+    }
+}
+
+function string_to_optional_bool(valuestr: string): boolean | null {
     switch (valuestr) {
-        case "default":
+        case "null":
             return null
-        case "yes":
+        case "true":
             return true
-        case "no":
+        case "false":
             return false
     }
     return null
 }
 
-function bool_to_string(value: boolean | null): string {
-    switch (value) {
-        case null:
-            return "default"
-        case true:
-            return "yes"
-        case false:
-            return "no"
-    }
-}
 
 export function OptionalBoolInput(props: {
     value: boolean | null
@@ -918,21 +908,20 @@ export function OptionalBoolInput(props: {
     className?: string
     onChange: (value: boolean | null) => void
 }) {
-    let valuestring = bool_to_string(props.value)
 
     return <select
         id={props.desc}
         name={props.desc}
-        value={valuestring}
+        value={optional_bool_to_string(props.value)}
         data-tooltip-html={props.tooltip}
         data-tooltip-id="main-tooltip"
-        onChange={e => props.onChange(string_to_bool(e.target.value))}
+        onChange={e => props.onChange(string_to_optional_bool(e.target.value))}
         style={props.style}
-        className={valuestring === "default" ? props.className + "-default" : props.className}
+        className={props.value === null ? props.className + "-default" : props.className}
     >
-        <option key="default">default</option>
-        <option key="yes">yes</option>
-        <option key="no">no</option>
+        <option key="default" value="null" label="default (no)"></option>
+        <option key="yes" value="true" label="yes"></option>
+        <option key="no" value="false" label="no"></option>
     </select>
 }
 
