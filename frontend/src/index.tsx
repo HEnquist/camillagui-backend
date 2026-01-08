@@ -241,6 +241,11 @@ class CamillaConfig extends React.Component<
 
   componentDidUpdate(prevProps: unknown) {
     //ReactTooltip.rebuild()
+    document.title = this.state.guiConfig.page_title
+  }
+
+  componentDidMount() {
+    document.title = this.state.guiConfig.page_title
   }
 
   private switchTab(index: number) {

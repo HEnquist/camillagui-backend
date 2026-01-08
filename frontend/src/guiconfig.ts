@@ -15,6 +15,7 @@ export interface GuiConfig {
     custom_shortcuts: ShortcutSection[]
     volume_max: number
     volume_range: number
+    page_title: string
 }
 
 export type CaptureType = 'Alsa' | 'Wasapi' | 'Jack' | 'CoreAudio' | 'Pulse' | 'PipeWire' | 'RawFile' | 'WavFile' | 'Stdin' | 'Bluez'
@@ -58,6 +59,7 @@ export function defaultGuiConfig(): GuiConfig {
         can_update_active_config: false,
         custom_shortcuts: [],
         volume_max: 0,
-        volume_range: 50
+        volume_range: 50,
+        page_title: 'CamillaDSP',
     }
 }
