@@ -1,1 +1,1 @@
-export const bottomMargin = { marginBottom: "10px" };
+export const bottomMargin = { marginBottom: "10px" }

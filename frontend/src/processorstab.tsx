@@ -1,6 +1,6 @@
-import React from "react";
-import cloneDeep from "lodash/cloneDeep";
-import "./index.css";
+import React from "react"
+import cloneDeep from "lodash/cloneDeep"
+import "./index.css"
 import {
     Config,
     defaultProcessor,
@@ -11,7 +11,7 @@ import {
     renameProcessor,
     sortedProcessorNamesOf,
     ProcessorSortKeys,
-} from "./camilladsp/config";
+} from "./camilladsp/config"
 import {
     AddButton,
     BoolOption,
@@ -28,42 +28,42 @@ import {
     ParsedInput,
     TextOption,
     ErrorBoundary,
-} from "./utilities/ui-components";
-import { Errors } from "./utilities/errors";
-import { modifiedCopyOf, Update } from "./utilities/common";
+} from "./utilities/ui-components"
+import { Errors } from "./utilities/errors"
+import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
     {
-        config: Config;
-        updateConfig: (update: Update<Config>) => void;
-        errors: Errors;
+        config: Config
+        updateConfig: (update: Update<Config>) => void
+        errors: Errors
     },
     {
-        processorKeys: { [name: string]: number };
-        availableCoeffFiles: string[];
-        sortBy: string;
-        sortReverse: boolean;
+        processorKeys: { [name: string]: number }
+        availableCoeffFiles: string[]
+        sortBy: string
+        sortReverse: boolean
     }
 > {
     constructor(props: any) {
-        super(props);
-        this.processorNames = this.processorNames.bind(this);
-        this.changeSortBy = this.changeSortBy.bind(this);
-        this.changeSortOrder = this.changeSortOrder.bind(this);
-        this.addProcessor = this.addProcessor.bind(this);
-        this.removeProcessor = this.removeProcessor.bind(this);
-        this.renameProcessor = this.renameProcessor.bind(this);
-        this.isFreeProcessorName = this.isFreeProcessorName.bind(this);
-        this.updateProcessor = this.updateProcessor.bind(this);
+        super(props)
+        this.processorNames = this.processorNames.bind(this)
+        this.changeSortBy = this.changeSortBy.bind(this)
+        this.changeSortOrder = this.changeSortOrder.bind(this)
+        this.addProcessor = this.addProcessor.bind(this)
+        this.removeProcessor = this.removeProcessor.bind(this)
+        this.renameProcessor = this.renameProcessor.bind(this)
+        this.isFreeProcessorName = this.isFreeProcessorName.bind(this)
+        this.updateProcessor = this.updateProcessor.bind(this)
         this.state = {
             processorKeys: {},
             availableCoeffFiles: [],
             sortBy: "Name",
             sortReverse: false,
-        };
+        }
         this.processorNames().forEach(
             (name, i) => (this.state.processorKeys[name] = i),
-        );
+        )
     }
 
     private processorNames(): string[] {
@@ -71,20 +71,20 @@ export class ProcessorsTab extends React.Component<
             this.props.config.processors,
             this.state.sortBy,
             this.state.sortReverse,
-        );
+        )
     }
 
     private changeSortBy(key: string) {
-        this.setState({ sortBy: key });
+        this.setState({ sortBy: key })
     }
 
     private changeSortOrder(reverse: boolean) {
-        this.setState({ sortReverse: reverse });
+        this.setState({ sortReverse: reverse })
     }
 
     private addProcessor() {
         this.props.updateConfig((config) => {
-            const newProcessor = newProcessorName(config.processors);
+            const newProcessor = newProcessorName(config.processors)
             this.setState((oldState) =>
                 modifiedCopyOf(
                     oldState,
@@ -96,24 +96,24 @@ export class ProcessorsTab extends React.Component<
                                 ...Object.values(oldState.processorKeys),
                             )),
                 ),
-            );
+            )
             if (config.processors === null) {
-                config.processors = {};
+                config.processors = {}
             }
-            config.processors[newProcessor] = defaultProcessor();
-        });
+            config.processors[newProcessor] = defaultProcessor()
+        })
     }
 
     private removeProcessor(name: string) {
         this.props.updateConfig((config) => {
-            removeProcessor(config, name);
+            removeProcessor(config, name)
             this.setState((oldState) =>
                 modifiedCopyOf(
                     oldState,
                     (newState) => delete newState.processorKeys[name],
                 ),
-            );
-        });
+            )
+        })
     }
 
     private renameProcessor(oldName: string, newName: string) {
@@ -122,29 +122,29 @@ export class ProcessorsTab extends React.Component<
                 this.setState((oldState) =>
                     modifiedCopyOf(oldState, (newState) => {
                         newState.processorKeys[newName] =
-                            newState.processorKeys[oldName];
-                        delete newState.processorKeys[oldName];
+                            newState.processorKeys[oldName]
+                        delete newState.processorKeys[oldName]
                     }),
-                );
-                renameProcessor(config, oldName, newName);
-            });
+                )
+                renameProcessor(config, oldName, newName)
+            })
     }
 
     private isFreeProcessorName(name: string): boolean {
-        return !this.processorNames().includes(name);
+        return !this.processorNames().includes(name)
     }
 
     private updateProcessor(name: string, update: Update<Processor>) {
         this.props.updateConfig((config) => {
             if (config.processors) {
-                update(config.processors[name]);
+                update(config.processors[name])
             }
-        });
+        })
     }
 
     render() {
-        let { config, errors } = this.props;
-        let processors = config.processors ? config.processors : {};
+        let { config, errors } = this.props
+        let processors = config.processors ? config.processors : {}
         return (
             <ErrorBoundary errorMessage={errors.asText()}>
                 <div>
@@ -200,23 +200,23 @@ export class ProcessorsTab extends React.Component<
                     </div>
                 </div>
             </ErrorBoundary>
-        );
+        )
     }
 }
 
 function hasChannelSelectors(processor: Processor): boolean {
-    return processor.type === "Compressor" || processor.type === "NoiseGate";
+    return processor.type === "Compressor" || processor.type === "NoiseGate"
 }
 
 interface ProcessorViewProps {
-    name: string;
-    processor: Processor;
-    config: Config;
-    errors: Errors;
-    updateProcessor: (update: Update<Processor>) => void;
-    rename: (newName: string) => void;
-    isFreeProcessorName: (name: string) => boolean;
-    remove: () => void;
+    name: string
+    processor: Processor
+    config: Config
+    errors: Errors
+    updateProcessor: (update: Update<Processor>) => void
+    rename: (newName: string) => void
+    isFreeProcessorName: (name: string) => boolean
+    remove: () => void
 }
 
 interface ProcessorViewState {}
@@ -226,17 +226,17 @@ class ProcessorView extends React.Component<
     ProcessorViewState
 > {
     constructor(props: any) {
-        super(props);
-        this.state = {};
+        super(props)
+        this.state = {}
     }
 
     render() {
-        const { name, processor, config } = this.props;
+        const { name, processor, config } = this.props
         const isValidProcessorName = (newName: string) =>
             name === newName ||
             (newName.trim().length > 0 &&
-                this.props.isFreeProcessorName(newName));
-        const channel_labels = getProcessorChannelLabels(config, name);
+                this.props.isFreeProcessorName(newName))
+        const channel_labels = getProcessorChannelLabels(config, name)
         return (
             <Box
                 style={{ width: "700px" }}
@@ -276,16 +276,16 @@ class ProcessorView extends React.Component<
                     />
                 </div>
             </Box>
-        );
+        )
     }
 }
 
 const defaultParameters: {
     [type: string]: {
         [subtype: string]: {
-            [parameter: string]: string | number | number[] | boolean;
-        };
-    };
+            [parameter: string]: string | number | number[] | boolean
+        }
+    }
 } = {
     Compressor: {
         Default: {
@@ -324,85 +324,85 @@ const defaultParameters: {
             attenuation: 3.0,
         },
     },
-};
+}
 
 class ProcessorParams extends React.Component<
     {
-        processor: Processor;
-        errors: Errors;
-        updateProcessor: (update: Update<Processor>) => void;
-        labels: (string | null)[] | null;
+        processor: Processor
+        errors: Errors
+        updateProcessor: (update: Update<Processor>) => void
+        labels: (string | null)[] | null
     },
     unknown
 > {
     constructor(props: any) {
-        super(props);
-        this.onDescChange = this.onDescChange.bind(this);
-        this.onTypeChange = this.onTypeChange.bind(this);
-        this.renderProcessorParams = this.renderProcessorParams.bind(this);
-        this.setMonitor = this.setMonitor.bind(this);
-        this.setProcess = this.setProcess.bind(this);
-        this.setChannelA = this.setChannelA.bind(this);
-        this.setChannelB = this.setChannelB.bind(this);
-        this.onParamChange = this.onParamChange.bind(this);
+        super(props)
+        this.onDescChange = this.onDescChange.bind(this)
+        this.onTypeChange = this.onTypeChange.bind(this)
+        this.renderProcessorParams = this.renderProcessorParams.bind(this)
+        this.setMonitor = this.setMonitor.bind(this)
+        this.setProcess = this.setProcess.bind(this)
+        this.setChannelA = this.setChannelA.bind(this)
+        this.setChannelB = this.setChannelB.bind(this)
+        this.onParamChange = this.onParamChange.bind(this)
     }
 
     //private timer = delayedExecutor(1000)
 
     private onParamChange(parameter: string, value: any) {
         this.props.updateProcessor((processor) => {
-            processor.parameters[parameter] = value;
+            processor.parameters[parameter] = value
             //if (isCompressor(processor) && parameter === "channels") {
             //    processor.parameters.monitor_channels = processor.parameters.monitor_channels.filter((n: number) => n < value)
             //    processor.parameters.process_channels = processor.parameters.process_channels.filter((n: number) => n < value)
             //}
-        });
+        })
     }
 
     private onDescChange(desc: string | null) {
         this.props.updateProcessor((processor) => {
-            processor.description = desc;
-        });
+            processor.description = desc
+        })
     }
 
     private onTypeChange(type: string) {
         this.props.updateProcessor((processor) => {
-            processor.type = type;
-            const typeDefaults = defaultParameters[type];
-            const firstSubtypeOrDefault = Object.keys(typeDefaults)[0];
+            processor.type = type
+            const typeDefaults = defaultParameters[type]
+            const firstSubtypeOrDefault = Object.keys(typeDefaults)[0]
             processor.parameters = cloneDeep(
                 typeDefaults[firstSubtypeOrDefault],
-            );
-        });
+            )
+        })
     }
 
     private setMonitor(channels: number[] | null) {
         this.props.updateProcessor((processor) => {
-            processor.parameters.monitor_channels = channels;
-        });
+            processor.parameters.monitor_channels = channels
+        })
     }
     private setProcess(channels: number[] | null) {
         this.props.updateProcessor((processor) => {
-            processor.parameters.process_channels = channels;
-        });
+            processor.parameters.process_channels = channels
+        })
     }
     private setChannelA(channels: number[] | null) {
         if (channels !== null) {
             this.props.updateProcessor((processor) => {
-                processor.parameters.channel_a = channels[0];
-            });
+                processor.parameters.channel_a = channels[0]
+            })
         }
     }
     private setChannelB(channels: number[] | null) {
         if (channels !== null) {
             this.props.updateProcessor((processor) => {
-                processor.parameters.channel_b = channels[0];
-            });
+                processor.parameters.channel_b = channels[0]
+            })
         }
     }
 
     render() {
-        const { processor, errors, labels } = this.props;
+        const { processor, errors, labels } = this.props
         return (
             <div style={{ width: "100%", textAlign: "right" }}>
                 <ErrorMessage message={errors.rootMessage()} />
@@ -507,7 +507,7 @@ class ProcessorParams extends React.Component<
                     </div>
                 )}
             </div>
-        );
+        )
     }
 
     private renderProcessorParams(
@@ -517,19 +517,19 @@ class ProcessorParams extends React.Component<
         return Object.keys(parameters).map((parameter) => {
             if (parameter === "type")
                 // 'type' is already rendered by parent component
-                return null;
+                return null
             if (
                 parameter === "monitor_channels" ||
                 parameter === "process_channels"
             )
                 // handled separately
-                return null;
-            const info = this.parameterInfos[parameter];
+                return null
+            const info = this.parameterInfos[parameter]
             if (info === undefined) {
                 console.log(
                     `Rendering for processor parameter '${parameter}' is not implemented`,
-                );
-                return null;
+                )
+                return null
             }
             const commonProps = {
                 key: parameter,
@@ -538,32 +538,32 @@ class ProcessorParams extends React.Component<
                 desc: info.desc,
                 tooltip: info.tooltip,
                 onChange: (value: any) => this.onParamChange(parameter, value),
-            };
-            if (info.type === "text") return <TextOption {...commonProps} />;
-            if (info.type === "int") return <IntOption {...commonProps} />;
-            if (info.type === "float") return <FloatOption {...commonProps} />;
-            if (info.type === "bool") return <BoolOption {...commonProps} />;
+            }
+            if (info.type === "text") return <TextOption {...commonProps} />
+            if (info.type === "int") return <IntOption {...commonProps} />
+            if (info.type === "float") return <FloatOption {...commonProps} />
+            if (info.type === "bool") return <BoolOption {...commonProps} />
             if (info.type === "floatlist")
-                return <FloatListOption {...commonProps} />;
+                return <FloatListOption {...commonProps} />
             if (info.type === "optional_float")
                 return (
                     <OptionalFloatOption
                         placeholder={info.placeholder}
                         {...commonProps}
                     />
-                );
+                )
             if (info.type === "enum") {
-                let options = info.options!;
+                let options = info.options!
                 return (
                     <EnumOption
                         {...commonProps}
                         key={commonProps.key}
                         options={options}
                     />
-                );
+                )
             }
-            return null;
-        });
+            return null
+        })
     }
 
     parameterInfos: {
@@ -575,12 +575,12 @@ class ProcessorParams extends React.Component<
                 | "floatlist"
                 | "bool"
                 | "optional_float"
-                | "enum";
-            desc: string;
-            tooltip: string;
-            placeholder?: string;
-            options?: string[];
-        };
+                | "enum"
+            desc: string
+            tooltip: string
+            placeholder?: string
+            options?: string[]
+        }
     } = {
         attack: {
             type: "float",
@@ -644,5 +644,5 @@ class ProcessorParams extends React.Component<
             options: ["ms", "us", "mm", "samples"],
             tooltip: "Unit for delay",
         },
-    };
+    }
 }

@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { jsonUndoDiff } from "./jsondiff";
+import { expect, test } from "vitest"
+import { jsonUndoDiff } from "./jsondiff"
 
 test("diff with one property", () => {
     expect(
@@ -7,8 +7,8 @@ test("diff with one property", () => {
             { unchanged: true, a: { b: 1 } },
             { unchanged: true, a: { b: 2 } },
         ),
-    ).toBe("a > b: 1 => 2");
-});
+    ).toBe("a > b: 1 => 2")
+})
 
 test("diff with multiple properties", () => {
     expect(
@@ -21,26 +21,26 @@ test("diff with multiple properties", () => {
             "a > newProperty: *added* => isNew<br/>" +
             "a > b: 1 => 2<br/>" +
             "a > c > d: 10 => 20",
-    );
-});
+    )
+})
 
 test("property added", () => {
     expect(jsonUndoDiff({ a: {} }, { a: { newProperty: true } })).toBe(
         "a > newProperty: *added* => true",
-    );
-});
+    )
+})
 
 test("property removed", () => {
     expect(jsonUndoDiff({ a: { oldProperty: true } }, { a: {} })).toBe(
         "a > oldProperty: *removed* => true",
-    );
-});
+    )
+})
 
 test("object property added", () => {
     expect(jsonUndoDiff({}, { a: { b: 1, c: 2 } })).toBe(
         "a: *added* => {b:1,c:2}",
-    );
-});
+    )
+})
 
 test("objects in array changed", () => {
     expect(
@@ -52,20 +52,20 @@ test("objects in array changed", () => {
         "objects > 0 > child1: 0 => 1<br/>" +
             "objects > 1 > child2: *removed* => 2<br/>" +
             "objects > 1 > child3: *added* => 3",
-    );
-});
+    )
+})
 
 test("object in array added", () => {
     expect(jsonUndoDiff({ objects: [] }, { objects: [{ child1: 1 }] })).toBe(
         "objects > -: *added* => {child1:1}",
-    );
-});
+    )
+})
 
 test("object in array removed", () => {
     expect(jsonUndoDiff({ objects: [{ child1: 1 }] }, { objects: [] })).toBe(
         "objects > 0: *removed* => {child1:1}",
-    );
-});
+    )
+})
 
 test("object in array moved", () => {
     expect(
@@ -76,5 +76,5 @@ test("object in array moved", () => {
     ).toBe(
         "objects > 0: *added* => {child2:2}<br/>" +
             "objects > 2: *removed* => {child2:2}",
-    );
-});
+    )
+})

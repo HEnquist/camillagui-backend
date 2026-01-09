@@ -1,6 +1,6 @@
-import React, { ReactNode, useEffect, useState } from "react";
-import "../index.css";
-import { PipelinePopup } from "./pipelineplotter";
+import React, { ReactNode, useEffect, useState } from "react"
+import "../index.css"
+import { PipelinePopup } from "./pipelineplotter"
 import {
     AddButton,
     Box,
@@ -14,7 +14,7 @@ import {
     OptionalBoolOption,
     OptionalTextInput,
     PlotButton,
-} from "../utilities/ui-components";
+} from "../utilities/ui-components"
 import {
     Config,
     defaultFilterStep,
@@ -35,35 +35,35 @@ import {
     processorNamesOf,
     Processors,
     ProcessorStep,
-} from "../camilladsp/config";
-import { mdiArrowDownBold, mdiArrowUpBold } from "@mdi/js";
-import { Errors } from "../utilities/errors";
+} from "../camilladsp/config"
+import { mdiArrowDownBold, mdiArrowUpBold } from "@mdi/js"
+import { Errors } from "../utilities/errors"
 import {
     DndContainer,
     DndSortable,
     DragHandle,
     useDndSort,
-} from "../utilities/dragndrop";
-import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays";
-import { Update } from "../utilities/common";
-import { ChartData, ChartPopup } from "../utilities/chart";
+} from "../utilities/dragndrop"
+import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
+import { Update } from "../utilities/common"
+import { ChartData, ChartPopup } from "../utilities/chart"
 
 export class PipelineTab extends React.Component<
     {
-        config: Config;
-        updateConfig: (update: Update<Config>) => void;
-        errors: Errors;
+        config: Config
+        updateConfig: (update: Update<Config>) => void
+        errors: Errors
     },
     {
-        plotPipeline: boolean;
-        plotFilterStep: boolean;
-        stepIndex?: number;
-        data: ChartData;
-        capture_channels: number;
+        plotPipeline: boolean
+        plotFilterStep: boolean
+        stepIndex?: number
+        data: ChartData
+        capture_channels: number
     }
 > {
     constructor(props: any) {
-        super(props);
+        super(props)
         this.state = {
             plotPipeline: false,
             plotFilterStep: false,
@@ -74,46 +74,46 @@ export class PipelineTab extends React.Component<
                 options: [{ name: "" }],
             },
             capture_channels: 2,
-        };
+        }
     }
     componentDidMount() {
         getCaptureDeviceChannelCount(this.props.config.devices.capture).then(
             (channels) => this.setState({ capture_channels: channels }),
-        );
+        )
     }
 
     updatePipeline = (update: Update<Pipeline>) =>
         this.props.updateConfig((config) => {
             if (!config.pipeline) {
-                config.pipeline = [];
+                config.pipeline = []
             }
-            update(config.pipeline);
-        });
+            update(config.pipeline)
+        })
 
     addStep = () =>
         this.updatePipeline((pipeline) =>
             pipeline.push(defaultFilterStep(this.props.config)),
-        );
+        )
 
     removeStep = (index: number) =>
-        this.updatePipeline((pipeline) => pipeline.splice(index, 1));
+        this.updatePipeline((pipeline) => pipeline.splice(index, 1))
 
     setStepType = (index: number, type: "Filter" | "Mixer" | "Processor") =>
         this.updatePipeline((pipeline) => {
             if (type === "Mixer")
-                pipeline[index] = defaultMixerStep(this.props.config);
+                pipeline[index] = defaultMixerStep(this.props.config)
             else if (type === "Filter")
-                pipeline[index] = defaultFilterStep(this.props.config);
+                pipeline[index] = defaultFilterStep(this.props.config)
             else if (type === "Processor")
-                pipeline[index] = defaultProcessorStep(this.props.config);
-        });
+                pipeline[index] = defaultProcessorStep(this.props.config)
+        })
 
     plotFilterStep = (
         index: number,
         samplerate?: number,
         channels?: number,
     ) => {
-        const config = this.props.config;
+        const config = this.props.config
         fetch("/api/evalfilterstep", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -133,18 +133,18 @@ export class PipelineTab extends React.Component<
                     }),
                 ),
             (error) => console.log("Failed", error),
-        );
-    };
+        )
+    }
 
     moveStepUp = (index: number) =>
-        this.updatePipeline((pipeline) => moveItemUp(pipeline, index));
+        this.updatePipeline((pipeline) => moveItemUp(pipeline, index))
 
     moveStepDown = (index: number) =>
-        this.updatePipeline((pipeline) => moveItemDown(pipeline, index));
+        this.updatePipeline((pipeline) => moveItemDown(pipeline, index))
 
     render() {
-        const { config, errors } = this.props;
-        const pipeline = config.pipeline;
+        const { config, errors } = this.props
+        const pipeline = config.pipeline
         return (
             <ErrorBoundary errorMessage={errors.asText()}>
                 <div className="tabcontainer">
@@ -160,8 +160,8 @@ export class PipelineTab extends React.Component<
                                     const channel_labels = getChannelLabels(
                                         config,
                                         index,
-                                    );
-                                    const stepErrors = errors.forSubpath(index);
+                                    )
+                                    const stepErrors = errors.forSubpath(index)
                                     const typeSelect = (
                                         <EnumInput
                                             value={step.type}
@@ -177,7 +177,7 @@ export class PipelineTab extends React.Component<
                                                 this.setStepType(index, type)
                                             }
                                         />
-                                    );
+                                    )
                                     const controls = (
                                         <>
                                             <DeleteButton
@@ -205,7 +205,7 @@ export class PipelineTab extends React.Component<
                                                 }
                                             />
                                         </>
-                                    );
+                                    )
                                     if (step.type === "Filter")
                                         return (
                                             <FilterStepView
@@ -232,7 +232,7 @@ export class PipelineTab extends React.Component<
                                                 controls={controls}
                                                 labels={channel_labels}
                                             />
-                                        );
+                                        )
                                     if (step.type === "Mixer")
                                         return (
                                             <MixerStepView
@@ -251,7 +251,7 @@ export class PipelineTab extends React.Component<
                                                 errors={stepErrors}
                                                 controls={controls}
                                             />
-                                        );
+                                        )
                                     if (step.type === "Processor")
                                         return (
                                             <ProcessorStepView
@@ -270,8 +270,8 @@ export class PipelineTab extends React.Component<
                                                 errors={stepErrors}
                                                 controls={controls}
                                             />
-                                        );
-                                    else return null;
+                                        )
+                                    else return null
                                 },
                             )}
                             <div className="horizontally-spaced-content">
@@ -308,12 +308,12 @@ export class PipelineTab extends React.Component<
                                         const current =
                                             this.state.data.options.filter(
                                                 (o) => o.name === name,
-                                            )[0];
+                                            )[0]
                                         this.plotFilterStep(
                                             this.state.stepIndex!!,
                                             current.samplerate,
                                             current.channels,
-                                        );
+                                        )
                                     }}
                                     onClose={() =>
                                         this.setState({ plotFilterStep: false })
@@ -325,7 +325,7 @@ export class PipelineTab extends React.Component<
                     <div className="tabspacer" />
                 </div>
             </ErrorBoundary>
-        );
+        )
     }
 }
 
@@ -338,17 +338,17 @@ function usePipelineStepDndSort(
         { stepIndex },
         ({ stepIndex: from }, { stepIndex: to }) =>
             updatePipeline((pipeline) => moveItem(pipeline, from, to)),
-    );
+    )
 }
 
 function MixerStepView(props: {
-    stepIndex: number;
-    typeSelect: ReactNode;
-    mixerStep: MixerStep;
-    mixers: Mixers;
-    updatePipeline: (update: Update<Pipeline>) => void;
-    errors: Errors;
-    controls: ReactNode;
+    stepIndex: number
+    typeSelect: ReactNode
+    mixerStep: MixerStep
+    mixers: Mixers
+    updatePipeline: (update: Update<Pipeline>) => void
+    errors: Errors
+    controls: ReactNode
 }) {
     const {
         stepIndex,
@@ -357,18 +357,18 @@ function MixerStepView(props: {
         mixerStep,
         updatePipeline,
         controls,
-    } = props;
+    } = props
     const update = (update: Update<MixerStep>) =>
-        updatePipeline((pipeline) => update(pipeline[stepIndex] as MixerStep));
-    const mixer = mixers[mixerStep.name];
+        updatePipeline((pipeline) => update(pipeline[stepIndex] as MixerStep))
+    const mixer = mixers[mixerStep.name]
     const channelInfo = mixer ? (
         <span style={{ marginRight: "15px" }}>
             {mixer.channels.in}&nbsp;in,&nbsp;{mixer.channels.out}&nbsp;out
         </span>
-    ) : null;
-    const options = [EMPTY].concat(mixerNamesOf(mixers));
-    const nameError = props.errors.messageFor("name");
-    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline);
+    ) : null
+    const options = [EMPTY].concat(mixerNamesOf(mixers))
+    const nameError = props.errors.messageFor("name")
+    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
     return (
         <DndSortable {...dndProps}>
             <Box
@@ -419,17 +419,17 @@ function MixerStepView(props: {
                 </div>
             </Box>
         </DndSortable>
-    );
+    )
 }
 
 function ProcessorStepView(props: {
-    stepIndex: number;
-    typeSelect: ReactNode;
-    processorStep: ProcessorStep;
-    processors: Processors;
-    updatePipeline: (update: Update<Pipeline>) => void;
-    errors: Errors;
-    controls: ReactNode;
+    stepIndex: number
+    typeSelect: ReactNode
+    processorStep: ProcessorStep
+    processors: Processors
+    updatePipeline: (update: Update<Pipeline>) => void
+    errors: Errors
+    controls: ReactNode
 }) {
     const {
         stepIndex,
@@ -438,14 +438,14 @@ function ProcessorStepView(props: {
         processorStep,
         updatePipeline,
         controls,
-    } = props;
+    } = props
     const update = (update: Update<ProcessorStep>) =>
         updatePipeline((pipeline) =>
             update(pipeline[stepIndex] as ProcessorStep),
-        );
-    const options = [EMPTY].concat(processorNamesOf(processors));
-    const nameError = props.errors.messageFor("name");
-    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline);
+        )
+    const options = [EMPTY].concat(processorNamesOf(processors))
+    const nameError = props.errors.messageFor("name")
+    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
     return (
         <DndSortable {...dndProps}>
             <Box
@@ -495,20 +495,20 @@ function ProcessorStepView(props: {
                 </div>
             </Box>
         </DndSortable>
-    );
+    )
 }
 
 function FilterStepView(props: {
-    stepIndex: number;
-    maxChannelCount: Promise<number>;
-    typeSelect: ReactNode;
-    filterStep: FilterStep;
-    filters: Filters;
-    updatePipeline: (update: Update<Pipeline>) => void;
-    plot: () => void;
-    errors: Errors;
-    controls: ReactNode;
-    labels: (string | null)[] | null;
+    stepIndex: number
+    maxChannelCount: Promise<number>
+    typeSelect: ReactNode
+    filterStep: FilterStep
+    filters: Filters
+    updatePipeline: (update: Update<Pipeline>) => void
+    plot: () => void
+    errors: Errors
+    controls: ReactNode
+    labels: (string | null)[] | null
 }) {
     const {
         stepIndex,
@@ -519,19 +519,19 @@ function FilterStepView(props: {
         plot,
         controls,
         maxChannelCount,
-    } = props;
-    const [maxChannels, setMaxChannels] = useState(0);
+    } = props
+    const [maxChannels, setMaxChannels] = useState(0)
     useEffect(() => {
-        maxChannelCount.then((chans) => setMaxChannels(chans));
-    }, [maxChannelCount]);
-    const options = [EMPTY].concat(filterNamesOf(filters));
+        maxChannelCount.then((chans) => setMaxChannels(chans))
+    }, [maxChannelCount])
+    const options = [EMPTY].concat(filterNamesOf(filters))
     const update = (update: Update<FilterStep>) =>
-        updatePipeline((pipeline) => update(pipeline[stepIndex] as FilterStep));
-    const addFilter = () => update((step) => step.names.push(options[0]));
+        updatePipeline((pipeline) => update(pipeline[stepIndex] as FilterStep))
+    const addFilter = () => update((step) => step.names.push(options[0]))
     const moveFilterUp = (index: number) =>
-        update((step) => moveItemUp(step.names, index));
+        update((step) => moveItemUp(step.names, index))
     const moveFilterDown = (index: number) =>
-        update((step) => moveItemDown(step.names, index));
+        update((step) => moveItemDown(step.names, index))
     const moveFilter = (
         fromStep: number,
         fromIndex: number,
@@ -539,17 +539,17 @@ function FilterStepView(props: {
         toIndex: number,
     ) =>
         update((step) => {
-            if (fromStep === toStep) moveItem(step.names, fromIndex, toIndex);
+            if (fromStep === toStep) moveItem(step.names, fromIndex, toIndex)
             else {
                 updatePipeline((pipeline) => {
-                    const from = pipeline[fromStep] as FilterStep;
-                    const filter = from.names.splice(fromIndex, 1);
-                    const to = pipeline[toStep] as FilterStep;
-                    to.names.splice(toIndex, 0, ...filter);
-                });
+                    const from = pipeline[fromStep] as FilterStep
+                    const filter = from.names.splice(fromIndex, 1)
+                    const to = pipeline[toStep] as FilterStep
+                    to.names.splice(toIndex, 0, ...filter)
+                })
             }
-        });
-    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline);
+        })
+    const dndProps = usePipelineStepDndSort(stepIndex, updatePipeline)
     const title = (
         <>
             <DragHandle
@@ -574,7 +574,7 @@ function FilterStepView(props: {
                 onChange={(bp) => update((step) => (step.bypassed = bp))}
             />
         </>
-    );
+    )
     return (
         <DndSortable {...dndProps}>
             <Box title={title}>
@@ -658,23 +658,23 @@ function FilterStepView(props: {
                 </div>
             </Box>
         </DndSortable>
-    );
+    )
 }
 
 function FilterStepFilter(props: {
-    stepIndex: number;
-    index: number;
-    options: string[];
-    name: string;
-    setName: (name: string) => void;
+    stepIndex: number
+    index: number
+    options: string[]
+    name: string
+    setName: (name: string) => void
     moveFilter: (
         fromStep: number,
         fromIndex: number,
         toStep: number,
         toIndex: number,
-    ) => void;
-    errors?: string;
-    controls: ReactNode;
+    ) => void
+    errors?: string
+    controls: ReactNode
 }) {
     const {
         stepIndex,
@@ -685,7 +685,7 @@ function FilterStepFilter(props: {
         moveFilter,
         errors,
         controls,
-    } = props;
+    } = props
     const { isDragging, canDrop, drag, preview, drop } = useDndSort(
         "filter",
         { stepIndex, index },
@@ -693,7 +693,7 @@ function FilterStepFilter(props: {
             { stepIndex: fromStep, index: fromIndex },
             { stepIndex: toStep, index: toIndex },
         ) => moveFilter(fromStep, fromIndex, toStep, toIndex),
-    );
+    )
     return (
         <DndSortable
             isDragging={isDragging}
@@ -719,5 +719,5 @@ function FilterStepFilter(props: {
             </div>
             <ErrorMessage message={errors} />
         </DndSortable>
-    );
+    )
 }

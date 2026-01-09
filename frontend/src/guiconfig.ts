@@ -1,21 +1,21 @@
 export interface GuiConfig {
-    hide_capture_samplerate: boolean;
-    hide_silence: boolean;
-    hide_capture_device: boolean;
-    hide_playback_device: boolean;
-    hide_rate_monitoring: boolean;
-    hide_multithreading: boolean;
-    coeff_dir: string;
-    supported_capture_types?: CaptureType[];
-    supported_playback_types?: PlaybackType[];
-    apply_config_automatically: boolean;
-    save_config_automatically: boolean;
-    status_update_interval: number;
-    can_update_active_config: boolean;
-    custom_shortcuts: ShortcutSection[];
-    volume_max: number;
-    volume_range: number;
-    page_title: string;
+    hide_capture_samplerate: boolean
+    hide_silence: boolean
+    hide_capture_device: boolean
+    hide_playback_device: boolean
+    hide_rate_monitoring: boolean
+    hide_multithreading: boolean
+    coeff_dir: string
+    supported_capture_types?: CaptureType[]
+    supported_playback_types?: PlaybackType[]
+    apply_config_automatically: boolean
+    save_config_automatically: boolean
+    status_update_interval: number
+    can_update_active_config: boolean
+    custom_shortcuts: ShortcutSection[]
+    volume_max: number
+    volume_range: number
+    page_title: string
 }
 
 export type CaptureType =
@@ -28,7 +28,7 @@ export type CaptureType =
     | "RawFile"
     | "WavFile"
     | "Stdin"
-    | "Bluez";
+    | "Bluez"
 
 export type PlaybackType =
     | "Alsa"
@@ -38,27 +38,27 @@ export type PlaybackType =
     | "Pulse"
     | "PipeWire"
     | "File"
-    | "Stdout";
+    | "Stdout"
 
 export interface ShortcutSection {
-    section: string;
-    description?: string;
-    shortcuts: Shortcut[];
+    section: string
+    description?: string
+    shortcuts: Shortcut[]
 }
 
 export interface Shortcut {
-    name: string;
-    description?: string;
-    config_elements: ConfigElement[];
-    range_from?: number;
-    range_to?: number;
-    step?: number;
-    type?: string;
+    name: string
+    description?: string
+    config_elements: ConfigElement[]
+    range_from?: number
+    range_to?: number
+    step?: number
+    type?: string
 }
 
 export interface ConfigElement {
-    path: string[];
-    reverse?: boolean;
+    path: string[]
+    reverse?: boolean
 }
 
 export function defaultGuiConfig(): GuiConfig {
@@ -78,5 +78,5 @@ export function defaultGuiConfig(): GuiConfig {
         volume_max: 0,
         volume_range: 50,
         page_title: "CamillaDSP",
-    };
+    }
 }

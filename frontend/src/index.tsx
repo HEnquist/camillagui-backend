@@ -1,78 +1,77 @@
 /* The CSS files have to be imported in exactly this order.
    Otherwise the custom react-tabs styles in index.css don't work */
-import "react-tabs/style/react-tabs.css";
-import "react-tooltip/dist/react-tooltip.css";
-import "./index.css";
+import "react-tabs/style/react-tabs.css"
+import "react-tooltip/dist/react-tooltip.css"
+import "./index.css"
 
-import * as React from "react";
-import { createRoot } from "react-dom/client";
-import isEqual from "lodash/isEqual";
-import { FiltersTab } from "./filterstab";
-import { DevicesTab } from "./devicestab";
-import { MixersTab } from "./mixerstab";
-import { ProcessorsTab } from "./processorstab";
-import { PipelineTab } from "./pipeline/pipelinetab";
-import { TitleTab } from "./titletab";
-import { Shortcuts } from "./shortcuts";
-import { Errors, NoErrors } from "./utilities/errors";
-import { Tab, TabList, TabPanel, Tabs } from "react-tabs";
-import { Tooltip } from "react-tooltip";
-import { Files } from "./filestab";
+import * as React from "react"
+import { createRoot } from "react-dom/client"
+import isEqual from "lodash/isEqual"
+import { FiltersTab } from "./filterstab"
+import { DevicesTab } from "./devicestab"
+import { MixersTab } from "./mixerstab"
+import { ProcessorsTab } from "./processorstab"
+import { PipelineTab } from "./pipeline/pipelinetab"
+import { TitleTab } from "./titletab"
+import { Shortcuts } from "./shortcuts"
+import { Errors, NoErrors } from "./utilities/errors"
+import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
+import { Tooltip } from "react-tooltip"
+import { Files } from "./filestab"
 import {
     Config,
     defaultConfig,
     getCaptureDeviceChannelCount,
-} from "./camilladsp/config";
-import { defaultGuiConfig, GuiConfig } from "./guiconfig";
-import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components";
-import { cloneDeep } from "lodash";
+} from "./camilladsp/config"
+import { defaultGuiConfig, GuiConfig } from "./guiconfig"
+import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
+import { cloneDeep } from "lodash"
 import {
     mdiAlert,
     mdiArrowULeftTop,
     mdiArrowURightTop,
     mdiImageSizeSelectSmall,
-} from "@mdi/js";
-import { SidePanel } from "./sidepanel/sidepanel";
-import { Update } from "./utilities/common";
+} from "@mdi/js"
+import { SidePanel } from "./sidepanel/sidepanel"
+import { Update } from "./utilities/common"
 import {
     CompactView,
     isCompactViewEnabled,
     setCompactViewEnabled,
-} from "./compactview";
-import { UndoRedo } from "./main/UndoRedo";
-import { loadStartupConfig } from "./utilities/files";
-import { createTheme } from "react-data-table-component";
+} from "./compactview"
+import { UndoRedo } from "./main/UndoRedo"
+import { loadStartupConfig } from "./utilities/files"
+import { createTheme } from "react-data-table-component"
 
 class CamillaConfig extends React.Component<
     unknown,
     {
-        activetab: number;
-        currentConfigFile?: string;
-        guiConfig: GuiConfig;
-        undoRedo: UndoRedo<Config>;
-        errors: Errors;
-        compactView: boolean;
-        message: string;
-        unsavedChanges: boolean;
-        unappliedChanges: boolean;
+        activetab: number
+        currentConfigFile?: string
+        guiConfig: GuiConfig
+        undoRedo: UndoRedo<Config>
+        errors: Errors
+        compactView: boolean
+        message: string
+        unsavedChanges: boolean
+        unappliedChanges: boolean
     }
 > {
     constructor(props: unknown) {
-        super(props);
-        this.updateConfig = this.updateConfig.bind(this);
-        this.applyConfig = this.applyConfig.bind(this);
-        this.fetchConfig = this.fetchConfig.bind(this);
-        this.saveConfig = this.saveConfig.bind(this);
-        this.saveAndApplyConfig = this.saveAndApplyConfig.bind(this);
-        this.setCurrentConfig = this.setCurrentConfig.bind(this);
-        this.setCurrentConfigFileName =
-            this.setCurrentConfigFileName.bind(this);
-        this.setErrors = this.setErrors.bind(this);
-        this.switchTab = this.switchTab.bind(this);
-        this.setCompactViewEnabled = this.setCompactViewEnabled.bind(this);
-        this.NormalContent = this.NormalContent.bind(this);
-        this.saveNotify = this.saveNotify.bind(this);
-        this.applyNotify = this.applyNotify.bind(this);
+        super(props)
+        this.updateConfig = this.updateConfig.bind(this)
+        this.applyConfig = this.applyConfig.bind(this)
+        this.fetchConfig = this.fetchConfig.bind(this)
+        this.saveConfig = this.saveConfig.bind(this)
+        this.saveAndApplyConfig = this.saveAndApplyConfig.bind(this)
+        this.setCurrentConfig = this.setCurrentConfig.bind(this)
+        this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
+        this.setErrors = this.setErrors.bind(this)
+        this.switchTab = this.switchTab.bind(this)
+        this.setCompactViewEnabled = this.setCompactViewEnabled.bind(this)
+        this.NormalContent = this.NormalContent.bind(this)
+        this.saveNotify = this.saveNotify.bind(this)
+        this.applyNotify = this.applyNotify.bind(this)
         this.state = {
             activetab: 1,
             guiConfig: defaultGuiConfig(),
@@ -82,9 +81,9 @@ class CamillaConfig extends React.Component<
             message: "",
             unsavedChanges: false,
             unappliedChanges: true,
-        };
-        this.loadGuiConfig();
-        this.loadConfigAtStart();
+        }
+        this.loadGuiConfig()
+        this.loadConfigAtStart()
         createTheme(
             "camilla",
             {
@@ -110,7 +109,7 @@ class CamillaConfig extends React.Component<
                 },
             },
             "dark",
-        );
+        )
     }
 
     private async loadGuiConfig() {
@@ -118,71 +117,71 @@ class CamillaConfig extends React.Component<
             .then(
                 (data) => data.json(),
                 (err) => {
-                    console.log("Failed to fetch guiconfig", err);
+                    console.log("Failed to fetch guiconfig", err)
                 },
             )
             .then(
                 (json) => this.setState({ guiConfig: json }),
                 (err) => {
-                    console.log("Failed to parse guiconfig as json", err);
+                    console.log("Failed to parse guiconfig as json", err)
                 },
-            );
+            )
     }
 
     private async loadConfigAtStart() {
         try {
-            const json = await loadStartupConfig();
+            const json = await loadStartupConfig()
             this.setCurrentConfig(
                 json.configFileName ? json.configFileName : undefined,
                 json.config,
-            );
-            let message = "";
+            )
+            let message = ""
             if (json.source === "dsp") {
-                message = "Loaded from DSP";
+                message = "Loaded from DSP"
             } else if (json.source === "active") {
-                message = "Loaded active";
+                message = "Loaded active"
             } else if (json.source === "default") {
-                message = "Loaded default";
+                message = "Loaded default"
             }
 
-            this.setState({ message: message });
+            this.setState({ message: message })
         } catch (err) {
-            console.log("Failed getting active config:", err);
+            console.log("Failed getting active config:", err)
         }
     }
 
     private async fetchConfig() {
-        const conf_req = await fetch("/api/getconfig");
+        const conf_req = await fetch("/api/getconfig")
         if (!conf_req.ok) {
-            const errorMessage = await conf_req.text();
-            this.setState({ message: errorMessage });
-            throw new Error(errorMessage);
+            const errorMessage = await conf_req.text()
+            this.setState({ message: errorMessage })
+            throw new Error(errorMessage)
         }
-        const config = await conf_req.json();
+        const config = await conf_req.json()
         if (config)
             this.setState({
                 unsavedChanges: false,
                 unappliedChanges: false,
                 message: "OK",
                 undoRedo: new UndoRedo(config),
-            });
-        else this.setState({ message: "No config received" });
+            })
+        else this.setState({ message: "No config received" })
     }
 
     private setCompactViewEnabled(enabled: boolean) {
-        setCompactViewEnabled(enabled);
-        this.setState({ compactView: enabled });
+        setCompactViewEnabled(enabled)
+        this.setState({ compactView: enabled })
     }
 
     private saveNotify() {
-        this.setState({ unsavedChanges: false });
+        this.setState({ unsavedChanges: false })
     }
 
     private applyNotify() {
-        this.setState({ unappliedChanges: false });
+        this.setState({ unappliedChanges: false })
     }
 
-    private readonly saveTimer = delayedExecutor(100);
+    private readonly saveTimer = delayedExecutor(100)
 
     private updateConfig(
         update: Update<Config>,
@@ -190,31 +189,31 @@ class CamillaConfig extends React.Component<
     ) {
         this.setState(
             (prevState) => {
-                const newConfig = cloneDeep(prevState.undoRedo.current());
-                update(newConfig);
-                let unsavedChanges = true;
-                let unappliedChanges = true;
+                const newConfig = cloneDeep(prevState.undoRedo.current())
+                update(newConfig)
+                let unsavedChanges = true
+                let unappliedChanges = true
                 if (isEqual(newConfig, prevState.undoRedo.current())) {
-                    unsavedChanges = prevState.unsavedChanges;
-                    unappliedChanges = prevState.unappliedChanges;
+                    unsavedChanges = prevState.unsavedChanges
+                    unappliedChanges = prevState.unappliedChanges
                 }
                 return {
                     unsavedChanges: unsavedChanges,
                     unappliedChanges: unappliedChanges,
                     undoRedo: prevState.undoRedo.changeTo(newConfig),
-                };
+                }
             },
             () => {
-                if (saveAfterDelay) this.saveTimer(this.applyConfig);
+                if (saveAfterDelay) this.saveTimer(this.applyConfig)
             },
-        );
+        )
     }
 
     private async applyConfig(): Promise<void> {
         this.applyConfigRequest(
             this.state.currentConfigFile,
             this.state.undoRedo.current(),
-        );
+        )
     }
 
     private async applyConfigRequest(
@@ -228,10 +227,10 @@ class CamillaConfig extends React.Component<
                 filename: filename,
                 config: config,
             }),
-        });
-        const message = await conf_req.text();
-        this.setState({ message: message, unappliedChanges: false });
-        if (!conf_req.ok) throw new Error(message);
+        })
+        const message = await conf_req.text()
+        this.setState({ message: message, unappliedChanges: false })
+        if (!conf_req.ok) throw new Error(message)
     }
 
     private async saveConfig() {
@@ -243,16 +242,16 @@ class CamillaConfig extends React.Component<
                     filename: this.state.currentConfigFile,
                     config: this.state.undoRedo.current(),
                 }),
-            });
-            const message = await conf_req.text();
-            this.setState({ message: message, unsavedChanges: false });
-            if (!conf_req.ok) throw new Error(message);
+            })
+            const message = await conf_req.text()
+            this.setState({ message: message, unsavedChanges: false })
+            if (!conf_req.ok) throw new Error(message)
         }
     }
 
     private async saveAndApplyConfig() {
-        await this.applyConfig();
-        await this.saveConfig();
+        await this.applyConfig()
+        await this.saveConfig()
     }
 
     private setCurrentConfig(filename: string | undefined, config: Config) {
@@ -261,30 +260,30 @@ class CamillaConfig extends React.Component<
             unappliedChanges: true,
             currentConfigFile: filename,
             undoRedo: new UndoRedo(config),
-        });
+        })
     }
 
     private setCurrentConfigFileName(filename: string | undefined) {
         this.setState({
             currentConfigFile: filename,
-        });
+        })
     }
 
     private setErrors(errors: any) {
-        this.setState({ errors: errors });
+        this.setState({ errors: errors })
     }
 
     componentDidUpdate(prevProps: unknown) {
         //ReactTooltip.rebuild()
-        document.title = this.state.guiConfig.page_title;
+        document.title = this.state.guiConfig.page_title
     }
 
     componentDidMount() {
-        document.title = this.state.guiConfig.page_title;
+        document.title = this.state.guiConfig.page_title
     }
 
     private switchTab(index: number) {
-        this.setState({ activetab: index });
+        this.setState({ activetab: index })
     }
 
     render() {
@@ -296,8 +295,8 @@ class CamillaConfig extends React.Component<
                         currentConfigName={this.state.currentConfigFile}
                         config={this.state.undoRedo.current()}
                         setConfig={(filename, config) => {
-                            this.setCurrentConfig(filename, config);
-                            this.applyConfigRequest(filename, config);
+                            this.setCurrentConfig(filename, config)
+                            this.applyConfigRequest(filename, config)
                         }}
                         updateConfig={(update) =>
                             this.updateConfig(update, true)
@@ -311,12 +310,12 @@ class CamillaConfig extends React.Component<
                     <this.NormalContent />
                 )}
             </div>
-        );
+        )
     }
 
     private NormalContent() {
-        const { errors, undoRedo, currentConfigFile } = this.state;
-        const config = undoRedo.current();
+        const { errors, undoRedo, currentConfigFile } = this.state
+        const config = undoRedo.current()
         return (
             <>
                 <SidePanel
@@ -466,8 +465,8 @@ class CamillaConfig extends React.Component<
                             currentConfigName={currentConfigFile}
                             config={this.state.undoRedo.current()}
                             setConfig={(filename, config) => {
-                                this.setCurrentConfig(filename, config);
-                                this.applyConfigRequest(filename, config);
+                                this.setCurrentConfig(filename, config)
+                                this.applyConfigRequest(filename, config)
                             }}
                             updateConfig={(update) =>
                                 this.updateConfig(update, true)
@@ -479,7 +478,7 @@ class CamillaConfig extends React.Component<
                     </TabPanel>
                 </Tabs>
             </>
-        );
+        )
     }
 }
 
@@ -490,9 +489,9 @@ function ErrorIcon() {
             tooltip="There are errors on this tab"
             style={{ color: "var(--error-text-color)" }}
         />
-    );
+    )
 }
 
-const container = document.getElementById("root");
-const root = createRoot(container!);
-root.render(<CamillaConfig />);
+const container = document.getElementById("root")
+const root = createRoot(container!)
+root.render(<CamillaConfig />)

@@ -1,6 +1,6 @@
-import React from "react";
-import cloneDeep from "lodash/cloneDeep";
-import "./index.css";
+import React from "react"
+import cloneDeep from "lodash/cloneDeep"
+import "./index.css"
 import {
     mdiAlertCircle,
     mdiChartBellCurveCumulative,
@@ -8,7 +8,7 @@ import {
     mdiUpload,
     mdiArrowCollapse,
     mdiArrowExpand,
-} from "@mdi/js";
+} from "@mdi/js"
 import {
     Config,
     defaultFilter,
@@ -27,7 +27,7 @@ import {
     BiquadComboSubtypeOptions,
     ConvSubtypeOptions,
     DitherSubtypeOptions,
-} from "./camilladsp/config";
+} from "./camilladsp/config"
 import {
     AddButton,
     BoolOption,
@@ -52,12 +52,12 @@ import {
     TextOption,
     UploadButton,
     ErrorBoundary,
-} from "./utilities/ui-components";
-import { Errors } from "./utilities/errors";
-import { modifiedCopyOf, Update } from "./utilities/common";
-import { isEqual } from "lodash";
-import { Chart, ChartData } from "./utilities/chart";
-import { doUpload, loadFiles, FileInfo } from "./utilities/files";
+} from "./utilities/ui-components"
+import { Errors } from "./utilities/errors"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { isEqual } from "lodash"
+import { Chart, ChartData } from "./utilities/chart"
+import { doUpload, loadFiles, FileInfo } from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -65,42 +65,42 @@ import { doUpload, loadFiles, FileInfo } from "./utilities/files";
 
 export class FiltersTab extends React.Component<
     {
-        config: Config;
-        samplerate: number;
-        channels: Promise<number>;
-        coeffDir: string;
-        updateConfig: (update: Update<Config>) => void;
-        errors: Errors;
+        config: Config
+        samplerate: number
+        channels: Promise<number>
+        coeffDir: string
+        updateConfig: (update: Update<Config>) => void
+        errors: Errors
     },
     {
-        filterKeys: { [name: string]: number };
-        availableCoeffFiles: FileInfo[];
-        sortBy: string;
-        sortReverse: boolean;
+        filterKeys: { [name: string]: number }
+        availableCoeffFiles: FileInfo[]
+        sortBy: string
+        sortReverse: boolean
     }
 > {
     constructor(props: any) {
-        super(props);
-        this.filterNames = this.filterNames.bind(this);
-        this.changeSortBy = this.changeSortBy.bind(this);
-        this.changeSortOrder = this.changeSortOrder.bind(this);
-        this.addFilter = this.addFilter.bind(this);
-        this.removeFilter = this.removeFilter.bind(this);
-        this.renameFilter = this.renameFilter.bind(this);
-        this.isFreeFilterName = this.isFreeFilterName.bind(this);
-        this.updateFilter = this.updateFilter.bind(this);
+        super(props)
+        this.filterNames = this.filterNames.bind(this)
+        this.changeSortBy = this.changeSortBy.bind(this)
+        this.changeSortOrder = this.changeSortOrder.bind(this)
+        this.addFilter = this.addFilter.bind(this)
+        this.removeFilter = this.removeFilter.bind(this)
+        this.renameFilter = this.renameFilter.bind(this)
+        this.isFreeFilterName = this.isFreeFilterName.bind(this)
+        this.updateFilter = this.updateFilter.bind(this)
         this.updateAvailableCoeffFiles =
-            this.updateAvailableCoeffFiles.bind(this);
+            this.updateAvailableCoeffFiles.bind(this)
         this.state = {
             filterKeys: {},
             availableCoeffFiles: [],
             sortBy: "Name",
             sortReverse: false,
-        };
+        }
         this.filterNames().forEach(
             (name, i) => (this.state.filterKeys[name] = i),
-        );
-        this.updateAvailableCoeffFiles();
+        )
+        this.updateAvailableCoeffFiles()
     }
 
     //private timer = delayedExecutor(2000)
@@ -110,20 +110,20 @@ export class FiltersTab extends React.Component<
             this.props.config.filters,
             this.state.sortBy,
             this.state.sortReverse,
-        );
+        )
     }
 
     private changeSortBy(key: string) {
-        this.setState({ sortBy: key });
+        this.setState({ sortBy: key })
     }
 
     private changeSortOrder(reverse: boolean) {
-        this.setState({ sortReverse: reverse });
+        this.setState({ sortReverse: reverse })
     }
 
     private addFilter() {
         this.props.updateConfig((config) => {
-            const newFilter = newFilterName(config.filters);
+            const newFilter = newFilterName(config.filters)
             this.setState((oldState) =>
                 modifiedCopyOf(
                     oldState,
@@ -132,24 +132,24 @@ export class FiltersTab extends React.Component<
                             1 +
                             Math.max(0, ...Object.values(oldState.filterKeys))),
                 ),
-            );
+            )
             if (config.filters === null) {
-                config.filters = {};
+                config.filters = {}
             }
-            config.filters[newFilter] = defaultFilter();
-        });
+            config.filters[newFilter] = defaultFilter()
+        })
     }
 
     private removeFilter(name: string) {
         this.props.updateConfig((config) => {
-            removeFilter(config, name);
+            removeFilter(config, name)
             this.setState((oldState) =>
                 modifiedCopyOf(
                     oldState,
                     (newState) => delete newState.filterKeys[name],
                 ),
-            );
-        });
+            )
+        })
     }
 
     private renameFilter(oldName: string, newName: string) {
@@ -158,36 +158,36 @@ export class FiltersTab extends React.Component<
                 this.setState((oldState) =>
                     modifiedCopyOf(oldState, (newState) => {
                         newState.filterKeys[newName] =
-                            newState.filterKeys[oldName];
-                        delete newState.filterKeys[oldName];
+                            newState.filterKeys[oldName]
+                        delete newState.filterKeys[oldName]
                     }),
-                );
-                renameFilter(config, oldName, newName);
-            });
+                )
+                renameFilter(config, oldName, newName)
+            })
     }
 
     private isFreeFilterName(name: string): boolean {
-        return !this.filterNames().includes(name);
+        return !this.filterNames().includes(name)
     }
 
     private updateFilter(name: string, update: Update<Filter>) {
         this.props.updateConfig((config) => {
             if (!config.filters) {
-                config.filters = {};
+                config.filters = {}
             }
-            update(config.filters[name]);
-        });
+            update(config.filters[name])
+        })
     }
 
     private updateAvailableCoeffFiles() {
         loadFiles("coeff").then(
             (files) => this.setState({ availableCoeffFiles: files }),
             (error) => console.log("Could not load stored coeffs", error),
-        );
+        )
     }
 
     render() {
-        let { config, errors } = this.props;
+        let { config, errors } = this.props
         return (
             <ErrorBoundary errorMessage={errors.asText()}>
                 <div>
@@ -250,7 +250,7 @@ export class FiltersTab extends React.Component<
                     </div>
                 </div>
             </ErrorBoundary>
-        );
+        )
     }
 }
 
@@ -258,64 +258,64 @@ function isConvolutionFileFilter(filter: Filter): boolean {
     return (
         filter.type === "Conv" &&
         (filter.parameters.type === "Raw" || filter.parameters.type === "Wav")
-    );
+    )
 }
 
 function isGraphicEqualizer(filter: Filter): boolean {
     return (
         filter.type === "BiquadCombo" &&
         filter.parameters.type === "GraphicEqualizer"
-    );
+    )
 }
 
 interface FilterDefaults {
-    type?: string;
-    format?: string;
-    skip_bytes_lines?: number;
-    read_bytes_lines?: number;
-    errors?: string[];
+    type?: string
+    format?: string
+    skip_bytes_lines?: number
+    read_bytes_lines?: number
+    errors?: string[]
 }
 
 interface FilterViewProps {
-    name: string;
-    filter: Filter;
-    errors: Errors;
-    availableCoeffFiles: FileInfo[];
-    updateFilter: (update: Update<Filter>) => void;
-    rename: (newName: string) => void;
-    isFreeFilterName: (name: string) => boolean;
-    remove: () => void;
-    updateAvailableCoeffFiles: () => void;
-    coeffDir: string;
-    samplerate: number;
-    channels: Promise<number>;
+    name: string
+    filter: Filter
+    errors: Errors
+    availableCoeffFiles: FileInfo[]
+    updateFilter: (update: Update<Filter>) => void
+    rename: (newName: string) => void
+    isFreeFilterName: (name: string) => boolean
+    remove: () => void
+    updateAvailableCoeffFiles: () => void
+    coeffDir: string
+    samplerate: number
+    channels: Promise<number>
 }
 
 interface FilterViewState {
-    uploadState?: { success: true } | { success: false; message: string };
-    filterFilePopupOpen: boolean;
-    showFilterPlot: boolean;
-    expandPlot: boolean;
-    data?: ChartData;
-    filterDefaults: FilterDefaults;
-    showDefaults: boolean;
-    channels: number;
-    plot_at_volume: number;
+    uploadState?: { success: true } | { success: false; message: string }
+    filterFilePopupOpen: boolean
+    showFilterPlot: boolean
+    expandPlot: boolean
+    data?: ChartData
+    filterDefaults: FilterDefaults
+    showDefaults: boolean
+    channels: number
+    plot_at_volume: number
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     constructor(props: any) {
-        super(props);
-        this.uploadCoeffs = this.uploadCoeffs.bind(this);
-        this.pickFilterFile = this.pickFilterFile.bind(this);
-        this.updateDefaults = this.updateDefaults.bind(this);
+        super(props)
+        this.uploadCoeffs = this.uploadCoeffs.bind(this)
+        this.pickFilterFile = this.pickFilterFile.bind(this)
+        this.updateDefaults = this.updateDefaults.bind(this)
         this.updateFilterParamsWithDefaults =
-            this.updateFilterParamsWithDefaults.bind(this);
-        this.toggleFilterPlot = this.toggleFilterPlot.bind(this);
-        this.toggleExpand = this.toggleExpand.bind(this);
-        this.setPlotVolume = this.setPlotVolume.bind(this);
-        this.plotFilterInitially = this.plotFilterInitially.bind(this);
-        this.plotFilter = this.plotFilter.bind(this);
+            this.updateFilterParamsWithDefaults.bind(this)
+        this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
+        this.toggleExpand = this.toggleExpand.bind(this)
+        this.setPlotVolume = this.setPlotVolume.bind(this)
+        this.plotFilterInitially = this.plotFilterInitially.bind(this)
+        this.plotFilter = this.plotFilter.bind(this)
 
         this.state = {
             filterFilePopupOpen: false,
@@ -325,53 +325,53 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             filterDefaults: {},
             channels: 2,
             plot_at_volume: 0.0,
-        };
+        }
         if (isConvolutionFileFilter(this.props.filter))
-            this.updateDefaults(this.props.filter.parameters.filename);
-        this.plotFilter();
+            this.updateDefaults(this.props.filter.parameters.filename)
+        this.plotFilter()
     }
 
-    private timer = delayedExecutor(500);
+    private timer = delayedExecutor(500)
 
     private uploadCoeffs(files: FileList) {
         doUpload(
             "coeff",
             files,
             (fileNames) => {
-                this.setState({ uploadState: { success: true } });
-                const { updateAvailableCoeffFiles } = this.props;
-                this.pickFilterFile(fileNames[0]);
-                updateAvailableCoeffFiles();
+                this.setState({ uploadState: { success: true } })
+                const { updateAvailableCoeffFiles } = this.props
+                this.pickFilterFile(fileNames[0])
+                updateAvailableCoeffFiles()
             },
             (message) =>
                 this.setState({
                     uploadState: { success: false, message: message },
                 }),
-        );
+        )
     }
 
     private pickFilterFile(selectedFilename: string) {
-        const { coeffDir, updateFilter } = this.props;
-        updateFilter(coeffFileNameUpdate(coeffDir, selectedFilename));
-        this.updateDefaults(coeffFilePath(coeffDir, selectedFilename), true);
+        const { coeffDir, updateFilter } = this.props
+        updateFilter(coeffFileNameUpdate(coeffDir, selectedFilename))
+        this.updateDefaults(coeffFilePath(coeffDir, selectedFilename), true)
     }
 
     private updateDefaults(filename: string, updateFilter: boolean = false) {
-        const filter = this.props.filter;
+        const filter = this.props.filter
         if (isConvolutionFileFilter(filter)) {
             fetch(
                 `/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`,
             ).then((response) =>
                 response.json().then((json) => {
-                    const defaults = json as FilterDefaults;
+                    const defaults = json as FilterDefaults
                     this.setState({
                         filterDefaults: defaults,
                         showDefaults: false,
-                    });
+                    })
                     if (updateFilter)
-                        this.updateFilterParamsWithDefaults(defaults);
+                        this.updateFilterParamsWithDefaults(defaults)
                 }),
-            );
+            )
         }
     }
 
@@ -379,22 +379,22 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         this.props.updateFilter((filter) => {
             const subtype = defaults.type
                 ? defaults.type
-                : filter.parameters.type;
-            const guiDefaults = DefaultFilterParameters[filter.type][subtype];
-            const channel = filter.parameters.channel;
+                : filter.parameters.type
+            const guiDefaults = DefaultFilterParameters[filter.type][subtype]
+            const channel = filter.parameters.channel
             filter.parameters = {
                 ...guiDefaults,
                 ...defaults,
                 filename: filter.parameters.filename,
-            };
-            if (channel) filter.parameters.channel = channel;
-        });
+            }
+            if (channel) filter.parameters.channel = channel
+        })
     }
 
     componentDidMount() {
         this.props.channels.then((ch) => {
-            this.setState({ channels: ch });
-        });
+            this.setState({ channels: ch })
+        })
     }
 
     componentDidUpdate(
@@ -403,40 +403,40 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         snapshot?: any,
     ) {
         if (this.state.showFilterPlot) {
-            const prevFilter = prevProps.filter;
-            const currentFilter = this.props.filter;
+            const prevFilter = prevProps.filter
+            const currentFilter = this.props.filter
             if (
                 prevFilter.type !== currentFilter.type ||
                 !isEqual(prevFilter.parameters, currentFilter.parameters) ||
                 this.state.plot_at_volume !== prevState.plot_at_volume
             )
-                this.timer(() => this.plotFilter());
+                this.timer(() => this.plotFilter())
         }
     }
 
     private toggleFilterPlot() {
-        const showFilterPlot = !this.state.showFilterPlot;
-        this.setState({ showFilterPlot });
-        if (showFilterPlot) this.plotFilter();
-        else this.setState({ data: undefined });
+        const showFilterPlot = !this.state.showFilterPlot
+        this.setState({ showFilterPlot })
+        if (showFilterPlot) this.plotFilter()
+        else this.setState({ data: undefined })
     }
 
     private setPlotVolume(volume: number) {
-        this.setState({ plot_at_volume: volume });
+        this.setState({ plot_at_volume: volume })
     }
 
     private toggleExpand() {
-        const expandPlot = !this.state.expandPlot;
-        this.setState({ expandPlot });
+        const expandPlot = !this.state.expandPlot
+        this.setState({ expandPlot })
     }
 
     private plotFilterInitially(file: string) {
-        const options = this.state.data!!.options;
+        const options = this.state.data!!.options
         const current =
             options.length === 0
                 ? undefined
-                : options.filter((o) => o.name === file)[0];
-        this.plotFilter(current?.samplerate, current?.channels);
+                : options.filter((o) => o.name === file)[0]
+        this.plotFilter(current?.samplerate, current?.channels)
     }
 
     private plotFilter(samplerate?: number, channels?: number) {
@@ -455,31 +455,31 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
                 result.json().then(
                     (data) => {
                         if (this.state.showFilterPlot)
-                            this.setState({ data: data as ChartData });
+                            this.setState({ data: data as ChartData })
                     },
                     (error) => console.log("JSON parse failed", error),
                 ),
             (error) => console.log("api call failed", error),
-        );
+        )
     }
 
     render() {
-        const { name, filter } = this.props;
-        const uploadState = this.state.uploadState;
+        const { name, filter } = this.props
+        const uploadState = this.state.uploadState
         const isValidFilterName = (newName: string) =>
             name === newName ||
-            (newName.trim().length > 0 && this.props.isFreeFilterName(newName));
+            (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
         let uploadIcon: {
-            icon: string;
-            className?: string;
-            errorMessage?: string;
-        } = { icon: mdiUpload };
+            icon: string
+            className?: string
+            errorMessage?: string
+        } = { icon: mdiUpload }
         if (uploadState !== undefined && !uploadState.success)
             uploadIcon = {
                 icon: mdiAlertCircle,
                 className: "error-text",
                 errorMessage: uploadState.message,
-            };
+            }
         return (
             <Box
                 style={{ width: "700px" }}
@@ -648,16 +648,16 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
                     </div>
                 ) : null}
             </Box>
-        );
+        )
     }
 }
 
 function coeffFileNameFromPath(coeffDir: string, absolutePath: string): string {
-    return absolutePath.replace(coeffDir, "");
+    return absolutePath.replace(coeffDir, "")
 }
 
 function coeffFilePath(coeffDir: string, filename: string) {
-    return coeffDir + filename;
+    return coeffDir + filename
 }
 
 function coeffFileNameUpdate(
@@ -665,76 +665,76 @@ function coeffFileNameUpdate(
     filename: string,
 ): Update<Filter> {
     return (filter) =>
-        (filter.parameters.filename = coeffFilePath(coeffDir, filename));
+        (filter.parameters.filename = coeffFilePath(coeffDir, filename))
 }
 
-const hiddenParameters = ["skip_bytes_lines", "read_bytes_lines"];
+const hiddenParameters = ["skip_bytes_lines", "read_bytes_lines"]
 
 class FilterParams extends React.Component<
     {
-        filter: Filter;
-        errors: Errors;
-        updateFilter: (update: Update<Filter>) => void;
-        availableCoeffFiles: FileInfo[];
-        coeffDir: string;
-        filterDefaults: FilterDefaults;
-        setShowDefaults: () => void;
-        showDefaults: boolean;
+        filter: Filter
+        errors: Errors
+        updateFilter: (update: Update<Filter>) => void
+        availableCoeffFiles: FileInfo[]
+        coeffDir: string
+        filterDefaults: FilterDefaults
+        setShowDefaults: () => void
+        showDefaults: boolean
     },
     unknown
 > {
     constructor(props: any) {
-        super(props);
-        this.onDescChange = this.onDescChange.bind(this);
-        this.onTypeChange = this.onTypeChange.bind(this);
-        this.onSubtypeChange = this.onSubtypeChange.bind(this);
-        this.renderFilterParams = this.renderFilterParams.bind(this);
-        this.hasHiddenDefaultValue = this.hasHiddenDefaultValue.bind(this);
-        this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this);
-        this.filenameField = this.filenameField.bind(this);
-        this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this);
-        this.addBand = this.addBand.bind(this);
-        this.removeBand = this.removeBand.bind(this);
-        this.adjustBand = this.adjustBand.bind(this);
+        super(props)
+        this.onDescChange = this.onDescChange.bind(this)
+        this.onTypeChange = this.onTypeChange.bind(this)
+        this.onSubtypeChange = this.onSubtypeChange.bind(this)
+        this.renderFilterParams = this.renderFilterParams.bind(this)
+        this.hasHiddenDefaultValue = this.hasHiddenDefaultValue.bind(this)
+        this.isHiddenDefaultValue = this.isHiddenDefaultValue.bind(this)
+        this.filenameField = this.filenameField.bind(this)
+        this.QorBandwithOrSlope = this.QorBandwithOrSlope.bind(this)
+        this.addBand = this.addBand.bind(this)
+        this.removeBand = this.removeBand.bind(this)
+        this.adjustBand = this.adjustBand.bind(this)
     }
 
     //private timer = delayedExecutor(1000)
 
     private onDescChange(desc: string | null) {
         this.props.updateFilter((filter) => {
-            filter.description = desc;
-        });
+            filter.description = desc
+        })
     }
 
     private onTypeChange(type: string) {
         this.props.updateFilter((filter) => {
-            filter.type = type;
-            const subtypeDefaults = DefaultFilterParameters[type];
-            const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0];
+            filter.type = type
+            const subtypeDefaults = DefaultFilterParameters[type]
+            const firstSubtypeOrDefault = Object.keys(subtypeDefaults)[0]
             filter.parameters = cloneDeep(
                 subtypeDefaults[firstSubtypeOrDefault],
-            );
-        });
+            )
+        })
     }
 
     private onSubtypeChange(subtype: string) {
         this.props.updateFilter((filter) => {
             const oldFilename = isConvolutionFileFilter(filter)
                 ? filter.parameters.filename
-                : undefined;
-            const oldParameters = filter.parameters;
+                : undefined
+            const oldParameters = filter.parameters
             filter.parameters = cloneDeep(
                 DefaultFilterParameters[filter.type][subtype],
-            );
+            )
             if (oldFilename && isConvolutionFileFilter(filter))
-                filter.parameters.filename = oldFilename; //keep filename, if switch is between Raw and Wav
+                filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
             for (const par in oldParameters) {
                 // Copy the value of any parameter common to old and new, except "type"
                 if (filter.parameters.hasOwnProperty(par) && par !== "type") {
-                    filter.parameters[par] = oldParameters[par];
+                    filter.parameters[par] = oldParameters[par]
                 }
             }
-        });
+        })
     }
 
     private eqBandFrequency(
@@ -743,63 +743,63 @@ class FilterParams extends React.Component<
         nbr_bands: number,
         band: number,
     ) {
-        let f_min_log = Math.log(fmin) / Math.log(2);
-        let f_max_log = Math.log(fmax) / Math.log(2);
-        let bw = (f_max_log - f_min_log) / nbr_bands;
-        let freq_log = f_min_log + (band + 0.5) * bw;
-        let freq = Math.pow(2.0, freq_log);
+        let f_min_log = Math.log(fmin) / Math.log(2)
+        let f_max_log = Math.log(fmax) / Math.log(2)
+        let bw = (f_max_log - f_min_log) / nbr_bands
+        let freq_log = f_min_log + (band + 0.5) * bw
+        let freq = Math.pow(2.0, freq_log)
         if (freq < 10) {
-            return freq.toFixed(1);
+            return freq.toFixed(1)
         }
         if (freq < 1000) {
-            return freq.toFixed(0);
+            return freq.toFixed(0)
         }
         if (freq < 10000) {
-            return (freq / 1000).toFixed(1) + "k";
+            return (freq / 1000).toFixed(1) + "k"
         }
-        return (freq / 1000).toFixed(0) + "k";
+        return (freq / 1000).toFixed(0) + "k"
     }
 
     private addBand() {
         this.props.updateFilter((filter) => {
-            filter.parameters.gains.push(0.0);
-        });
+            filter.parameters.gains.push(0.0)
+        })
     }
 
     private removeBand() {
         this.props.updateFilter((filter) => {
-            filter.parameters.gains.pop();
-        });
+            filter.parameters.gains.pop()
+        })
     }
 
     private adjustBand(band: number, value: string) {
-        const val = parseFloat(value);
+        const val = parseFloat(value)
         this.props.updateFilter((filter) => {
-            filter.parameters.gains[band] = val;
-        });
+            filter.parameters.gains[band] = val
+        })
     }
 
     private getSubtypeOptions(filtertype: string) {
         if (filtertype == "Biquad") {
-            return BiquadFilterSubtypeOptions;
+            return BiquadFilterSubtypeOptions
         }
         if (filtertype === "BiquadCombo") {
-            return BiquadComboSubtypeOptions;
+            return BiquadComboSubtypeOptions
         }
         if (filtertype === "Conv") {
-            return ConvSubtypeOptions;
+            return ConvSubtypeOptions
         }
         if (filtertype === "Dither") {
-            return DitherSubtypeOptions;
+            return DitherSubtypeOptions
         }
-        const defaults = DefaultFilterParameters[filtertype];
-        const subtypeOptions = defaults ? Object.keys(defaults) : [];
-        return subtypeOptions;
+        const defaults = DefaultFilterParameters[filtertype]
+        const subtypeOptions = defaults ? Object.keys(defaults) : []
+        return subtypeOptions
     }
 
     render() {
-        const { filter, errors } = this.props;
-        const subtypeOptions = this.getSubtypeOptions(filter.type);
+        const { filter, errors } = this.props
+        const subtypeOptions = this.getSubtypeOptions(filter.type)
         return (
             <div style={{ width: "100%", textAlign: "right" }}>
                 <ErrorMessage message={errors.rootMessage()} />
@@ -918,7 +918,7 @@ class FilterParams extends React.Component<
                     </div>
                 )}
             </div>
-        );
+        )
     }
 
     private renderFilterParams(
@@ -928,13 +928,13 @@ class FilterParams extends React.Component<
         return Object.keys(parameters).map((parameter) => {
             if (parameter === "type")
                 // 'type' is already rendered by parent component
-                return null;
-            const info = this.parameterInfos[parameter];
+                return null
+            const info = this.parameterInfos[parameter]
             if (info === undefined) {
                 console.log(
                     `Rendering for filter parameter '${parameter}' is not implemented`,
-                );
-                return null;
+                )
+                return null
             }
             const commonProps = {
                 key: parameter,
@@ -947,10 +947,10 @@ class FilterParams extends React.Component<
                     this.props.updateFilter(
                         (filter) => (filter.parameters[parameter] = value),
                     ),
-            };
+            }
             if (parameter === "filename")
-                return this.filenameField(parameters["filename"], commonProps);
-            if (this.isHiddenDefaultValue(parameter)) return null;
+                return this.filenameField(parameters["filename"], commonProps)
+            if (this.isHiddenDefaultValue(parameter)) return null
             if (
                 (this.qAndSlopeFilters.includes(parameters.type) ||
                     this.qAndBandwidthFilters.includes(parameters.type)) &&
@@ -966,52 +966,52 @@ class FilterParams extends React.Component<
                         onDescChange={(option) =>
                             this.props.updateFilter((filter) => {
                                 this.qBandwithSlope.forEach((parameter) => {
-                                    delete filter.parameters[parameter];
-                                });
+                                    delete filter.parameters[parameter]
+                                })
                                 filter.parameters[option] =
-                                    this.defaultParameterValues[option];
+                                    this.defaultParameterValues[option]
                             })
                         }
                     />
-                );
+                )
 
             if (info.type === "text")
-                return <TextOption {...commonProps} key={commonProps.key} />;
+                return <TextOption {...commonProps} key={commonProps.key} />
             if (info.type === "int")
-                return <IntOption {...commonProps} key={commonProps.key} />;
+                return <IntOption {...commonProps} key={commonProps.key} />
             if (info.type === "float")
-                return <FloatOption {...commonProps} key={commonProps.key} />;
+                return <FloatOption {...commonProps} key={commonProps.key} />
             if (info.type === "optional_int")
                 return (
                     <OptionalIntOption {...commonProps} key={commonProps.key} />
-                );
+                )
             if (info.type === "optional_float")
                 return (
                     <OptionalFloatOption
                         {...commonProps}
                         key={commonProps.key}
                     />
-                );
+                )
             if (info.type === "bool")
-                return <BoolOption {...commonProps} key={commonProps.key} />;
+                return <BoolOption {...commonProps} key={commonProps.key} />
             if (info.type === "optional_bool")
                 return (
                     <OptionalBoolOption
                         {...commonProps}
                         key={commonProps.key}
                     />
-                );
+                )
             if (info.type === "floatlist")
                 return (
                     <FloatListOption {...commonProps} key={commonProps.key} />
-                );
+                )
             if (info.type === "enum") {
-                let options = info.options;
+                let options = info.options
                 if (
                     parameter === "fader" &&
                     this.props.filter.type === "Volume"
                 ) {
-                    options = VolumeFaders;
+                    options = VolumeFaders
                 }
                 return (
                     <EnumOption
@@ -1019,24 +1019,24 @@ class FilterParams extends React.Component<
                         key={commonProps.key}
                         options={options}
                     />
-                );
+                )
             }
-            return null;
-        });
+            return null
+        })
     }
 
     private filenameField(
         filename: string,
         props: {
-            onChange: (value: any) => void;
-            tooltip: string;
-            value: any;
-            key: string;
-            desc: string;
+            onChange: (value: any) => void
+            tooltip: string
+            value: any
+            key: string
+            desc: string
         },
     ) {
-        const coeffDir = this.props.coeffDir;
-        const selectedFile = coeffFileNameFromPath(coeffDir, filename);
+        const coeffDir = this.props.coeffDir
+        const selectedFile = coeffFileNameFromPath(coeffDir, filename)
         return (
             <TextOption
                 {...props}
@@ -1047,28 +1047,28 @@ class FilterParams extends React.Component<
                     )
                 }
             />
-        );
+        )
     }
 
     private hasHiddenDefaultValue() {
-        const filterDefaults = this.props.filterDefaults;
+        const filterDefaults = this.props.filterDefaults
         return (
             filterDefaults &&
             Object.keys(filterDefaults).some((parameter) =>
                 this.isHiddenDefaultValue(parameter),
             )
-        );
+        )
     }
 
     private isHiddenDefaultValue(parameter: string) {
-        const filter = this.props.filter;
-        const filterDefaults: any = this.props.filterDefaults;
+        const filter = this.props.filter
+        const filterDefaults: any = this.props.filterDefaults
         return (
             !this.props.showDefaults &&
             parameter &&
             hiddenParameters.includes(parameter) &&
             filter.parameters[parameter] === filterDefaults[parameter]
-        );
+        )
     }
 
     parameterInfos: {
@@ -1082,16 +1082,16 @@ class FilterParams extends React.Component<
                       | "bool"
                       | "optional_bool"
                       | "optional_int"
-                      | "optional_float";
-                  desc: string;
-                  tooltip: string;
+                      | "optional_float"
+                  desc: string
+                  tooltip: string
               }
             | {
-                  type: "enum";
-                  desc: string;
-                  tooltip: string;
-                  options: string[] | { [option: string]: string }[];
-              };
+                  type: "enum"
+                  desc: string
+                  tooltip: string
+                  options: string[] | { [option: string]: string }[]
+              }
     } = {
         a: {
             type: "floatlist",
@@ -1309,29 +1309,29 @@ class FilterParams extends React.Component<
             options: ["dB", "linear"],
             tooltip: "Scale for gain",
         },
-    };
+    }
 
-    qBandwithSlope = ["q", "slope", "bandwidth"];
+    qBandwithSlope = ["q", "slope", "bandwidth"]
 
-    qAndBandwidthFilters = ["Peaking", "Allpass", "Notch", "Bandpass"];
+    qAndBandwidthFilters = ["Peaking", "Allpass", "Notch", "Bandpass"]
 
-    qAndSlopeFilters = ["Lowshelf", "Highshelf"];
+    qAndSlopeFilters = ["Lowshelf", "Highshelf"]
 
     defaultParameterValues: { [parameter: string]: number } = {
         q: 0.5,
         slope: 6,
         bandwidth: 1,
-    };
+    }
 
     QorBandwithOrSlope(props: {
-        parameter: string;
-        parameters: { [p: string]: any };
-        desc: string;
-        value: number;
-        error?: string;
-        tooltip: string;
-        onDescChange: (option: string) => void;
-        onChange: (value: number) => void;
+        parameter: string
+        parameters: { [p: string]: any }
+        desc: string
+        value: number
+        error?: string
+        tooltip: string
+        onDescChange: (option: string) => void
+        onChange: (value: number) => void
     }) {
         const {
             parameter,
@@ -1341,19 +1341,19 @@ class FilterParams extends React.Component<
             error,
             onDescChange,
             onChange,
-        } = props;
-        let descOptions: { value: string; label: string }[] = [];
+        } = props
+        let descOptions: { value: string; label: string }[] = []
         if (this.qAndSlopeFilters.includes(parameters.type))
             descOptions = ["q", "slope"].map((p) => ({
                 value: p,
                 label: this.parameterInfos[p].desc,
-            }));
+            }))
         else if (this.qAndBandwidthFilters.includes(parameters.type))
             descOptions = ["q", "bandwidth"].map((p) => ({
                 value: p,
                 label: this.parameterInfos[p].desc,
-            }));
-        else return <ErrorMessage message={error} />;
+            }))
+        else return <ErrorMessage message={error} />
         return (
             <>
                 <label
@@ -1385,6 +1385,6 @@ class FilterParams extends React.Component<
                     <ErrorMessage message={error} />
                 </label>
             </>
-        );
+        )
     }
 }

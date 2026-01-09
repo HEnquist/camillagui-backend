@@ -1,6 +1,6 @@
-import _ from "lodash";
-import { sortedAlphabetically } from "../utilities/arrays";
-import { List } from "immutable";
+import _ from "lodash"
+import { sortedAlphabetically } from "../utilities/arrays"
+import { List } from "immutable"
 
 export function defaultConfig(): Config {
     return {
@@ -58,7 +58,7 @@ export function defaultConfig(): Config {
         pipeline: [],
         title: null,
         description: null,
-    };
+    }
 }
 
 export const FilterSortKeys = [
@@ -68,31 +68,31 @@ export const FilterSortKeys = [
     "Frequency",
     "Q-value",
     "Gain",
-];
+]
 
-export const ProcessorSortKeys = ["Name", "Type"];
+export const ProcessorSortKeys = ["Name", "Type"]
 
 function compare_named_vs_unnamed(a: any, b: any): number {
-    let a_new = a["name"].startsWith("Unnamed ");
-    let b_new = b["name"].startsWith("Unnamed ");
+    let a_new = a["name"].startsWith("Unnamed ")
+    let b_new = b["name"].startsWith("Unnamed ")
     if (a_new && !b_new) {
-        return 1;
+        return 1
     } else if (!a_new && b_new) {
-        return -1;
+        return -1
     }
-    return 0;
+    return 0
 }
 
 function compare_values(a: number, b: number, reverse: boolean): number {
-    let rev = reverse ? -1 : 1;
+    let rev = reverse ? -1 : 1
     if (a === undefined && b !== undefined) {
-        return rev;
+        return rev
     } else if (a !== undefined && b === undefined) {
-        return -rev;
+        return -rev
     } else if (a !== b) {
-        return rev * (a - b);
+        return rev * (a - b)
     }
-    return 0;
+    return 0
 }
 
 export function filtersSortedAlphabeticallyOnKey(
@@ -100,103 +100,103 @@ export function filtersSortedAlphabeticallyOnKey(
     key: string,
     reverse: boolean,
 ): string[] {
-    let names = Object.keys(filters);
-    let filters_as_list = names.map((n) => ({ name: n, def: filters[n] }));
-    let rev = reverse ? -1 : 1;
+    let names = Object.keys(filters)
+    let filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
+    let rev = reverse ? -1 : 1
     switch (key) {
         case "Name":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
         case "Frequency":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_val = a["def"]["parameters"]["freq"];
-                let b_val = b["def"]["parameters"]["freq"];
-                let number_res = compare_values(a_val, b_val, reverse);
+                let a_val = a["def"]["parameters"]["freq"]
+                let b_val = b["def"]["parameters"]["freq"]
+                let number_res = compare_values(a_val, b_val, reverse)
                 if (number_res !== 0) {
-                    return number_res;
+                    return number_res
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
         case "Q-value":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_val = a["def"]["parameters"]["q"];
-                let b_val = b["def"]["parameters"]["q"];
-                let number_res = compare_values(a_val, b_val, reverse);
+                let a_val = a["def"]["parameters"]["q"]
+                let b_val = b["def"]["parameters"]["q"]
+                let number_res = compare_values(a_val, b_val, reverse)
                 if (number_res !== 0) {
-                    return number_res;
+                    return number_res
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
         case "Gain":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_val = a["def"]["parameters"]["gain"];
-                let b_val = b["def"]["parameters"]["gain"];
-                let number_res = compare_values(a_val, b_val, reverse);
+                let a_val = a["def"]["parameters"]["gain"]
+                let b_val = b["def"]["parameters"]["gain"]
+                let number_res = compare_values(a_val, b_val, reverse)
                 if (number_res !== 0) {
-                    return number_res;
+                    return number_res
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
         case "Type":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_val = a["def"]["type"];
-                let b_val = b["def"]["type"];
+                let a_val = a["def"]["type"]
+                let b_val = b["def"]["type"]
                 if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val);
+                    return rev * a_val.localeCompare(b_val)
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
         case "Subtype":
             filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_type = a["def"]["type"];
-                let b_type = b["def"]["type"];
-                let a_val = a["def"]["parameters"]["type"];
-                let b_val = b["def"]["parameters"]["type"];
+                let a_type = a["def"]["type"]
+                let b_type = b["def"]["type"]
+                let a_val = a["def"]["parameters"]["type"]
+                let b_val = b["def"]["parameters"]["type"]
                 if (a_type !== b_type) {
-                    return rev * a_type.localeCompare(b_type);
+                    return rev * a_type.localeCompare(b_type)
                 } else if (a_val === undefined && b_val !== undefined) {
-                    return rev;
+                    return rev
                 } else if (a_val !== undefined && b_val === undefined) {
-                    return -rev;
+                    return -rev
                 } else if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val);
+                    return rev * a_val.localeCompare(b_val)
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
     }
-    let names_sorted = filters_as_list.map((n) => n["name"]);
-    return names_sorted;
+    let names_sorted = filters_as_list.map((n) => n["name"])
+    return names_sorted
 }
 
 export function processorsSortedAlphabeticallyOnKey(
@@ -204,40 +204,40 @@ export function processorsSortedAlphabeticallyOnKey(
     key: string,
     reverse: boolean,
 ): string[] {
-    let names = Object.keys(processors);
+    let names = Object.keys(processors)
     let processors_as_list = names.map((n) => ({
         name: n,
         def: processors[n],
-    }));
-    let rev = reverse ? -1 : 1;
+    }))
+    let rev = reverse ? -1 : 1
     switch (key) {
         case "Name":
             processors_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
 
         case "Type":
             processors_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b);
+                let unnamed_res = compare_named_vs_unnamed(a, b)
                 if (unnamed_res !== 0) {
-                    return unnamed_res;
+                    return unnamed_res
                 }
-                let a_val = a["def"]["type"];
-                let b_val = b["def"]["type"];
+                let a_val = a["def"]["type"]
+                let b_val = b["def"]["type"]
                 if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val);
+                    return rev * a_val.localeCompare(b_val)
                 }
-                return rev * a["name"].localeCompare(b["name"]);
-            });
-            break;
+                return rev * a["name"].localeCompare(b["name"])
+            })
+            break
     }
-    let names_sorted = processors_as_list.map((n) => n["name"]);
-    return names_sorted;
+    let names_sorted = processors_as_list.map((n) => n["name"])
+    return names_sorted
 }
 
 export function sortedFilterNamesOf(
@@ -246,47 +246,47 @@ export function sortedFilterNamesOf(
     reverse: boolean,
 ): string[] {
     if (configOrFilters === null) {
-        return [];
+        return []
     }
     const filters: Filters | null = isConfig(configOrFilters)
         ? configOrFilters.filters
-        : configOrFilters;
+        : configOrFilters
     if (filters) {
-        return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse);
+        return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
     }
-    return [];
+    return []
 }
 
 export function filterNamesOf(
     configOrFilters: Config | Filters | null,
 ): string[] {
     if (configOrFilters === null) {
-        return [];
+        return []
     }
     const filters: Filters | null = isConfig(configOrFilters)
         ? configOrFilters.filters
-        : configOrFilters;
+        : configOrFilters
     if (filters === null) {
-        return [];
+        return []
     }
-    return sortedAlphabetically(Object.keys(filters));
+    return sortedAlphabetically(Object.keys(filters))
 }
 
 function isConfig(
     maybeConfig: Config | Filters | Mixers,
 ): maybeConfig is Config {
-    return maybeConfig !== null && maybeConfig.hasOwnProperty("devices");
+    return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
 }
 
 export function newFilterName(filters: Filters | null): string {
-    return newName("Unnamed Filter ", filterNamesOf(filters));
+    return newName("Unnamed Filter ", filterNamesOf(filters))
 }
 
 function newName(prefix: string, existingNames: string[]): string {
     const nameIsAlreadyPresent: (i: number) => boolean = (i) =>
-        existingNames.includes(prefix + i.toString());
+        existingNames.includes(prefix + i.toString())
     for (let i = 1; ; i++)
-        if (!nameIsAlreadyPresent(i)) return prefix + i.toString();
+        if (!nameIsAlreadyPresent(i)) return prefix + i.toString()
 }
 
 export type FilterType =
@@ -299,7 +299,7 @@ export type FilterType =
     | "Loudness"
     | "DiffEq"
     | "Limiter"
-    | "Dither";
+    | "Dither"
 
 export const FilterTypeOptions: { value: FilterType; label: string }[] = [
     { value: "Biquad", label: "Biquad : Single biquad" },
@@ -318,7 +318,7 @@ export const FilterTypeOptions: { value: FilterType; label: string }[] = [
     { value: "DiffEq", label: "DiffEq : Generic difference equation" },
     { value: "Limiter", label: "Limiter : Limit by soft or hard clipping" },
     { value: "Dither", label: "Dither : Apply dither and truncate" },
-];
+]
 
 export type FilterSubtype =
     | "Lowpass"
@@ -368,11 +368,11 @@ export type FilterSubtype =
     | "Shibata96"
     | "ShibataLow96"
     | "Shibata192"
-    | "ShibataLow192";
+    | "ShibataLow192"
 
 export const BiquadFilterSubtypeOptions: {
-    value: FilterSubtype;
-    label: string;
+    value: FilterSubtype
+    label: string
 }[] = [
     { value: "Lowpass", label: "Lowpass : 2nd order lowpass" },
     { value: "Highpass", label: "Highpass : 2nd order highpass" },
@@ -393,11 +393,11 @@ export const BiquadFilterSubtypeOptions: {
         label: "LinkwitzTransform : Linkwitz Transform",
     },
     { value: "Free", label: "Free : Biquad coefficients" },
-];
+]
 
 export const BiquadComboSubtypeOptions: {
-    value: FilterSubtype;
-    label: string;
+    value: FilterSubtype
+    label: string
 }[] = [
     {
         value: "ButterworthLowpass",
@@ -420,14 +420,14 @@ export const BiquadComboSubtypeOptions: {
         value: "GraphicEqualizer",
         label: "GraphicEqualizer : N-band graphic equalizer",
     },
-];
+]
 
 export const ConvSubtypeOptions: { value: FilterSubtype; label: string }[] = [
     { value: "Raw", label: "Raw : Coefficients from raw (headerless) file" },
     { value: "Wav", label: "Wav : Coefficients from wav file" },
     { value: "Values", label: "Values : Enter coefficients manually" },
     { value: "Dummy", label: "Dummy : Dummy coefficients for load testing" },
-];
+]
 
 export const DitherSubtypeOptions: { value: FilterSubtype; label: string }[] = [
     { value: "None", label: "None : No dither, only truncation" },
@@ -464,14 +464,14 @@ export const DitherSubtypeOptions: { value: FilterSubtype; label: string }[] = [
     { value: "ShibataLow96", label: "ShibataLow96 : Shibata 96 kHz low" },
     { value: "Shibata192", label: "Shibata192 : Shibata 192 kHz" },
     { value: "ShibataLow192", label: "ShibataLow192 : Shibata 192 kHz low" },
-];
+]
 
 export const DefaultFilterParameters: {
     [type: string]: {
         [subtype: string]: {
-            [parameter: string]: string | number | number[] | boolean | null;
-        };
-    };
+            [parameter: string]: string | number | number[] | boolean | null
+        }
+    }
 } = {
     Biquad: {
         Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
@@ -592,37 +592,37 @@ export const DefaultFilterParameters: {
     Limiter: {
         Default: { soft_clip: false, clip_limit: 0.0 },
     },
-};
+}
 
 export function defaultFilter() {
     return {
         type: "Biquad",
         description: null,
         parameters: DefaultFilterParameters.Biquad.Lowpass,
-    };
+    }
 }
 
 export function removeFilter(config: Config, name: string) {
-    delete config.filters?.[name];
+    delete config.filters?.[name]
     if (config.pipeline) {
         for (let step of config.pipeline)
             if (step.type === "Filter")
                 step.names = step.names.filter(
                     (filterName) => filterName !== name,
-                );
+                )
     }
 }
 
 export function renameFilter(config: Config, oldName: string, newName: string) {
     if (filterNamesOf(config).includes(newName))
-        throw new Error(`Filter '${newName}' already exists`);
+        throw new Error(`Filter '${newName}' already exists`)
     if (config.filters) {
-        config.filters[newName] = config.filters[oldName];
-        delete config.filters[oldName];
+        config.filters[newName] = config.filters[oldName]
+        delete config.filters[oldName]
         for (let step of config.pipeline ? config.pipeline : [])
             if (step.type === "Filter")
                 for (let i = 0; i < step.names.length; i++)
-                    if (step.names[i] === oldName) step.names[i] = newName;
+                    if (step.names[i] === oldName) step.names[i] = newName
     }
 }
 
@@ -630,15 +630,15 @@ export function processorNamesOf(
     configOrProcessors: Config | Processors | null,
 ): string[] {
     if (configOrProcessors === null) {
-        return [];
+        return []
     }
     const processors: Processors | null = isConfig(configOrProcessors)
         ? configOrProcessors.processors
-        : configOrProcessors;
+        : configOrProcessors
     if (processors) {
-        return sortedAlphabetically(Object.keys(processors));
+        return sortedAlphabetically(Object.keys(processors))
     }
-    return [];
+    return []
 }
 
 export function sortedProcessorNamesOf(
@@ -647,23 +647,19 @@ export function sortedProcessorNamesOf(
     reverse: boolean,
 ): string[] {
     if (configOrProcessors === null) {
-        return [];
+        return []
     }
     const processors: Processors | null = isConfig(configOrProcessors)
         ? configOrProcessors.processors
-        : configOrProcessors;
+        : configOrProcessors
     if (processors) {
-        return processorsSortedAlphabeticallyOnKey(
-            processors,
-            sortKey,
-            reverse,
-        );
+        return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
     }
-    return [];
+    return []
 }
 
 export function newProcessorName(processors: Processors | null): string {
-    return newName("Unnamed Processor ", processorNamesOf(processors));
+    return newName("Unnamed Processor ", processorNamesOf(processors))
 }
 
 export function defaultProcessor() {
@@ -682,16 +678,16 @@ export function defaultProcessor() {
             clip_limit: null,
             soft_clip: false,
         },
-    };
+    }
 }
 
 export function removeProcessor(config: Config, name: string) {
-    delete config.processors?.[name];
-    const pipeline = config.pipeline;
+    delete config.processors?.[name]
+    const pipeline = config.pipeline
     if (pipeline)
         config.pipeline = pipeline.filter(
             (step) => step.type !== "Processor" || step.name !== name,
-        );
+        )
 }
 
 export function renameProcessor(
@@ -700,49 +696,49 @@ export function renameProcessor(
     newName: string,
 ) {
     if (processorNamesOf(config).includes(newName))
-        throw new Error(`Processor '${newName}' already exists`);
+        throw new Error(`Processor '${newName}' already exists`)
     if (config.processors) {
-        config.processors[newName] = config.processors[oldName];
-        delete config.processors[oldName];
+        config.processors[newName] = config.processors[oldName]
+        delete config.processors[oldName]
         for (let step of config.pipeline ? config.pipeline : [])
             if (step.type === "Processor" && step.name === oldName)
-                step.name = newName;
+                step.name = newName
     }
 }
 
 export function mixerNamesOf(configOrMixers: Config | Mixers | null): string[] {
     if (configOrMixers === null) {
-        return [];
+        return []
     }
     const mixers: Mixers | null = isConfig(configOrMixers)
         ? configOrMixers.mixers
-        : configOrMixers;
-    if (mixers) return sortedAlphabetically(Object.keys(mixers));
-    return [];
+        : configOrMixers
+    if (mixers) return sortedAlphabetically(Object.keys(mixers))
+    return []
 }
 
 export function newMixerName(mixers: Mixers | null): string {
-    return newName("Unnamed Mixer ", mixerNamesOf(mixers));
+    return newName("Unnamed Mixer ", mixerNamesOf(mixers))
 }
 
 export function removeMixer(config: Config, name: string) {
-    delete config.mixers?.[name];
-    const pipeline = config.pipeline;
+    delete config.mixers?.[name]
+    const pipeline = config.pipeline
     if (pipeline)
         config.pipeline = pipeline.filter(
             (step) => step.type !== "Mixer" || step.name !== name,
-        );
+        )
 }
 
 export function renameMixer(config: Config, oldName: string, newName: string) {
     if (mixerNamesOf(config).includes(newName))
-        throw new Error(`Mixer '${newName}' already exists`);
+        throw new Error(`Mixer '${newName}' already exists`)
     if (config.mixers) {
-        config.mixers[newName] = config.mixers[oldName];
-        delete config.mixers[oldName];
+        config.mixers[newName] = config.mixers[oldName]
+        delete config.mixers[oldName]
         for (let step of config.pipeline ? config.pipeline : [])
             if (step.type === "Mixer" && step.name === oldName)
-                step.name = newName;
+                step.name = newName
     }
 }
 
@@ -779,128 +775,128 @@ export function defaultMixer(): Mixer {
             },
         ],
         labels: null,
-    };
+    }
 }
 
 /** Name for empty filter/mixer/processor slot */
-export const EMPTY = "";
+export const EMPTY = ""
 
 export function defaultFilterStep(config: Config): FilterStep {
-    const filterNames = filterNamesOf(config);
+    const filterNames = filterNamesOf(config)
     return {
         type: "Filter",
         channels: [0],
         names: filterNames.length === 1 ? [filterNames[0]] : [EMPTY],
         description: null,
         bypassed: null,
-    };
+    }
 }
 
 export function defaultMixerStep(config: Config): MixerStep {
-    const mixerNames = mixerNamesOf(config);
+    const mixerNames = mixerNamesOf(config)
     return {
         type: "Mixer",
         name: mixerNames.length === 1 ? mixerNames[0] : EMPTY,
         description: null,
         bypassed: null,
-    };
+    }
 }
 
 export function defaultProcessorStep(config: Config): ProcessorStep {
-    const processorNames = processorNamesOf(config);
+    const processorNames = processorNamesOf(config)
     return {
         type: "Processor",
         name: processorNames.length === 1 ? processorNames[0] : EMPTY,
         description: null,
         bypassed: null,
-    };
+    }
 }
 
 export interface Config {
-    devices: Devices;
-    filters: Filters | null;
-    mixers: Mixers | null;
-    processors: Processors | null;
-    pipeline: Pipeline | null;
-    title: string | null;
-    description: string | null;
+    devices: Devices
+    filters: Filters | null
+    mixers: Mixers | null
+    processors: Processors | null
+    pipeline: Pipeline | null
+    title: string | null
+    description: string | null
 }
 
 export interface Devices {
-    samplerate: number;
+    samplerate: number
 
     //Buffers
-    chunksize: number;
-    queuelimit: number | null;
+    chunksize: number
+    queuelimit: number | null
 
     //Silence
-    silence_threshold: number | null;
-    silence_timeout: number | null;
+    silence_threshold: number | null
+    silence_timeout: number | null
 
     //Rate adjust
-    enable_rate_adjust: boolean | null;
-    adjust_period: number | null;
-    target_level: number | null;
+    enable_rate_adjust: boolean | null
+    adjust_period: number | null
+    target_level: number | null
 
     //Resampler
-    resampler: Resampler | null;
-    capture_samplerate: number | null;
+    resampler: Resampler | null
+    capture_samplerate: number | null
 
     //Rate monitoring
-    stop_on_rate_change: boolean | null;
-    rate_measure_interval: number | null;
+    stop_on_rate_change: boolean | null
+    rate_measure_interval: number | null
 
     //Volume control settings
-    volume_ramp_time: number | null;
-    volume_limit: number | null;
+    volume_ramp_time: number | null
+    volume_limit: number | null
 
     //Multithreading
-    multithreaded: boolean | null;
-    worker_threads: number | null;
+    multithreaded: boolean | null
+    worker_threads: number | null
 
-    capture: CaptureDevice;
-    playback: PlaybackDevice;
+    capture: CaptureDevice
+    playback: PlaybackDevice
 }
 
-export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous";
+export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous"
 export type AsyncSincProfile =
     | "VeryFast"
     | "Fast"
     | "Balanced"
     | "Accurate"
-    | "Free";
+    | "Free"
 export const AsyncSincProfiles: AsyncSincProfile[] = [
     "VeryFast",
     "Fast",
     "Balanced",
     "Accurate",
     "Free",
-];
+]
 export type AsyncSincInterpolation =
     | "Nearest"
     | "Linear"
     | "Quadratic"
-    | "Cubic";
+    | "Cubic"
 export const AsyncSincInterpolations: AsyncSincInterpolation[] = [
     "Nearest",
     "Linear",
     "Quadratic",
     "Cubic",
-];
-export type AsyncPolyInterpolation = "Linear" | "Cubic" | "Quintic" | "Septic";
+]
+export type AsyncPolyInterpolation = "Linear" | "Cubic" | "Quintic" | "Septic"
 export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = [
     "Linear",
     "Cubic",
     "Quintic",
     "Septic",
-];
+]
 export type AsyncSincWindow =
     | "Blackman"
     | "Blackman2"
     | "BlackmanHarris"
     | "BlackmanHarris2"
     | "Hann"
-    | "Hann2";
+    | "Hann2"
 export const AsyncSincWindows = [
     "Blackman",
     "Blackman2",
@@ -908,7 +904,7 @@ export const AsyncSincWindows = [
     "BlackmanHarris2",
     "Hann",
     "Hann2",
-];
+]
 
 export const ResamplerTypeOptions: { value: ResamplerType; label: string }[] = [
     {
@@ -927,11 +923,11 @@ export const ResamplerTypeOptions: { value: ResamplerType; label: string }[] = [
         value: "Synchronous",
         label: "Synchronous",
     },
-];
+]
 
 export const AsyncSincInterpolationOptions: {
-    value: AsyncSincInterpolation;
-    label: string;
+    value: AsyncSincInterpolation
+    label: string
 }[] = [
     {
         value: "Nearest",
@@ -949,11 +945,11 @@ export const AsyncSincInterpolationOptions: {
         value: "Cubic",
         label: "Cubic (3rd order)",
     },
-];
+]
 
 export const AsyncPolyDegreeOptions: {
-    value: AsyncPolyInterpolation;
-    label: string;
+    value: AsyncPolyInterpolation
+    label: string
 }[] = [
     {
         value: "Linear",
@@ -971,36 +967,36 @@ export const AsyncPolyDegreeOptions: {
         value: "Septic",
         label: "Septic (7th order)",
     },
-];
+]
 
 export type Resampler =
     | { type: "AsyncSinc"; profile: AsyncSincProfile }
     | {
-          type: "AsyncSinc";
-          sinc_len: number;
-          oversampling_factor: number;
-          interpolation: AsyncSincInterpolation;
-          window: AsyncSincWindow;
-          f_cutoff: number | null;
+          type: "AsyncSinc"
+          sinc_len: number
+          oversampling_factor: number
+          interpolation: AsyncSincInterpolation
+          window: AsyncSincWindow
+          f_cutoff: number | null
       }
     | { type: "AsyncPoly"; interpolation: AsyncPolyInterpolation }
-    | { type: "Synchronous" };
+    | { type: "Synchronous" }
 
 export function defaultResampler(type: ResamplerType): Resampler {
     if (type === "AsyncSinc") {
         return {
             type: "AsyncSinc",
             profile: "Balanced",
-        };
+        }
     } else if (type === "AsyncPoly") {
         return {
             type: "AsyncPoly",
             interpolation: "Cubic",
-        };
+        }
     }
     return {
         type: "Synchronous",
-    };
+    }
 }
 
 export function defaultSincResampler(profile: AsyncSincProfile): Resampler {
@@ -1012,141 +1008,141 @@ export function defaultSincResampler(profile: AsyncSincProfile): Resampler {
             interpolation: "Quadratic",
             window: "BlackmanHarris2",
             f_cutoff: null,
-        };
+        }
     }
     return {
         type: "AsyncSinc",
         profile: profile,
-    };
+    }
 }
 
-export type Fader = "Main" | "Aux1" | "Aux2" | "Aux3" | "Aux4";
-export const LoudnessFaders: Fader[] = ["Main", "Aux1", "Aux2", "Aux3", "Aux4"];
-export const VolumeFaders: Fader[] = ["Aux1", "Aux2", "Aux3", "Aux4"];
+export type Fader = "Main" | "Aux1" | "Aux2" | "Aux3" | "Aux4"
+export const LoudnessFaders: Fader[] = ["Main", "Aux1", "Aux2", "Aux3", "Aux4"]
+export const VolumeFaders: Fader[] = ["Aux1", "Aux2", "Aux3", "Aux4"]
 
 export type CaptureDevice =
     | {
-          type: "Alsa";
-          channels: number;
-          format: AlsaFormat | null;
-          device: string;
-          stop_on_inactive: boolean | null;
-          link_volume_control: string | null;
-          link_mute_control: string | null;
-          labels: (string | null)[] | null;
+          type: "Alsa"
+          channels: number
+          format: AlsaFormat | null
+          device: string
+          stop_on_inactive: boolean | null
+          link_volume_control: string | null
+          link_mute_control: string | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "Wasapi";
-          channels: number;
-          format: WasapiFormat | null;
-          device: string | null;
-          exclusive: boolean | null;
-          polling: boolean | null;
-          loopback: boolean | null;
-          labels: (string | null)[] | null;
+          type: "Wasapi"
+          channels: number
+          format: WasapiFormat | null
+          device: string | null
+          exclusive: boolean | null
+          polling: boolean | null
+          loopback: boolean | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "Jack";
-          channels: number;
-          device: string;
-          labels: (string | null)[] | null;
+          type: "Jack"
+          channels: number
+          device: string
+          labels: (string | null)[] | null
       }
     | {
-          type: "CoreAudio";
-          channels: number;
-          format: CoreAudioFormat | null;
-          device: string | null;
-          labels: (string | null)[] | null;
+          type: "CoreAudio"
+          channels: number
+          format: CoreAudioFormat | null
+          device: string | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "Pulse";
-          channels: number;
-          device: string;
-          labels: (string | null)[] | null;
+          type: "Pulse"
+          channels: number
+          device: string
+          labels: (string | null)[] | null
       }
     | {
-          type: "PipeWire";
-          channels: number;
-          node_name: string | null;
-          node_description: string | null;
-          node_group_name: string | null;
-          autoconnect_to: string | null;
-          labels: (string | null)[] | null;
+          type: "PipeWire"
+          channels: number
+          node_name: string | null
+          node_description: string | null
+          node_group_name: string | null
+          autoconnect_to: string | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "RawFile";
-          channels: number;
-          format: BinaryFormat;
-          filename: "/path/to/file";
-          extra_samples: number | null;
-          skip_bytes: number | null;
-          read_bytes: number | null;
-          labels: (string | null)[] | null;
+          type: "RawFile"
+          channels: number
+          format: BinaryFormat
+          filename: "/path/to/file"
+          extra_samples: number | null
+          skip_bytes: number | null
+          read_bytes: number | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "WavFile";
-          filename: "/path/to/file";
-          extra_samples: number | null;
-          labels: (string | null)[] | null;
+          type: "WavFile"
+          filename: "/path/to/file"
+          extra_samples: number | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "Stdin";
-          channels: number;
-          format: BinaryFormat;
-          extra_samples: number | null;
-          skip_bytes: number | null;
-          read_bytes: number | null;
-          labels: (string | null)[] | null;
+          type: "Stdin"
+          channels: number
+          format: BinaryFormat
+          extra_samples: number | null
+          skip_bytes: number | null
+          read_bytes: number | null
+          labels: (string | null)[] | null
       }
     | {
-          type: "Bluez";
-          channels: number;
-          format: BinaryFormat;
-          service: string | null;
-          dbus_path: string;
-          labels: (string | null)[] | null;
-      };
+          type: "Bluez"
+          channels: number
+          format: BinaryFormat
+          service: string | null
+          dbus_path: string
+          labels: (string | null)[] | null
+      }
 
 export type PlaybackDevice =
     | {
-          type: "Wasapi";
-          channels: number;
-          format: WasapiFormat | null;
-          device: string | null;
-          exclusive: boolean | null;
-          polling: boolean | null;
+          type: "Wasapi"
+          channels: number
+          format: WasapiFormat | null
+          device: string | null
+          exclusive: boolean | null
+          polling: boolean | null
       }
     | { type: "Jack"; channels: number; device: string }
     | {
-          type: "Alsa";
-          channels: number;
-          format: AlsaFormat | null;
-          device: string;
+          type: "Alsa"
+          channels: number
+          format: AlsaFormat | null
+          device: string
       }
     | { type: "Pulse"; channels: number; device: string }
     | {
-          type: "PipeWire";
-          channels: number;
-          node_name: string | null;
-          node_description: string | null;
-          node_group_name: string | null;
-          autoconnect_to: string | null;
+          type: "PipeWire"
+          channels: number
+          node_name: string | null
+          node_description: string | null
+          node_group_name: string | null
+          autoconnect_to: string | null
       }
     | {
-          type: "CoreAudio";
-          channels: number;
-          format: CoreAudioFormat | null;
-          device: string | null;
-          exclusive: boolean | null;
+          type: "CoreAudio"
+          channels: number
+          format: CoreAudioFormat | null
+          device: string | null
+          exclusive: boolean | null
       }
     | {
-          type: "File";
-          channels: number;
-          format: BinaryFormat;
-          filename: string;
-          wav_header: boolean | null;
+          type: "File"
+          channels: number
+          format: BinaryFormat
+          filename: string
+          wav_header: boolean | null
       }
-    | { type: "Stdout"; channels: number; format: BinaryFormat };
+    | { type: "Stdout"; channels: number; format: BinaryFormat }
 
 export type BinaryFormat =
     | "S16_LE"
@@ -1155,7 +1151,7 @@ export type BinaryFormat =
     | "S24_4_RJ_LE"
     | "S32_LE"
     | "F32_LE"
-    | "F64_LE";
+    | "F64_LE"
 
 export type ConvBinaryFormat =
     | "S16_LE"
@@ -1165,7 +1161,7 @@ export type ConvBinaryFormat =
     | "S32_LE"
     | "F32_LE"
     | "F64_LE"
-    | "TEXT";
+    | "TEXT"
 
 export type AlsaFormat =
     | null
@@ -1174,15 +1170,15 @@ export type AlsaFormat =
     | "S24_4_RJ_LE"
     | "S32_LE"
     | "F32_LE"
-    | "F64_LE";
+    | "F64_LE"
 
-export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32";
+export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32"
 
-export type CoreAudioFormat = null | "S16" | "S24" | "S32" | "F32";
+export type CoreAudioFormat = null | "S16" | "S24" | "S32" | "F32"
 
 export const CoreAudioFormatOptions: {
-    value: CoreAudioFormat;
-    label: string;
+    value: CoreAudioFormat
+    label: string
 }[] = [
     {
         value: null,
@@ -1204,7 +1200,7 @@ export const CoreAudioFormatOptions: {
         value: "F32",
         label: "F32 : 32 bit float",
     },
-];
+]
 
 export const WasapiFormatOptions: { value: WasapiFormat; label: string }[] = [
     {
@@ -1227,7 +1223,7 @@ export const WasapiFormatOptions: { value: WasapiFormat; label: string }[] = [
         value: "F32",
         label: "F32 : 32 bit float",
     },
-];
+]
 
 export const AlsaFormatOptions: { value: AlsaFormat; label: string }[] = [
     {
@@ -1258,7 +1254,7 @@ export const AlsaFormatOptions: { value: AlsaFormat; label: string }[] = [
         value: "F64_LE",
         label: "F64_LE : 64 bit float, little-endian",
     },
-];
+]
 
 export const BinaryFormatOptions: { value: BinaryFormat; label: string }[] = [
     {
@@ -1289,11 +1285,11 @@ export const BinaryFormatOptions: { value: BinaryFormat; label: string }[] = [
         value: "F64_LE",
         label: "F64_LE : 64 bit float, little-endian",
     },
-];
+]
 
 export const ConvBinaryFormatOptions: {
-    value: ConvBinaryFormat;
-    label: string;
+    value: ConvBinaryFormat
+    label: string
 }[] = [
     {
         value: "S16_LE",
@@ -1327,148 +1323,148 @@ export const ConvBinaryFormatOptions: {
         value: "TEXT",
         label: "TEXT : Text, one value per row",
     },
-];
+]
 
 export function getFormatOptions(
     backend: string,
 ): { value: string | null; label: string }[] {
     if (backend === "Alsa") {
-        return AlsaFormatOptions;
+        return AlsaFormatOptions
     } else if (backend === "Wasapi") {
-        return WasapiFormatOptions;
+        return WasapiFormatOptions
     } else if (backend === "CoreAudio") {
-        return CoreAudioFormatOptions;
+        return CoreAudioFormatOptions
     }
-    return BinaryFormatOptions;
+    return BinaryFormatOptions
 }
 
-export type GainScale = "linear" | "dB";
-export const GainScales: GainScale[] = ["linear", "dB"];
+export type GainScale = "linear" | "dB"
+export const GainScales: GainScale[] = ["linear", "dB"]
 
 export interface Filters {
-    [name: string]: Filter;
+    [name: string]: Filter
 }
 export interface Filter {
-    type: string;
-    description: string | null;
-    parameters: { [name: string]: any };
+    type: string
+    description: string | null
+    parameters: { [name: string]: any }
 }
 
 export interface Processors {
-    [name: string]: Processor;
+    [name: string]: Processor
 }
 export interface Processor {
-    type: string;
-    description: string | null;
-    parameters: { [name: string]: any };
+    type: string
+    description: string | null
+    parameters: { [name: string]: any }
 }
 
 export type Mixers = {
-    [name: string]: Mixer;
-};
+    [name: string]: Mixer
+}
 
 export interface Mixer {
-    description: string | null;
+    description: string | null
     channels: {
-        in: number;
-        out: number;
-    };
-    mapping: Mapping[];
-    labels: (string | null)[] | null;
+        in: number
+        out: number
+    }
+    mapping: Mapping[]
+    labels: (string | null)[] | null
 }
 
 export interface Mapping {
-    dest: number;
-    sources: Source[];
-    mute: boolean | null;
+    dest: number
+    sources: Source[]
+    mute: boolean | null
 }
 
 export interface Source {
-    channel: number;
-    gain: number | null;
-    scale: GainScale | null;
-    inverted: boolean | null;
-    mute: boolean | null;
+    channel: number
+    gain: number | null
+    scale: GainScale | null
+    inverted: boolean | null
+    mute: boolean | null
 }
 
-export type Pipeline = PipelineStep[];
-export type PipelineStep = MixerStep | FilterStep | ProcessorStep;
+export type Pipeline = PipelineStep[]
+export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep {
-    type: "Mixer";
-    name: string;
-    description: string | null;
-    bypassed: boolean | null;
+    type: "Mixer"
+    name: string
+    description: string | null
+    bypassed: boolean | null
 }
 export interface ProcessorStep {
-    type: "Processor";
-    name: string;
-    description: string | null;
-    bypassed: boolean | null;
+    type: "Processor"
+    name: string
+    description: string | null
+    bypassed: boolean | null
 }
 export interface FilterStep {
-    type: "Filter";
-    channels: number[] | null;
-    names: string[];
-    description: string | null;
-    bypassed: boolean | null;
+    type: "Filter"
+    channels: number[] | null
+    names: string[]
+    description: string | null
+    bypassed: boolean | null
 }
 
 export async function maxChannelCount(
     config: Config,
     pipelineStepIndex: number,
 ): Promise<number> {
-    var lastValidMixerStepBeforeIndex = null;
+    var lastValidMixerStepBeforeIndex = null
     if (config.pipeline) {
         lastValidMixerStepBeforeIndex = List(config.pipeline).findLast(
             (step, index) =>
                 step.type === "Mixer" &&
                 step.name !== "" &&
                 index < pipelineStepIndex,
-        ) as MixerStep | undefined;
+        ) as MixerStep | undefined
     }
     if (lastValidMixerStepBeforeIndex && config.mixers) {
-        const mixer = config.mixers[lastValidMixerStepBeforeIndex.name];
-        return mixer.channels.out;
+        const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
+        return mixer.channels.out
     }
-    return getCaptureDeviceChannelCount(config.devices.capture);
+    return getCaptureDeviceChannelCount(config.devices.capture)
 }
 
 export interface WavInfo {
-    dataoffset: number;
-    datalength: number;
-    sampleformat: string;
-    bitspersample: number;
-    channels: number;
-    byterate: number;
-    samplerate: number;
-    bytesperframe: number;
+    dataoffset: number
+    datalength: number
+    sampleformat: string
+    bitspersample: number
+    channels: number
+    byterate: number
+    samplerate: number
+    bytesperframe: number
 }
 
 async function getWavInfo(filename: string): Promise<WavInfo | null> {
     let info_resp = await fetch(
         `/api/wavinfo?filename=${encodeURIComponent(filename)}`,
-    );
+    )
     if (info_resp.ok) {
-        const info = await info_resp.json();
-        return info == null ? null : (info as WavInfo);
+        const info = await info_resp.json()
+        return info == null ? null : (info as WavInfo)
     }
-    return null;
+    return null
 }
 
 export async function getCaptureDeviceChannelCount(
     config: CaptureDevice,
 ): Promise<number> {
     if (config.type === "WavFile") {
-        const wavInfo = await getWavInfo(config.filename);
-        if (wavInfo !== null) return wavInfo.channels;
+        const wavInfo = await getWavInfo(config.filename)
+        if (wavInfo !== null) return wavInfo.channels
         else
             console.log(
                 "Cannot get info for wav file, assuming stereo. File:",
                 config.filename,
-            );
-        return 2;
+            )
+        return 2
     }
-    return config.channels;
+    return config.channels
 }
 
 export function getChannelLabels(
@@ -1476,28 +1472,28 @@ export function getChannelLabels(
     index: number,
 ): (string | null)[] | null {
     // Capture device labels
-    let cap_params = config.devices.capture;
-    let channel_labels = cap_params.labels;
-    let pipeline = config.pipeline ? config.pipeline : [];
+    let cap_params = config.devices.capture
+    let channel_labels = cap_params.labels
+    let pipeline = config.pipeline ? config.pipeline : []
     for (let idx = 0; idx < index; idx++) {
-        const step = pipeline[idx];
-        const disabled = step.bypassed === true;
+        const step = pipeline[idx]
+        const disabled = step.bypassed === true
         if (step.type === "Mixer" && config.mixers && !disabled) {
-            const mixername = step.name;
-            const mixconf = config["mixers"][mixername];
+            const mixername = step.name
+            const mixconf = config["mixers"][mixername]
             if (mixconf) {
-                channel_labels = mixconf.labels;
+                channel_labels = mixconf.labels
             } else {
-                channel_labels = null;
+                channel_labels = null
             }
         }
     }
-    return channel_labels;
+    return channel_labels
 }
 
 export function getOutputLabels(config: Config): (string | null)[] | null {
-    let pipeline_length = config.pipeline ? config.pipeline.length : 0;
-    return getChannelLabels(config, pipeline_length);
+    let pipeline_length = config.pipeline ? config.pipeline.length : 0
+    return getChannelLabels(config, pipeline_length)
 }
 
 export function getLabelForChannel(
@@ -1506,39 +1502,39 @@ export function getLabelForChannel(
     compact?: boolean,
     nullable?: boolean,
 ): string {
-    var result = "";
+    var result = ""
     if (!compact || !nullable) {
-        result = channel.toString();
+        result = channel.toString()
     }
     if (labels === undefined || labels === null || labels.length <= channel) {
-        return result;
+        return result
     }
-    const label = labels[channel];
+    const label = labels[channel]
     if (label) {
         if (compact) {
-            return label;
+            return label
         }
-        return result + ": " + label;
+        return result + ": " + label
     }
-    return result;
+    return result
 }
 
 export function getMixerInputLabels(
     config: Config,
     mixername: string,
 ): (string | null)[] | null {
-    const pipeline = config.pipeline ? config.pipeline : [];
-    let found_at = -1;
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
     for (const [idx, step] of pipeline.entries()) {
         if (step.type === "Mixer" && step.name === mixername) {
-            found_at = idx;
-            break;
+            found_at = idx
+            break
         }
     }
     if (found_at >= 0) {
-        return getChannelLabels(config, found_at);
+        return getChannelLabels(config, found_at)
     } else {
-        return null;
+        return null
     }
 }
 
@@ -1546,17 +1542,17 @@ export function getProcessorChannelLabels(
     config: Config,
     procname: string,
 ): (string | null)[] | null {
-    const pipeline = config.pipeline ? config.pipeline : [];
-    let found_at = -1;
+    const pipeline = config.pipeline ? config.pipeline : []
+    let found_at = -1
     for (const [idx, step] of pipeline.entries()) {
         if (step.type === "Processor" && step.name === procname) {
-            found_at = idx;
-            break;
+            found_at = idx
+            break
         }
     }
     if (found_at >= 0) {
-        return getChannelLabels(config, found_at);
+        return getChannelLabels(config, found_at)
     } else {
-        return null;
+        return null
     }
 }

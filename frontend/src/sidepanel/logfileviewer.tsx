@@ -1,24 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
-import Popup from "reactjs-popup";
+import React, { useEffect, useRef, useState } from "react"
+import Popup from "reactjs-popup"
 
 export function LogFileViewerPopup(props: {
-    open: boolean;
-    onClose: () => void;
+    open: boolean
+    onClose: () => void
 }) {
-    const { open, onClose } = props;
-    const [log, setLog] = useState("");
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const { open, onClose } = props
+    const [log, setLog] = useState("")
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
     useEffect(() => {
         if (open) {
             fetch("/api/logfile")
                 .then((response) => response.text())
                 .then((text) => {
-                    setLog(text);
-                    const textarea = textareaRef.current;
-                    if (textarea) textarea.scrollTop = textarea.scrollHeight;
-                });
+                    setLog(text)
+                    const textarea = textareaRef.current
+                    if (textarea) textarea.scrollTop = textarea.scrollHeight
+                })
         }
-    }, [open]);
+    }, [open])
     return (
         <Popup
             open={open}
@@ -37,5 +37,5 @@ export function LogFileViewerPopup(props: {
                 readOnly={true}
             />
         </Popup>
-    );
+    )
 }

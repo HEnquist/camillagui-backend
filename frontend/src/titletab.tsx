@@ -1,17 +1,17 @@
-import React from "react";
-import "./index.css";
+import React from "react"
+import "./index.css"
 import {
     TextInput,
     MultilineTextInput,
     Box,
     ErrorBoundary,
-} from "./utilities/ui-components";
-import { Config } from "./camilladsp/config";
-import { Update } from "./utilities/common";
+} from "./utilities/ui-components"
+import { Config } from "./camilladsp/config"
+import { Update } from "./utilities/common"
 
 export function TitleTab(props: {
-    config: Config;
-    updateConfig: (update: Update<Config>) => void;
+    config: Config
+    updateConfig: (update: Update<Config>) => void
 }) {
     return (
         <ErrorBoundary>
@@ -29,12 +29,12 @@ export function TitleTab(props: {
                 <div className="tabspacer" />
             </div>
         </ErrorBoundary>
-    );
+    )
 }
 
 function Title(props: {
-    config: Config;
-    onChange: (update: Update<Config>) => void;
+    config: Config
+    onChange: (update: Update<Config>) => void
 }) {
     return (
         <Box title="Title">
@@ -46,20 +46,20 @@ function Title(props: {
                 onChange={(title) =>
                     title === ""
                         ? props.onChange((config) => {
-                              config.title = null;
+                              config.title = null
                           })
                         : props.onChange((config) => {
-                              config.title = title;
+                              config.title = title
                           })
                 }
             />
         </Box>
-    );
+    )
 }
 
 function Description(props: {
-    config: Config;
-    onChange: (update: Update<Config>) => void;
+    config: Config
+    onChange: (update: Update<Config>) => void
 }) {
     return (
         <Box title="Description">
@@ -76,13 +76,13 @@ function Description(props: {
                 onChange={(desc) =>
                     desc === ""
                         ? props.onChange((config) => {
-                              config.description = null;
+                              config.description = null
                           })
                         : props.onChange((config) => {
-                              config.description = desc;
+                              config.description = desc
                           })
                 }
             />
         </Box>
-    );
+    )
 }

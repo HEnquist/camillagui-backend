@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, createRef, RefObject } from "react"
 import {
     Box,
     Button,
@@ -10,8 +10,8 @@ import {
     MdiButton,
     PlotButton,
     UploadButton,
-} from "./utilities/ui-components";
-import { GuiConfig } from "./guiconfig";
+} from "./utilities/ui-components"
+import { GuiConfig } from "./guiconfig"
 import {
     mdiAlertCircle,
     mdiCheck,
@@ -25,8 +25,8 @@ import {
     mdiStar,
     mdiStarOutline,
     mdiUpload,
-} from "@mdi/js";
-import { Config, defaultConfig } from "./camilladsp/config";
+} from "@mdi/js"
+import { Config, defaultConfig } from "./camilladsp/config"
 import {
     doUpload,
     download,
@@ -37,24 +37,24 @@ import {
     loadConfigJson,
     loadDefaultConfigJson,
     loadFiles,
-} from "./utilities/files";
-import { PipelinePopup } from "./pipeline/pipelineplotter";
-import { ImportPopup, ImportPopupProps } from "./import/importpopup";
-import { Update } from "./utilities/common";
-import DataTable from "react-data-table-component";
-import { isEqual } from "lodash";
-import { DiffPopup } from "./utilities/diffpopup";
+} from "./utilities/files"
+import { PipelinePopup } from "./pipeline/pipelineplotter"
+import { ImportPopup, ImportPopupProps } from "./import/importpopup"
+import { Update } from "./utilities/common"
+import DataTable from "react-data-table-component"
+import { isEqual } from "lodash"
+import { DiffPopup } from "./utilities/diffpopup"
 
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 4
 
 export function Files(props: {
-    guiConfig: GuiConfig;
-    currentConfigFile?: string;
-    config: Config;
-    setCurrentConfig: (filename: string | undefined, config: Config) => void;
-    setCurrentConfigFileName: (filename: string | undefined) => void;
-    updateConfig: (update: Update<Config>) => void;
-    saveNotify: () => void;
+    guiConfig: GuiConfig
+    currentConfigFile?: string
+    config: Config
+    setCurrentConfig: (filename: string | undefined, config: Config) => void
+    setCurrentConfigFileName: (filename: string | undefined) => void
+    updateConfig: (update: Update<Config>) => void
+    saveNotify: () => void
 }) {
     return (
         <ErrorBoundary>
@@ -84,77 +84,80 @@ export function Files(props: {
                 <div className="tabspacer" />
             </div>
         </ErrorBoundary>
-    );
+    )
 }
 
-type FileType = "config" | "coeff";
+type FileType = "config" | "coeff"
 
 interface FileTableProps {
-    title: string;
-    type: FileType;
-    currentConfigFile?: string;
-    config?: Config;
-    canUpdateActiveConfig?: boolean;
-    setCurrentConfig?: (filename: string, config: Config) => void;
-    setCurrentConfigFileName?: (filename: string | undefined) => void;
-    saveNotify?: () => void;
+    title: string
+    type: FileType
+    currentConfigFile?: string
+    config?: Config
+    canUpdateActiveConfig?: boolean
+    setCurrentConfig?: (filename: string, config: Config) => void
+    setCurrentConfigFileName?: (filename: string | undefined) => void
+    saveNotify?: () => void
 }
 
-type FileAction = "load" | "save" | "upload" | "rename";
-const EMPTY_FILENAME = ""; // used only for FileAction 'upload'
+type FileAction = "load" | "save" | "upload" | "rename"
+const EMPTY_FILENAME = "" // used only for FileAction 'upload'
 type FileStatus =
     | {
-          filename: string;
-          action: FileAction;
-          success: true;
+          filename: string
+          action: FileAction
+          success: true
       }
     | {
-          filename: string;
-          action: FileAction;
-          success: false;
-          statusText: string;
-      };
+          filename: string
+          action: FileAction
+          success: false
+          statusText: string
+      }
 
 class FileTable extends Component<
     FileTableProps,
     {
-        files: FileInfo[];
-        selectedFiles: FileInfo[];
-        activeConfigFileName: string | null;
-        newFileName: string;
-        fileStatus: FileStatus | null;
-        stopTimer: () => void;
-        filterText: string;
-        showDiffPopup: boolean;
-        diffConfigLeft: Config;
-        diffConfigRight: Config;
-        diffFileNameLeft: string;
-        diffFileNameRight: string;
-        showPipelinePlot: boolean;
-        configToPlot: Config;
-        fileMenuOpen: number | null;
+        files: FileInfo[]
+        selectedFiles: FileInfo[]
+        activeConfigFileName: string | null
+        newFileName: string
+        fileStatus: FileStatus | null
+        stopTimer: () => void
+        filterText: string
+        showDiffPopup: boolean
+        diffConfigLeft: Config
+        diffConfigRight: Config
+        diffFileNameLeft: string
+        diffFileNameRight: string
+        showPipelinePlot: boolean
+        configToPlot: Config
+        fileMenuOpen: number | null
     }
 > {
-    private readonly type: FileType = this.props.type;
+    private readonly type: FileType = this.props.type
+    private dropdownRef: RefObject<HTMLDivElement>
 
     constructor(props: FileTableProps) {
-        super(props);
-        this.update = this.update.bind(this);
-        this.loadActiveConfigName = this.loadActiveConfigName.bind(this);
-        this.setActiveConfig = this.setActiveConfig.bind(this);
-        this.upload = this.upload.bind(this);
-        this.delete = this.delete.bind(this);
-        this.downloadAsZip = this.downloadAsZip.bind(this);
-        this.overwriteConfig = this.overwriteConfig.bind(this);
-        this.saveConfig = this.saveConfig.bind(this);
-        this.loadConfig = this.loadConfig.bind(this);
-        this.compareConfig = this.compareConfig.bind(this);
-        this.compareConfigFiles = this.compareConfigFiles.bind(this);
-        this.plotConfig = this.plotConfig.bind(this);
-        this.setSelected = this.setSelected.bind(this);
-        this.showErrorMessage = this.showErrorMessage.bind(this);
-        this.rename = this.rename.bind(this);
-        this.toggleFileMenu = this.toggleFileMenu.bind(this);
+        super(props)
+        this.update = this.update.bind(this)
+        this.loadActiveConfigName = this.loadActiveConfigName.bind(this)
+        this.setActiveConfig = this.setActiveConfig.bind(this)
+        this.upload = this.upload.bind(this)
+        this.delete = this.delete.bind(this)
+        this.downloadAsZip = this.downloadAsZip.bind(this)
+        this.overwriteConfig = this.overwriteConfig.bind(this)
+        this.saveConfig = this.saveConfig.bind(this)
+        this.loadConfig = this.loadConfig.bind(this)
+        this.compareConfig = this.compareConfig.bind(this)
+        this.compareConfigFiles = this.compareConfigFiles.bind(this)
+        this.plotConfig = this.plotConfig.bind(this)
+        this.setSelected = this.setSelected.bind(this)
+        this.showErrorMessage = this.showErrorMessage.bind(this)
+        this.rename = this.rename.bind(this)
+        this.toggleFileMenu = this.toggleFileMenu.bind(this)
+        this.clickOutsideDropdown = this.clickOutsideDropdown.bind(this)
+        this.dropdownRef = createRef()
         this.state = {
             files: [],
             selectedFiles: [],
@@ -171,20 +174,33 @@ class FileTable extends Component<
             showPipelinePlot: false,
             configToPlot: {} as Config,
             fileMenuOpen: null,
-        };
+        }
     }
 
     componentDidUpdate() {}
 
     componentDidMount() {
-        this.update();
-        const timerId = setInterval(this.update, 10000);
-        this.setState({ stopTimer: () => clearInterval(timerId) });
-        this.loadActiveConfigName();
+        this.update()
+        const timerId = setInterval(this.update, 10000)
+        this.setState({ stopTimer: () => clearInterval(timerId) })
+        this.loadActiveConfigName()
+        document.addEventListener("mousedown", this.clickOutsideDropdown)
+        document.addEventListener("touchstart", this.clickOutsideDropdown)
     }
 
     componentWillUnmount() {
-        this.state.stopTimer();
+        this.state.stopTimer()
+        document.removeEventListener("mousedown", this.clickOutsideDropdown)
+        document.removeEventListener("touchstart", this.clickOutsideDropdown)
+    }
+
+    clickOutsideDropdown(event: MouseEvent | TouchEvent) {
+        if (
+            this.dropdownRef.current &&
+            !this.dropdownRef.current.contains(event.target as Node)
+        ) {
+            this.setState({ fileMenuOpen: null })
+        }
     }
 
     private update() {
@@ -192,24 +208,24 @@ class FileTable extends Component<
             if (!isEqual(files, this.state.files)) {
                 return this.setState((prevState) => ({
                     files: files,
-                }));
+                }))
             }
-        });
+        })
     }
 
     private async delete() {
         const del = window.confirm(
             "Delete?\n" +
                 this.state.selectedFiles.map((f) => f.name).join("\n"),
-        );
-        if (!del) return;
+        )
+        if (!del) return
         await fetch(`/api/delete${this.type}s`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-        });
-        this.setState({ fileStatus: null });
-        this.update();
+        })
+        this.setState({ fileStatus: null })
+        this.update()
     }
 
     private async downloadAsZip() {
@@ -217,9 +233,9 @@ class FileTable extends Component<
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-        });
-        const zipFile = await response.blob();
-        download(this.type + "s.zip", zipFile);
+        })
+        const zipFile = await response.blob()
+        download(this.type + "s.zip", zipFile)
     }
 
     private upload(files: FileList) {
@@ -227,23 +243,23 @@ class FileTable extends Component<
             this.type,
             files,
             () => {
-                this.showSuccess(EMPTY_FILENAME, "upload");
-                this.update();
+                this.showSuccess(EMPTY_FILENAME, "upload")
+                this.update()
             },
             (message) =>
                 this.showErrorMessage(EMPTY_FILENAME, "upload", message),
-        );
+        )
     }
 
     private async loadConfig(name: string) {
         try {
             const jsonConfig = await loadConfigJson(name, (reason) =>
                 this.showErrorMessage(name, "load", reason),
-            );
-            this.props.setCurrentConfig!(name, jsonConfig as Config);
-            this.showSuccess(name, "load");
+            )
+            this.props.setCurrentConfig!(name, jsonConfig as Config)
+            this.showSuccess(name, "load")
         } catch (e) {
-            this.showErrorMessage(name, "load", e as string);
+            this.showErrorMessage(name, "load", e as string)
         }
     }
 
@@ -251,18 +267,18 @@ class FileTable extends Component<
         try {
             const otherConfig = await loadConfigJson(name, (reason) =>
                 this.showErrorMessage(name, "load", reason),
-            );
-            const guiConfig = this.props.config;
+            )
+            const guiConfig = this.props.config
             this.setState({
                 showDiffPopup: true,
                 diffConfigLeft: otherConfig,
                 diffConfigRight: guiConfig ? guiConfig : ({} as Config),
                 diffFileNameLeft: name,
                 diffFileNameRight: "GUI",
-            });
+            })
         } catch (e) {
-            console.log(e);
-            this.showErrorMessage(name, "load", e as string);
+            console.log(e)
+            this.showErrorMessage(name, "load", e as string)
         }
     }
 
@@ -270,24 +286,24 @@ class FileTable extends Component<
         try {
             const leftConfig = await loadConfigJson(name_left, (reason) =>
                 this.showErrorMessage(name_left, "load", reason),
-            );
+            )
             const rightConfig = await loadConfigJson(name_right, (reason) =>
                 this.showErrorMessage(name_right, "load", reason),
-            );
+            )
             this.setState({
                 showDiffPopup: true,
                 diffConfigLeft: leftConfig,
                 diffConfigRight: rightConfig,
                 diffFileNameLeft: name_left,
                 diffFileNameRight: name_right,
-            });
+            })
         } catch (e) {
-            console.log(e);
+            console.log(e)
             this.showErrorMessage(
                 name_left + " and " + name_right,
                 "load",
                 e as string,
-            );
+            )
         }
     }
 
@@ -295,16 +311,16 @@ class FileTable extends Component<
         try {
             const config = await loadConfigJson(name, (reason) =>
                 this.showErrorMessage(name, "load", reason),
-            );
-            this.setState({ showPipelinePlot: true, configToPlot: config });
+            )
+            this.setState({ showPipelinePlot: true, configToPlot: config })
         } catch (e) {
-            console.log(e);
-            this.showErrorMessage(name, "load", e as string);
+            console.log(e)
+            this.showErrorMessage(name, "load", e as string)
         }
     }
 
     private showSuccess(filename: string, action: FileAction) {
-        this.setState({ fileStatus: { filename, action, success: true } });
+        this.setState({ fileStatus: { filename, action, success: true } })
     }
 
     private showErrorMessage(
@@ -319,15 +335,15 @@ class FileTable extends Component<
                 success: false,
                 statusText: errorMessage,
             },
-        });
+        })
     }
 
     private async loadActiveConfigName() {
         try {
-            const json = await loadActiveConfigFilename();
-            this.setState({ activeConfigFileName: json.configFileName });
+            const json = await loadActiveConfigFilename()
+            this.setState({ activeConfigFileName: json.configFileName })
         } catch (err) {
-            console.log("Failed to get active config", err);
+            console.log("Failed to get active config", err)
         }
     }
 
@@ -336,53 +352,52 @@ class FileTable extends Component<
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: name }),
-        }).then(() => this.loadConfig(name));
-        this.setState({ activeConfigFileName: name });
+        }).then(() => this.loadConfig(name))
+        this.setState({ activeConfigFileName: name })
     }
 
     private overwriteConfig(name: string) {
-        const del = window.confirm("Overwrite?\n" + name);
-        if (!del) return;
-        this.saveConfig(name);
+        const del = window.confirm("Overwrite?\n" + name)
+        if (!del) return
+        this.saveConfig(name)
     }
 
     private setSelected(selected: any) {
-        this.setState({ selectedFiles: selected.selectedRows });
+        this.setState({ selectedFiles: selected.selectedRows })
     }
 
     private toggleFileMenu(index: number) {
         if (this.state.fileMenuOpen === index)
-            this.setState({ fileMenuOpen: null });
-        else this.setState({ fileMenuOpen: index });
+            this.setState({ fileMenuOpen: null })
+        else this.setState({ fileMenuOpen: index })
     }
 
     private async saveConfig(name: string) {
-        const { config, setCurrentConfig } = this.props;
+        const { config, setCurrentConfig } = this.props
         try {
             const response = await fetch(`/api/saveconfigfile`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ filename: name, config: config }),
-            });
+            })
             if (response.ok) {
-                setCurrentConfig!(name, config!);
-                this.showSuccess(name, "save");
-                if (this.props.saveNotify !== undefined)
-                    this.props.saveNotify();
-                this.update();
+                setCurrentConfig!(name, config!)
+                this.showSuccess(name, "save")
+                if (this.props.saveNotify !== undefined) this.props.saveNotify()
+                this.update()
             } else {
-                const message = await response.text();
-                this.showErrorMessage(name, "save", message);
+                const message = await response.text()
+                this.showErrorMessage(name, "save", message)
             }
         } catch (e) {
-            const err = e as Error;
-            this.showErrorMessage(name, "save", err.message);
+            const err = e as Error
+            this.showErrorMessage(name, "save", err.message)
         }
     }
 
     private async rename(filename: string, type: "coeff" | "config") {
-        const newName = window.prompt(`Enter a new name for ${filename}`);
-        if (!newName) return;
+        const newName = window.prompt(`Enter a new name for ${filename}`)
+        if (!newName) return
         try {
             const response = await fetch(
                 `/api/rename${type}?source=${encodeURIComponent(filename)}&target=${encodeURIComponent(newName)}`,
@@ -390,18 +405,18 @@ class FileTable extends Component<
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                 },
-            );
+            )
             if (response.ok) {
-                this.showSuccess(newName, "rename");
-                this.update();
+                this.showSuccess(newName, "rename")
+                this.update()
             } else {
-                const message = await response.text();
-                console.log("Error: " + message);
-                this.showErrorMessage(filename, "rename", message);
+                const message = await response.text()
+                console.log("Error: " + message)
+                this.showErrorMessage(filename, "rename", message)
             }
         } catch (e) {
-            const error = e as Error;
-            this.showErrorMessage(filename, "rename", error.message);
+            const error = e as Error
+            this.showErrorMessage(filename, "rename", error.message)
         }
     }
 
@@ -418,8 +433,8 @@ class FileTable extends Component<
             diffFileNameRight,
             showPipelinePlot,
             configToPlot,
-        } = this.state;
-        let columns: any = [];
+        } = this.state
+        let columns: any = []
         if (this.type === "coeff") {
             columns.push({
                 name: "",
@@ -441,7 +456,7 @@ class FileTable extends Component<
                 sortable: false,
                 compact: true,
                 width: "42px",
-            });
+            })
             columns.push({
                 name: "Filename",
                 cell: (
@@ -467,7 +482,7 @@ class FileTable extends Component<
                 sortable: true,
                 grow: 1,
                 compact: true,
-            });
+            })
         } else if (this.type === "config") {
             columns.push({
                 name: "",
@@ -517,7 +532,11 @@ class FileTable extends Component<
                                 onClick={() => this.toggleFileMenu(index)}
                             />
                             {this.state.fileMenuOpen === index && (
-                                <div className="dropdown-menu" title="channels">
+                                <div
+                                    ref={this.dropdownRef}
+                                    className="dropdown-menu"
+                                    title="channels"
+                                >
                                     <div
                                         style={{
                                             display: "flex",
@@ -556,7 +575,7 @@ class FileTable extends Component<
                 sortable: false,
                 compact: true,
                 width: "160px",
-            });
+            })
             columns.push({
                 name: "Filename",
                 cell: (
@@ -584,7 +603,7 @@ class FileTable extends Component<
                 sortable: true,
                 width: "250px",
                 compact: true,
-            });
+            })
             columns.push({
                 name: "Title",
                 cell: (
@@ -608,7 +627,7 @@ class FileTable extends Component<
                 sortable: true,
                 maxWidth: "150px",
                 compact: true,
-            });
+            })
             columns.push({
                 name: "Valid",
                 cell: (
@@ -628,14 +647,14 @@ class FileTable extends Component<
                 sortable: true,
                 width: "60px",
                 compact: true,
-            });
+            })
             columns.push({
                 name: "Version",
                 selector: (row: FileInfo) => row.version,
                 sortable: true,
                 width: "60px",
                 compact: true,
-            });
+            })
         }
         columns.push({
             name: "Date",
@@ -644,7 +663,7 @@ class FileTable extends Component<
             sortable: true,
             width: "110px",
             compact: true,
-        });
+        })
         columns.push({
             name: "Size",
             selector: (row: FileInfo) => row.size,
@@ -652,7 +671,7 @@ class FileTable extends Component<
             width: "60px",
             compact: true,
             right: true,
-        });
+        })
         const filteredFiles = files.filter(
             (item) =>
                 item.name.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -660,8 +679,8 @@ class FileTable extends Component<
                     item.title
                         .toLowerCase()
                         .includes(filterText.toLowerCase())),
-        );
-        console.log(filteredFiles);
+        )
+        console.log(filteredFiles)
 
         return (
             <Box title={this.props.title}>
@@ -791,16 +810,16 @@ class FileTable extends Component<
                     }
                 />
             </Box>
-        );
+        )
     }
 }
 
 function DownloadFilesAsZipButton(props: {
-    selectedFiles: string[];
-    downloadAsZip: () => {};
+    selectedFiles: string[]
+    downloadAsZip: () => {}
 }) {
-    const { selectedFiles, downloadAsZip } = props;
-    const fileOrFiles = selectedFiles.length > 1 ? "files" : "file";
+    const { selectedFiles, downloadAsZip } = props
+    const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
     return (
         <MdiButton
             icon={mdiDownload}
@@ -812,15 +831,15 @@ function DownloadFilesAsZipButton(props: {
             enabled={selectedFiles.length > 0}
             onClick={downloadAsZip}
         />
-    );
+    )
 }
 
 function DeleteFilesButton(props: {
-    selectedFiles: string[];
-    delete: () => {};
+    selectedFiles: string[]
+    delete: () => {}
 }) {
-    const selectedFiles = props.selectedFiles;
-    const fileOrFiles = selectedFiles.length > 1 ? "files" : "file";
+    const selectedFiles = props.selectedFiles
+    const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
     return (
         <MdiButton
             icon={mdiDelete}
@@ -832,22 +851,22 @@ function DeleteFilesButton(props: {
             enabled={selectedFiles.length > 0}
             onClick={props.delete}
         />
-    );
+    )
 }
 
 function UploadFilesButton(props: {
-    fileStatus: FileStatus | null;
-    upload: (files: FileList) => void;
+    fileStatus: FileStatus | null
+    upload: (files: FileList) => void
 }) {
-    const fileStatus = props.fileStatus;
-    let uploadIcon: { icon: string; className?: string } = { icon: mdiUpload };
+    const fileStatus = props.fileStatus
+    let uploadIcon: { icon: string; className?: string } = { icon: mdiUpload }
     if (
         fileStatus !== null &&
         fileStatus.action === "upload" &&
         fileStatus.filename === EMPTY_FILENAME &&
         !fileStatus.success
     )
-        uploadIcon = { icon: mdiAlertCircle, className: "error-text" };
+        uploadIcon = { icon: mdiAlertCircle, className: "error-text" }
     return (
         <UploadButton
             icon={uploadIcon.icon}
@@ -856,31 +875,31 @@ function UploadFilesButton(props: {
             className={uploadIcon.className}
             multiple={true}
         />
-    );
+    )
 }
 
 function SetActiveButton(props: {
-    active: boolean;
-    onClick: () => void;
-    enabled?: boolean;
-    valid?: boolean;
+    active: boolean
+    onClick: () => void
+    enabled?: boolean
+    valid?: boolean
 }) {
-    const { active, onClick, enabled, valid } = props;
-    let tooltip;
+    const { active, onClick, enabled, valid } = props
+    let tooltip
     if (enabled === false) {
         if (valid) {
             tooltip =
-                "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration.";
+                "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
         } else {
             tooltip =
-                "Mark this config file as active.<br>Disabled since this config file is not valid.";
+                "Mark this config file as active.<br>Disabled since this config file is not valid."
         }
     } else {
         if (active) {
-            tooltip = "This config file is marked as active.";
+            tooltip = "This config file is marked as active."
         } else {
             tooltip =
-                "Mark this config file as active, and load it into the GUI.";
+                "Mark this config file as active, and load it into the GUI."
         }
     }
 
@@ -892,19 +911,19 @@ function SetActiveButton(props: {
             highlighted={active}
             onClick={onClick}
         />
-    );
+    )
 }
 
 function SaveButton(props: {
-    filename: string;
-    disableReason?: string;
-    fileStatus: FileStatus | null;
-    saveConfig: (filename: string) => void;
+    filename: string
+    disableReason?: string
+    fileStatus: FileStatus | null
+    saveConfig: (filename: string) => void
 }) {
-    const { disableReason, filename, fileStatus, saveConfig } = props;
+    const { disableReason, filename, fileStatus, saveConfig } = props
     let saveIcon: { icon: string; className?: string } = {
         icon: mdiContentSave,
-    };
+    }
     if (
         !disableReason &&
         fileStatus !== null &&
@@ -913,7 +932,7 @@ function SaveButton(props: {
     ) {
         saveIcon = fileStatus.success
             ? { icon: mdiCheck, className: "success-text" }
-            : { icon: mdiAlertCircle, className: "error-text" };
+            : { icon: mdiAlertCircle, className: "error-text" }
     }
     return (
         <MdiButton
@@ -925,16 +944,16 @@ function SaveButton(props: {
             }
             onClick={() => saveConfig(filename)}
         />
-    );
+    )
 }
 
 function RenameButton(props: {
-    filename: string;
-    fileStatus: FileStatus | null;
-    rename: () => void;
+    filename: string
+    fileStatus: FileStatus | null
+    rename: () => void
 }) {
-    const { filename, fileStatus, rename } = props;
-    let renameIcon: { icon: string; className?: string } = { icon: mdiPencil };
+    const { filename, fileStatus, rename } = props
+    let renameIcon: { icon: string; className?: string } = { icon: mdiPencil }
     if (
         fileStatus !== null &&
         fileStatus.action === "rename" &&
@@ -942,7 +961,7 @@ function RenameButton(props: {
     ) {
         renameIcon = fileStatus.success
             ? { icon: mdiCheck, className: "success-text" }
-            : { icon: mdiAlertCircle, className: "error-text" };
+            : { icon: mdiAlertCircle, className: "error-text" }
     }
     return (
         <MdiButton
@@ -951,18 +970,18 @@ function RenameButton(props: {
             tooltip={`Rename ${filename}`}
             onClick={rename}
         />
-    );
+    )
 }
 
 function LoadButton(props: {
-    filename: string;
-    fileStatus: FileStatus | null;
-    loadConfig: (filename: string) => void;
-    valid: boolean | undefined;
-    for_version: number | null | undefined;
+    filename: string
+    fileStatus: FileStatus | null
+    loadConfig: (filename: string) => void
+    valid: boolean | undefined
+    for_version: number | null | undefined
 }) {
-    const { filename, fileStatus, loadConfig, valid, for_version } = props;
-    let loadIcon: { icon: string; className?: string } = { icon: mdiRefresh };
+    const { filename, fileStatus, loadConfig, valid, for_version } = props
+    let loadIcon: { icon: string; className?: string } = { icon: mdiRefresh }
     if (
         fileStatus !== null &&
         fileStatus.action === "load" &&
@@ -970,16 +989,16 @@ function LoadButton(props: {
     ) {
         loadIcon = fileStatus.success
             ? { icon: mdiCheck, className: "success-text" }
-            : { icon: mdiAlertCircle, className: "error-text" };
+            : { icon: mdiAlertCircle, className: "error-text" }
     }
-    let disabled_reason;
+    let disabled_reason
     if (for_version === CURRENT_VERSION) {
-        disabled_reason = "";
+        disabled_reason = ""
     } else if (for_version && for_version !== CURRENT_VERSION) {
         disabled_reason =
-            "<br>Disabled because this config file made for an older CamillaDSP version.<br>Click 'Import Config' to convert and import it.";
+            "<br>Disabled because this config file made for an older CamillaDSP version.<br>Click 'Import Config' to convert and import it."
     } else {
-        disabled_reason = "<br>Disabled because this config file is invalid.";
+        disabled_reason = "<br>Disabled because this config file is invalid."
     }
     return (
         <MdiButton
@@ -989,21 +1008,21 @@ function LoadButton(props: {
             enabled={!disabled_reason}
             onClick={() => loadConfig(filename)}
         />
-    );
+    )
 }
 
 function CompareToGUIButton(props: {
-    filename: string;
-    compareConfig: (filename: string) => void;
-    valid: boolean | undefined;
+    filename: string
+    compareConfig: (filename: string) => void
+    valid: boolean | undefined
 }) {
-    const { filename, compareConfig, valid } = props;
+    const { filename, compareConfig, valid } = props
     let loadIcon: { icon: string; className?: string } = {
         icon: mdiScaleUnbalanced,
-    };
-    let disabled_reason = "";
+    }
+    let disabled_reason = ""
     if (!valid) {
-        disabled_reason = "<br>Disabled because this config file is invalid.";
+        disabled_reason = "<br>Disabled because this config file is invalid."
     }
     return (
         <MdiButton
@@ -1013,26 +1032,26 @@ function CompareToGUIButton(props: {
             enabled={valid}
             onClick={() => compareConfig(filename)}
         />
-    );
+    )
 }
 
 function CompareFilesButton(props: {
-    selectedFiles: FileInfo[];
-    compareConfigs: (name_left: string, name_right: string) => void;
+    selectedFiles: FileInfo[]
+    compareConfigs: (name_left: string, name_right: string) => void
 }) {
-    const { selectedFiles, compareConfigs } = props;
+    const { selectedFiles, compareConfigs } = props
     let loadIcon: { icon: string; className?: string } = {
         icon: mdiScaleUnbalanced,
-    };
+    }
     const enabled =
         selectedFiles.length === 2 &&
         selectedFiles[0].valid &&
-        selectedFiles[1].valid;
-    let tooltip;
+        selectedFiles[1].valid
+    let tooltip
     if (enabled) {
-        tooltip = `Compare ${selectedFiles[0].name} and ${selectedFiles[1].name}`;
+        tooltip = `Compare ${selectedFiles[0].name} and ${selectedFiles[1].name}`
     } else {
-        tooltip = "Select two valid files to compare";
+        tooltip = "Select two valid files to compare"
     }
     return (
         <MdiButton
@@ -1044,15 +1063,15 @@ function CompareFilesButton(props: {
                 compareConfigs(selectedFiles[0].name, selectedFiles[1].name)
             }
         />
-    );
+    )
 }
 
 function FileDownloadLink(props: {
-    type: string;
-    filename: string;
-    isCurrentConfig: boolean;
+    type: string
+    filename: string
+    isCurrentConfig: boolean
 }) {
-    const { type, filename, isCurrentConfig } = props;
+    const { type, filename, isCurrentConfig } = props
     return (
         <a
             className="file-link"
@@ -1072,54 +1091,54 @@ function FileDownloadLink(props: {
         >
             {filename}
         </a>
-    );
+    )
 }
 
 function FileStatusMessage(props: {
-    filename: string;
-    fileStatus: FileStatus | null;
-    type: FileType;
+    filename: string
+    fileStatus: FileStatus | null
+    type: FileType
 }) {
-    const { fileStatus, filename, type } = props;
+    const { fileStatus, filename, type } = props
     if (fileStatus && !fileStatus.success && fileStatus.filename === filename)
         return (
             <div className={fileStatus.success ? "success-text" : "error-text"}>
                 Could not {fileStatus.action} {type}:<br />
                 {fileStatus.statusText}
             </div>
-        );
-    else return null;
+        )
+    else return null
 }
 
 function reasonToDisableSaveNewFileButton(
     newFileName: string,
     files: FileInfo[],
 ): string | undefined {
-    if (!isValidFilename(newFileName)) return "Please enter a valid file name.";
+    if (!isValidFilename(newFileName)) return "Please enter a valid file name."
     else if (fileNamesOf(files).includes(newFileName))
-        return `File "${newFileName}" already exists`;
-    return undefined;
+        return `File "${newFileName}" already exists`
+    return undefined
 }
 
 function isValidFilename(newFileName: string) {
-    return newFileName.trim().length > 0;
+    return newFileName.trim().length > 0
 }
 
 class NewConfig extends Component<
     {
-        currentConfig: Config;
+        currentConfig: Config
         setCurrentConfig?: (
             filename: string | undefined,
             config: Config,
-        ) => void;
-        updateConfig: (update: Update<Config>) => void;
+        ) => void
+        updateConfig: (update: Update<Config>) => void
     },
     { importPopupProps: ImportPopupProps }
 > {
     constructor(props: any) {
-        super(props);
-        this.loadDefaultConfig = this.loadDefaultConfig.bind(this);
-        this.state = { importPopupProps: {} };
+        super(props)
+        this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
+        this.state = { importPopupProps: {} }
     }
 
     componentDidUpdate() {
@@ -1128,21 +1147,21 @@ class NewConfig extends Component<
 
     private async loadDefaultConfig() {
         try {
-            const response = await loadDefaultConfigJson();
+            const response = await loadDefaultConfigJson()
             if (!response.ok) {
-                console.log(await response.text());
-                return;
+                console.log(await response.text())
+                return
             }
-            const jsonConfig = await response.json();
-            this.props.setCurrentConfig!(undefined, jsonConfig as Config);
+            const jsonConfig = await response.json()
+            this.props.setCurrentConfig!(undefined, jsonConfig as Config)
         } catch (e) {
-            console.log(e);
+            console.log(e)
         }
     }
 
     private loadBlankConfig() {
-        let config = defaultConfig();
-        this.props.setCurrentConfig!(undefined, config as Config);
+        let config = defaultConfig()
+        this.props.setCurrentConfig!(undefined, config as Config)
     }
 
     private openImportConfigPopup() {
@@ -1152,7 +1171,7 @@ class NewConfig extends Component<
                 updateConfig: this.props.updateConfig,
                 close: () => this.setState({ importPopupProps: {} }),
             },
-        });
+        })
     }
 
     render() {
@@ -1188,6 +1207,6 @@ class NewConfig extends Component<
                 </div>
                 <ImportPopup {...this.state.importPopupProps} />
             </Box>
-        );
+        )
     }
 }

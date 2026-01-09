@@ -1,25 +1,25 @@
-import { Versions } from "./versions";
+import { Versions } from "./versions"
 
 export interface VuMeterStatus {
-    capturesignalrms: number[];
-    capturesignalpeak: number[];
-    playbacksignalrms: number[];
-    playbacksignalpeak: number[];
+    capturesignalrms: number[]
+    capturesignalpeak: number[]
+    playbacksignalrms: number[]
+    playbacksignalpeak: number[]
 }
 
 export interface Labels {
-    capture: (string | null)[] | null;
-    playback: (string | null)[] | null;
+    capture: (string | null)[] | null
+    playback: (string | null)[] | null
 }
 
 export interface Status extends Versions, VuMeterStatus {
-    cdsp_status: string;
-    capturerate: number | "";
-    rateadjust: number | "";
-    bufferlevel: number | "";
-    clippedsamples: number | "";
-    processingload: number | "";
-    labels: Labels;
+    cdsp_status: string
+    capturerate: number | ""
+    rateadjust: number | ""
+    bufferlevel: number | ""
+    clippedsamples: number | ""
+    processingload: number | ""
+    labels: Labels
 }
 
 export function defaultStatus(): Status {
@@ -39,96 +39,96 @@ export function defaultStatus(): Status {
         py_cdsp_plot_version: "",
         backend_version: "",
         labels: { playback: null, capture: null },
-    };
+    }
 }
 
-const CDSP_OFFLINE = "Offline";
-export const BACKEND_OFFLINE = "Backend offline";
-export const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE];
+const CDSP_OFFLINE = "Offline"
+export const BACKEND_OFFLINE = "Backend offline"
+export const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE]
 
 export function isCdspOnline(status: Status): boolean {
-    return !OFFLINE_STATES.includes(status.cdsp_status);
+    return !OFFLINE_STATES.includes(status.cdsp_status)
 }
 
 export function isBackendOnline(status: Status): boolean {
-    return status.cdsp_status !== BACKEND_OFFLINE;
+    return status.cdsp_status !== BACKEND_OFFLINE
 }
 
 export class StatusPoller {
-    private timerId: NodeJS.Timeout;
-    private readonly onUpdate: (status: Status) => void;
-    private lastLevelTime: number = 0;
-    private capturesignalrms: number[] = [];
-    private capturesignalpeak: number[] = [];
-    private playbacksignalpeak: number[] = [];
-    private playbacksignalrms: number[] = [];
-    private update_interval: number;
+    private timerId: NodeJS.Timeout
+    private readonly onUpdate: (status: Status) => void
+    private lastLevelTime: number = 0
+    private capturesignalrms: number[] = []
+    private capturesignalpeak: number[] = []
+    private playbacksignalpeak: number[] = []
+    private playbacksignalrms: number[] = []
+    private update_interval: number
 
     constructor(onUpdate: (status: Status) => void, update_interval: number) {
-        this.onUpdate = onUpdate;
-        this.update_interval = update_interval;
+        this.onUpdate = onUpdate
+        this.update_interval = update_interval
         this.timerId = setTimeout(
             this.updateStatus.bind(this),
             this.update_interval,
-        );
+        )
     }
 
     private async updateStatus() {
-        let status: Status;
-        let now = Date.now();
-        let levelsSince = (now - this.lastLevelTime) / 1000.0;
+        let status: Status
+        let now = Date.now()
+        let levelsSince = (now - this.lastLevelTime) / 1000.0
         try {
             status = await (
                 await fetch("/api/status?since=" + levelsSince)
-            ).json();
+            ).json()
         } catch (err) {
-            status = defaultStatus();
+            status = defaultStatus()
         }
         if (
             status.capturesignalpeak.length > 0 &&
             status.playbacksignalpeak.length > 0
         ) {
-            this.capturesignalpeak = status.capturesignalpeak;
-            this.capturesignalrms = status.capturesignalrms;
-            this.playbacksignalpeak = status.playbacksignalpeak;
-            this.playbacksignalrms = status.playbacksignalrms;
-            this.lastLevelTime = now;
+            this.capturesignalpeak = status.capturesignalpeak
+            this.capturesignalrms = status.capturesignalrms
+            this.playbacksignalpeak = status.playbacksignalpeak
+            this.playbacksignalrms = status.playbacksignalrms
+            this.lastLevelTime = now
         } else {
             if (levelsSince > 2.0) {
                 this.capturesignalpeak.forEach(
                     (_level, index, levelArray) =>
                         (levelArray[index] = -1000.0),
-                );
+                )
                 this.capturesignalrms.forEach(
                     (_level, index, levelArray) =>
                         (levelArray[index] = -1000.0),
-                );
+                )
                 this.playbacksignalpeak.forEach(
                     (_level, index, levelArray) =>
                         (levelArray[index] = -1000.0),
-                );
+                )
                 this.playbacksignalrms.forEach(
                     (_level, index, levelArray) =>
                         (levelArray[index] = -1000.0),
-                );
+                )
             }
-            status.capturesignalpeak = this.capturesignalpeak;
-            status.capturesignalrms = this.capturesignalrms;
-            status.playbacksignalpeak = this.playbacksignalpeak;
-            status.playbacksignalrms = this.playbacksignalrms;
+            status.capturesignalpeak = this.capturesignalpeak
+            status.capturesignalrms = this.capturesignalrms
+            status.playbacksignalpeak = this.playbacksignalpeak
+            status.playbacksignalrms = this.playbacksignalrms
         }
-        this.onUpdate(status);
+        this.onUpdate(status)
         this.timerId = setTimeout(
             this.updateStatus.bind(this),
             this.update_interval,
-        );
+        )
     }
 
     stop() {
-        clearTimeout(this.timerId);
+        clearTimeout(this.timerId)
     }
 
     set_interval(interval: number) {
-        this.update_interval = interval;
+        this.update_interval = interval
     }
 }

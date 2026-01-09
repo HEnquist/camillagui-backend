@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "vitest"
 import {
     asFormattedText,
     modifiedCopyOf,
@@ -6,14 +6,14 @@ import {
     numberValue,
     setNumberValue,
     setBoolValue,
-} from "./common";
+} from "./common"
 
 test("modifiedCopyOf", () => {
-    const object = { a: 1, b: 2 };
-    const copy = modifiedCopyOf(object, (copy) => (copy.b = 3));
-    expect(object).toEqual({ a: 1, b: 2 });
-    expect(copy).toEqual({ a: 1, b: 3 });
-});
+    const object = { a: 1, b: 2 }
+    const copy = modifiedCopyOf(object, (copy) => (copy.b = 3))
+    expect(object).toEqual({ a: 1, b: 2 })
+    expect(copy).toEqual({ a: 1, b: 3 })
+})
 
 test("withoutEmptyProperties", () => {
     const object = {
@@ -33,7 +33,7 @@ test("withoutEmptyProperties", () => {
             object: { a: 1 },
             emptyObject: {},
         },
-    };
+    }
     expect(withoutEmptyProperties(object)).toEqual({
         value: "a",
         array: [1],
@@ -43,8 +43,8 @@ test("withoutEmptyProperties", () => {
             array: [1],
             object: { a: 1 },
         },
-    });
-});
+    })
+})
 
 describe("asFormattedText", () => {
     test("format object with arrays and child objects", () => {
@@ -67,16 +67,16 @@ describe("asFormattedText", () => {
                 "d\n" +
                 "  e=5\n" +
                 "  f=6",
-        );
-    });
+        )
+    })
 
     test("does not truncate on nth line", () => {
-        expect(asFormattedText({ a: 0, b: 1 }, 2)).toEqual("a=0\n" + "b=1");
-    });
+        expect(asFormattedText({ a: 0, b: 1 }, 2)).toEqual("a=0\n" + "b=1")
+    })
 
     test("truncates after nth line", () => {
-        expect(asFormattedText({ a: 0, b: 1 }, 1)).toEqual("a=0\n" + "...");
-    });
+        expect(asFormattedText({ a: 0, b: 1 }, 1)).toEqual("a=0\n" + "...")
+    })
 
     test("numberValue returns undefined, if property is absent", () => {
         const shortcut = {
@@ -90,11 +90,11 @@ describe("asFormattedText", () => {
                     path: ["a"],
                 },
             ],
-        };
+        }
         expect(numberValue({}, shortcut, shortcut.config_elements[0])).toBe(
             undefined,
-        );
-    });
+        )
+    })
 
     test("numberValue returns undefined, if parent property is absent", () => {
         const shortcut = {
@@ -108,11 +108,11 @@ describe("asFormattedText", () => {
                     path: ["a", "b"],
                 },
             ],
-        };
+        }
         expect(numberValue({}, shortcut, shortcut.config_elements[0])).toBe(
             undefined,
-        );
-    });
+        )
+    })
 
     test("numberValue for simple object", () => {
         const shortcut = {
@@ -126,11 +126,11 @@ describe("asFormattedText", () => {
                     path: ["a"],
                 },
             ],
-        };
+        }
         expect(
             numberValue({ a: 1 }, shortcut, shortcut.config_elements[0]),
-        ).toBe(1);
-    });
+        ).toBe(1)
+    })
 
     test("numberValue for complex object", () => {
         const shortcut = {
@@ -144,11 +144,11 @@ describe("asFormattedText", () => {
                     path: ["a", "b"],
                 },
             ],
-        };
+        }
         expect(
             numberValue({ a: { b: 2 } }, shortcut, shortcut.config_elements[0]),
-        ).toBe(2);
-    });
+        ).toBe(2)
+    })
 
     test("numberValue with reverse", () => {
         const shortcut = {
@@ -163,45 +163,45 @@ describe("asFormattedText", () => {
                     reverse: true,
                 },
             ],
-        };
+        }
         expect(
             numberValue({ a: 1 }, shortcut, shortcut.config_elements[0]),
-        ).toBe(9);
-    });
+        ).toBe(9)
+    })
 
     test("setNumberValue for simple object", () => {
-        let object = { a: 1 };
-        setNumberValue(object, ["a"], 2);
-        expect(object.a).toBe(2);
-    });
+        let object = { a: 1 }
+        setNumberValue(object, ["a"], 2)
+        expect(object.a).toBe(2)
+    })
 
     test("setNumberValue for complex object", () => {
-        let object = { a: { b: 1 } };
-        setNumberValue(object, ["a", "b"], 2);
-        expect(object.a.b).toBe(2);
-    });
+        let object = { a: { b: 1 } }
+        setNumberValue(object, ["a", "b"], 2)
+        expect(object.a.b).toBe(2)
+    })
 
     test("setNumberValue for wrong type", () => {
-        let object = { a: "string" };
-        setNumberValue(object, ["a"], 2);
-        expect(object.a).toBe("string");
-    });
+        let object = { a: "string" }
+        setNumberValue(object, ["a"], 2)
+        expect(object.a).toBe("string")
+    })
 
     test("setBoolValue for simple object", () => {
-        let object = { a: true };
-        setBoolValue(object, ["a"], false);
-        expect(object.a).toBe(false);
-    });
+        let object = { a: true }
+        setBoolValue(object, ["a"], false)
+        expect(object.a).toBe(false)
+    })
 
     test("setBoolValue for complex object", () => {
-        let object = { a: { b: false } };
-        setBoolValue(object, ["a", "b"], true);
-        expect(object.a.b).toBe(true);
-    });
+        let object = { a: { b: false } }
+        setBoolValue(object, ["a", "b"], true)
+        expect(object.a.b).toBe(true)
+    })
 
     test("setBoolValue for wrong type", () => {
-        let object = { a: 5 };
-        setBoolValue(object, ["a"], false);
-        expect(object.a).toBe(5);
-    });
-});
+        let object = { a: 5 }
+        setBoolValue(object, ["a"], false)
+        expect(object.a).toBe(5)
+    })
+})

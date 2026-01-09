@@ -1,27 +1,27 @@
-import Popup from "reactjs-popup";
-import "reactjs-popup/dist/index.css";
-import React from "react";
-import "../index.css";
-import { CloseButton } from "../utilities/ui-components";
-import { Config } from "../camilladsp/config";
-import { jsonDiff, DiffRow } from "./jsondiff";
+import Popup from "reactjs-popup"
+import "reactjs-popup/dist/index.css"
+import React from "react"
+import "../index.css"
+import { CloseButton } from "../utilities/ui-components"
+import { Config } from "../camilladsp/config"
+import { jsonDiff, DiffRow } from "./jsondiff"
 
-type DiffRowType = "header" | "prop" | "section" | "comment";
+type DiffRowType = "header" | "prop" | "section" | "comment"
 
 interface DiffTableRow {
-    type: DiffRowType;
-    label: string;
-    left: any;
-    right: any;
+    type: DiffRowType
+    label: string
+    left: any
+    right: any
 }
 
 export function DiffPopup(props: {
-    left_config: Config;
-    left_name: string;
-    right_config: Config;
-    right_name: string;
-    open: boolean;
-    onClose: () => void;
+    left_config: Config
+    left_name: string
+    right_config: Config
+    right_name: string
+    open: boolean
+    onClose: () => void
 }) {
     return (
         <Popup
@@ -49,7 +49,7 @@ export function DiffPopup(props: {
                 </table>
             </div>
         </Popup>
-    );
+    )
 }
 
 function renderDiff(
@@ -65,63 +65,63 @@ function renderDiff(
             left: left_name,
             right: right_name,
         },
-    ];
+    ]
 
-    let perform_diff = true;
+    let perform_diff = true
     if (left_config === null || left_config == ({} as Config)) {
-        perform_diff = false;
+        perform_diff = false
         displayrows.push({
             type: "comment",
             label: "Comparison not performed.",
             left: "",
             right: "",
-        });
+        })
         displayrows.push({
             type: "comment",
             label: `"${left_name}" is empty.`,
             left: "",
             right: "",
-        });
+        })
     }
     if (right_config === null || right_config == ({} as Config)) {
         if (perform_diff) {
-            perform_diff = false;
+            perform_diff = false
             displayrows.push({
                 type: "comment",
                 label: "Comparison not performed.",
                 left: "",
                 right: "",
-            });
+            })
         }
         displayrows.push({
             type: "comment",
             label: `"${right_name}" is empty.`,
             left: "",
             right: "",
-        });
+        })
     }
     if (perform_diff) {
-        const rows = jsonDiff(left_config, right_config);
-        let prevPath = "";
+        const rows = jsonDiff(left_config, right_config)
+        let prevPath = ""
         for (const row of rows) {
-            const path = "/ " + row.path.slice(0, -1).join(" / ");
-            var header = null;
+            const path = "/ " + row.path.slice(0, -1).join(" / ")
+            var header = null
             if (path !== prevPath) {
-                header = path;
-                prevPath = path;
+                header = path
+                prevPath = path
                 displayrows.push({
                     type: "section",
                     label: header,
                     left: "",
                     right: "",
-                });
+                })
             }
             displayrows.push({
                 type: "prop",
                 label: row.path[row.path.length - 1],
                 left: row.before ? row.before : "null",
                 right: row.after ? row.after : "null",
-            });
+            })
         }
         if (displayrows.length === 1) {
             displayrows.push({
@@ -129,7 +129,7 @@ function renderDiff(
                 label: "The two configs are identical.",
                 left: "",
                 right: "",
-            });
+            })
         }
     }
     return displayrows.map((row, idx) => {
@@ -144,7 +144,7 @@ function renderDiff(
                         <pre>{row.right}</pre>
                     </td>
                 </tr>
-            );
+            )
         } else if (row.type === "section") {
             return (
                 <tr key={"diffrow" + idx}>
@@ -152,7 +152,7 @@ function renderDiff(
                         {row.label}
                     </td>
                 </tr>
-            );
+            )
         } else if (row.type === "header") {
             return (
                 <tr key={"diffrow" + idx}>
@@ -160,7 +160,7 @@ function renderDiff(
                     <td className="diff-filename">{row.left}</td>
                     <td className="diff-filename">{row.right}</td>
                 </tr>
-            );
+            )
         } else {
             return (
                 <tr key={"diffrow" + idx}>
@@ -168,7 +168,7 @@ function renderDiff(
                         {row.label}
                     </td>
                 </tr>
-            );
+            )
         }
-    });
+    })
 }

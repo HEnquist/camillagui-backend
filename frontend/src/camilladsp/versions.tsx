@@ -1,12 +1,12 @@
-import React from "react";
-import { Status } from "./status";
-import { version } from "../../package.json";
+import React from "react"
+import { Status } from "./status"
+import { version } from "../../package.json"
 
 export interface Versions {
-    cdsp_version: string;
-    py_cdsp_version: string;
-    py_cdsp_plot_version: string;
-    backend_version: string;
+    cdsp_version: string
+    py_cdsp_version: string
+    py_cdsp_plot_version: string
+    backend_version: string
 }
 
 export function VersionLabels(props: { versions: Status }) {
@@ -15,7 +15,7 @@ export function VersionLabels(props: { versions: Status }) {
         py_cdsp_version,
         py_cdsp_plot_version,
         backend_version,
-    } = props.versions;
+    } = props.versions
     let tooltip = `
     <table>
       <tr>
@@ -43,7 +43,7 @@ export function VersionLabels(props: { versions: Status }) {
         <td class=valuecol>${py_cdsp_plot_version}</td>
       </tr>
     </table>
-  `;
+  `
     return (
         <div
             data-tooltip-html={tooltip}
@@ -52,5 +52,5 @@ export function VersionLabels(props: { versions: Status }) {
         >
             <div>CamillaGUI version {version}</div>
         </div>
-    );
+    )
 }

@@ -6,33 +6,33 @@ import React, {
     useEffect,
     useRef,
     useState,
-} from "react";
-import Icon from "@mdi/react";
-import Popup from "reactjs-popup";
+} from "react"
+import Icon from "@mdi/react"
+import Popup from "reactjs-popup"
 import {
     mdiChartBellCurveCumulative,
     mdiDelete,
     mdiMenuDown,
     mdiPlusThick,
     mdiSitemapOutline,
-} from "@mdi/js";
-import "reactjs-popup/dist/index.css";
-import { toMap } from "./arrays";
-import { Range } from "immutable";
-import DataTable from "react-data-table-component";
-import { FileInfo } from "./files";
-import { getLabelForChannel } from "../camilladsp/config";
-import { cloneDeep } from "lodash";
+} from "@mdi/js"
+import "reactjs-popup/dist/index.css"
+import { toMap } from "./arrays"
+import { Range } from "immutable"
+import DataTable from "react-data-table-component"
+import { FileInfo } from "./files"
+import { getLabelForChannel } from "../camilladsp/config"
+import { cloneDeep } from "lodash"
 
 export function cssStyles(): CSSStyleDeclaration {
-    return getComputedStyle(document.body);
+    return getComputedStyle(document.body)
 }
 
 export function Box(props: {
-    title: string | ReactNode;
-    style?: CSSProperties;
-    children: ReactNode;
-    tooltip?: string;
+    title: string | ReactNode
+    style?: CSSProperties
+    children: ReactNode
+    tooltip?: string
 }) {
     return (
         <fieldset className="box" style={props.style}>
@@ -48,34 +48,34 @@ export function Box(props: {
             </legend>
             {props.children}
         </fieldset>
-    );
+    )
 }
 
 export function CheckBox(props: {
-    text?: string;
-    tooltip?: string;
-    checked: boolean | "partially";
-    editable?: boolean;
-    onChange: (checked: boolean) => void;
-    style?: CSSProperties;
+    text?: string
+    tooltip?: string
+    checked: boolean | "partially"
+    editable?: boolean
+    onChange: (checked: boolean) => void
+    style?: CSSProperties
 }) {
-    const { tooltip, checked, onChange, style } = props;
-    const editable = props.editable !== false;
-    const checkboxRef = useRef<HTMLInputElement>(null);
-    const checkbox = checkboxRef.current;
+    const { tooltip, checked, onChange, style } = props
+    const editable = props.editable !== false
+    const checkboxRef = useRef<HTMLInputElement>(null)
+    const checkbox = checkboxRef.current
     useEffect(() => {
-        if (!checkbox) return;
+        if (!checkbox) return
         if (checked === true) {
-            checkbox.checked = true;
-            checkbox.indeterminate = false;
+            checkbox.checked = true
+            checkbox.indeterminate = false
         } else if (checked === false) {
-            checkbox.checked = false;
-            checkbox.indeterminate = false;
+            checkbox.checked = false
+            checkbox.indeterminate = false
         } else if (checked === "partially") {
-            checkbox.checked = false;
-            checkbox.indeterminate = true;
+            checkbox.checked = false
+            checkbox.indeterminate = true
         }
-    }, [checked, checkbox]);
+    }, [checked, checkbox])
     return (
         <label
             data-tooltip-html={tooltip}
@@ -93,23 +93,23 @@ export function CheckBox(props: {
             />
             {props.text && <span className="unselectable">{props.text}</span>}
         </label>
-    );
+    )
 }
 
 export function Button(props: {
-    text: string;
-    tooltip?: string;
-    onClick: () => void;
-    style?: CSSProperties;
-    className?: string;
-    enabled?: boolean;
-    highlighted?: boolean | null;
+    text: string
+    tooltip?: string
+    onClick: () => void
+    style?: CSSProperties
+    className?: string
+    enabled?: boolean
+    highlighted?: boolean | null
 }) {
-    const enabled = props.enabled !== false;
-    let classNames = "button button-with-text";
-    if (!enabled) classNames += " disabled-button";
-    if (props.highlighted === true) classNames += " highlighted-button";
-    if (props.className) classNames += " " + props.className;
+    const enabled = props.enabled !== false
+    let classNames = "button button-with-text"
+    if (!enabled) classNames += " disabled-button"
+    if (props.highlighted === true) classNames += " highlighted-button"
+    if (props.className) classNames += " " + props.className
     return (
         <div
             data-tooltip-html={props.tooltip}
@@ -120,15 +120,15 @@ export function Button(props: {
         >
             {props.text}
         </div>
-    );
+    )
 }
 
 export function MatrixCell(props: {
-    text: string;
-    tooltip?: string;
-    onClick: () => void;
-    style?: CSSProperties;
-    muted: boolean | null;
+    text: string
+    tooltip?: string
+    onClick: () => void
+    style?: CSSProperties
+    muted: boolean | null
 }) {
     return (
         <div
@@ -140,42 +140,42 @@ export function MatrixCell(props: {
         >
             {props.text}
         </div>
-    );
+    )
 }
 
 export function SuccessFailureButton(props: {
-    text: string;
-    tooltip?: string;
-    onClick: () => Promise<void>;
-    style?: CSSProperties;
-    enabled?: boolean;
+    text: string
+    tooltip?: string
+    onClick: () => Promise<void>
+    style?: CSSProperties
+    enabled?: boolean
 }) {
-    const [timer] = useState(() => delayedExecutor(1000));
-    const [success, setSuccess] = useState<boolean | undefined>(undefined);
-    let className = "";
-    if (success === true) className = "success-text";
-    if (success === false) className = "error-text";
+    const [timer] = useState(() => delayedExecutor(1000))
+    const [success, setSuccess] = useState<boolean | undefined>(undefined)
+    let className = ""
+    if (success === true) className = "success-text"
+    if (success === false) className = "error-text"
     function setSuccessAndtimer(success: boolean) {
-        setSuccess(success);
-        timer(() => setSuccess(undefined));
+        setSuccess(success)
+        timer(() => setSuccess(undefined))
     }
     const onClick = () =>
         props.onClick().then(
             () => setSuccessAndtimer(true),
             () => setSuccessAndtimer(false),
-        );
-    return <Button {...props} className={className} onClick={onClick} />;
+        )
+    return <Button {...props} className={className} onClick={onClick} />
 }
 
 export function AddButton(props: {
-    tooltip: string;
-    style?: CSSProperties;
-    onClick: () => void;
+    tooltip: string
+    style?: CSSProperties
+    onClick: () => void
 }) {
     const style = Object.assign(
         { color: "var(--button-add-icon-color)" },
         props.style,
-    );
+    )
     return (
         <MdiButton
             icon={mdiPlusThick}
@@ -183,13 +183,13 @@ export function AddButton(props: {
             tooltip={props.tooltip}
             onClick={props.onClick}
         />
-    );
+    )
 }
 
 export function DeleteButton(props: {
-    tooltip: string;
-    onClick: () => void;
-    smallButton?: boolean;
+    tooltip: string
+    onClick: () => void
+    smallButton?: boolean
 }) {
     return (
         <MdiButton
@@ -199,14 +199,14 @@ export function DeleteButton(props: {
             tooltip={props.tooltip}
             onClick={props.onClick}
         />
-    );
+    )
 }
 
 export function PlotButton(props: {
-    tooltip: string;
-    pipeline?: boolean;
-    onClick: () => void;
-    enabled?: boolean;
+    tooltip: string
+    pipeline?: boolean
+    onClick: () => void
+    enabled?: boolean
 }) {
     return (
         <MdiButton
@@ -218,23 +218,23 @@ export function PlotButton(props: {
             enabled={props.enabled}
             rotation={props.pipeline ? 270 : 0}
         />
-    );
+    )
 }
 
 export function UploadButton(
     props: ({ icon: string; tooltip: string } | { text: string }) & {
-        upload: (files: FileList) => void;
-        multiple?: boolean;
-        className?: string;
-        style?: CSSProperties;
-        smallButton?: boolean;
+        upload: (files: FileList) => void
+        multiple?: boolean
+        className?: string
+        style?: CSSProperties
+        smallButton?: boolean
     },
 ): JSX.Element {
-    const style = Object.assign({ verticalAlign: "bottom" }, props.style);
+    const style = Object.assign({ verticalAlign: "bottom" }, props.style)
     const upload = (e: ChangeEvent<HTMLInputElement>) => {
-        props.upload(e.target.files!);
-        e.target.value = ""; // this resets the upload field, so the same file can be uploaded twice in a row
-    };
+        props.upload(e.target.files!)
+        e.target.value = "" // this resets the upload field, so the same file can be uploaded twice in a row
+    }
     return (
         <label
             data-tooltip-html={"tooltip" in props ? props.tooltip : ""}
@@ -257,22 +257,22 @@ export function UploadButton(
             )}
             {"text" in props && <Button text={props.text} onClick={() => {}} />}
         </label>
-    );
+    )
 }
 
 /**
  * Can display an icon from https://materialdesignicons.com/
  */
 export function MdiButton(props: {
-    icon: string;
-    tooltip?: string;
-    className?: string;
-    style?: CSSProperties;
-    enabled?: boolean;
-    highlighted?: boolean | null;
-    rotation?: number;
-    buttonSize?: "default" | "small" | "tiny";
-    onClick?: () => void;
+    icon: string
+    tooltip?: string
+    className?: string
+    style?: CSSProperties
+    enabled?: boolean
+    highlighted?: boolean | null
+    rotation?: number
+    buttonSize?: "default" | "small" | "tiny"
+    onClick?: () => void
 }) {
     const {
         icon,
@@ -282,18 +282,18 @@ export function MdiButton(props: {
         highlighted,
         onClick,
         buttonSize,
-    } = props;
+    } = props
     const clickhandler =
-        onClick === undefined || enabled === false ? () => {} : onClick;
-    let buttonClass = "button button-with-icon";
-    if (enabled === false) buttonClass += " disabled-button";
-    if (buttonSize === "small") buttonClass += " smallbutton";
-    else if (buttonSize === "tiny") buttonClass += " tinybutton";
-    if (highlighted === true) buttonClass += " highlighted-button";
-    if (className !== undefined) buttonClass += " " + className;
-    let rot = {};
+        onClick === undefined || enabled === false ? () => {} : onClick
+    let buttonClass = "button button-with-icon"
+    if (enabled === false) buttonClass += " disabled-button"
+    if (buttonSize === "small") buttonClass += " smallbutton"
+    else if (buttonSize === "tiny") buttonClass += " tinybutton"
+    if (highlighted === true) buttonClass += " highlighted-button"
+    if (className !== undefined) buttonClass += " " + className
+    let rot = {}
     if (props.rotation && props.rotation !== 0)
-        rot = { transform: "rotate(" + props.rotation + "deg)" };
+        rot = { transform: "rotate(" + props.rotation + "deg)" }
     return (
         <div
             onClick={clickhandler}
@@ -308,16 +308,16 @@ export function MdiButton(props: {
                 style={rot}
             />
         </div>
-    );
+    )
 }
 
 /**
  * Can display an icon from https://materialdesignicons.com/
  */
 export function MdiIcon(props: {
-    icon: string;
-    tooltip?: string;
-    style?: CSSProperties;
+    icon: string
+    tooltip?: string
+    style?: CSSProperties
 }) {
     return (
         <span
@@ -327,7 +327,7 @@ export function MdiIcon(props: {
         >
             <Icon path={props.icon} size={"15px"} />
         </span>
-    );
+    )
 }
 
 export function CloseButton(props: { onClick: () => void }) {
@@ -338,18 +338,18 @@ export function CloseButton(props: { onClick: () => void }) {
         >
             ✖
         </div>
-    );
+    )
 }
 
 export function OptionLine(props: {
-    desc: string;
-    tooltip: string;
-    children: ReactNode;
-    small?: boolean;
-    style?: CSSProperties;
+    desc: string
+    tooltip: string
+    children: ReactNode
+    small?: boolean
+    style?: CSSProperties
 }) {
-    const settingStyle = props.small ? { width: "min-content" } : {};
-    const combinedStyle = Object.assign(settingStyle, props.style);
+    const settingStyle = props.small ? { width: "min-content" } : {}
+    const combinedStyle = Object.assign(settingStyle, props.style)
     return (
         <label
             className="setting"
@@ -360,22 +360,22 @@ export function OptionLine(props: {
             <span className="setting-label">{props.desc}</span>
             {props.children}
         </label>
-    );
+    )
 }
 
 export function IntOption(props: {
-    value: number;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: number) => void;
-    small?: boolean;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
-    style?: CSSProperties;
+    value: number
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: number) => void
+    small?: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
+    style?: CSSProperties
 }) {
-    const { error, desc, small, style } = props;
+    const { error, desc, small, style } = props
     return (
         <>
             <OptionLine
@@ -394,21 +394,21 @@ export function IntOption(props: {
             </OptionLine>
             <ErrorMessage message={error} />
         </>
-    );
+    )
 }
 
 export function OptionalIntOption(props: {
-    value: number | null;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: number | null) => void;
-    small?: boolean;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
+    value: number | null
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: number | null) => void
+    small?: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
 }) {
-    const small = props.small;
+    const small = props.small
     return (
         <>
             <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
@@ -422,50 +422,50 @@ export function OptionalIntOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function IntInput(props: {
-    value: number;
-    tooltip: string;
-    onChange: (value: number) => void;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
-    className?: string;
-    style?: CSSProperties;
+    value: number
+    tooltip: string
+    onChange: (value: number) => void
+    withControls?: boolean
+    min?: number
+    max?: number
+    className?: string
+    style?: CSSProperties
 }) {
-    const { min, max } = props;
+    const { min, max } = props
     return (
         <ParsedInput
             {...props}
             immediate={true}
             asString={(int: number) => int.toString()}
             parseValue={(rawValue: string) => {
-                const parsedvalue = parseInt(rawValue);
+                const parsedvalue = parseInt(rawValue)
                 if (
                     isNaN(parsedvalue) ||
                     (min !== undefined && parsedvalue < min) ||
                     (max !== undefined && parsedvalue > max)
                 )
-                    return undefined;
-                else return parsedvalue;
+                    return undefined
+                else return parsedvalue
             }}
         />
-    );
+    )
 }
 
 export function OptionalIntInput(props: {
-    value: number | null;
-    tooltip: string;
-    onChange: (value: number | null) => void;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
-    className?: string;
-    style?: CSSProperties;
+    value: number | null
+    tooltip: string
+    onChange: (value: number | null) => void
+    withControls?: boolean
+    min?: number
+    max?: number
+    className?: string
+    style?: CSSProperties
 }) {
-    const { min, max } = props;
+    const { min, max } = props
     return (
         <OptionalParsedInput
             {...props}
@@ -475,25 +475,25 @@ export function OptionalIntInput(props: {
             }
             parseValue={(rawValue: string | undefined) => {
                 const parsedvalue =
-                    rawValue !== undefined ? parseInt(rawValue) : NaN;
+                    rawValue !== undefined ? parseInt(rawValue) : NaN
                 if (
                     isNaN(parsedvalue) ||
                     (min !== undefined && parsedvalue < min) ||
                     (max !== undefined && parsedvalue > max)
                 )
-                    return undefined;
-                else return parsedvalue;
+                    return undefined
+                else return parsedvalue
             }}
         />
-    );
+    )
 }
 
 export function FloatOption(props: {
-    value: number;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: number) => void;
+    value: number
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: number) => void
 }) {
     return (
         <>
@@ -507,16 +507,16 @@ export function FloatOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function FloatInput(props: {
-    value: number;
-    error?: boolean;
-    tooltip: string;
-    onChange: (value: number) => void;
-    className?: string;
-    style?: CSSProperties;
+    value: number
+    error?: boolean
+    tooltip: string
+    onChange: (value: number) => void
+    className?: string
+    style?: CSSProperties
 }) {
     return (
         <ParsedInput
@@ -528,10 +528,10 @@ export function FloatInput(props: {
                 float === undefined ? "" : float.toString()
             }
             parseValue={(rawValue: string) => {
-                const parsedvalue = parseFloat(rawValue);
+                const parsedvalue = parseFloat(rawValue)
                 return isNaN(parsedvalue) || rawValue.endsWith(".")
                     ? undefined
-                    : parsedvalue;
+                    : parsedvalue
             }}
             className={props.className}
             style={{
@@ -539,16 +539,16 @@ export function FloatInput(props: {
                 ...(props.error ? ERROR_BACKGROUND_STYLE : undefined),
             }}
         />
-    );
+    )
 }
 
 export function OptionalFloatOption(props: {
-    value: number | null;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: number | null) => void;
-    placeholder?: string;
+    value: number | null
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: number | null) => void
+    placeholder?: string
 }) {
     return (
         <>
@@ -563,17 +563,17 @@ export function OptionalFloatOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function OptionalFloatInput(props: {
-    value: number | null;
-    error?: boolean;
-    tooltip: string;
-    onChange: (value: number | null) => void;
-    className?: string;
-    style?: CSSProperties;
-    placeholder?: string;
+    value: number | null
+    error?: boolean
+    tooltip: string
+    onChange: (value: number | null) => void
+    className?: string
+    style?: CSSProperties
+    placeholder?: string
 }) {
     return (
         <OptionalParsedInput
@@ -586,11 +586,11 @@ export function OptionalFloatInput(props: {
                 float === undefined || float === null ? "" : float.toString()
             }
             parseValue={(rawValue: string | undefined) => {
-                if (rawValue === "") return null;
+                if (rawValue === "") return null
                 const parsedvalue =
-                    rawValue !== undefined ? parseFloat(rawValue) : NaN;
-                if (isNaN(parsedvalue)) return undefined;
-                else return parsedvalue;
+                    rawValue !== undefined ? parseFloat(rawValue) : NaN
+                if (isNaN(parsedvalue)) return undefined
+                else return parsedvalue
             }}
             className={props.className}
             style={{
@@ -598,15 +598,15 @@ export function OptionalFloatInput(props: {
                 ...(props.error ? ERROR_BACKGROUND_STYLE : undefined),
             }}
         />
-    );
+    )
 }
 
 export function FloatListOption(props: {
-    value: number[];
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: number[]) => void;
+    value: number[]
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: number[]) => void
 }) {
     return (
         <>
@@ -618,14 +618,14 @@ export function FloatListOption(props: {
                     tooltip={props.tooltip}
                     asString={(value: number[]) => value.join(", ")}
                     parseValue={(rawValue: string) => {
-                        const parsedvalue = [];
-                        const values = rawValue.split(",");
+                        const parsedvalue = []
+                        const values = rawValue.split(",")
                         for (let value of values) {
-                            const tempvalue = parseFloat(value);
-                            if (isNaN(tempvalue)) return undefined;
-                            parsedvalue.push(tempvalue);
+                            const tempvalue = parseFloat(value)
+                            if (isNaN(tempvalue)) return undefined
+                            parsedvalue.push(tempvalue)
                         }
-                        return parsedvalue;
+                        return parsedvalue
                     }}
                     onChange={props.onChange}
                     style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
@@ -633,28 +633,28 @@ export function FloatListOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function LabelListOption(props: {
-    value: string | null;
-    error?: string;
-    desc: string;
-    onChange: (labels: (string | null)[] | null) => void;
-    onButtonClick: () => void;
+    value: string | null
+    error?: string
+    desc: string
+    onChange: (labels: (string | null)[] | null) => void
+    onButtonClick: () => void
 }) {
     const updateChannelLabels = (labels_str: string | null) => {
-        let labels: (string | null)[] = [];
+        let labels: (string | null)[] = []
         if (labels_str === null) {
-            props.onChange(null);
-            return;
+            props.onChange(null)
+            return
         }
         for (let label of labels_str.split(",")) {
-            let cleaned_label = label === "" ? null : label.trim();
-            labels.push(cleaned_label);
+            let cleaned_label = label === "" ? null : label.trim()
+            labels.push(cleaned_label)
         }
-        props.onChange(labels);
-    };
+        props.onChange(labels)
+    }
 
     return (
         <div
@@ -682,78 +682,78 @@ export function LabelListOption(props: {
             />
             <ErrorMessage message={props.error} />
         </div>
-    );
+    )
 }
 
 type ParsedInputProps<TYPE> = {
-    style?: CSSProperties;
-    className?: string;
-    value: TYPE;
-    tooltip: string;
-    onChange: (value: TYPE) => void;
-    asString: (value: TYPE) => string;
-    parseValue: (rawValue: string) => TYPE | undefined;
-    immediate: boolean;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
-    placeholder?: string;
-};
+    style?: CSSProperties
+    className?: string
+    value: TYPE
+    tooltip: string
+    onChange: (value: TYPE) => void
+    asString: (value: TYPE) => string
+    parseValue: (rawValue: string) => TYPE | undefined
+    immediate: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
+    placeholder?: string
+}
 
 export class ParsedInput<TYPE> extends React.Component<
     ParsedInputProps<TYPE>,
     { rawValue: string; pending: boolean }
 > {
     constructor(props: ParsedInputProps<TYPE>) {
-        super(props);
-        this.updateValue = this.updateValue.bind(this);
-        this.state = { rawValue: props.asString(props.value), pending: false };
+        super(props)
+        this.updateValue = this.updateValue.bind(this)
+        this.state = { rawValue: props.asString(props.value), pending: false }
     }
 
     componentDidUpdate(prevProps: ParsedInputProps<TYPE>) {
         if (prevProps.value !== this.props.value)
-            this.setState({ rawValue: this.props.asString(this.props.value) });
+            this.setState({ rawValue: this.props.asString(this.props.value) })
     }
 
     private updateValue(rawValue: string, perform_callback: boolean) {
-        this.setState({ rawValue: rawValue, pending: true });
-        const parsed = this.props.parseValue(rawValue);
+        this.setState({ rawValue: rawValue, pending: true })
+        const parsed = this.props.parseValue(rawValue)
         if (
             parsed !== undefined &&
             (perform_callback || this.props.immediate)
         ) {
-            this.props.onChange(parsed);
-            this.setState({ pending: false });
+            this.props.onChange(parsed)
+            this.setState({ pending: false })
         }
     }
 
     handleSubmit(event: any) {
         if (!this.props.immediate && event.key === "Enter") {
-            event.preventDefault();
-            const parsed = this.props.parseValue(this.state.rawValue);
+            event.preventDefault()
+            const parsed = this.props.parseValue(this.state.rawValue)
             if (parsed !== undefined) {
-                this.props.onChange(parsed);
-                this.setState({ pending: false });
+                this.props.onChange(parsed)
+                this.setState({ pending: false })
             }
         }
     }
 
     private getStyle(valid: boolean): CSSProperties | undefined {
-        let style = this.props.style;
-        const pending = this.state.pending;
+        let style = this.props.style
+        const pending = this.state.pending
         if (!valid) {
-            style = { ...style, ...ERROR_BACKGROUND_STYLE };
+            style = { ...style, ...ERROR_BACKGROUND_STYLE }
         }
         if (pending) {
-            style = { ...style, ...PENDING_BACKGROUND_STYLE };
+            style = { ...style, ...PENDING_BACKGROUND_STYLE }
         }
-        return style;
+        return style
     }
 
     render() {
-        const props = this.props;
-        const parsedValue = props.parseValue(this.state.rawValue);
-        const valid = parsedValue !== undefined;
+        const props = this.props
+        const parsedValue = props.parseValue(this.state.rawValue)
+        const valid = parsedValue !== undefined
         return (
             <input
                 spellCheck="false"
@@ -770,84 +770,84 @@ export class ParsedInput<TYPE> extends React.Component<
                 onChange={(e) => this.updateValue(e.target.value, false)}
                 onKeyDown={(e) => this.handleSubmit(e)}
             />
-        );
+        )
     }
 }
 
 type OptionalParsedInputProps<TYPE> = {
-    style?: CSSProperties;
-    className?: string;
-    value: TYPE | null;
-    tooltip: string;
-    onChange: (value: TYPE | null) => void;
-    asString: (value: TYPE | null) => string | undefined;
-    parseValue: (rawValue: string | undefined) => TYPE | null | undefined;
-    immediate: boolean;
-    withControls?: boolean;
-    min?: number;
-    max?: number;
-    placeholder?: string;
-};
+    style?: CSSProperties
+    className?: string
+    value: TYPE | null
+    tooltip: string
+    onChange: (value: TYPE | null) => void
+    asString: (value: TYPE | null) => string | undefined
+    parseValue: (rawValue: string | undefined) => TYPE | null | undefined
+    immediate: boolean
+    withControls?: boolean
+    min?: number
+    max?: number
+    placeholder?: string
+}
 
 export class OptionalParsedInput<TYPE> extends React.Component<
     OptionalParsedInputProps<TYPE>,
     { rawValue: string | undefined; pending: boolean }
 > {
     constructor(props: OptionalParsedInputProps<TYPE>) {
-        super(props);
-        this.updateValue = this.updateValue.bind(this);
-        this.state = { rawValue: props.asString(props.value), pending: false };
+        super(props)
+        this.updateValue = this.updateValue.bind(this)
+        this.state = { rawValue: props.asString(props.value), pending: false }
     }
 
     componentDidUpdate(prevProps: OptionalParsedInputProps<TYPE>) {
         if (prevProps.value !== this.props.value)
-            this.setState({ rawValue: this.props.asString(this.props.value) });
+            this.setState({ rawValue: this.props.asString(this.props.value) })
     }
 
     private updateValue(rawValue: string, perform_callback: boolean) {
-        this.setState({ rawValue: rawValue, pending: true });
-        const parsed = rawValue === "" ? null : this.props.parseValue(rawValue);
+        this.setState({ rawValue: rawValue, pending: true })
+        const parsed = rawValue === "" ? null : this.props.parseValue(rawValue)
         if (
             parsed !== undefined &&
             (perform_callback || this.props.immediate)
         ) {
-            this.props.onChange(parsed);
-            this.setState({ pending: false });
+            this.props.onChange(parsed)
+            this.setState({ pending: false })
         }
     }
 
     handleSubmit(event: any) {
         if (!this.props.immediate && event.key === "Enter") {
-            event.preventDefault();
-            const parsed = this.props.parseValue(this.state.rawValue);
+            event.preventDefault()
+            const parsed = this.props.parseValue(this.state.rawValue)
             if (parsed !== undefined) {
-                this.props.onChange(parsed);
-                this.setState({ pending: false });
+                this.props.onChange(parsed)
+                this.setState({ pending: false })
             }
         }
     }
 
     private getStyle(valid: boolean): CSSProperties | undefined {
-        let style = this.props.style;
-        const pending = this.state.pending;
+        let style = this.props.style
+        const pending = this.state.pending
         if (!valid) {
-            style = { ...style, ...ERROR_BACKGROUND_STYLE };
+            style = { ...style, ...ERROR_BACKGROUND_STYLE }
         }
         if (pending) {
-            style = { ...style, ...PENDING_BACKGROUND_STYLE };
+            style = { ...style, ...PENDING_BACKGROUND_STYLE }
         }
-        return style;
+        return style
     }
 
     render() {
-        const props = this.props;
+        const props = this.props
         const placeholder = this.props.placeholder
             ? this.props.placeholder
-            : "default";
-        let valid = true;
+            : "default"
+        let valid = true
         if (this.state.rawValue) {
-            const parsedValue = props.parseValue(this.state.rawValue);
-            valid = parsedValue !== undefined;
+            const parsedValue = props.parseValue(this.state.rawValue)
+            valid = parsedValue !== undefined
         }
         return (
             <input
@@ -865,17 +865,17 @@ export class OptionalParsedInput<TYPE> extends React.Component<
                 onChange={(e) => this.updateValue(e.target.value, false)}
                 onKeyDown={(e) => this.handleSubmit(e)}
             />
-        );
+        )
     }
 }
 
 export const ERROR_BACKGROUND_STYLE: CSSProperties = Object.freeze({
     backgroundColor: "var(--error-field-background-color)",
-});
+})
 
 export const PENDING_BACKGROUND_STYLE: CSSProperties = Object.freeze({
     fontStyle: "italic",
-});
+})
 
 export function ErrorMessage(props: { message?: string }) {
     return props.message ? (
@@ -884,12 +884,12 @@ export function ErrorMessage(props: { message?: string }) {
         >
             {props.message}
         </div>
-    ) : null;
+    ) : null
 }
 
 export interface ErrorBoundaryProps {
-    errorMessage?: string;
-    children: ReactNode;
+    errorMessage?: string
+    children: ReactNode
 }
 
 export class ErrorBoundary extends React.Component<
@@ -897,35 +897,35 @@ export class ErrorBoundary extends React.Component<
     { errorOccurred: boolean }
 > {
     constructor(props: ErrorBoundaryProps) {
-        super(props);
-        this.state = { errorOccurred: false };
+        super(props)
+        this.state = { errorOccurred: false }
     }
 
     componentDidCatch(error: Error, info: ErrorInfo) {
-        this.setState({ errorOccurred: true });
+        this.setState({ errorOccurred: true })
     }
 
     render() {
         const errorMessage =
-            "An error occured.\n\n" + (this.props.errorMessage || "");
-        const { errorOccurred } = this.state;
+            "An error occured.\n\n" + (this.props.errorMessage || "")
+        const { errorOccurred } = this.state
         return errorOccurred ? (
             <ErrorMessage message={errorMessage} />
         ) : (
             this.props.children
-        );
+        )
     }
 }
 
 export function BoolOption(props: {
-    value: boolean;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    small?: boolean;
-    onChange: (value: boolean) => void;
+    value: boolean
+    error?: string
+    desc: string
+    tooltip: string
+    small?: boolean
+    onChange: (value: boolean) => void
 }) {
-    const small = props.small;
+    const small = props.small
     return (
         <>
             <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
@@ -953,18 +953,18 @@ export function BoolOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function OptionalBoolOption(props: {
-    value: boolean | null;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    small?: boolean;
-    onChange: (value: boolean | null) => void;
+    value: boolean | null
+    error?: string
+    desc: string
+    tooltip: string
+    small?: boolean
+    onChange: (value: boolean | null) => void
 }) {
-    const small = props.small;
+    const small = props.small
     return (
         <>
             <OptionLine desc={props.desc} tooltip={props.tooltip} small={small}>
@@ -978,20 +978,20 @@ export function OptionalBoolOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function EnumOption<OPTION extends string>(props: {
-    value: OPTION | null;
-    options: OPTION[] | { value: string | null; label: string }[];
-    error?: string;
-    desc: string;
-    tooltip: string;
-    className?: string;
-    onChange: (value: OPTION) => void;
+    value: OPTION | null
+    options: OPTION[] | { value: string | null; label: string }[]
+    error?: string
+    desc: string
+    tooltip: string
+    className?: string
+    onChange: (value: OPTION) => void
 }) {
     const className =
-        "setting-input" + (props.className ? " " + props.className : "");
+        "setting-input" + (props.className ? " " + props.className : "")
     return (
         <>
             <OptionLine desc={props.desc} tooltip={props.tooltip}>
@@ -1003,61 +1003,61 @@ export function EnumOption<OPTION extends string>(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function add_default_option_inplace<OPTION extends string>(
     options: OPTION[],
     defaultValue: string,
 ): void {
-    options.unshift(defaultValue as OPTION);
+    options.unshift(defaultValue as OPTION)
 }
 
 export function null_to_default<OPTION extends string>(
     value: OPTION | null,
     defaultValue: string,
 ): OPTION {
-    if (value === null) return defaultValue as OPTION;
-    return value;
+    if (value === null) return defaultValue as OPTION
+    return value
 }
 
 export function default_to_null<OPTION extends string>(
     value: OPTION,
     defaultValue: string,
 ): OPTION | null {
-    if (value === defaultValue) return null;
-    return value;
+    if (value === defaultValue) return null
+    return value
 }
 
 // <select> does not want null as value, map to/from a placeholder string
 function null_to_string(value: string | null): string {
-    if (value === null) return "null";
-    return value;
+    if (value === null) return "null"
+    return value
 }
 
 function string_to_null(value: string): string | null {
-    if (value === "null") return null;
-    return value;
+    if (value === "null") return null
+    return value
 }
 
 export function EnumInput<OPTION extends string>(props: {
-    value: OPTION | null;
-    options: OPTION[] | { value: string | null; label: string }[];
-    desc: string;
-    tooltip: string;
-    style?: CSSProperties;
-    className?: string;
-    onChange: (value: OPTION) => void;
+    value: OPTION | null
+    options: OPTION[] | { value: string | null; label: string }[]
+    desc: string
+    tooltip: string
+    style?: CSSProperties
+    className?: string
+    onChange: (value: OPTION) => void
 }) {
-    const { options, value } = props;
+    const { options, value } = props
 
     // convert array of strings to array of objects with value and label
     const optionsArray = options.map((option) => {
         if (typeof option === "string") {
-            return { value: option, label: option };
+            return { value: option, label: option }
         }
-        return option;
-    });
+        return option
+    })
     //const optionsMap = toMap(optionsArray)
     return (
         <select
@@ -1084,39 +1084,39 @@ export function EnumInput<OPTION extends string>(props: {
                 ></option>
             ))}
         </select>
-    );
+    )
 }
 
 function optional_bool_to_string(value: boolean | null): string {
     switch (value) {
         case null:
-            return "null";
+            return "null"
         case true:
-            return "true";
+            return "true"
         case false:
-            return "false";
+            return "false"
     }
 }
 
 function string_to_optional_bool(valuestr: string): boolean | null {
     switch (valuestr) {
         case "null":
-            return null;
+            return null
         case "true":
-            return true;
+            return true
         case "false":
-            return false;
+            return false
     }
-    return null;
+    return null
 }
 
 export function OptionalBoolInput(props: {
-    value: boolean | null;
-    desc: string;
-    tooltip: string;
-    style?: CSSProperties;
-    className?: string;
-    onChange: (value: boolean | null) => void;
+    value: boolean | null
+    desc: string
+    tooltip: string
+    style?: CSSProperties
+    className?: string
+    onChange: (value: boolean | null) => void
 }) {
     return (
         <select
@@ -1139,15 +1139,15 @@ export function OptionalBoolInput(props: {
             <option key="yes" value="true" label="yes"></option>
             <option key="no" value="false" label="no"></option>
         </select>
-    );
+    )
 }
 
 export function TextOption(props: {
-    value: string;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: string) => void;
+    value: string
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: string) => void
 }) {
     return (
         <>
@@ -1162,16 +1162,16 @@ export function TextOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function OptionalTextOption(props: {
-    value: string | null;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (value: string | null) => void;
-    placeholder?: string;
+    value: string | null
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (value: string | null) => void
+    placeholder?: string
 }) {
     return (
         <>
@@ -1191,16 +1191,16 @@ export function OptionalTextOption(props: {
             </OptionLine>
             <ErrorMessage message={props.error} />
         </>
-    );
+    )
 }
 
 export function OptionalTextInput(props: {
-    value: string | null;
-    tooltip: string;
-    className?: string;
-    style?: CSSProperties;
-    onChange: (value: string | null) => void;
-    placeholder?: string;
+    value: string | null
+    tooltip: string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string | null) => void
+    placeholder?: string
 }) {
     return (
         <input
@@ -1218,16 +1218,16 @@ export function OptionalTextInput(props: {
                     : props.onChange(e.target.value)
             }
         />
-    );
+    )
 }
 
 export function TextInput(props: {
-    value: string;
-    tooltip: string;
-    className?: string;
-    style?: CSSProperties;
-    onChange: (value: string) => void;
-    placeholder?: string;
+    value: string
+    tooltip: string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string) => void
+    placeholder?: string
 }) {
     return (
         <input
@@ -1241,17 +1241,17 @@ export function TextInput(props: {
             style={props.style}
             onChange={(e) => props.onChange(e.target.value)}
         />
-    );
+    )
 }
 
 export function MultilineTextInput(props: {
-    value: string;
-    tooltip: string;
-    className?: string;
-    style?: CSSProperties;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    rows: number;
+    value: string
+    tooltip: string
+    className?: string
+    style?: CSSProperties
+    onChange: (value: string) => void
+    placeholder?: string
+    rows: number
 }) {
     return (
         <textarea
@@ -1264,10 +1264,10 @@ export function MultilineTextInput(props: {
             style={props.style}
             onChange={(e) => props.onChange(e.target.value)}
         ></textarea>
-    );
+    )
 }
 interface Action {
-    (): void;
+    (): void
 }
 
 /**
@@ -1275,98 +1275,98 @@ interface Action {
  * if no other action is received during that time.
  */
 export function delayedExecutor(delay: number): (action: Action) => void {
-    let timerId: undefined | number;
+    let timerId: undefined | number
     return function (action: Action) {
-        if (timerId) window.clearInterval(timerId);
+        if (timerId) window.clearInterval(timerId)
         timerId = window.setTimeout(() => {
-            timerId = undefined;
-            action();
-        }, delay);
-    };
+            timerId = undefined
+            action()
+        }, delay)
+    }
 }
 
 export const fileNameSort = (rowA: FileInfo, rowB: FileInfo) => {
-    const a = rowA.name.toLowerCase();
-    const b = rowB.name.toLowerCase();
+    const a = rowA.name.toLowerCase()
+    const b = rowB.name.toLowerCase()
     if (a > b) {
-        return 1;
+        return 1
     }
     if (b > a) {
-        return -1;
+        return -1
     }
-    return 0;
-};
+    return 0
+}
 
 export const fileTitleSort = (rowA: FileInfo, rowB: FileInfo) => {
-    const a = rowA.title ? rowA.title.toLowerCase() : "";
-    const b = rowB.title ? rowB.title.toLowerCase() : "";
+    const a = rowA.title ? rowA.title.toLowerCase() : ""
+    const b = rowB.title ? rowB.title.toLowerCase() : ""
     if (!a && b) {
-        return 1;
+        return 1
     }
     if (a && !b) {
-        return -1;
+        return -1
     }
     if (a > b) {
-        return 1;
+        return 1
     }
     if (b > a) {
-        return -1;
+        return -1
     }
-    return 0;
-};
+    return 0
+}
 
 const caseInsensitiveRowSort = (
     rowA: [string, string],
     rowB: [string, string],
 ) => {
-    const a = rowA[1].toLowerCase();
-    const b = rowB[1].toLowerCase();
+    const a = rowA[1].toLowerCase()
+    const b = rowB[1].toLowerCase()
     if (a > b) {
-        return 1;
+        return 1
     }
     if (b > a) {
-        return -1;
+        return -1
     }
-    return 0;
-};
+    return 0
+}
 
 export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
-    const a = rowA.lastModified;
-    const b = rowB.lastModified;
+    const a = rowA.lastModified
+    const b = rowB.lastModified
     if (a > b) {
-        return 1;
+        return 1
     }
     if (b > a) {
-        return -1;
+        return -1
     }
-    return 0;
-};
+    return 0
+}
 
 export const fileValidSort = (rowA: FileInfo, rowB: FileInfo) => {
-    const a = rowA.valid === true;
-    const b = rowB.valid === true;
+    const a = rowA.valid === true
+    const b = rowB.valid === true
     if (a && !b) {
-        return 1;
+        return 1
     }
     if (b && !a) {
-        return -1;
+        return -1
     }
-    return 0;
-};
+    return 0
+}
 
 export function FileSelectPopup(props: {
-    open: boolean;
-    header?: ReactNode;
-    files: FileInfo[];
-    onSelect: (value: string) => void;
-    onClose: () => void;
+    open: boolean
+    header?: ReactNode
+    files: FileInfo[]
+    onSelect: (value: string) => void
+    onClose: () => void
 }) {
-    const { open, files, onSelect, onClose } = props;
+    const { open, files, onSelect, onClose } = props
     const selectItem = (item: FileInfo) => {
-        onSelect(item.name);
-        onClose();
-    };
-    const [filterText, setFilterText] = React.useState("");
+        onSelect(item.name)
+        onClose()
+    }
+    const [filterText, setFilterText] = React.useState("")
     var columns: any = [
         {
             name: "Filename",
@@ -1387,10 +1387,10 @@ export function FileSelectPopup(props: {
             sortable: true,
             maxWidth: "100px",
         },
-    ];
+    ]
     const filteredFiles = files.filter((item) =>
         item.name.toLowerCase().includes(filterText.toLowerCase()),
-    );
+    )
     return (
         <Popup
             open={open}
@@ -1431,40 +1431,40 @@ export function FileSelectPopup(props: {
                 />
             </div>
         </Popup>
-    );
+    )
 }
 
 export function KeyValueSelectPopup(props: {
-    open: boolean;
-    header?: ReactNode;
-    showItemKey?: boolean;
-    items: [string, string][];
-    onSelect: (value: string) => void;
-    onClose: () => void;
+    open: boolean
+    header?: ReactNode
+    showItemKey?: boolean
+    items: [string, string][]
+    onSelect: (value: string) => void
+    onClose: () => void
 }) {
-    const { open, items, showItemKey, onSelect, onClose } = props;
-    const [filterText, setFilterText] = React.useState("");
+    const { open, items, showItemKey, onSelect, onClose } = props
+    const [filterText, setFilterText] = React.useState("")
     var columns: any = [
         {
             name: "Name",
             selector: (row: [String, String]) => {
                 if (row[0] === row[1] || showItemKey !== true) {
-                    return row[1];
+                    return row[1]
                 } else {
-                    return row[0] + ": " + row[1];
+                    return row[0] + ": " + row[1]
                 }
             },
             sortFunction: caseInsensitiveRowSort,
             sortable: true,
         },
-    ];
+    ]
     const selectItem = (item: [string, string]) => {
-        onSelect(item[0]);
-        onClose();
-    };
+        onSelect(item[0])
+        onClose()
+    }
     const filteredItems = items.filter((item) =>
         item[1].toLowerCase().includes(filterText.toLowerCase()),
-    );
+    )
     return (
         <Popup
             open={open}
@@ -1505,16 +1505,16 @@ export function KeyValueSelectPopup(props: {
                 />
             </div>
         </Popup>
-    );
+    )
 }
 
 export function ChannelSelection(props: {
-    channels: number[] | null;
-    maxChannelCount: number;
-    label: string | null;
-    setChannels: (channels: number[] | null) => void;
-    multiSelect?: boolean;
-    labels?: (string | null)[] | null;
+    channels: number[] | null
+    maxChannelCount: number
+    label: string | null
+    setChannels: (channels: number[] | null) => void
+    multiSelect?: boolean
+    labels?: (string | null)[] | null
 }) {
     const {
         channels,
@@ -1523,8 +1523,8 @@ export function ChannelSelection(props: {
         label,
         multiSelect,
         labels,
-    } = props;
-    let [expanded, setExpanded] = useState(false);
+    } = props
+    let [expanded, setExpanded] = useState(false)
 
     if (maxChannelCount > 0) {
         if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
@@ -1532,42 +1532,42 @@ export function ChannelSelection(props: {
                 props.channels.filter(
                     (ch: number) => ch < props.maxChannelCount,
                 ),
-            );
+            )
         }
     }
 
-    const rowSize = 8;
+    const rowSize = 8
 
-    var _channels = cloneDeep(channels);
+    var _channels = cloneDeep(channels)
     const toggleAllChannels = () => {
         if (_channels === null) {
-            _channels = [];
+            _channels = []
         } else {
-            _channels = null;
+            _channels = null
         }
-        setChannels(_channels);
-    };
+        setChannels(_channels)
+    }
     const toggleChannel = (idx: number) => {
         if (multiSelect) {
             if (_channels === null) {
-                _channels = [];
+                _channels = []
             }
             if (!_channels.includes(idx)) {
-                _channels.push(idx);
+                _channels.push(idx)
             } else {
-                _channels = _channels.filter((n: number) => n !== idx);
+                _channels = _channels.filter((n: number) => n !== idx)
             }
-            setChannels(_channels);
+            setChannels(_channels)
         } else {
-            _channels = [idx];
-            setChannels(_channels);
+            _channels = [idx]
+            setChannels(_channels)
         }
-    };
+    }
     const toggleExpanded = () => {
-        setExpanded(!expanded);
-    };
+        setExpanded(!expanded)
+    }
 
-    const rows = Math.ceil(maxChannelCount / rowSize);
+    const rows = Math.ceil(maxChannelCount / rowSize)
 
     const makeDropdown = () => {
         return (
@@ -1612,8 +1612,8 @@ export function ChannelSelection(props: {
                     ))}
                 </table>
             </div>
-        );
-    };
+        )
+    }
 
     if (rows === 1) {
         return (
@@ -1649,7 +1649,7 @@ export function ChannelSelection(props: {
                     />
                 ))}
             </div>
-        );
+        )
     } else {
         // TODO add some compact display?
         return (
@@ -1691,13 +1691,13 @@ export function ChannelSelection(props: {
                     {expanded && makeDropdown()}
                 </div>
             </div>
-        );
+        )
     }
 }
 
 function CompactChannelIndicator(props: {
-    channelCount: number;
-    channels: number[] | null;
+    channelCount: number
+    channels: number[] | null
 }) {
     return (
         <div className="channel-indicator-field">
@@ -1714,17 +1714,17 @@ function CompactChannelIndicator(props: {
                 ></div>
             ))}
         </div>
-    );
+    )
 }
 
 export function ChannelButton(props: {
-    channel: number | string;
-    tooltip?: string;
-    selected: boolean;
-    onClick: () => void;
-    erroneousChannel?: boolean;
+    channel: number | string
+    tooltip?: string
+    selected: boolean
+    onClick: () => void
+    erroneousChannel?: boolean
 }) {
-    const { channel, selected, onClick, erroneousChannel, tooltip } = props;
+    const { channel, selected, onClick, erroneousChannel, tooltip } = props
     return (
         <Button
             text={channel.toString()}
@@ -1740,5 +1740,5 @@ export function ChannelButton(props: {
                     : undefined,
             }}
         />
-    );
+    )
 }

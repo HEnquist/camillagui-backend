@@ -4,27 +4,27 @@ import {
     DropTargetMonitor,
     useDrag,
     useDrop,
-} from "react-dnd";
-import React, { ReactNode } from "react";
-import Icon from "@mdi/react";
-import { mdiDrag } from "@mdi/js";
-import isEqual from "lodash/isEqual";
-import { HTML5Backend } from "react-dnd-html5-backend";
+} from "react-dnd"
+import React, { ReactNode } from "react"
+import Icon from "@mdi/react"
+import { mdiDrag } from "@mdi/js"
+import isEqual from "lodash/isEqual"
+import { HTML5Backend } from "react-dnd-html5-backend"
 
 export function DndContainer(props: { children: ReactNode }) {
-    return <DndProvider backend={HTML5Backend}>{props.children}</DndProvider>;
+    return <DndProvider backend={HTML5Backend}>{props.children}</DndProvider>
 }
 
 export interface DndProps {
-    isDragging: boolean;
-    canDrop: boolean;
-    drag: DragElementWrapper<any>;
-    preview: DragElementWrapper<any>;
-    drop: DragElementWrapper<any>;
+    isDragging: boolean
+    canDrop: boolean
+    drag: DragElementWrapper<any>
+    preview: DragElementWrapper<any>
+    drop: DragElementWrapper<any>
 }
 
 interface anyNonPrimitiveObject {
-    [key: string]: any;
+    [key: string]: any
 }
 
 export function useDndSort<POSITION extends anyNonPrimitiveObject>(
@@ -37,7 +37,7 @@ export function useDndSort<POSITION extends anyNonPrimitiveObject>(
         item: itemPosition,
         options: { dropEffect: "move" },
         collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    }));
+    }))
     const [{ canDrop }, drop] = useDrop(() => ({
         accept: itemType,
         collect: (monitor: DropTargetMonitor<any>) => ({
@@ -45,12 +45,12 @@ export function useDndSort<POSITION extends anyNonPrimitiveObject>(
                 monitor.isOver() && !isEqual(monitor.getItem(), itemPosition),
         }),
         drop: (item: POSITION) => moveItemFrom(item, itemPosition),
-    }));
-    return { isDragging, canDrop, drag, preview, drop };
+    }))
+    return { isDragging, canDrop, drag, preview, drop }
 }
 
 export function DndSortable(props: DndProps & { children: ReactNode }) {
-    const { isDragging, canDrop, preview, drop, children } = props;
+    const { isDragging, canDrop, preview, drop, children } = props
     return (
         <div
             ref={preview}
@@ -65,12 +65,12 @@ export function DndSortable(props: DndProps & { children: ReactNode }) {
                 {children}
             </div>
         </div>
-    );
+    )
 }
 
 export function DragHandle(props: {
-    drag: DragElementWrapper<any>;
-    tooltip: string;
+    drag: DragElementWrapper<any>
+    tooltip: string
 }) {
     return (
         <span
@@ -85,5 +85,5 @@ export function DragHandle(props: {
                 data-tooltip-id="main-tooltip"
             />
         </span>
-    );
+    )
 }

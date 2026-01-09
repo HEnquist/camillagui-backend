@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo, useRef } from "react";
-import { Scatter } from "react-chartjs-2";
-import { mdiHome, mdiImage, mdiTable } from "@mdi/js";
-import { Tooltip as ReactTooltip } from "react-tooltip";
-import { CloseButton, cssStyles, MdiButton } from "./ui-components";
-import Popup from "reactjs-popup";
+import React, { useCallback, useMemo, useRef } from "react"
+import { Scatter } from "react-chartjs-2"
+import { mdiHome, mdiImage, mdiTable } from "@mdi/js"
+import { Tooltip as ReactTooltip } from "react-tooltip"
+import { CloseButton, cssStyles, MdiButton } from "./ui-components"
+import Popup from "reactjs-popup"
 import {
     Chart as ChartJS,
     Legend,
@@ -12,8 +12,8 @@ import {
     LogarithmicScale,
     PointElement,
     Tooltip,
-} from "chart.js";
-import zoomPlugin from "chartjs-plugin-zoom";
+} from "chart.js"
+import zoomPlugin from "chartjs-plugin-zoom"
 
 ChartJS.register(
     LinearScale,
@@ -23,13 +23,13 @@ ChartJS.register(
     Tooltip,
     Legend,
     zoomPlugin,
-);
+)
 
 export function ChartPopup(props: {
-    open: boolean;
-    data: ChartData;
-    onChange: (item: string) => void;
-    onClose: () => void;
+    open: boolean
+    data: ChartData
+    onChange: (item: string) => void
+    onClose: () => void
 }) {
     return (
         <Popup open={props.open} onClose={props.onClose}>
@@ -37,53 +37,53 @@ export function ChartPopup(props: {
             <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
             <Chart onChange={props.onChange} data={props.data} />
         </Popup>
-    );
+    )
 }
 
 export interface ChartData {
-    name: string;
-    samplerate?: number;
-    channels?: number;
-    options: FilterOption[];
-    f: number[];
-    magnitude?: number[];
-    phase?: number[];
-    impulse?: number[];
-    time: number[];
-    groupdelay?: number[];
-    f_groupdelay?: number[];
+    name: string
+    samplerate?: number
+    channels?: number
+    options: FilterOption[]
+    f: number[]
+    magnitude?: number[]
+    phase?: number[]
+    impulse?: number[]
+    time: number[]
+    groupdelay?: number[]
+    f_groupdelay?: number[]
 }
 
 export interface FilterOption {
-    name: string;
-    channels?: number;
-    samplerate?: number;
+    name: string
+    channels?: number
+    samplerate?: number
 }
 
 export function Chart(props: {
-    data: ChartData;
-    onChange: (item: string) => void;
+    data: ChartData
+    onChange: (item: string) => void
 }) {
-    const chartRef = useRef(null);
+    const chartRef = useRef(null)
     const downloadPlot = useCallback(() => {
-        const link = document.createElement("a");
-        link.download = props.data.name.replace(/\s/g, "_") + ".png";
+        const link = document.createElement("a")
+        link.download = props.data.name.replace(/\s/g, "_") + ".png"
 
         if (chartRef.current !== null) {
-            let current = chartRef.current as any;
-            link.href = current.toBase64Image();
-            link.click();
+            let current = chartRef.current as any
+            link.href = current.toBase64Image()
+            link.click()
         }
-    }, [props.data.name]);
+    }, [props.data.name])
 
     const resetView = useCallback(() => {
         if (chartRef.current !== null) {
-            let current = chartRef.current as any;
-            current.resetZoom();
+            let current = chartRef.current as any
+            current.resetZoom()
         }
-    }, []);
+    }, [])
 
-    let data: any = { labels: [props.data.name], datasets: [] };
+    let data: any = { labels: [props.data.name], datasets: [] }
 
     function make_pointlist(
         xvect: number[],
@@ -94,46 +94,46 @@ export function Chart(props: {
         return xvect.map((x, idx) => ({
             x: scaling_x * x,
             y: scaling_y * yvect[idx],
-        }));
+        }))
     }
 
     const downloadData = useCallback(() => {
-        let magdat = props.data.magnitude;
-        let phasedat = props.data.phase;
-        let delaydat = props.data.groupdelay;
+        let magdat = props.data.magnitude
+        let phasedat = props.data.phase
+        let delaydat = props.data.groupdelay
 
         const table = props.data.f.map((f, i) => {
-            let mag: number | null = null;
-            if (magdat !== undefined) mag = magdat[i];
-            let phase: number | null = null;
-            if (phasedat !== undefined) phase = phasedat[i];
-            let delay: number | null = null;
-            if (delaydat !== undefined) delay = delaydat[i];
-            return [f, mag, phase, delay];
-        });
+            let mag: number | null = null
+            if (magdat !== undefined) mag = magdat[i]
+            let phase: number | null = null
+            if (phasedat !== undefined) phase = phasedat[i]
+            let delay: number | null = null
+            if (delaydat !== undefined) delay = delaydat[i]
+            return [f, mag, phase, delay]
+        })
         let csvContent =
             "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
-            table.map((row) => row.join(",")).join("\n");
-        const link = document.createElement("a");
-        link.download = props.data.name.replace(/\s/g, "_") + ".csv";
-        link.href = encodeURI(csvContent);
-        link.click();
+            table.map((row) => row.join(",")).join("\n")
+        const link = document.createElement("a")
+        link.download = props.data.name.replace(/\s/g, "_") + ".csv"
+        link.href = encodeURI(csvContent)
+        link.click()
     }, [
         props.data.f,
         props.data.magnitude,
         props.data.name,
         props.data.phase,
         props.data.groupdelay,
-    ]);
+    ])
 
-    const styles = cssStyles();
-    const gainColor = styles.getPropertyValue("--gain-color");
-    const phaseColor = styles.getPropertyValue("--phase-color");
-    const impulseColor = styles.getPropertyValue("--impulse-color");
-    const groupdelayColor = styles.getPropertyValue("--groupdelay-color");
-    const magnitude = props.data.magnitude;
+    const styles = cssStyles()
+    const gainColor = styles.getPropertyValue("--gain-color")
+    const phaseColor = styles.getPropertyValue("--phase-color")
+    const impulseColor = styles.getPropertyValue("--impulse-color")
+    const groupdelayColor = styles.getPropertyValue("--groupdelay-color")
+    const magnitude = props.data.magnitude
     if (magnitude) {
-        const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0);
+        const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
         data.datasets.push({
             label: "Gain",
             fill: false,
@@ -145,11 +145,11 @@ export function Chart(props: {
             data: gainpoints,
             yAxisID: "gain",
             xAxisID: "freq",
-        });
+        })
     }
-    const phase = props.data.phase;
+    const phase = props.data.phase
     if (phase) {
-        const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0);
+        const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
         data.datasets.push({
             label: "Phase",
             fill: false,
@@ -160,16 +160,16 @@ export function Chart(props: {
             data: phasepoints,
             yAxisID: "phase",
             xAxisID: "freq",
-        });
+        })
     }
-    const impulse = props.data.impulse;
+    const impulse = props.data.impulse
     if (impulse) {
         const impulsepoints = make_pointlist(
             props.data.time,
             impulse,
             1000.0,
             1.0,
-        );
+        )
         data.datasets.push({
             label: "Impulse",
             fill: false,
@@ -180,17 +180,17 @@ export function Chart(props: {
             data: impulsepoints,
             yAxisID: "ampl",
             xAxisID: "time",
-        });
+        })
     }
-    const groupdelay = props.data.groupdelay;
-    const f_groupdelay = props.data.f_groupdelay;
+    const groupdelay = props.data.groupdelay
+    const f_groupdelay = props.data.f_groupdelay
     if (groupdelay && f_groupdelay) {
         const groupdelaypoints = make_pointlist(
             f_groupdelay,
             groupdelay,
             1.0,
             1.0,
-        );
+        )
         data.datasets.push({
             label: "Group delay",
             fill: false,
@@ -201,18 +201,18 @@ export function Chart(props: {
             data: groupdelaypoints,
             yAxisID: "delay",
             xAxisID: "freq",
-        });
+        })
     }
 
     // Workaround to prevent the chart from resetting the zoom on every update.
     const options = useMemo(() => {
-        const styles = cssStyles();
-        const axesColor = styles.getPropertyValue("--axes-color");
-        const textColor = styles.getPropertyValue("--text-color");
-        const gainColor = styles.getPropertyValue("--gain-color");
-        const phaseColor = styles.getPropertyValue("--phase-color");
-        const impulseColor = styles.getPropertyValue("--impulse-color");
-        const groupdelayColor = styles.getPropertyValue("--groupdelay-color");
+        const styles = cssStyles()
+        const axesColor = styles.getPropertyValue("--axes-color")
+        const textColor = styles.getPropertyValue("--text-color")
+        const gainColor = styles.getPropertyValue("--gain-color")
+        const phaseColor = styles.getPropertyValue("--phase-color")
+        const impulseColor = styles.getPropertyValue("--impulse-color")
+        const groupdelayColor = styles.getPropertyValue("--groupdelay-color")
 
         const zoomOptions = {
             zoom: {
@@ -234,7 +234,7 @@ export function Chart(props: {
                 threshold: 3,
                 overScaleMode: "xy",
             },
-        };
+        }
 
         const scales = {
             freq: {
@@ -259,43 +259,43 @@ export function Chart(props: {
                     color: textColor,
                     callback(tickValue: number, index: number, values: any) {
                         if (tickValue === 0) {
-                            return "0";
+                            return "0"
                         }
-                        let value = -1;
+                        let value = -1
                         const range =
-                            values[values.length - 1].value / values[0].value;
+                            values[values.length - 1].value / values[0].value
                         const rounded = Math.pow(
                             10,
                             Math.floor(Math.log10(tickValue)),
-                        );
-                        const first_digit = tickValue / rounded;
-                        const rest = tickValue % rounded;
+                        )
+                        const first_digit = tickValue / rounded
+                        const rest = tickValue % rounded
                         if (range > 10) {
                             if (
                                 first_digit === 1 ||
                                 first_digit === 2 ||
                                 first_digit === 5
                             ) {
-                                value = tickValue;
+                                value = tickValue
                             }
                         } else if (rest === 0) {
-                            value = tickValue;
+                            value = tickValue
                         }
                         if (value >= 1000000) {
-                            return (value / 1000000).toString() + "M";
+                            return (value / 1000000).toString() + "M"
                         } else if (value >= 1000) {
-                            return (value / 1000).toString() + "k";
+                            return (value / 1000).toString() + "k"
                         } else if (value > 0) {
-                            return value.toString();
+                            return value.toString()
                         }
-                        return "";
+                        return ""
                     },
                 },
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.xAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
             },
             time: {
@@ -313,8 +313,8 @@ export function Chart(props: {
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.xAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
             },
             gain: {
@@ -336,32 +336,32 @@ export function Chart(props: {
                 suggestedMin: -1,
                 suggestedMax: 1,
                 afterBuildTicks: function (scale: any) {
-                    let step = 1;
-                    let range = scale.max - scale.min;
+                    let step = 1
+                    let range = scale.max - scale.min
                     if (range > 150) {
-                        step = 50;
+                        step = 50
                     } else if (range > 60) {
-                        step = 20;
+                        step = 20
                     } else if (range > 30) {
-                        step = 10;
+                        step = 10
                     } else if (range > 20) {
-                        step = 5;
+                        step = 5
                     } else if (range > 10) {
-                        step = 2;
+                        step = 2
                     }
-                    let tick = Math.ceil(scale.min / step) * step;
-                    const ticks = [];
+                    let tick = Math.ceil(scale.min / step) * step
+                    const ticks = []
                     while (tick <= scale.max) {
-                        ticks.push({ value: tick });
-                        tick += step;
+                        ticks.push({ value: tick })
+                        tick += step
                     }
-                    scale.ticks = ticks;
+                    scale.ticks = ticks
                 },
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.yAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
             },
             phase: {
@@ -370,28 +370,28 @@ export function Chart(props: {
                 min: -180,
                 max: 180,
                 afterBuildTicks: function (scale: any) {
-                    let step = 1;
-                    let range = scale.max - scale.min;
+                    let step = 1
+                    let range = scale.max - scale.min
                     if (range > 180) {
-                        step = 45;
+                        step = 45
                     } else if (range > 45) {
-                        step = 15;
+                        step = 15
                     } else if (range > 15) {
-                        step = 5;
+                        step = 5
                     }
-                    let tick = Math.ceil(scale.min / step) * step;
-                    const ticks = [];
+                    let tick = Math.ceil(scale.min / step) * step
+                    const ticks = []
                     while (tick <= scale.max) {
-                        ticks.push({ value: tick });
-                        tick += step;
+                        ticks.push({ value: tick })
+                        tick += step
                     }
-                    scale.ticks = ticks;
+                    scale.ticks = ticks
                 },
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.yAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
                 ticks: {
                     color: phaseColor,
@@ -423,8 +423,8 @@ export function Chart(props: {
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.yAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
             },
             delay: {
@@ -449,11 +449,11 @@ export function Chart(props: {
                 beforeUpdate: function (scale: any) {
                     scale.options.display = scale.chart._metasets.some(
                         (e: any) => e.yAxisID === scale.id && !e.hidden,
-                    );
-                    return;
+                    )
+                    return
                 },
             },
-        };
+        }
         const options: { [key: string]: any } = {
             scales: scales,
             plugins: {
@@ -467,9 +467,9 @@ export function Chart(props: {
             animation: {
                 duration: 500,
             },
-        };
-        return options;
-    }, []);
+        }
+        return options
+    }, [])
 
     function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
         if (
@@ -477,26 +477,26 @@ export function Chart(props: {
             a.samplerate !== undefined &&
             b.samplerate !== undefined
         )
-            return a.samplerate - b.samplerate;
+            return a.samplerate - b.samplerate
         if (
             a.channels !== b.channels &&
             a.channels !== undefined &&
             b.channels !== undefined
         )
-            return a.channels - b.channels;
-        return 0;
+            return a.channels - b.channels
+        return 0
     }
 
     const sampleRateOptions = props.data.options
         .sort(sortBySamplerateAndChannels)
-        .map((option) => <option key={option.name}>{option.name}</option>);
+        .map((option) => <option key={option.name}>{option.name}</option>)
     const selected = props.data.options.find(
         (option) =>
             (option.samplerate === undefined ||
                 option.samplerate === props.data.samplerate) &&
             (option.channels === undefined ||
                 option.channels === props.data.channels),
-    )?.name;
+    )?.name
     return (
         <>
             <div style={{ textAlign: "center" }}>
@@ -529,5 +529,5 @@ export function Chart(props: {
             />
             <ReactTooltip />
         </>
-    );
+    )
 }

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import "./index.css";
+import React, { useEffect, useState } from "react"
+import "./index.css"
 import {
     AsyncPolyDegreeOptions,
     AsyncSincInterpolationOptions,
@@ -17,8 +17,8 @@ import {
     ResamplerType,
     ResamplerTypeOptions,
     getFormatOptions,
-} from "./camilladsp/config";
-import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig";
+} from "./camilladsp/config"
+import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig"
 import {
     add_default_option_inplace,
     Box,
@@ -41,37 +41,37 @@ import {
     OptionalTextOption,
     TextInput,
     TextOption,
-} from "./utilities/ui-components";
-import { mdiMagnify } from "@mdi/js";
-import { Range } from "immutable";
+} from "./utilities/ui-components"
+import { mdiMagnify } from "@mdi/js"
+import { Range } from "immutable"
 
-import { Errors } from "./utilities/errors";
-import { Update } from "./utilities/common";
+import { Errors } from "./utilities/errors"
+import { Update } from "./utilities/common"
 
 // TODO add volume_ramp_time
 // TODO redo resampler config
 
 export function DevicesTab(props: {
-    guiConfig: GuiConfig;
-    devices: Devices;
-    errors: Errors;
-    updateConfig: (update: Update<Config>) => void;
+    guiConfig: GuiConfig
+    devices: Devices
+    errors: Errors
+    updateConfig: (update: Update<Config>) => void
 }) {
     const updateDevices = (update: Update<Devices>) =>
-        props.updateConfig((config) => update(config.devices));
-    const { guiConfig, devices, errors } = props;
+        props.updateConfig((config) => update(config.devices))
+    const { guiConfig, devices, errors } = props
     const [availableBackends, setAvailableBackends] = useState([
         guiConfig.supported_playback_types,
         guiConfig.supported_capture_types,
-    ]);
+    ])
     useEffect(() => {
         fetch("/api/backends").then((response) => {
             if (response.ok)
                 return response
                     .json()
-                    .then((backends) => setAvailableBackends(backends));
-        });
-    }, []);
+                    .then((backends) => setAvailableBackends(backends))
+        })
+    }, [])
     return (
         <ErrorBoundary errorMessage={errors.asText()}>
             <div className="tabcontainer">
@@ -148,17 +148,17 @@ export function DevicesTab(props: {
                 <div className="tabspacer" />
             </div>
         </ErrorBoundary>
-    );
+    )
 }
 
 function Samplerate(props: {
-    hide_capture_samplerate: boolean;
-    devices: Devices;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    hide_capture_samplerate: boolean
+    devices: Devices
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
     if (props.hide_capture_samplerate && props.devices.resampler !== null)
-        return null;
+        return null
     return (
         <SamplerateOption
             samplerate={props.devices.samplerate}
@@ -167,32 +167,32 @@ function Samplerate(props: {
             tooltip="Sample rate for processing and output"
             onChange={(samplerate) =>
                 props.onChange((devices) => {
-                    devices.samplerate = samplerate;
+                    devices.samplerate = samplerate
                 })
             }
             extraPadding={true}
         />
-    );
+    )
 }
 
 function SamplerateOption(props: {
-    samplerate: number;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (samplerate: number) => void;
-    extraPadding?: boolean;
+    samplerate: number
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (samplerate: number) => void
+    extraPadding?: boolean
 }) {
     const defaultSampleRates = [
         44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000, 705600,
         768000,
-    ];
+    ]
     function isNonDefaultSamplerate(samplerate: number): boolean {
-        return !defaultSampleRates.includes(samplerate);
+        return !defaultSampleRates.includes(samplerate)
     }
-    const other = "Other";
-    const samplerate = props.samplerate;
-    const padding = props.extraPadding ? "0 12px" : "0";
+    const other = "Other"
+    const samplerate = props.samplerate
+    const padding = props.extraPadding ? "0 12px" : "0"
     return (
         <div
             className="setting"
@@ -218,9 +218,9 @@ function SamplerateOption(props: {
                 }}
                 className="setting-input"
                 onChange={(value) => {
-                    const parsed = parseInt(value);
-                    const newSamplerate = isNaN(parsed) ? 0 : parsed;
-                    props.onChange(newSamplerate);
+                    const parsed = parseInt(value)
+                    const newSamplerate = isNaN(parsed) ? 0 : parsed
+                    props.onChange(newSamplerate)
                 }}
             />
             {isNonDefaultSamplerate(samplerate) && (
@@ -234,35 +234,35 @@ function SamplerateOption(props: {
             )}
             <ErrorMessage message={props.error} />
         </div>
-    );
+    )
 }
 
 function OptionalSamplerateOption(props: {
-    samplerate: number | null;
-    error?: string;
-    desc: string;
-    tooltip: string;
-    onChange: (samplerate: number | null) => void;
-    extraPadding?: boolean;
+    samplerate: number | null
+    error?: string
+    desc: string
+    tooltip: string
+    onChange: (samplerate: number | null) => void
+    extraPadding?: boolean
 }) {
     const defaultSampleRates = [
         44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000, 705600,
         768000,
-    ];
+    ]
     function isNonDefaultSamplerate(samplerate: number | null): boolean {
-        return samplerate !== null && !defaultSampleRates.includes(samplerate);
+        return samplerate !== null && !defaultSampleRates.includes(samplerate)
     }
-    const other = "Other";
-    const samplerate = props.samplerate;
-    const padding = props.extraPadding ? "0 12px" : "0";
-    let value: null | string;
-    if (samplerate === null) value = null;
-    else if (isNonDefaultSamplerate(samplerate)) value = other;
-    else value = samplerate.toString();
+    const other = "Other"
+    const samplerate = props.samplerate
+    const padding = props.extraPadding ? "0 12px" : "0"
+    let value: null | string
+    if (samplerate === null) value = null
+    else if (isNonDefaultSamplerate(samplerate)) value = other
+    else value = samplerate.toString()
     const options = defaultSampleRates
         .map((samplerate) => samplerate.toString())
-        .concat([other]);
-    add_default_option_inplace(options, "default");
+        .concat([other])
+    add_default_option_inplace(options, "default")
     return (
         <div
             className="setting"
@@ -285,10 +285,10 @@ function OptionalSamplerateOption(props: {
                 onChange={(value: string) => {
                     const parsed = default_to_null(value, "default")
                         ? parseInt(value)
-                        : null;
+                        : null
                     const newSamplerate =
-                        parsed !== null && isNaN(parsed) ? 0 : parsed;
-                    props.onChange(newSamplerate);
+                        parsed !== null && isNaN(parsed) ? 0 : parsed
+                    props.onChange(newSamplerate)
                 }}
             />
             {isNonDefaultSamplerate(samplerate) && (
@@ -304,13 +304,13 @@ function OptionalSamplerateOption(props: {
             )}
             <ErrorMessage message={props.error} />
         </div>
-    );
+    )
 }
 
 function BufferOptions(props: {
-    devices: Devices;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    devices: Devices
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
     return (
         <Box title="Buffers">
@@ -335,16 +335,16 @@ function BufferOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function SilenceOptions(props: {
-    hide_silence: boolean;
-    devices: Devices;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    hide_silence: boolean
+    devices: Devices
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
-    if (props.hide_silence) return null;
+    if (props.hide_silence) return null
     return (
         <Box title="Silence">
             <OptionalFloatOption
@@ -371,17 +371,17 @@ function SilenceOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function RateAdjustOptions(props: {
-    devices: Devices;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    devices: Devices
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
     let playbackDeviceIsOneOf = (types: string[]) =>
-        types.includes(props.devices.playback.type);
-    if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"])) return null;
+        types.includes(props.devices.playback.type)
+    if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"])) return null
     return (
         <Box title="Rate adjust">
             <OptionalBoolOption
@@ -419,28 +419,28 @@ function RateAdjustOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function changeResamplerType(newType: ResamplerType | null): Resampler | null {
     if (newType === null) {
-        return null;
+        return null
     }
-    return defaultResampler(newType);
+    return defaultResampler(newType)
 }
 
 function changeResamplerProfile(profile: AsyncSincProfile): Resampler {
-    return defaultSincResampler(profile);
+    return defaultSincResampler(profile)
 }
 
 function ResamplingOptions(props: {
-    hide_capture_samplerate: boolean;
-    devices: Devices;
-    errors: Errors;
-    error?: string;
-    onChange: (update: Update<Devices>) => void;
+    hide_capture_samplerate: boolean
+    devices: Devices
+    errors: Errors
+    error?: string
+    onChange: (update: Update<Devices>) => void
 }) {
-    const { devices, errors } = props;
+    const { devices, errors } = props
     return (
         <Box title="Resampling">
             <EnumOption
@@ -594,17 +594,17 @@ function ResamplingOptions(props: {
                 />
             )}
         </Box>
-    );
+    )
 }
 
 function RateMonitoringOptions(props: {
-    hide_rate_monitoring: boolean;
-    devices: Devices;
-    errors: Errors;
-    error?: string;
-    onChange: (update: Update<Devices>) => void;
+    hide_rate_monitoring: boolean
+    devices: Devices
+    errors: Errors
+    error?: string
+    onChange: (update: Update<Devices>) => void
 }) {
-    if (props.hide_rate_monitoring) return null;
+    if (props.hide_rate_monitoring) return null
     return (
         <Box title="Capture rate monitoring">
             <OptionalFloatOption
@@ -633,17 +633,17 @@ function RateMonitoringOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function MultithreadingOptions(props: {
-    hide_multithreading: boolean;
-    devices: Devices;
-    errors: Errors;
-    error?: string;
-    onChange: (update: Update<Devices>) => void;
+    hide_multithreading: boolean
+    devices: Devices
+    errors: Errors
+    error?: string
+    onChange: (update: Update<Devices>) => void
 }) {
-    if (props.hide_multithreading) return null;
+    if (props.hide_multithreading) return null
     return (
         <Box title="Multithreaded processing">
             <OptionalBoolOption
@@ -669,14 +669,14 @@ function MultithreadingOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function VolumeOptions(props: {
-    devices: Devices;
-    errors: Errors;
-    error?: string;
-    onChange: (update: Update<Devices>) => void;
+    devices: Devices
+    errors: Errors
+    error?: string
+    onChange: (update: Update<Devices>) => void
 }) {
     return (
         <Box title="Volume control settings">
@@ -704,23 +704,23 @@ function VolumeOptions(props: {
                 }
             />
         </Box>
-    );
+    )
 }
 
 function CaptureOptions(props: {
-    hide_capture_device: boolean;
-    supported_capture_types?: CaptureType[];
-    capture: CaptureDevice;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    hide_capture_device: boolean
+    supported_capture_types?: CaptureType[]
+    capture: CaptureDevice
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
-    const [popupState, setPopupState] = useState(false);
-    const [availableDevices, setAvailableDevices] = useState([]);
-    let [expanded, setExpanded] = useState(false);
+    const [popupState, setPopupState] = useState(false)
+    const [availableDevices, setAvailableDevices] = useState([])
+    let [expanded, setExpanded] = useState(false)
     const [channels, setChannels] = useState(
         props.capture.type !== "WavFile" ? props.capture.channels : 2,
-    );
-    if (props.hide_capture_device) return null;
+    )
+    if (props.hide_capture_device) return null
     const defaults: { [type: string]: CaptureDevice } = {
         Alsa: {
             type: "Alsa",
@@ -798,51 +798,51 @@ function CaptureOptions(props: {
             channels: 2,
             labels: null,
         },
-    };
+    }
 
-    const { capture, onChange, errors, supported_capture_types } = props;
-    const defaultCaptureTypes = Object.keys(defaults) as CaptureType[];
+    const { capture, onChange, errors, supported_capture_types } = props
+    const defaultCaptureTypes = Object.keys(defaults) as CaptureType[]
     const captureTypes = supported_capture_types
         ? defaultCaptureTypes.filter((type) =>
               supported_capture_types.includes(type),
           )
-        : defaultCaptureTypes;
+        : defaultCaptureTypes
     if (!captureTypes.includes(props.capture.type)) {
         // The selected type isn't available, change to one that is
         props.onChange(
             (devices) => (devices.capture = defaults[captureTypes[0]]),
-        );
+        )
     }
 
     const toggleExpanded = () => {
-        setExpanded(!expanded);
-    };
+        setExpanded(!expanded)
+    }
 
     const updateChannelLabel = (channel: number, label: string | null) => {
-        let existing = capture.labels;
+        let existing = capture.labels
         if (existing === null) {
-            existing = [];
+            existing = []
         }
         while (existing.length <= channel) {
-            existing.push(null);
+            existing.push(null)
         }
-        existing[channel] = label;
-        onChange((devices) => (devices.capture.labels = existing));
-    };
+        existing[channel] = label
+        onChange((devices) => (devices.capture.labels = existing))
+    }
 
     const updateChannelLabels = (labels: (string | null)[] | null) => {
-        let channels = "channels" in props.capture ? props.capture.channels : 2;
+        let channels = "channels" in props.capture ? props.capture.channels : 2
         if (labels !== null && labels.length > channels) {
-            labels = labels.slice(0, channels);
+            labels = labels.slice(0, channels)
         }
-        onChange((devices) => (devices.capture.labels = labels));
-    };
+        onChange((devices) => (devices.capture.labels = labels))
+    }
 
     useEffect(() => {
         getCaptureDeviceChannelCount(props.capture).then((nbr) =>
             setChannels(nbr),
-        );
-    }, [capture]);
+        )
+    }, [capture])
 
     const makeDropdown = () => {
         return (
@@ -863,8 +863,8 @@ function CaptureOptions(props: {
                     />
                 ))}
             </div>
-        );
-    };
+        )
+    }
 
     return (
         <Box title="Capture device">
@@ -949,8 +949,8 @@ function CaptureOptions(props: {
                         onButtonClick={() => {
                             fetch("/api/capturedevices/" + capture.type)
                                 .then((devices) => devices.json())
-                                .then((names) => setAvailableDevices(names));
-                            setPopupState(true);
+                                .then((names) => setAvailableDevices(names))
+                            setPopupState(true)
                         }}
                     />
                     <OptionalTextOption
@@ -1015,8 +1015,8 @@ function CaptureOptions(props: {
                     onButtonClick={() => {
                         fetch("/api/capturedevices/" + capture.type)
                             .then((devices) => devices.json())
-                            .then((names) => setAvailableDevices(names));
-                        setPopupState(true);
+                            .then((names) => setAvailableDevices(names))
+                        setPopupState(true)
                     }}
                 />
             )}
@@ -1248,19 +1248,19 @@ function CaptureOptions(props: {
             />
             {expanded && makeDropdown()}
         </Box>
-    );
+    )
 }
 
 function PlaybackOptions(props: {
-    hide_playback_device: boolean;
-    supported_playback_types?: PlaybackType[];
-    playback: PlaybackDevice;
-    errors: Errors;
-    onChange: (update: Update<Devices>) => void;
+    hide_playback_device: boolean
+    supported_playback_types?: PlaybackType[]
+    playback: PlaybackDevice
+    errors: Errors
+    onChange: (update: Update<Devices>) => void
 }) {
-    const [popupState, setPopupState] = useState(false);
-    const [availableDevices, setAvailableDevices] = useState([]);
-    if (props.hide_playback_device) return null;
+    const [popupState, setPopupState] = useState(false)
+    const [availableDevices, setAvailableDevices] = useState([])
+    if (props.hide_playback_device) return null
     const defaults: { [type: string]: PlaybackDevice } = {
         Alsa: { type: "Alsa", channels: 2, format: "S32_LE", device: "hw:0" },
         CoreAudio: {
@@ -1296,19 +1296,19 @@ function PlaybackOptions(props: {
             filename: "/path/to/file",
             wav_header: false,
         },
-    };
-    const { onChange, playback, errors, supported_playback_types } = props;
-    const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[];
+    }
+    const { onChange, playback, errors, supported_playback_types } = props
+    const defaultPlaybackTypes = Object.keys(defaults) as PlaybackType[]
     const playbackDeviceTypes = supported_playback_types
         ? defaultPlaybackTypes.filter((type) =>
               supported_playback_types.includes(type),
           )
-        : defaultPlaybackTypes;
+        : defaultPlaybackTypes
     if (!playbackDeviceTypes.includes(props.playback.type)) {
         // The selected type isn't available, change to one that is
         props.onChange(
             (devices) => (devices.playback = defaults[playbackDeviceTypes[0]]),
-        );
+        )
     }
     return (
         <Box title="Playback device">
@@ -1389,8 +1389,8 @@ function PlaybackOptions(props: {
                     onButtonClick={() => {
                         fetch("/api/playbackdevices/" + playback.type)
                             .then((devices) => devices.json())
-                            .then((names) => setAvailableDevices(names));
-                        setPopupState(true);
+                            .then((names) => setAvailableDevices(names))
+                        setPopupState(true)
                     }}
                 />
             )}
@@ -1409,8 +1409,8 @@ function PlaybackOptions(props: {
                     onButtonClick={() => {
                         fetch("/api/playbackdevices/" + playback.type)
                             .then((devices) => devices.json())
-                            .then((names) => setAvailableDevices(names));
-                        setPopupState(true);
+                            .then((names) => setAvailableDevices(names))
+                        setPopupState(true)
                     }}
                 />
             )}
@@ -1552,15 +1552,15 @@ function PlaybackOptions(props: {
                 </>
             )}
         </Box>
-    );
+    )
 }
 
 function DeviceOption(props: {
-    value: string;
-    error?: string;
-    desc: string;
-    onChange: (device: string) => void;
-    onButtonClick: () => void;
+    value: string
+    error?: string
+    desc: string
+    onChange: (device: string) => void
+    onButtonClick: () => void
 }) {
     return (
         <div className="setting" data-tooltip-html="Name of device">
@@ -1584,15 +1584,15 @@ function DeviceOption(props: {
             />
             <ErrorMessage message={props.error} />
         </div>
-    );
+    )
 }
 
 function OptionalDeviceOption(props: {
-    value: string | null;
-    error?: string;
-    desc: string;
-    onChange: (device: string | null) => void;
-    onButtonClick: () => void;
+    value: string | null
+    error?: string
+    desc: string
+    onChange: (device: string | null) => void
+    onButtonClick: () => void
 }) {
     return (
         <div className="setting" data-tooltip-html="Name of device">
@@ -1616,5 +1616,5 @@ function OptionalDeviceOption(props: {
             />
             <ErrorMessage message={props.error} />
         </div>
-    );
+    )
 }

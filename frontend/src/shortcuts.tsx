@@ -1,24 +1,24 @@
-import * as React from "react";
-import { useEffect, useState } from "react";
-import { Box, Button, ErrorBoundary, MdiIcon } from "./utilities/ui-components";
-import { mdiHelpCircleOutline, mdiAlert } from "@mdi/js";
-import { loadConfigJson, loadFilenames } from "./utilities/files";
-import { Config } from "./camilladsp/config";
+import * as React from "react"
+import { useEffect, useState } from "react"
+import { Box, Button, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
+import { mdiHelpCircleOutline, mdiAlert } from "@mdi/js"
+import { loadConfigJson, loadFilenames } from "./utilities/files"
+import { Config } from "./camilladsp/config"
 import {
     numberValues,
     setNumberValues,
     Update,
     boolValues,
     setBoolValues,
-} from "./utilities/common";
-import { ShortcutSection } from "./guiconfig";
+} from "./utilities/common"
+import { ShortcutSection } from "./guiconfig"
 
 export function Shortcuts(props: {
-    currentConfigName?: string;
-    config: Config;
-    updateConfig: (update: Update<Config>) => void;
-    setConfig: (name: string, config: Config) => void;
-    shortcutSections: ShortcutSection[];
+    currentConfigName?: string
+    config: Config
+    updateConfig: (update: Update<Config>) => void
+    setConfig: (name: string, config: Config) => void
+    shortcutSections: ShortcutSection[]
 }) {
     const {
         currentConfigName,
@@ -26,7 +26,7 @@ export function Shortcuts(props: {
         setConfig,
         updateConfig,
         shortcutSections,
-    } = props;
+    } = props
     return (
         <ErrorBoundary>
             <div className="tabcontainer">
@@ -44,15 +44,15 @@ export function Shortcuts(props: {
                 <div className="tabspacer" />
             </div>
         </ErrorBoundary>
-    );
+    )
 }
 
 export function ShortcutSections(props: {
-    sections: ShortcutSection[];
-    config: Config;
-    updateConfig: (update: Update<Config>) => void;
+    sections: ShortcutSection[]
+    config: Config
+    updateConfig: (update: Update<Config>) => void
 }) {
-    const { sections, config, updateConfig } = props;
+    const { sections, config, updateConfig } = props
     return (
         <>
             {sections.map((section) => (
@@ -64,20 +64,20 @@ export function ShortcutSections(props: {
                 />
             ))}
         </>
-    );
+    )
 }
 
 function ShortcutSectionView(props: {
-    section: ShortcutSection;
-    config: Config;
-    updateConfig: (update: Update<Config>) => void;
+    section: ShortcutSection
+    config: Config
+    updateConfig: (update: Update<Config>) => void
 }) {
     const {
         config,
         updateConfig,
         section,
         section: { shortcuts },
-    } = props;
+    } = props
     return (
         <Box
             title={
@@ -90,17 +90,17 @@ function ShortcutSectionView(props: {
             {shortcuts.map((s) => {
                 // TODO warn when different parameters are out of sync?
                 // TODO reset button, where to get original values?
-                const desc = s.description ? s.description + "<br><br>" : "";
-                let shortcut_desc = desc + "Controlled config elements:<br>";
+                const desc = s.description ? s.description + "<br><br>" : ""
+                let shortcut_desc = desc + "Controlled config elements:<br>"
                 for (const elem of s.config_elements) {
-                    const path = elem.path.join("/");
-                    const reverse = elem.reverse ? "<i>reverse</i>" : "";
+                    const path = elem.path.join("/")
+                    const reverse = elem.reverse ? "<i>reverse</i>" : ""
 
                     shortcut_desc =
-                        shortcut_desc + path + " " + reverse + "<br>";
+                        shortcut_desc + path + " " + reverse + "<br>"
                 }
                 if (s.type && s.type === "boolean") {
-                    let values = boolValues(config, s);
+                    let values = boolValues(config, s)
                     return (
                         <div key={s.name}>
                             <div className="horizontally-spaced-content">
@@ -122,9 +122,9 @@ function ShortcutSectionView(props: {
                                 />
                             </div>
                         </div>
-                    );
+                    )
                 } else {
-                    let values = numberValues(config, s);
+                    let values = numberValues(config, s)
                     return (
                         <div key={s.name}>
                             <div className="horizontally-spaced-content">
@@ -151,54 +151,54 @@ function ShortcutSectionView(props: {
                                 step={s.step!}
                             />
                         </div>
-                    );
+                    )
                 }
             })}
         </Box>
-    );
+    )
 }
 
 function DescriptionIcon(props: { description?: string }) {
-    const { description } = props;
+    const { description } = props
     return description === undefined ? null : (
         <MdiIcon
             icon={mdiHelpCircleOutline}
             tooltip={description.replace(/\n/gi, "<br>")}
         />
-    );
+    )
 }
 
 function AlertIcon(props: { values: (boolean | number | undefined)[] }) {
-    const { values } = props;
-    const missing = values.includes(undefined);
-    const not_synced = !values.every((val) => val === values[0]);
-    let description = "";
+    const { values } = props
+    const missing = values.includes(undefined)
+    const not_synced = !values.every((val) => val === values[0])
+    let description = ""
     if (missing) {
         description =
-            description + "One or several config elements are missing.";
+            description + "One or several config elements are missing."
     }
     if (not_synced) {
         if (description) {
-            description = description + "<br><br>";
+            description = description + "<br><br>"
         }
         description =
             description +
-            "This shortcut controls multiple elements, that are not in sync.<br>Changing this control may lead to unexpected results.";
+            "This shortcut controls multiple elements, that are not in sync.<br>Changing this control may lead to unexpected results."
     }
     return description ? (
         <MdiIcon icon={mdiAlert} tooltip={description} />
-    ) : null;
+    ) : null
 }
 
 function Slider(props: {
-    value?: number;
-    setValue: (value: number) => void;
-    min: number;
-    max: number;
-    step: number;
+    value?: number
+    setValue: (value: number) => void
+    min: number
+    max: number
+    step: number
 }) {
-    const value = props.value ?? 0;
-    const disabled = props.value === undefined;
+    const value = props.value ?? 0
+    const disabled = props.value === undefined
     return (
         <input
             disabled={disabled}
@@ -210,15 +210,15 @@ function Slider(props: {
             value={value}
             onChange={(e) => props.setValue(e.target.valueAsNumber)}
         />
-    );
+    )
 }
 
 function Checkbox(props: {
-    value?: boolean;
-    setValue: (value: boolean) => void;
+    value?: boolean
+    setValue: (value: boolean) => void
 }) {
-    const value = props.value ?? false;
-    const disabled = props.value === undefined;
+    const value = props.value ?? false
+    const disabled = props.value === undefined
     return (
         <input
             disabled={disabled}
@@ -227,18 +227,18 @@ function Checkbox(props: {
             checked={value}
             onChange={(e) => props.setValue(e.target.checked)}
         />
-    );
+    )
 }
 
 export function QuickConfigSwitch(props: {
-    currentConfigName?: string;
-    setConfig: (name: string, config: Config) => void;
+    currentConfigName?: string
+    setConfig: (name: string, config: Config) => void
 }) {
-    const { currentConfigName, setConfig } = props;
-    const [configFiles, setConfigFiles] = useState<string[]>([]);
+    const { currentConfigName, setConfig } = props
+    const [configFiles, setConfigFiles] = useState<string[]>([])
     useEffect(() => {
-        loadFilenames("config").then((files) => setConfigFiles(files));
-    }, []);
+        loadFilenames("config").then((files) => setConfigFiles(files))
+    }, [])
     return (
         <Box title="Quick Config Switch">
             <div className="quick-config-switch">
@@ -249,12 +249,12 @@ export function QuickConfigSwitch(props: {
                         onClick={() => {
                             loadConfigJson(configFile).then((config) =>
                                 setConfig(configFile, config),
-                            );
+                            )
                         }}
                         highlighted={configFile === currentConfigName}
                     />
                 ))}
             </div>
         </Box>
-    );
+    )
 }
