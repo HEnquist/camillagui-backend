@@ -18,6 +18,7 @@ import {
   mdiContentSave,
   mdiDelete,
   mdiDownload,
+  mdiMenu,
   mdiPencil,
   mdiRefresh,
   mdiScaleUnbalanced,
@@ -121,7 +122,8 @@ class FileTable extends Component<
       diffFileNameLeft: string,
       diffFileNameRight: string,
       showPipelinePlot: boolean,
-      configToPlot: Config
+      configToPlot: Config,
+      fileMenuOpen: number | null,
     }> {
 
   private readonly type: FileType = this.props.type
@@ -143,6 +145,7 @@ class FileTable extends Component<
     this.setSelected = this.setSelected.bind(this)
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.rename = this.rename.bind(this)
+    this.toggleFileMenu = this.toggleFileMenu.bind(this)
     this.state = {
       files: [],
       selectedFiles: [],
@@ -157,7 +160,8 @@ class FileTable extends Component<
       diffFileNameLeft: '',
       diffFileNameRight: '',
       showPipelinePlot: false,
-      configToPlot: {} as Config
+      configToPlot: {} as Config,
+      fileMenuOpen: null,
     }
   }
 
@@ -303,6 +307,13 @@ class FileTable extends Component<
     this.setState({selectedFiles: selected.selectedRows})
   }
 
+  private toggleFileMenu(index: number) {
+    if (this.state.fileMenuOpen === index)
+      this.setState({fileMenuOpen: null})
+    else
+      this.setState({fileMenuOpen: index})
+  }
+
   private async saveConfig(name: string) {
     const { config, setCurrentConfig } = this.props
     try {
@@ -394,11 +405,6 @@ class FileTable extends Component<
               filename={row.name}
               fileStatus={fileStatus}
               saveConfig={this.overwriteConfig}/>
-          <RenameButton
-              key={'rename'+id}
-              filename={row.name}
-              fileStatus={fileStatus}
-              rename={() => this.rename(row.name, 'config')}/>
           <LoadButton
               key={'load'+id}
               filename={row.name}
@@ -406,20 +412,37 @@ class FileTable extends Component<
               valid={row.valid}
               for_version={row.version}
               loadConfig={this.loadConfig}/>
-          <CompareToGUIButton
-              key={'compare'+id}
-              filename={row.name}
-              valid={row.valid}
-              compareConfig={this.compareConfig}/>
-           <PlotButton
-              tooltip="Plot the pipeline"
-              pipeline={true}
-              enabled={row.valid}
-              onClick={() => this.plotConfig(row.name)} />
+          <div className='dropdown' style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+            <MdiButton
+              key={'filemenu'+id}
+              icon={mdiMenu}
+              tooltip="More actions"
+              highlighted={this.state.fileMenuOpen === index}
+              onClick={() =>this.toggleFileMenu(index)}/>
+            {this.state.fileMenuOpen === index && <div className="dropdown-menu" title='channels' >
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'last baseline' }}>
+              <RenameButton
+                key={'rename'+id}
+                filename={row.name}
+                fileStatus={fileStatus}
+                rename={() => this.rename(row.name, 'config')}/>
+              <CompareToGUIButton
+                key={'compare'+id}
+                filename={row.name}
+                valid={row.valid}
+                compareConfig={this.compareConfig}/>
+              <PlotButton
+                tooltip="Plot the pipeline"
+                pipeline={true}
+                enabled={row.valid}
+                onClick={() => this.plotConfig(row.name)} />
+              </div>
+            </div>}
+          </div>
         </div>),
         sortable: false,
         compact: true,
-        width: '200px'
+        width: '160px'
       })
       columns.push(
         {
