@@ -3,1017 +3,931 @@ import { sortedAlphabetically } from "../utilities/arrays"
 import { List } from "immutable"
 
 export function defaultConfig(): Config {
-    return {
-        devices: {
-            samplerate: 48000,
+  return {
+    devices: {
+      samplerate: 48000,
 
-            //Buffers
-            chunksize: 1024,
-            queuelimit: null,
+      //Buffers
+      chunksize: 1024,
+      queuelimit: null,
 
-            //Silence
-            silence_threshold: null,
-            silence_timeout: null,
+      //Silence
+      silence_threshold: null,
+      silence_timeout: null,
 
-            //Rate adjust
-            enable_rate_adjust: null,
-            adjust_period: null,
-            target_level: null,
+      //Rate adjust
+      enable_rate_adjust: null,
+      adjust_period: null,
+      target_level: null,
 
-            //Resampler
-            resampler: { type: "AsyncSinc", profile: "Balanced" },
-            capture_samplerate: 44100,
+      //Resampler
+      resampler: { type: "AsyncSinc", profile: "Balanced" },
+      capture_samplerate: 44100,
 
-            //Rate monitoring
-            stop_on_rate_change: null,
-            rate_measure_interval: null,
+      //Rate monitoring
+      stop_on_rate_change: null,
+      rate_measure_interval: null,
 
-            //Multithreading
-            multithreaded: null,
-            worker_threads: null,
+      //Multithreading
+      multithreaded: null,
+      worker_threads: null,
 
-            volume_ramp_time: null,
-            volume_limit: null,
+      volume_ramp_time: null,
+      volume_limit: null,
 
-            capture: {
-                type: "Alsa",
-                channels: 2,
-                format: null,
-                device: "hw:0",
-                stop_on_inactive: null,
-                link_volume_control: null,
-                link_mute_control: null,
-                labels: null,
-            },
-            playback: {
-                type: "Alsa",
-                channels: 2,
-                format: null,
-                device: "hw:0",
-            },
-        },
-        filters: {},
-        mixers: {},
-        processors: {},
-        pipeline: [],
-        title: null,
-        description: null,
-    }
+      capture: {
+        type: "Alsa",
+        channels: 2,
+        format: null,
+        device: "hw:0",
+        stop_on_inactive: null,
+        link_volume_control: null,
+        link_mute_control: null,
+        labels: null,
+      },
+      playback: {
+        type: "Alsa",
+        channels: 2,
+        format: null,
+        device: "hw:0",
+      },
+    },
+    filters: {},
+    mixers: {},
+    processors: {},
+    pipeline: [],
+    title: null,
+    description: null,
+  }
 }
 
-export const FilterSortKeys = [
-    "Name",
-    "Type",
-    "Subtype",
-    "Frequency",
-    "Q-value",
-    "Gain",
-]
+export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]
 
 export const ProcessorSortKeys = ["Name", "Type"]
 
 function compare_named_vs_unnamed(a: any, b: any): number {
-    let a_new = a["name"].startsWith("Unnamed ")
-    let b_new = b["name"].startsWith("Unnamed ")
-    if (a_new && !b_new) {
-        return 1
-    } else if (!a_new && b_new) {
-        return -1
-    }
-    return 0
+  let a_new = a["name"].startsWith("Unnamed ")
+  let b_new = b["name"].startsWith("Unnamed ")
+  if (a_new && !b_new) {
+    return 1
+  } else if (!a_new && b_new) {
+    return -1
+  }
+  return 0
 }
 
 function compare_values(a: number, b: number, reverse: boolean): number {
-    let rev = reverse ? -1 : 1
-    if (a === undefined && b !== undefined) {
-        return rev
-    } else if (a !== undefined && b === undefined) {
-        return -rev
-    } else if (a !== b) {
-        return rev * (a - b)
-    }
-    return 0
+  let rev = reverse ? -1 : 1
+  if (a === undefined && b !== undefined) {
+    return rev
+  } else if (a !== undefined && b === undefined) {
+    return -rev
+  } else if (a !== b) {
+    return rev * (a - b)
+  }
+  return 0
 }
 
-export function filtersSortedAlphabeticallyOnKey(
-    filters: Filters,
-    key: string,
-    reverse: boolean,
-): string[] {
-    let names = Object.keys(filters)
-    let filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
-    let rev = reverse ? -1 : 1
-    switch (key) {
-        case "Name":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-        case "Frequency":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_val = a["def"]["parameters"]["freq"]
-                let b_val = b["def"]["parameters"]["freq"]
-                let number_res = compare_values(a_val, b_val, reverse)
-                if (number_res !== 0) {
-                    return number_res
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-        case "Q-value":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_val = a["def"]["parameters"]["q"]
-                let b_val = b["def"]["parameters"]["q"]
-                let number_res = compare_values(a_val, b_val, reverse)
-                if (number_res !== 0) {
-                    return number_res
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-        case "Gain":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_val = a["def"]["parameters"]["gain"]
-                let b_val = b["def"]["parameters"]["gain"]
-                let number_res = compare_values(a_val, b_val, reverse)
-                if (number_res !== 0) {
-                    return number_res
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-        case "Type":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_val = a["def"]["type"]
-                let b_val = b["def"]["type"]
-                if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val)
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-        case "Subtype":
-            filters_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_type = a["def"]["type"]
-                let b_type = b["def"]["type"]
-                let a_val = a["def"]["parameters"]["type"]
-                let b_val = b["def"]["parameters"]["type"]
-                if (a_type !== b_type) {
-                    return rev * a_type.localeCompare(b_type)
-                } else if (a_val === undefined && b_val !== undefined) {
-                    return rev
-                } else if (a_val !== undefined && b_val === undefined) {
-                    return -rev
-                } else if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val)
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-    }
-    let names_sorted = filters_as_list.map((n) => n["name"])
-    return names_sorted
+export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
+  let names = Object.keys(filters)
+  let filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
+  let rev = reverse ? -1 : 1
+  switch (key) {
+    case "Name":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+    case "Frequency":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_val = a["def"]["parameters"]["freq"]
+        let b_val = b["def"]["parameters"]["freq"]
+        let number_res = compare_values(a_val, b_val, reverse)
+        if (number_res !== 0) {
+          return number_res
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+    case "Q-value":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_val = a["def"]["parameters"]["q"]
+        let b_val = b["def"]["parameters"]["q"]
+        let number_res = compare_values(a_val, b_val, reverse)
+        if (number_res !== 0) {
+          return number_res
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+    case "Gain":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_val = a["def"]["parameters"]["gain"]
+        let b_val = b["def"]["parameters"]["gain"]
+        let number_res = compare_values(a_val, b_val, reverse)
+        if (number_res !== 0) {
+          return number_res
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+    case "Type":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_val = a["def"]["type"]
+        let b_val = b["def"]["type"]
+        if (a_val !== b_val) {
+          return rev * a_val.localeCompare(b_val)
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+    case "Subtype":
+      filters_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_type = a["def"]["type"]
+        let b_type = b["def"]["type"]
+        let a_val = a["def"]["parameters"]["type"]
+        let b_val = b["def"]["parameters"]["type"]
+        if (a_type !== b_type) {
+          return rev * a_type.localeCompare(b_type)
+        } else if (a_val === undefined && b_val !== undefined) {
+          return rev
+        } else if (a_val !== undefined && b_val === undefined) {
+          return -rev
+        } else if (a_val !== b_val) {
+          return rev * a_val.localeCompare(b_val)
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+  }
+  let names_sorted = filters_as_list.map((n) => n["name"])
+  return names_sorted
 }
 
-export function processorsSortedAlphabeticallyOnKey(
-    processors: Processors,
-    key: string,
-    reverse: boolean,
-): string[] {
-    let names = Object.keys(processors)
-    let processors_as_list = names.map((n) => ({
-        name: n,
-        def: processors[n],
-    }))
-    let rev = reverse ? -1 : 1
-    switch (key) {
-        case "Name":
-            processors_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
+export function processorsSortedAlphabeticallyOnKey(processors: Processors, key: string, reverse: boolean): string[] {
+  let names = Object.keys(processors)
+  let processors_as_list = names.map((n) => ({
+    name: n,
+    def: processors[n],
+  }))
+  let rev = reverse ? -1 : 1
+  switch (key) {
+    case "Name":
+      processors_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
 
-        case "Type":
-            processors_as_list.sort((a, b) => {
-                let unnamed_res = compare_named_vs_unnamed(a, b)
-                if (unnamed_res !== 0) {
-                    return unnamed_res
-                }
-                let a_val = a["def"]["type"]
-                let b_val = b["def"]["type"]
-                if (a_val !== b_val) {
-                    return rev * a_val.localeCompare(b_val)
-                }
-                return rev * a["name"].localeCompare(b["name"])
-            })
-            break
-    }
-    let names_sorted = processors_as_list.map((n) => n["name"])
-    return names_sorted
+    case "Type":
+      processors_as_list.sort((a, b) => {
+        let unnamed_res = compare_named_vs_unnamed(a, b)
+        if (unnamed_res !== 0) {
+          return unnamed_res
+        }
+        let a_val = a["def"]["type"]
+        let b_val = b["def"]["type"]
+        if (a_val !== b_val) {
+          return rev * a_val.localeCompare(b_val)
+        }
+        return rev * a["name"].localeCompare(b["name"])
+      })
+      break
+  }
+  let names_sorted = processors_as_list.map((n) => n["name"])
+  return names_sorted
 }
 
 export function sortedFilterNamesOf(
-    configOrFilters: Config | Filters | null,
-    sortKey: string,
-    reverse: boolean,
+  configOrFilters: Config | Filters | null,
+  sortKey: string,
+  reverse: boolean,
 ): string[] {
-    if (configOrFilters === null) {
-        return []
-    }
-    const filters: Filters | null = isConfig(configOrFilters)
-        ? configOrFilters.filters
-        : configOrFilters
-    if (filters) {
-        return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
-    }
+  if (configOrFilters === null) {
     return []
+  }
+  const filters: Filters | null = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+  if (filters) {
+    return filtersSortedAlphabeticallyOnKey(filters, sortKey, reverse)
+  }
+  return []
 }
 
-export function filterNamesOf(
-    configOrFilters: Config | Filters | null,
-): string[] {
-    if (configOrFilters === null) {
-        return []
-    }
-    const filters: Filters | null = isConfig(configOrFilters)
-        ? configOrFilters.filters
-        : configOrFilters
-    if (filters === null) {
-        return []
-    }
-    return sortedAlphabetically(Object.keys(filters))
+export function filterNamesOf(configOrFilters: Config | Filters | null): string[] {
+  if (configOrFilters === null) {
+    return []
+  }
+  const filters: Filters | null = isConfig(configOrFilters) ? configOrFilters.filters : configOrFilters
+  if (filters === null) {
+    return []
+  }
+  return sortedAlphabetically(Object.keys(filters))
 }
 
-function isConfig(
-    maybeConfig: Config | Filters | Mixers,
-): maybeConfig is Config {
-    return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
+function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
+  return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
 }
 
 export function newFilterName(filters: Filters | null): string {
-    return newName("Unnamed Filter ", filterNamesOf(filters))
+  return newName("Unnamed Filter ", filterNamesOf(filters))
 }
 
 function newName(prefix: string, existingNames: string[]): string {
-    const nameIsAlreadyPresent: (i: number) => boolean = (i) =>
-        existingNames.includes(prefix + i.toString())
-    for (let i = 1; ; i++)
-        if (!nameIsAlreadyPresent(i)) return prefix + i.toString()
+  const nameIsAlreadyPresent: (i: number) => boolean = (i) => existingNames.includes(prefix + i.toString())
+  for (let i = 1; ; i++) if (!nameIsAlreadyPresent(i)) return prefix + i.toString()
 }
 
 export type FilterType =
-    | "Biquad"
-    | "BiquadCombo"
-    | "Conv"
-    | "Delay"
-    | "Gain"
-    | "Volume"
-    | "Loudness"
-    | "DiffEq"
-    | "Limiter"
-    | "Dither"
+  | "Biquad"
+  | "BiquadCombo"
+  | "Conv"
+  | "Delay"
+  | "Gain"
+  | "Volume"
+  | "Loudness"
+  | "DiffEq"
+  | "Limiter"
+  | "Dither"
 
 export const FilterTypeOptions: { value: FilterType; label: string }[] = [
-    { value: "Biquad", label: "Biquad : Single biquad" },
-    {
-        value: "BiquadCombo",
-        label: "BiquadCombo : Combination of several biquads",
-    },
-    { value: "Conv", label: "Conv : Convolution" },
-    {
-        value: "Delay",
-        label: "Delay : Delay with optional subsample precision",
-    },
-    { value: "Gain", label: "Gain : Gain and invert control" },
-    { value: "Volume", label: "Volume : Volume control" },
-    { value: "Loudness", label: "Loudness: Loudness control" },
-    { value: "DiffEq", label: "DiffEq : Generic difference equation" },
-    { value: "Limiter", label: "Limiter : Limit by soft or hard clipping" },
-    { value: "Dither", label: "Dither : Apply dither and truncate" },
+  { value: "Biquad", label: "Biquad : Single biquad" },
+  {
+    value: "BiquadCombo",
+    label: "BiquadCombo : Combination of several biquads",
+  },
+  { value: "Conv", label: "Conv : Convolution" },
+  {
+    value: "Delay",
+    label: "Delay : Delay with optional subsample precision",
+  },
+  { value: "Gain", label: "Gain : Gain and invert control" },
+  { value: "Volume", label: "Volume : Volume control" },
+  { value: "Loudness", label: "Loudness: Loudness control" },
+  { value: "DiffEq", label: "DiffEq : Generic difference equation" },
+  { value: "Limiter", label: "Limiter : Limit by soft or hard clipping" },
+  { value: "Dither", label: "Dither : Apply dither and truncate" },
 ]
 
 export type FilterSubtype =
-    | "Lowpass"
-    | "Highpass"
-    | "Lowshelf"
-    | "Highshelf"
-    | "LowpassFO"
-    | "HighpassFO"
-    | "LowshelfFO"
-    | "HighshelfFO"
-    | "Peaking"
-    | "Notch"
-    | "GeneralNotch"
-    | "Bandpass"
-    | "Allpass"
-    | "AllpassFO"
-    | "LinkwitzTransform"
-    | "Free"
-    | "ButterworthLowpass"
-    | "ButterworthHighpass"
-    | "LinkwitzRileyLowpass"
-    | "LinkwitzRileyHighpass"
-    | "Tilt"
-    | "GraphicEqualizer"
-    | "Raw"
-    | "Wav"
-    | "Values"
-    | "Dummy"
-    | "None"
-    | "Flat"
-    | "Highpass"
-    | "Fweighted441"
-    | "FweightedLong441"
-    | "FweightedShort441"
-    | "Gesemann441"
-    | "Gesemann48"
-    | "Lipshitz441"
-    | "LipshitzLong441"
-    | "Shibata441"
-    | "ShibataHigh441"
-    | "ShibataLow441"
-    | "Shibata48"
-    | "ShibataHigh48"
-    | "ShibataLow48"
-    | "Shibata882"
-    | "ShibataLow882"
-    | "Shibata96"
-    | "ShibataLow96"
-    | "Shibata192"
-    | "ShibataLow192"
+  | "Lowpass"
+  | "Highpass"
+  | "Lowshelf"
+  | "Highshelf"
+  | "LowpassFO"
+  | "HighpassFO"
+  | "LowshelfFO"
+  | "HighshelfFO"
+  | "Peaking"
+  | "Notch"
+  | "GeneralNotch"
+  | "Bandpass"
+  | "Allpass"
+  | "AllpassFO"
+  | "LinkwitzTransform"
+  | "Free"
+  | "ButterworthLowpass"
+  | "ButterworthHighpass"
+  | "LinkwitzRileyLowpass"
+  | "LinkwitzRileyHighpass"
+  | "Tilt"
+  | "GraphicEqualizer"
+  | "Raw"
+  | "Wav"
+  | "Values"
+  | "Dummy"
+  | "None"
+  | "Flat"
+  | "Highpass"
+  | "Fweighted441"
+  | "FweightedLong441"
+  | "FweightedShort441"
+  | "Gesemann441"
+  | "Gesemann48"
+  | "Lipshitz441"
+  | "LipshitzLong441"
+  | "Shibata441"
+  | "ShibataHigh441"
+  | "ShibataLow441"
+  | "Shibata48"
+  | "ShibataHigh48"
+  | "ShibataLow48"
+  | "Shibata882"
+  | "ShibataLow882"
+  | "Shibata96"
+  | "ShibataLow96"
+  | "Shibata192"
+  | "ShibataLow192"
 
 export const BiquadFilterSubtypeOptions: {
-    value: FilterSubtype
-    label: string
+  value: FilterSubtype
+  label: string
 }[] = [
-    { value: "Lowpass", label: "Lowpass : 2nd order lowpass" },
-    { value: "Highpass", label: "Highpass : 2nd order highpass" },
-    { value: "Lowshelf", label: "Lowshelf : 2nd order lowshelf" },
-    { value: "Highshelf", label: "Highshelf : 2nd order high shelf" },
-    { value: "LowpassFO", label: "LowpassFO : 1st order lowpass" },
-    { value: "HighpassFO", label: "HighpassFO : 1st order highpass" },
-    { value: "LowshelfFO", label: "LowshelfFO : 1st order lowshelf" },
-    { value: "HighshelfFO", label: "HighshelfFO : 1st order high shelf" },
-    { value: "Peaking", label: "Peaking : 2nd order peaking" },
-    { value: "Notch", label: "Notch : 2nd order notch" },
-    { value: "GeneralNotch", label: "GeneralNotch : 2nd order general notch" },
-    { value: "Bandpass", label: "Bandpass : 2nd order bandpass" },
-    { value: "Allpass", label: "Allpass : 2nd order allpass" },
-    { value: "AllpassFO", label: "AllpassFO : 1st order allpass" },
-    {
-        value: "LinkwitzTransform",
-        label: "LinkwitzTransform : Linkwitz Transform",
-    },
-    { value: "Free", label: "Free : Biquad coefficients" },
+  { value: "Lowpass", label: "Lowpass : 2nd order lowpass" },
+  { value: "Highpass", label: "Highpass : 2nd order highpass" },
+  { value: "Lowshelf", label: "Lowshelf : 2nd order lowshelf" },
+  { value: "Highshelf", label: "Highshelf : 2nd order high shelf" },
+  { value: "LowpassFO", label: "LowpassFO : 1st order lowpass" },
+  { value: "HighpassFO", label: "HighpassFO : 1st order highpass" },
+  { value: "LowshelfFO", label: "LowshelfFO : 1st order lowshelf" },
+  { value: "HighshelfFO", label: "HighshelfFO : 1st order high shelf" },
+  { value: "Peaking", label: "Peaking : 2nd order peaking" },
+  { value: "Notch", label: "Notch : 2nd order notch" },
+  { value: "GeneralNotch", label: "GeneralNotch : 2nd order general notch" },
+  { value: "Bandpass", label: "Bandpass : 2nd order bandpass" },
+  { value: "Allpass", label: "Allpass : 2nd order allpass" },
+  { value: "AllpassFO", label: "AllpassFO : 1st order allpass" },
+  {
+    value: "LinkwitzTransform",
+    label: "LinkwitzTransform : Linkwitz Transform",
+  },
+  { value: "Free", label: "Free : Biquad coefficients" },
 ]
 
 export const BiquadComboSubtypeOptions: {
-    value: FilterSubtype
-    label: string
+  value: FilterSubtype
+  label: string
 }[] = [
-    {
-        value: "ButterworthLowpass",
-        label: "ButterworthLowpass : Butterworth lowpass",
-    },
-    {
-        value: "ButterworthHighpass",
-        label: "ButterworthHighpass : Butterworth highpass",
-    },
-    {
-        value: "LinkwitzRileyLowpass",
-        label: "LinkwitzRileyLowpass : Linkwitz-Riley lowpass",
-    },
-    {
-        value: "LinkwitzRileyHighpass",
-        label: "LinkwitzRileyHighpass : Linkwitz-Riley highpass",
-    },
-    { value: "Tilt", label: "Tilt : Tilt equalizer" },
-    {
-        value: "GraphicEqualizer",
-        label: "GraphicEqualizer : N-band graphic equalizer",
-    },
+  {
+    value: "ButterworthLowpass",
+    label: "ButterworthLowpass : Butterworth lowpass",
+  },
+  {
+    value: "ButterworthHighpass",
+    label: "ButterworthHighpass : Butterworth highpass",
+  },
+  {
+    value: "LinkwitzRileyLowpass",
+    label: "LinkwitzRileyLowpass : Linkwitz-Riley lowpass",
+  },
+  {
+    value: "LinkwitzRileyHighpass",
+    label: "LinkwitzRileyHighpass : Linkwitz-Riley highpass",
+  },
+  { value: "Tilt", label: "Tilt : Tilt equalizer" },
+  {
+    value: "GraphicEqualizer",
+    label: "GraphicEqualizer : N-band graphic equalizer",
+  },
 ]
 
 export const ConvSubtypeOptions: { value: FilterSubtype; label: string }[] = [
-    { value: "Raw", label: "Raw : Coefficients from raw (headerless) file" },
-    { value: "Wav", label: "Wav : Coefficients from wav file" },
-    { value: "Values", label: "Values : Enter coefficients manually" },
-    { value: "Dummy", label: "Dummy : Dummy coefficients for load testing" },
+  { value: "Raw", label: "Raw : Coefficients from raw (headerless) file" },
+  { value: "Wav", label: "Wav : Coefficients from wav file" },
+  { value: "Values", label: "Values : Enter coefficients manually" },
+  { value: "Dummy", label: "Dummy : Dummy coefficients for load testing" },
 ]
 
 export const DitherSubtypeOptions: { value: FilterSubtype; label: string }[] = [
-    { value: "None", label: "None : No dither, only truncation" },
-    { value: "Flat", label: "Flat : Flat (unshaped) dither" },
-    { value: "Highpass", label: "Highpass : Simple highpass dither" },
-    { value: "Fweighted441", label: "Fweighted441 : F-weighted 44.1 kHz" },
-    {
-        value: "FweightedLong441",
-        label: "FweightedLong441 : F-weighted 44.1 kHz long",
-    },
-    {
-        value: "FweightedShort441",
-        label: "FweightedShort441 : F-weighted 44.1 kHz short",
-    },
-    { value: "Gesemann441", label: "Gesemann441 : Gesemann 44.1 kHz" },
-    { value: "Gesemann48", label: "Gesemann48 : Gesemann 48 kHz" },
-    { value: "Lipshitz441", label: "Lipshitz441 : Lipshitz 44.1 kHz" },
-    {
-        value: "LipshitzLong441",
-        label: "LipshitzLong441 : Lipshitz 44.1 kHz long",
-    },
-    { value: "Shibata441", label: "Shibata441 : Shibata 44.1 kHz" },
-    {
-        value: "ShibataHigh441",
-        label: "ShibataHigh441 : Shibata 44.1 kHz high",
-    },
-    { value: "ShibataLow441", label: "ShibataLow441 : Shibata 44.1 kHz low" },
-    { value: "Shibata48", label: "Shibata48 : Shibata 48 kHz" },
-    { value: "ShibataHigh48", label: "ShibataHigh48 : Shibata 48 kHz high" },
-    { value: "ShibataLow48", label: "ShibataLow48 : Shibata 48 kHz low" },
-    { value: "Shibata882", label: "Shibata882 : Shibata 88.2 kHz" },
-    { value: "ShibataLow882", label: "ShibataLow882 : Shibata 88.2 kHz low" },
-    { value: "Shibata96", label: "Shibata96 : Shibata 96 kHz" },
-    { value: "ShibataLow96", label: "ShibataLow96 : Shibata 96 kHz low" },
-    { value: "Shibata192", label: "Shibata192 : Shibata 192 kHz" },
-    { value: "ShibataLow192", label: "ShibataLow192 : Shibata 192 kHz low" },
+  { value: "None", label: "None : No dither, only truncation" },
+  { value: "Flat", label: "Flat : Flat (unshaped) dither" },
+  { value: "Highpass", label: "Highpass : Simple highpass dither" },
+  { value: "Fweighted441", label: "Fweighted441 : F-weighted 44.1 kHz" },
+  {
+    value: "FweightedLong441",
+    label: "FweightedLong441 : F-weighted 44.1 kHz long",
+  },
+  {
+    value: "FweightedShort441",
+    label: "FweightedShort441 : F-weighted 44.1 kHz short",
+  },
+  { value: "Gesemann441", label: "Gesemann441 : Gesemann 44.1 kHz" },
+  { value: "Gesemann48", label: "Gesemann48 : Gesemann 48 kHz" },
+  { value: "Lipshitz441", label: "Lipshitz441 : Lipshitz 44.1 kHz" },
+  {
+    value: "LipshitzLong441",
+    label: "LipshitzLong441 : Lipshitz 44.1 kHz long",
+  },
+  { value: "Shibata441", label: "Shibata441 : Shibata 44.1 kHz" },
+  {
+    value: "ShibataHigh441",
+    label: "ShibataHigh441 : Shibata 44.1 kHz high",
+  },
+  { value: "ShibataLow441", label: "ShibataLow441 : Shibata 44.1 kHz low" },
+  { value: "Shibata48", label: "Shibata48 : Shibata 48 kHz" },
+  { value: "ShibataHigh48", label: "ShibataHigh48 : Shibata 48 kHz high" },
+  { value: "ShibataLow48", label: "ShibataLow48 : Shibata 48 kHz low" },
+  { value: "Shibata882", label: "Shibata882 : Shibata 88.2 kHz" },
+  { value: "ShibataLow882", label: "ShibataLow882 : Shibata 88.2 kHz low" },
+  { value: "Shibata96", label: "Shibata96 : Shibata 96 kHz" },
+  { value: "ShibataLow96", label: "ShibataLow96 : Shibata 96 kHz low" },
+  { value: "Shibata192", label: "Shibata192 : Shibata 192 kHz" },
+  { value: "ShibataLow192", label: "ShibataLow192 : Shibata 192 kHz low" },
 ]
 
 export const DefaultFilterParameters: {
-    [type: string]: {
-        [subtype: string]: {
-            [parameter: string]: string | number | number[] | boolean | null
-        }
+  [type: string]: {
+    [subtype: string]: {
+      [parameter: string]: string | number | number[] | boolean | null
     }
+  }
 } = {
-    Biquad: {
-        Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
-        Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
-        Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
-        Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
-        LowpassFO: { type: "LowpassFO", freq: 1000 },
-        HighpassFO: { type: "HighpassFO", freq: 1000 },
-        LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
-        HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
-        Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
-        Notch: { type: "Notch", freq: 1000, q: 1.5 },
-        GeneralNotch: {
-            type: "GeneralNotch",
-            freq_z: 1000,
-            freq_p: 1000,
-            q_p: 1.0,
-            normalize_at_dc: false,
-        },
-        Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
-        Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
-        AllpassFO: { type: "AllpassFO", freq: 1000 },
-        LinkwitzTransform: {
-            type: "LinkwitzTransform",
-            q_act: 1.5,
-            q_target: 0.5,
-            freq_act: 50,
-            freq_target: 25,
-        },
-        Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
+  Biquad: {
+    Lowpass: { type: "Lowpass", freq: 1000, q: 0.5 },
+    Highpass: { type: "Highpass", freq: 1000, q: 0.5 },
+    Lowshelf: { type: "Lowshelf", gain: 6, freq: 1000, slope: 6 },
+    Highshelf: { type: "Highshelf", gain: 6, freq: 1000, slope: 6 },
+    LowpassFO: { type: "LowpassFO", freq: 1000 },
+    HighpassFO: { type: "HighpassFO", freq: 1000 },
+    LowshelfFO: { type: "LowshelfFO", gain: 6, freq: 1000 },
+    HighshelfFO: { type: "HighshelfFO", gain: 6, freq: 1000 },
+    Peaking: { type: "Peaking", gain: 6, freq: 1000, q: 1.5 },
+    Notch: { type: "Notch", freq: 1000, q: 1.5 },
+    GeneralNotch: {
+      type: "GeneralNotch",
+      freq_z: 1000,
+      freq_p: 1000,
+      q_p: 1.0,
+      normalize_at_dc: false,
     },
-    BiquadCombo: {
-        ButterworthLowpass: {
-            type: "ButterworthLowpass",
-            order: 2,
-            freq: 1000,
-        },
-        ButterworthHighpass: {
-            type: "ButterworthHighpass",
-            order: 2,
-            freq: 1000,
-        },
-        LinkwitzRileyLowpass: {
-            type: "LinkwitzRileyLowpass",
-            order: 2,
-            freq: 1000,
-        },
-        LinkwitzRileyHighpass: {
-            type: "LinkwitzRileyHighpass",
-            order: 2,
-            freq: 1000,
-        },
-        Tilt: { type: "Tilt", gain: 0.0 },
-        GraphicEqualizer: {
-            type: "GraphicEqualizer",
-            freq_min: 20.0,
-            freq_max: 20000.0,
-            gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        },
+    Bandpass: { type: "Bandpass", freq: 1000, q: 0.5 },
+    Allpass: { type: "Allpass", freq: 1000, q: 0.5 },
+    AllpassFO: { type: "AllpassFO", freq: 1000 },
+    LinkwitzTransform: {
+      type: "LinkwitzTransform",
+      q_act: 1.5,
+      q_target: 0.5,
+      freq_act: 50,
+      freq_target: 25,
     },
-    Conv: {
-        Raw: {
-            type: "Raw",
-            filename: "",
-            format: "TEXT",
-            skip_bytes_lines: 0,
-            read_bytes_lines: 0,
-        },
-        Wav: { type: "Wav", filename: "", channel: 0 },
-        Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0] },
-        Dummy: { type: "Dummy", length: 1024 },
+    Free: { type: "Free", a1: 0.0, a2: 0.0, b0: -1.0, b1: 1.0, b2: 0.0 },
+  },
+  BiquadCombo: {
+    ButterworthLowpass: {
+      type: "ButterworthLowpass",
+      order: 2,
+      freq: 1000,
     },
-    Delay: {
-        Default: { delay: 0.0, unit: "ms", subsample: false },
+    ButterworthHighpass: {
+      type: "ButterworthHighpass",
+      order: 2,
+      freq: 1000,
     },
-    Gain: {
-        Default: { gain: 0.0, scale: "dB", inverted: false, mute: false },
+    LinkwitzRileyLowpass: {
+      type: "LinkwitzRileyLowpass",
+      order: 2,
+      freq: 1000,
     },
-    Volume: {
-        Default: { ramp_time: null, limit: null, fader: "Aux1" },
+    LinkwitzRileyHighpass: {
+      type: "LinkwitzRileyHighpass",
+      order: 2,
+      freq: 1000,
     },
-    Loudness: {
-        Default: {
-            reference_level: 0.0,
-            high_boost: 5,
-            low_boost: 5,
-            fader: "Main",
-            attenuate_mid: false,
-        },
+    Tilt: { type: "Tilt", gain: 0.0 },
+    GraphicEqualizer: {
+      type: "GraphicEqualizer",
+      freq_min: 20.0,
+      freq_max: 20000.0,
+      gains: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     },
-    DiffEq: {
-        Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
+  },
+  Conv: {
+    Raw: {
+      type: "Raw",
+      filename: "",
+      format: "TEXT",
+      skip_bytes_lines: 0,
+      read_bytes_lines: 0,
     },
-    Dither: {
-        None: { type: "None", bits: 16 },
-        Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
-        Highpass: { type: "Highpass", bits: 16 },
-        Fweighted441: { type: "Fweighted441", bits: 16 },
-        FweightedLong441: { type: "FweightedLong441", bits: 16 },
-        FweightedShort441: { type: "FweightedShort441", bits: 16 },
-        Gesemann441: { type: "Gesemann441", bits: 16 },
-        Gesemann48: { type: "Gesemann48", bits: 16 },
-        Lipshitz441: { type: "Lipshitz441", bits: 16 },
-        LipshitzLong441: { type: "LipshitzLong441", bits: 16 },
-        Shibata441: { type: "Shibata441", bits: 16 },
-        ShibataHigh441: { type: "ShibataHigh441", bits: 16 },
-        ShibataLow441: { type: "ShibataLow441", bits: 16 },
-        Shibata48: { type: "Shibata48", bits: 16 },
-        ShibataHigh48: { type: "ShibataHigh48", bits: 16 },
-        ShibataLow48: { type: "ShibataLow48", bits: 16 },
-        Shibata882: { type: "Shibata882", bits: 16 },
-        ShibataLow882: { type: "ShibataLow882", bits: 16 },
-        Shibata96: { type: "Shibata96", bits: 16 },
-        ShibataLow96: { type: "ShibataLow96", bits: 16 },
-        Shibata192: { type: "Shibata192", bits: 16 },
-        ShibataLow192: { type: "ShibataLow192", bits: 16 },
+    Wav: { type: "Wav", filename: "", channel: 0 },
+    Values: { type: "Values", values: [1.0, 0.0, 0.0, 0.0] },
+    Dummy: { type: "Dummy", length: 1024 },
+  },
+  Delay: {
+    Default: { delay: 0.0, unit: "ms", subsample: false },
+  },
+  Gain: {
+    Default: { gain: 0.0, scale: "dB", inverted: false, mute: false },
+  },
+  Volume: {
+    Default: { ramp_time: null, limit: null, fader: "Aux1" },
+  },
+  Loudness: {
+    Default: {
+      reference_level: 0.0,
+      high_boost: 5,
+      low_boost: 5,
+      fader: "Main",
+      attenuate_mid: false,
     },
-    Limiter: {
-        Default: { soft_clip: false, clip_limit: 0.0 },
-    },
+  },
+  DiffEq: {
+    Default: { a: [1.0, 0.0], b: [1.0, 0.0] },
+  },
+  Dither: {
+    None: { type: "None", bits: 16 },
+    Flat: { type: "Flat", bits: 16, amplitude: 2.0 },
+    Highpass: { type: "Highpass", bits: 16 },
+    Fweighted441: { type: "Fweighted441", bits: 16 },
+    FweightedLong441: { type: "FweightedLong441", bits: 16 },
+    FweightedShort441: { type: "FweightedShort441", bits: 16 },
+    Gesemann441: { type: "Gesemann441", bits: 16 },
+    Gesemann48: { type: "Gesemann48", bits: 16 },
+    Lipshitz441: { type: "Lipshitz441", bits: 16 },
+    LipshitzLong441: { type: "LipshitzLong441", bits: 16 },
+    Shibata441: { type: "Shibata441", bits: 16 },
+    ShibataHigh441: { type: "ShibataHigh441", bits: 16 },
+    ShibataLow441: { type: "ShibataLow441", bits: 16 },
+    Shibata48: { type: "Shibata48", bits: 16 },
+    ShibataHigh48: { type: "ShibataHigh48", bits: 16 },
+    ShibataLow48: { type: "ShibataLow48", bits: 16 },
+    Shibata882: { type: "Shibata882", bits: 16 },
+    ShibataLow882: { type: "ShibataLow882", bits: 16 },
+    Shibata96: { type: "Shibata96", bits: 16 },
+    ShibataLow96: { type: "ShibataLow96", bits: 16 },
+    Shibata192: { type: "Shibata192", bits: 16 },
+    ShibataLow192: { type: "ShibataLow192", bits: 16 },
+  },
+  Limiter: {
+    Default: { soft_clip: false, clip_limit: 0.0 },
+  },
 }
 
 export function defaultFilter() {
-    return {
-        type: "Biquad",
-        description: null,
-        parameters: DefaultFilterParameters.Biquad.Lowpass,
-    }
+  return {
+    type: "Biquad",
+    description: null,
+    parameters: DefaultFilterParameters.Biquad.Lowpass,
+  }
 }
 
 export function removeFilter(config: Config, name: string) {
-    delete config.filters?.[name]
-    if (config.pipeline) {
-        for (let step of config.pipeline)
-            if (step.type === "Filter")
-                step.names = step.names.filter(
-                    (filterName) => filterName !== name,
-                )
-    }
+  delete config.filters?.[name]
+  if (config.pipeline) {
+    for (let step of config.pipeline)
+      if (step.type === "Filter") step.names = step.names.filter((filterName) => filterName !== name)
+  }
 }
 
 export function renameFilter(config: Config, oldName: string, newName: string) {
-    if (filterNamesOf(config).includes(newName))
-        throw new Error(`Filter '${newName}' already exists`)
-    if (config.filters) {
-        config.filters[newName] = config.filters[oldName]
-        delete config.filters[oldName]
-        for (let step of config.pipeline ? config.pipeline : [])
-            if (step.type === "Filter")
-                for (let i = 0; i < step.names.length; i++)
-                    if (step.names[i] === oldName) step.names[i] = newName
-    }
+  if (filterNamesOf(config).includes(newName)) throw new Error(`Filter '${newName}' already exists`)
+  if (config.filters) {
+    config.filters[newName] = config.filters[oldName]
+    delete config.filters[oldName]
+    for (let step of config.pipeline ? config.pipeline : [])
+      if (step.type === "Filter")
+        for (let i = 0; i < step.names.length; i++) if (step.names[i] === oldName) step.names[i] = newName
+  }
 }
 
-export function processorNamesOf(
-    configOrProcessors: Config | Processors | null,
-): string[] {
-    if (configOrProcessors === null) {
-        return []
-    }
-    const processors: Processors | null = isConfig(configOrProcessors)
-        ? configOrProcessors.processors
-        : configOrProcessors
-    if (processors) {
-        return sortedAlphabetically(Object.keys(processors))
-    }
+export function processorNamesOf(configOrProcessors: Config | Processors | null): string[] {
+  if (configOrProcessors === null) {
     return []
+  }
+  const processors: Processors | null = isConfig(configOrProcessors)
+    ? configOrProcessors.processors
+    : configOrProcessors
+  if (processors) {
+    return sortedAlphabetically(Object.keys(processors))
+  }
+  return []
 }
 
 export function sortedProcessorNamesOf(
-    configOrProcessors: Config | Processors | null,
-    sortKey: string,
-    reverse: boolean,
+  configOrProcessors: Config | Processors | null,
+  sortKey: string,
+  reverse: boolean,
 ): string[] {
-    if (configOrProcessors === null) {
-        return []
-    }
-    const processors: Processors | null = isConfig(configOrProcessors)
-        ? configOrProcessors.processors
-        : configOrProcessors
-    if (processors) {
-        return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
-    }
+  if (configOrProcessors === null) {
     return []
+  }
+  const processors: Processors | null = isConfig(configOrProcessors)
+    ? configOrProcessors.processors
+    : configOrProcessors
+  if (processors) {
+    return processorsSortedAlphabeticallyOnKey(processors, sortKey, reverse)
+  }
+  return []
 }
 
 export function newProcessorName(processors: Processors | null): string {
-    return newName("Unnamed Processor ", processorNamesOf(processors))
+  return newName("Unnamed Processor ", processorNamesOf(processors))
 }
 
 export function defaultProcessor() {
-    return {
-        type: "Compressor",
-        description: null,
-        parameters: {
-            channels: 2,
-            monitor_channels: [0, 1],
-            process_channels: [0, 1],
-            attack: 0.025,
-            release: 1.0,
-            threshold: -25.0,
-            factor: 5.0,
-            makeup_gain: 15.0,
-            clip_limit: null,
-            soft_clip: false,
-        },
-    }
+  return {
+    type: "Compressor",
+    description: null,
+    parameters: {
+      channels: 2,
+      monitor_channels: [0, 1],
+      process_channels: [0, 1],
+      attack: 0.025,
+      release: 1.0,
+      threshold: -25.0,
+      factor: 5.0,
+      makeup_gain: 15.0,
+      clip_limit: null,
+      soft_clip: false,
+    },
+  }
 }
 
 export function removeProcessor(config: Config, name: string) {
-    delete config.processors?.[name]
-    const pipeline = config.pipeline
-    if (pipeline)
-        config.pipeline = pipeline.filter(
-            (step) => step.type !== "Processor" || step.name !== name,
-        )
+  delete config.processors?.[name]
+  const pipeline = config.pipeline
+  if (pipeline) config.pipeline = pipeline.filter((step) => step.type !== "Processor" || step.name !== name)
 }
 
-export function renameProcessor(
-    config: Config,
-    oldName: string,
-    newName: string,
-) {
-    if (processorNamesOf(config).includes(newName))
-        throw new Error(`Processor '${newName}' already exists`)
-    if (config.processors) {
-        config.processors[newName] = config.processors[oldName]
-        delete config.processors[oldName]
-        for (let step of config.pipeline ? config.pipeline : [])
-            if (step.type === "Processor" && step.name === oldName)
-                step.name = newName
-    }
+export function renameProcessor(config: Config, oldName: string, newName: string) {
+  if (processorNamesOf(config).includes(newName)) throw new Error(`Processor '${newName}' already exists`)
+  if (config.processors) {
+    config.processors[newName] = config.processors[oldName]
+    delete config.processors[oldName]
+    for (let step of config.pipeline ? config.pipeline : [])
+      if (step.type === "Processor" && step.name === oldName) step.name = newName
+  }
 }
 
 export function mixerNamesOf(configOrMixers: Config | Mixers | null): string[] {
-    if (configOrMixers === null) {
-        return []
-    }
-    const mixers: Mixers | null = isConfig(configOrMixers)
-        ? configOrMixers.mixers
-        : configOrMixers
-    if (mixers) return sortedAlphabetically(Object.keys(mixers))
+  if (configOrMixers === null) {
     return []
+  }
+  const mixers: Mixers | null = isConfig(configOrMixers) ? configOrMixers.mixers : configOrMixers
+  if (mixers) return sortedAlphabetically(Object.keys(mixers))
+  return []
 }
 
 export function newMixerName(mixers: Mixers | null): string {
-    return newName("Unnamed Mixer ", mixerNamesOf(mixers))
+  return newName("Unnamed Mixer ", mixerNamesOf(mixers))
 }
 
 export function removeMixer(config: Config, name: string) {
-    delete config.mixers?.[name]
-    const pipeline = config.pipeline
-    if (pipeline)
-        config.pipeline = pipeline.filter(
-            (step) => step.type !== "Mixer" || step.name !== name,
-        )
+  delete config.mixers?.[name]
+  const pipeline = config.pipeline
+  if (pipeline) config.pipeline = pipeline.filter((step) => step.type !== "Mixer" || step.name !== name)
 }
 
 export function renameMixer(config: Config, oldName: string, newName: string) {
-    if (mixerNamesOf(config).includes(newName))
-        throw new Error(`Mixer '${newName}' already exists`)
-    if (config.mixers) {
-        config.mixers[newName] = config.mixers[oldName]
-        delete config.mixers[oldName]
-        for (let step of config.pipeline ? config.pipeline : [])
-            if (step.type === "Mixer" && step.name === oldName)
-                step.name = newName
-    }
+  if (mixerNamesOf(config).includes(newName)) throw new Error(`Mixer '${newName}' already exists`)
+  if (config.mixers) {
+    config.mixers[newName] = config.mixers[oldName]
+    delete config.mixers[oldName]
+    for (let step of config.pipeline ? config.pipeline : [])
+      if (step.type === "Mixer" && step.name === oldName) step.name = newName
+  }
 }
 
 export function defaultMixer(): Mixer {
-    return {
-        description: null,
-        channels: { in: 2, out: 2 },
-        mapping: [
-            {
-                dest: 0,
-                sources: [
-                    {
-                        channel: 0,
-                        gain: 0,
-                        inverted: false,
-                        mute: false,
-                        scale: "dB",
-                    },
-                ],
-                mute: false,
-            },
-            {
-                dest: 1,
-                sources: [
-                    {
-                        channel: 1,
-                        gain: 0,
-                        inverted: false,
-                        mute: false,
-                        scale: "dB",
-                    },
-                ],
-                mute: false,
-            },
+  return {
+    description: null,
+    channels: { in: 2, out: 2 },
+    mapping: [
+      {
+        dest: 0,
+        sources: [
+          {
+            channel: 0,
+            gain: 0,
+            inverted: false,
+            mute: false,
+            scale: "dB",
+          },
         ],
-        labels: null,
-    }
+        mute: false,
+      },
+      {
+        dest: 1,
+        sources: [
+          {
+            channel: 1,
+            gain: 0,
+            inverted: false,
+            mute: false,
+            scale: "dB",
+          },
+        ],
+        mute: false,
+      },
+    ],
+    labels: null,
+  }
 }
 
 /** Name for empty filter/mixer/processor slot */
 export const EMPTY = ""
 
 export function defaultFilterStep(config: Config): FilterStep {
-    const filterNames = filterNamesOf(config)
-    return {
-        type: "Filter",
-        channels: [0],
-        names: filterNames.length === 1 ? [filterNames[0]] : [EMPTY],
-        description: null,
-        bypassed: null,
-    }
+  const filterNames = filterNamesOf(config)
+  return {
+    type: "Filter",
+    channels: [0],
+    names: filterNames.length === 1 ? [filterNames[0]] : [EMPTY],
+    description: null,
+    bypassed: null,
+  }
 }
 
 export function defaultMixerStep(config: Config): MixerStep {
-    const mixerNames = mixerNamesOf(config)
-    return {
-        type: "Mixer",
-        name: mixerNames.length === 1 ? mixerNames[0] : EMPTY,
-        description: null,
-        bypassed: null,
-    }
+  const mixerNames = mixerNamesOf(config)
+  return {
+    type: "Mixer",
+    name: mixerNames.length === 1 ? mixerNames[0] : EMPTY,
+    description: null,
+    bypassed: null,
+  }
 }
 
 export function defaultProcessorStep(config: Config): ProcessorStep {
-    const processorNames = processorNamesOf(config)
-    return {
-        type: "Processor",
-        name: processorNames.length === 1 ? processorNames[0] : EMPTY,
-        description: null,
-        bypassed: null,
-    }
+  const processorNames = processorNamesOf(config)
+  return {
+    type: "Processor",
+    name: processorNames.length === 1 ? processorNames[0] : EMPTY,
+    description: null,
+    bypassed: null,
+  }
 }
 
 export interface Config {
-    devices: Devices
-    filters: Filters | null
-    mixers: Mixers | null
-    processors: Processors | null
-    pipeline: Pipeline | null
-    title: string | null
-    description: string | null
+  devices: Devices
+  filters: Filters | null
+  mixers: Mixers | null
+  processors: Processors | null
+  pipeline: Pipeline | null
+  title: string | null
+  description: string | null
 }
 
 export interface Devices {
-    samplerate: number
+  samplerate: number
 
-    //Buffers
-    chunksize: number
-    queuelimit: number | null
+  //Buffers
+  chunksize: number
+  queuelimit: number | null
 
-    //Silence
-    silence_threshold: number | null
-    silence_timeout: number | null
+  //Silence
+  silence_threshold: number | null
+  silence_timeout: number | null
 
-    //Rate adjust
-    enable_rate_adjust: boolean | null
-    adjust_period: number | null
-    target_level: number | null
+  //Rate adjust
+  enable_rate_adjust: boolean | null
+  adjust_period: number | null
+  target_level: number | null
 
-    //Resampler
-    resampler: Resampler | null
-    capture_samplerate: number | null
+  //Resampler
+  resampler: Resampler | null
+  capture_samplerate: number | null
 
-    //Rate monitoring
-    stop_on_rate_change: boolean | null
-    rate_measure_interval: number | null
+  //Rate monitoring
+  stop_on_rate_change: boolean | null
+  rate_measure_interval: number | null
 
-    //Volume control settings
-    volume_ramp_time: number | null
-    volume_limit: number | null
+  //Volume control settings
+  volume_ramp_time: number | null
+  volume_limit: number | null
 
-    //Multithreading
-    multithreaded: boolean | null
-    worker_threads: number | null
+  //Multithreading
+  multithreaded: boolean | null
+  worker_threads: number | null
 
-    capture: CaptureDevice
-    playback: PlaybackDevice
+  capture: CaptureDevice
+  playback: PlaybackDevice
 }
 
 export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous"
-export type AsyncSincProfile =
-    | "VeryFast"
-    | "Fast"
-    | "Balanced"
-    | "Accurate"
-    | "Free"
-export const AsyncSincProfiles: AsyncSincProfile[] = [
-    "VeryFast",
-    "Fast",
-    "Balanced",
-    "Accurate",
-    "Free",
-]
-export type AsyncSincInterpolation =
-    | "Nearest"
-    | "Linear"
-    | "Quadratic"
-    | "Cubic"
-export const AsyncSincInterpolations: AsyncSincInterpolation[] = [
-    "Nearest",
-    "Linear",
-    "Quadratic",
-    "Cubic",
-]
+export type AsyncSincProfile = "VeryFast" | "Fast" | "Balanced" | "Accurate" | "Free"
+export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]
+export type AsyncSincInterpolation = "Nearest" | "Linear" | "Quadratic" | "Cubic"
+export const AsyncSincInterpolations: AsyncSincInterpolation[] = ["Nearest", "Linear", "Quadratic", "Cubic"]
 export type AsyncPolyInterpolation = "Linear" | "Cubic" | "Quintic" | "Septic"
-export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = [
-    "Linear",
-    "Cubic",
-    "Quintic",
-    "Septic",
-]
-export type AsyncSincWindow =
-    | "Blackman"
-    | "Blackman2"
-    | "BlackmanHarris"
-    | "BlackmanHarris2"
-    | "Hann"
-    | "Hann2"
-export const AsyncSincWindows = [
-    "Blackman",
-    "Blackman2",
-    "BlackmanHarris",
-    "BlackmanHarris2",
-    "Hann",
-    "Hann2",
-]
+export const AsyncPolyInterpolations: AsyncPolyInterpolation[] = ["Linear", "Cubic", "Quintic", "Septic"]
+export type AsyncSincWindow = "Blackman" | "Blackman2" | "BlackmanHarris" | "BlackmanHarris2" | "Hann" | "Hann2"
+export const AsyncSincWindows = ["Blackman", "Blackman2", "BlackmanHarris", "BlackmanHarris2", "Hann", "Hann2"]
 
 export const ResamplerTypeOptions: { value: ResamplerType; label: string }[] = [
-    {
-        value: null,
-        label: "None",
-    },
-    {
-        value: "AsyncSinc",
-        label: "Asynchronous Sinc",
-    },
-    {
-        value: "AsyncPoly",
-        label: "Asynchronous Polynomial",
-    },
-    {
-        value: "Synchronous",
-        label: "Synchronous",
-    },
+  {
+    value: null,
+    label: "None",
+  },
+  {
+    value: "AsyncSinc",
+    label: "Asynchronous Sinc",
+  },
+  {
+    value: "AsyncPoly",
+    label: "Asynchronous Polynomial",
+  },
+  {
+    value: "Synchronous",
+    label: "Synchronous",
+  },
 ]
 
 export const AsyncSincInterpolationOptions: {
-    value: AsyncSincInterpolation
-    label: string
+  value: AsyncSincInterpolation
+  label: string
 }[] = [
-    {
-        value: "Nearest",
-        label: "Nearest (no interpolation)",
-    },
-    {
-        value: "Linear",
-        label: "Linear (1st order)",
-    },
-    {
-        value: "Quadratic",
-        label: "Quadratic (2nd order)",
-    },
-    {
-        value: "Cubic",
-        label: "Cubic (3rd order)",
-    },
+  {
+    value: "Nearest",
+    label: "Nearest (no interpolation)",
+  },
+  {
+    value: "Linear",
+    label: "Linear (1st order)",
+  },
+  {
+    value: "Quadratic",
+    label: "Quadratic (2nd order)",
+  },
+  {
+    value: "Cubic",
+    label: "Cubic (3rd order)",
+  },
 ]
 
 export const AsyncPolyDegreeOptions: {
-    value: AsyncPolyInterpolation
-    label: string
+  value: AsyncPolyInterpolation
+  label: string
 }[] = [
-    {
-        value: "Linear",
-        label: "Linear (1st order)",
-    },
-    {
-        value: "Cubic",
-        label: "Cubic (3rd order)",
-    },
-    {
-        value: "Quintic",
-        label: "Quintic (5th order)",
-    },
-    {
-        value: "Septic",
-        label: "Septic (7th order)",
-    },
+  {
+    value: "Linear",
+    label: "Linear (1st order)",
+  },
+  {
+    value: "Cubic",
+    label: "Cubic (3rd order)",
+  },
+  {
+    value: "Quintic",
+    label: "Quintic (5th order)",
+  },
+  {
+    value: "Septic",
+    label: "Septic (7th order)",
+  },
 ]
 
 export type Resampler =
-    | { type: "AsyncSinc"; profile: AsyncSincProfile }
-    | {
-          type: "AsyncSinc"
-          sinc_len: number
-          oversampling_factor: number
-          interpolation: AsyncSincInterpolation
-          window: AsyncSincWindow
-          f_cutoff: number | null
-      }
-    | { type: "AsyncPoly"; interpolation: AsyncPolyInterpolation }
-    | { type: "Synchronous" }
+  | { type: "AsyncSinc"; profile: AsyncSincProfile }
+  | {
+      type: "AsyncSinc"
+      sinc_len: number
+      oversampling_factor: number
+      interpolation: AsyncSincInterpolation
+      window: AsyncSincWindow
+      f_cutoff: number | null
+    }
+  | { type: "AsyncPoly"; interpolation: AsyncPolyInterpolation }
+  | { type: "Synchronous" }
 
 export function defaultResampler(type: ResamplerType): Resampler {
-    if (type === "AsyncSinc") {
-        return {
-            type: "AsyncSinc",
-            profile: "Balanced",
-        }
-    } else if (type === "AsyncPoly") {
-        return {
-            type: "AsyncPoly",
-            interpolation: "Cubic",
-        }
-    }
+  if (type === "AsyncSinc") {
     return {
-        type: "Synchronous",
+      type: "AsyncSinc",
+      profile: "Balanced",
     }
+  } else if (type === "AsyncPoly") {
+    return {
+      type: "AsyncPoly",
+      interpolation: "Cubic",
+    }
+  }
+  return {
+    type: "Synchronous",
+  }
 }
 
 export function defaultSincResampler(profile: AsyncSincProfile): Resampler {
-    if (profile === "Free") {
-        return {
-            type: "AsyncSinc",
-            sinc_len: 128,
-            oversampling_factor: 256,
-            interpolation: "Quadratic",
-            window: "BlackmanHarris2",
-            f_cutoff: null,
-        }
-    }
+  if (profile === "Free") {
     return {
-        type: "AsyncSinc",
-        profile: profile,
+      type: "AsyncSinc",
+      sinc_len: 128,
+      oversampling_factor: 256,
+      interpolation: "Quadratic",
+      window: "BlackmanHarris2",
+      f_cutoff: null,
     }
+  }
+  return {
+    type: "AsyncSinc",
+    profile: profile,
+  }
 }
 
 export type Fader = "Main" | "Aux1" | "Aux2" | "Aux3" | "Aux4"
@@ -1021,538 +935,499 @@ export const LoudnessFaders: Fader[] = ["Main", "Aux1", "Aux2", "Aux3", "Aux4"]
 export const VolumeFaders: Fader[] = ["Aux1", "Aux2", "Aux3", "Aux4"]
 
 export type CaptureDevice =
-    | {
-          type: "Alsa"
-          channels: number
-          format: AlsaFormat | null
-          device: string
-          stop_on_inactive: boolean | null
-          link_volume_control: string | null
-          link_mute_control: string | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "Wasapi"
-          channels: number
-          format: WasapiFormat | null
-          device: string | null
-          exclusive: boolean | null
-          polling: boolean | null
-          loopback: boolean | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "Jack"
-          channels: number
-          device: string
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "CoreAudio"
-          channels: number
-          format: CoreAudioFormat | null
-          device: string | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "Pulse"
-          channels: number
-          device: string
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "PipeWire"
-          channels: number
-          node_name: string | null
-          node_description: string | null
-          node_group_name: string | null
-          autoconnect_to: string | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "RawFile"
-          channels: number
-          format: BinaryFormat
-          filename: "/path/to/file"
-          extra_samples: number | null
-          skip_bytes: number | null
-          read_bytes: number | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "WavFile"
-          filename: "/path/to/file"
-          extra_samples: number | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "Stdin"
-          channels: number
-          format: BinaryFormat
-          extra_samples: number | null
-          skip_bytes: number | null
-          read_bytes: number | null
-          labels: (string | null)[] | null
-      }
-    | {
-          type: "Bluez"
-          channels: number
-          format: BinaryFormat
-          service: string | null
-          dbus_path: string
-          labels: (string | null)[] | null
-      }
+  | {
+      type: "Alsa"
+      channels: number
+      format: AlsaFormat | null
+      device: string
+      stop_on_inactive: boolean | null
+      link_volume_control: string | null
+      link_mute_control: string | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "Wasapi"
+      channels: number
+      format: WasapiFormat | null
+      device: string | null
+      exclusive: boolean | null
+      polling: boolean | null
+      loopback: boolean | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "Jack"
+      channels: number
+      device: string
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "CoreAudio"
+      channels: number
+      format: CoreAudioFormat | null
+      device: string | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "Pulse"
+      channels: number
+      device: string
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "PipeWire"
+      channels: number
+      node_name: string | null
+      node_description: string | null
+      node_group_name: string | null
+      autoconnect_to: string | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "RawFile"
+      channels: number
+      format: BinaryFormat
+      filename: "/path/to/file"
+      extra_samples: number | null
+      skip_bytes: number | null
+      read_bytes: number | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "WavFile"
+      filename: "/path/to/file"
+      extra_samples: number | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "Stdin"
+      channels: number
+      format: BinaryFormat
+      extra_samples: number | null
+      skip_bytes: number | null
+      read_bytes: number | null
+      labels: (string | null)[] | null
+    }
+  | {
+      type: "Bluez"
+      channels: number
+      format: BinaryFormat
+      service: string | null
+      dbus_path: string
+      labels: (string | null)[] | null
+    }
 
 export type PlaybackDevice =
-    | {
-          type: "Wasapi"
-          channels: number
-          format: WasapiFormat | null
-          device: string | null
-          exclusive: boolean | null
-          polling: boolean | null
-      }
-    | { type: "Jack"; channels: number; device: string }
-    | {
-          type: "Alsa"
-          channels: number
-          format: AlsaFormat | null
-          device: string
-      }
-    | { type: "Pulse"; channels: number; device: string }
-    | {
-          type: "PipeWire"
-          channels: number
-          node_name: string | null
-          node_description: string | null
-          node_group_name: string | null
-          autoconnect_to: string | null
-      }
-    | {
-          type: "CoreAudio"
-          channels: number
-          format: CoreAudioFormat | null
-          device: string | null
-          exclusive: boolean | null
-      }
-    | {
-          type: "File"
-          channels: number
-          format: BinaryFormat
-          filename: string
-          wav_header: boolean | null
-      }
-    | { type: "Stdout"; channels: number; format: BinaryFormat }
+  | {
+      type: "Wasapi"
+      channels: number
+      format: WasapiFormat | null
+      device: string | null
+      exclusive: boolean | null
+      polling: boolean | null
+    }
+  | { type: "Jack"; channels: number; device: string }
+  | {
+      type: "Alsa"
+      channels: number
+      format: AlsaFormat | null
+      device: string
+    }
+  | { type: "Pulse"; channels: number; device: string }
+  | {
+      type: "PipeWire"
+      channels: number
+      node_name: string | null
+      node_description: string | null
+      node_group_name: string | null
+      autoconnect_to: string | null
+    }
+  | {
+      type: "CoreAudio"
+      channels: number
+      format: CoreAudioFormat | null
+      device: string | null
+      exclusive: boolean | null
+    }
+  | {
+      type: "File"
+      channels: number
+      format: BinaryFormat
+      filename: string
+      wav_header: boolean | null
+    }
+  | { type: "Stdout"; channels: number; format: BinaryFormat }
 
-export type BinaryFormat =
-    | "S16_LE"
-    | "S24_3_LE"
-    | "S24_4_LJ_LE"
-    | "S24_4_RJ_LE"
-    | "S32_LE"
-    | "F32_LE"
-    | "F64_LE"
+export type BinaryFormat = "S16_LE" | "S24_3_LE" | "S24_4_LJ_LE" | "S24_4_RJ_LE" | "S32_LE" | "F32_LE" | "F64_LE"
 
 export type ConvBinaryFormat =
-    | "S16_LE"
-    | "S24_3_LE"
-    | "S24_4_LJ_LE"
-    | "S24_4_RJ_LE"
-    | "S32_LE"
-    | "F32_LE"
-    | "F64_LE"
-    | "TEXT"
+  | "S16_LE"
+  | "S24_3_LE"
+  | "S24_4_LJ_LE"
+  | "S24_4_RJ_LE"
+  | "S32_LE"
+  | "F32_LE"
+  | "F64_LE"
+  | "TEXT"
 
-export type AlsaFormat =
-    | null
-    | "S16_LE"
-    | "S24_3_LE"
-    | "S24_4_RJ_LE"
-    | "S32_LE"
-    | "F32_LE"
-    | "F64_LE"
+export type AlsaFormat = null | "S16_LE" | "S24_3_LE" | "S24_4_RJ_LE" | "S32_LE" | "F32_LE" | "F64_LE"
 
 export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32"
 
 export type CoreAudioFormat = null | "S16" | "S24" | "S32" | "F32"
 
 export const CoreAudioFormatOptions: {
-    value: CoreAudioFormat
-    label: string
+  value: CoreAudioFormat
+  label: string
 }[] = [
-    {
-        value: null,
-        label: "Leave at current device setting",
-    },
-    {
-        value: "S16",
-        label: "S16 : 16 bit integer",
-    },
-    {
-        value: "S24",
-        label: "S24 : 24 bit integer",
-    },
-    {
-        value: "S32",
-        label: "S32 : 32 bit integer",
-    },
-    {
-        value: "F32",
-        label: "F32 : 32 bit float",
-    },
+  {
+    value: null,
+    label: "Leave at current device setting",
+  },
+  {
+    value: "S16",
+    label: "S16 : 16 bit integer",
+  },
+  {
+    value: "S24",
+    label: "S24 : 24 bit integer",
+  },
+  {
+    value: "S32",
+    label: "S32 : 32 bit integer",
+  },
+  {
+    value: "F32",
+    label: "F32 : 32 bit float",
+  },
 ]
 
 export const WasapiFormatOptions: { value: WasapiFormat; label: string }[] = [
-    {
-        value: null,
-        label: "Automatic",
-    },
-    {
-        value: "S16",
-        label: "S16 : 16 bit integer",
-    },
-    {
-        value: "S24",
-        label: "S24 : 24 bit integer",
-    },
-    {
-        value: "S32",
-        label: "S32 : 32 bit integer",
-    },
-    {
-        value: "F32",
-        label: "F32 : 32 bit float",
-    },
+  {
+    value: null,
+    label: "Automatic",
+  },
+  {
+    value: "S16",
+    label: "S16 : 16 bit integer",
+  },
+  {
+    value: "S24",
+    label: "S24 : 24 bit integer",
+  },
+  {
+    value: "S32",
+    label: "S32 : 32 bit integer",
+  },
+  {
+    value: "F32",
+    label: "F32 : 32 bit float",
+  },
 ]
 
 export const AlsaFormatOptions: { value: AlsaFormat; label: string }[] = [
-    {
-        value: null,
-        label: "Automatic",
-    },
-    {
-        value: "S16_LE",
-        label: "S16_LE : 16 bit integer, little-endian",
-    },
-    {
-        value: "S24_3_LE",
-        label: "S24_3_LE : 24 bit integer, packed, little-endian",
-    },
-    {
-        value: "S24_4_RJ_LE",
-        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
-    },
-    {
-        value: "S32_LE",
-        label: "S32_LE : 32 bit integer, little-endian",
-    },
-    {
-        value: "F32_LE",
-        label: "F32_LE : 32 bit float, little-endian",
-    },
-    {
-        value: "F64_LE",
-        label: "F64_LE : 64 bit float, little-endian",
-    },
+  {
+    value: null,
+    label: "Automatic",
+  },
+  {
+    value: "S16_LE",
+    label: "S16_LE : 16 bit integer, little-endian",
+  },
+  {
+    value: "S24_3_LE",
+    label: "S24_3_LE : 24 bit integer, packed, little-endian",
+  },
+  {
+    value: "S24_4_RJ_LE",
+    label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
+  },
+  {
+    value: "S32_LE",
+    label: "S32_LE : 32 bit integer, little-endian",
+  },
+  {
+    value: "F32_LE",
+    label: "F32_LE : 32 bit float, little-endian",
+  },
+  {
+    value: "F64_LE",
+    label: "F64_LE : 64 bit float, little-endian",
+  },
 ]
 
 export const BinaryFormatOptions: { value: BinaryFormat; label: string }[] = [
-    {
-        value: "S16_LE",
-        label: "S16_LE : 16 bit integer, little-endian",
-    },
-    {
-        value: "S24_3_LE",
-        label: "S24_3_LE : 24 bit integer, packed, little-endian",
-    },
-    {
-        value: "S24_4_RJ_LE",
-        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
-    },
-    {
-        value: "S24_4_LJ_LE",
-        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian",
-    },
-    {
-        value: "S32_LE",
-        label: "S32_LE : 32 bit integer, little-endian",
-    },
-    {
-        value: "F32_LE",
-        label: "F32_LE : 32 bit float, little-endian",
-    },
-    {
-        value: "F64_LE",
-        label: "F64_LE : 64 bit float, little-endian",
-    },
+  {
+    value: "S16_LE",
+    label: "S16_LE : 16 bit integer, little-endian",
+  },
+  {
+    value: "S24_3_LE",
+    label: "S24_3_LE : 24 bit integer, packed, little-endian",
+  },
+  {
+    value: "S24_4_RJ_LE",
+    label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
+  },
+  {
+    value: "S24_4_LJ_LE",
+    label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian",
+  },
+  {
+    value: "S32_LE",
+    label: "S32_LE : 32 bit integer, little-endian",
+  },
+  {
+    value: "F32_LE",
+    label: "F32_LE : 32 bit float, little-endian",
+  },
+  {
+    value: "F64_LE",
+    label: "F64_LE : 64 bit float, little-endian",
+  },
 ]
 
 export const ConvBinaryFormatOptions: {
-    value: ConvBinaryFormat
-    label: string
+  value: ConvBinaryFormat
+  label: string
 }[] = [
-    {
-        value: "S16_LE",
-        label: "S16_LE : 16 bit integer, little-endian",
-    },
-    {
-        value: "S24_3_LE",
-        label: "S24_3_LE : 24 bit integer, packed, little-endian",
-    },
-    {
-        value: "S24_4_RJ_LE",
-        label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
-    },
-    {
-        value: "S24_4_LJ_LE",
-        label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian",
-    },
-    {
-        value: "S32_LE",
-        label: "S32_LE : 32 bit integer, little-endian",
-    },
-    {
-        value: "F32_LE",
-        label: "F32_LE : 32 bit float, little-endian",
-    },
-    {
-        value: "F64_LE",
-        label: "F64_LE : 64 bit float, little-endian",
-    },
-    {
-        value: "TEXT",
-        label: "TEXT : Text, one value per row",
-    },
+  {
+    value: "S16_LE",
+    label: "S16_LE : 16 bit integer, little-endian",
+  },
+  {
+    value: "S24_3_LE",
+    label: "S24_3_LE : 24 bit integer, packed, little-endian",
+  },
+  {
+    value: "S24_4_RJ_LE",
+    label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
+  },
+  {
+    value: "S24_4_LJ_LE",
+    label: "S24_4_LJ_LE : 24 bit integer, padded left justified, little-endian",
+  },
+  {
+    value: "S32_LE",
+    label: "S32_LE : 32 bit integer, little-endian",
+  },
+  {
+    value: "F32_LE",
+    label: "F32_LE : 32 bit float, little-endian",
+  },
+  {
+    value: "F64_LE",
+    label: "F64_LE : 64 bit float, little-endian",
+  },
+  {
+    value: "TEXT",
+    label: "TEXT : Text, one value per row",
+  },
 ]
 
-export function getFormatOptions(
-    backend: string,
-): { value: string | null; label: string }[] {
-    if (backend === "Alsa") {
-        return AlsaFormatOptions
-    } else if (backend === "Wasapi") {
-        return WasapiFormatOptions
-    } else if (backend === "CoreAudio") {
-        return CoreAudioFormatOptions
-    }
-    return BinaryFormatOptions
+export function getFormatOptions(backend: string): { value: string | null; label: string }[] {
+  if (backend === "Alsa") {
+    return AlsaFormatOptions
+  } else if (backend === "Wasapi") {
+    return WasapiFormatOptions
+  } else if (backend === "CoreAudio") {
+    return CoreAudioFormatOptions
+  }
+  return BinaryFormatOptions
 }
 
 export type GainScale = "linear" | "dB"
 export const GainScales: GainScale[] = ["linear", "dB"]
 
 export interface Filters {
-    [name: string]: Filter
+  [name: string]: Filter
 }
 export interface Filter {
-    type: string
-    description: string | null
-    parameters: { [name: string]: any }
+  type: string
+  description: string | null
+  parameters: { [name: string]: any }
 }
 
 export interface Processors {
-    [name: string]: Processor
+  [name: string]: Processor
 }
 export interface Processor {
-    type: string
-    description: string | null
-    parameters: { [name: string]: any }
+  type: string
+  description: string | null
+  parameters: { [name: string]: any }
 }
 
 export type Mixers = {
-    [name: string]: Mixer
+  [name: string]: Mixer
 }
 
 export interface Mixer {
-    description: string | null
-    channels: {
-        in: number
-        out: number
-    }
-    mapping: Mapping[]
-    labels: (string | null)[] | null
+  description: string | null
+  channels: {
+    in: number
+    out: number
+  }
+  mapping: Mapping[]
+  labels: (string | null)[] | null
 }
 
 export interface Mapping {
-    dest: number
-    sources: Source[]
-    mute: boolean | null
+  dest: number
+  sources: Source[]
+  mute: boolean | null
 }
 
 export interface Source {
-    channel: number
-    gain: number | null
-    scale: GainScale | null
-    inverted: boolean | null
-    mute: boolean | null
+  channel: number
+  gain: number | null
+  scale: GainScale | null
+  inverted: boolean | null
+  mute: boolean | null
 }
 
 export type Pipeline = PipelineStep[]
 export type PipelineStep = MixerStep | FilterStep | ProcessorStep
 export interface MixerStep {
-    type: "Mixer"
-    name: string
-    description: string | null
-    bypassed: boolean | null
+  type: "Mixer"
+  name: string
+  description: string | null
+  bypassed: boolean | null
 }
 export interface ProcessorStep {
-    type: "Processor"
-    name: string
-    description: string | null
-    bypassed: boolean | null
+  type: "Processor"
+  name: string
+  description: string | null
+  bypassed: boolean | null
 }
 export interface FilterStep {
-    type: "Filter"
-    channels: number[] | null
-    names: string[]
-    description: string | null
-    bypassed: boolean | null
+  type: "Filter"
+  channels: number[] | null
+  names: string[]
+  description: string | null
+  bypassed: boolean | null
 }
 
-export async function maxChannelCount(
-    config: Config,
-    pipelineStepIndex: number,
-): Promise<number> {
-    var lastValidMixerStepBeforeIndex = null
-    if (config.pipeline) {
-        lastValidMixerStepBeforeIndex = List(config.pipeline).findLast(
-            (step, index) =>
-                step.type === "Mixer" &&
-                step.name !== "" &&
-                index < pipelineStepIndex,
-        ) as MixerStep | undefined
-    }
-    if (lastValidMixerStepBeforeIndex && config.mixers) {
-        const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
-        return mixer.channels.out
-    }
-    return getCaptureDeviceChannelCount(config.devices.capture)
+export async function maxChannelCount(config: Config, pipelineStepIndex: number): Promise<number> {
+  var lastValidMixerStepBeforeIndex = null
+  if (config.pipeline) {
+    lastValidMixerStepBeforeIndex = List(config.pipeline).findLast(
+      (step, index) => step.type === "Mixer" && step.name !== "" && index < pipelineStepIndex,
+    ) as MixerStep | undefined
+  }
+  if (lastValidMixerStepBeforeIndex && config.mixers) {
+    const mixer = config.mixers[lastValidMixerStepBeforeIndex.name]
+    return mixer.channels.out
+  }
+  return getCaptureDeviceChannelCount(config.devices.capture)
 }
 
 export interface WavInfo {
-    dataoffset: number
-    datalength: number
-    sampleformat: string
-    bitspersample: number
-    channels: number
-    byterate: number
-    samplerate: number
-    bytesperframe: number
+  dataoffset: number
+  datalength: number
+  sampleformat: string
+  bitspersample: number
+  channels: number
+  byterate: number
+  samplerate: number
+  bytesperframe: number
 }
 
 async function getWavInfo(filename: string): Promise<WavInfo | null> {
-    let info_resp = await fetch(
-        `/api/wavinfo?filename=${encodeURIComponent(filename)}`,
-    )
-    if (info_resp.ok) {
-        const info = await info_resp.json()
-        return info == null ? null : (info as WavInfo)
-    }
-    return null
+  let info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
+  if (info_resp.ok) {
+    const info = await info_resp.json()
+    return info == null ? null : (info as WavInfo)
+  }
+  return null
 }
 
-export async function getCaptureDeviceChannelCount(
-    config: CaptureDevice,
-): Promise<number> {
-    if (config.type === "WavFile") {
-        const wavInfo = await getWavInfo(config.filename)
-        if (wavInfo !== null) return wavInfo.channels
-        else
-            console.log(
-                "Cannot get info for wav file, assuming stereo. File:",
-                config.filename,
-            )
-        return 2
-    }
-    return config.channels
+export async function getCaptureDeviceChannelCount(config: CaptureDevice): Promise<number> {
+  if (config.type === "WavFile") {
+    const wavInfo = await getWavInfo(config.filename)
+    if (wavInfo !== null) return wavInfo.channels
+    else console.log("Cannot get info for wav file, assuming stereo. File:", config.filename)
+    return 2
+  }
+  return config.channels
 }
 
-export function getChannelLabels(
-    config: Config,
-    index: number,
-): (string | null)[] | null {
-    // Capture device labels
-    let cap_params = config.devices.capture
-    let channel_labels = cap_params.labels
-    let pipeline = config.pipeline ? config.pipeline : []
-    for (let idx = 0; idx < index; idx++) {
-        const step = pipeline[idx]
-        const disabled = step.bypassed === true
-        if (step.type === "Mixer" && config.mixers && !disabled) {
-            const mixername = step.name
-            const mixconf = config["mixers"][mixername]
-            if (mixconf) {
-                channel_labels = mixconf.labels
-            } else {
-                channel_labels = null
-            }
-        }
+export function getChannelLabels(config: Config, index: number): (string | null)[] | null {
+  // Capture device labels
+  let cap_params = config.devices.capture
+  let channel_labels = cap_params.labels
+  let pipeline = config.pipeline ? config.pipeline : []
+  for (let idx = 0; idx < index; idx++) {
+    const step = pipeline[idx]
+    const disabled = step.bypassed === true
+    if (step.type === "Mixer" && config.mixers && !disabled) {
+      const mixername = step.name
+      const mixconf = config["mixers"][mixername]
+      if (mixconf) {
+        channel_labels = mixconf.labels
+      } else {
+        channel_labels = null
+      }
     }
-    return channel_labels
+  }
+  return channel_labels
 }
 
 export function getOutputLabels(config: Config): (string | null)[] | null {
-    let pipeline_length = config.pipeline ? config.pipeline.length : 0
-    return getChannelLabels(config, pipeline_length)
+  let pipeline_length = config.pipeline ? config.pipeline.length : 0
+  return getChannelLabels(config, pipeline_length)
 }
 
 export function getLabelForChannel(
-    labels: (string | null)[] | null | undefined,
-    channel: number,
-    compact?: boolean,
-    nullable?: boolean,
+  labels: (string | null)[] | null | undefined,
+  channel: number,
+  compact?: boolean,
+  nullable?: boolean,
 ): string {
-    var result = ""
-    if (!compact || !nullable) {
-        result = channel.toString()
-    }
-    if (labels === undefined || labels === null || labels.length <= channel) {
-        return result
-    }
-    const label = labels[channel]
-    if (label) {
-        if (compact) {
-            return label
-        }
-        return result + ": " + label
-    }
+  var result = ""
+  if (!compact || !nullable) {
+    result = channel.toString()
+  }
+  if (labels === undefined || labels === null || labels.length <= channel) {
     return result
+  }
+  const label = labels[channel]
+  if (label) {
+    if (compact) {
+      return label
+    }
+    return result + ": " + label
+  }
+  return result
 }
 
-export function getMixerInputLabels(
-    config: Config,
-    mixername: string,
-): (string | null)[] | null {
-    const pipeline = config.pipeline ? config.pipeline : []
-    let found_at = -1
-    for (const [idx, step] of pipeline.entries()) {
-        if (step.type === "Mixer" && step.name === mixername) {
-            found_at = idx
-            break
-        }
+export function getMixerInputLabels(config: Config, mixername: string): (string | null)[] | null {
+  const pipeline = config.pipeline ? config.pipeline : []
+  let found_at = -1
+  for (const [idx, step] of pipeline.entries()) {
+    if (step.type === "Mixer" && step.name === mixername) {
+      found_at = idx
+      break
     }
-    if (found_at >= 0) {
-        return getChannelLabels(config, found_at)
-    } else {
-        return null
-    }
+  }
+  if (found_at >= 0) {
+    return getChannelLabels(config, found_at)
+  } else {
+    return null
+  }
 }
 
-export function getProcessorChannelLabels(
-    config: Config,
-    procname: string,
-): (string | null)[] | null {
-    const pipeline = config.pipeline ? config.pipeline : []
-    let found_at = -1
-    for (const [idx, step] of pipeline.entries()) {
-        if (step.type === "Processor" && step.name === procname) {
-            found_at = idx
-            break
-        }
+export function getProcessorChannelLabels(config: Config, procname: string): (string | null)[] | null {
+  const pipeline = config.pipeline ? config.pipeline : []
+  let found_at = -1
+  for (const [idx, step] of pipeline.entries()) {
+    if (step.type === "Processor" && step.name === procname) {
+      found_at = idx
+      break
     }
-    if (found_at >= 0) {
-        return getChannelLabels(config, found_at)
-    } else {
-        return null
-    }
+  }
+  if (found_at >= 0) {
+    return getChannelLabels(config, found_at)
+  } else {
+    return null
+  }
 }
