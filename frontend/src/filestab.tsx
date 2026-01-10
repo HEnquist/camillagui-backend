@@ -1,7 +1,8 @@
-import React, { Component, createRef, RefObject } from "react"
+import React, { Component, createRef } from "react"
 import {
   Box,
   Button,
+  DropdownBox,
   ErrorBoundary,
   fileDateSort,
   fileNameSort,
@@ -132,7 +133,6 @@ class FileTable extends Component<
   }
 > {
   private readonly type: FileType = this.props.type
-  private dropdownRef: RefObject<HTMLDivElement>
 
   constructor(props: FileTableProps) {
     super(props)
@@ -152,8 +152,6 @@ class FileTable extends Component<
     this.showErrorMessage = this.showErrorMessage.bind(this)
     this.rename = this.rename.bind(this)
     this.toggleFileMenu = this.toggleFileMenu.bind(this)
-    this.clickOutsideDropdown = this.clickOutsideDropdown.bind(this)
-    this.dropdownRef = createRef()
     this.state = {
       files: [],
       selectedFiles: [],
@@ -180,20 +178,10 @@ class FileTable extends Component<
     const timerId = setInterval(this.update, 10000)
     this.setState({ stopTimer: () => clearInterval(timerId) })
     this.loadActiveConfigName()
-    document.addEventListener("mousedown", this.clickOutsideDropdown)
-    document.addEventListener("touchstart", this.clickOutsideDropdown)
   }
 
   componentWillUnmount() {
     this.state.stopTimer()
-    document.removeEventListener("mousedown", this.clickOutsideDropdown)
-    document.removeEventListener("touchstart", this.clickOutsideDropdown)
-  }
-
-  clickOutsideDropdown(event: MouseEvent | TouchEvent) {
-    if (this.dropdownRef.current && !this.dropdownRef.current.contains(event.target as Node)) {
-      this.setState({ fileMenuOpen: null })
-    }
   }
 
   private update() {
@@ -478,36 +466,37 @@ class FileTable extends Component<
                 highlighted={this.state.fileMenuOpen === index}
                 onClick={() => this.toggleFileMenu(index)}
               />
-              {this.state.fileMenuOpen === index && (
-                <div ref={this.dropdownRef} className="dropdown-menu" title="channels">
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "last baseline",
-                    }}
-                  >
-                    <RenameButton
-                      key={"rename" + id}
-                      filename={row.name}
-                      fileStatus={fileStatus}
-                      rename={() => this.rename(row.name, "config")}
-                    />
-                    <CompareToGUIButton
-                      key={"compare" + id}
-                      filename={row.name}
-                      valid={row.valid}
-                      compareConfig={this.compareConfig}
-                    />
-                    <PlotButton
-                      tooltip="Plot the pipeline"
-                      pipeline={true}
-                      enabled={row.valid}
-                      onClick={() => this.plotConfig(row.name)}
-                    />
-                  </div>
+              <DropdownBox
+                enabled={this.state.fileMenuOpen === index}
+                onOutsideClick={() => this.toggleFileMenu(index)}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "last baseline",
+                  }}
+                >
+                  <RenameButton
+                    key={"rename" + id}
+                    filename={row.name}
+                    fileStatus={fileStatus}
+                    rename={() => this.rename(row.name, "config")}
+                  />
+                  <CompareToGUIButton
+                    key={"compare" + id}
+                    filename={row.name}
+                    valid={row.valid}
+                    compareConfig={this.compareConfig}
+                  />
+                  <PlotButton
+                    tooltip="Plot the pipeline"
+                    pipeline={true}
+                    enabled={row.valid}
+                    onClick={() => this.plotConfig(row.name)}
+                  />
                 </div>
-              )}
+              </DropdownBox>
             </div>
           </div>
         ),
