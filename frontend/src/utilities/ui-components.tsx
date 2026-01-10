@@ -1358,7 +1358,7 @@ export function ChannelSelection(props: {
 
   const makeDropdown = () => {
     return (
-      <div className="dropdown-menu" title="channels">
+      <DropdownBox enabled={expanded} onOutsideClick={() => setExpanded(false)}>
         <table>
           {Range(0, rows).map((row) => (
             <tr>
@@ -1376,7 +1376,7 @@ export function ChannelSelection(props: {
             </tr>
           ))}
         </table>
-      </div>
+      </DropdownBox>
     )
   }
 
@@ -1446,7 +1446,7 @@ export function ChannelSelection(props: {
             selected={expanded}
             onClick={toggleExpanded}
           />
-          {expanded && makeDropdown()}
+          {makeDropdown()}
         </div>
       </div>
     )
@@ -1492,5 +1492,45 @@ export function ChannelButton(props: {
         backgroundColor: erroneousChannel ? "var(--error-field-background-color)" : undefined,
       }}
     />
+  )
+}
+
+export function DropdownBox(props: {
+  onOutsideClick: () => void
+  enabled: boolean
+  children: React.ReactNode
+  style?: CSSProperties
+}) {
+  if (!props.enabled) return null
+
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Handler to detect outside clicks
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        ref.current &&
+        !ref.current.contains(event.target as Node) &&
+        !ref.current.parentNode?.contains(event.target as Node)
+      ) {
+        props.onOutsideClick()
+      }
+    }
+
+    // Add event listeners
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+  }, [props.onOutsideClick])
+
+  return (
+    <div className="dropdown-menu" ref={ref} title="dropdown" style={props.style}>
+      {props.children}
+    </div>
   )
 }

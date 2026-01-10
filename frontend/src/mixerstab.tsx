@@ -17,6 +17,7 @@ import {
   MatrixCell,
   cssStyles,
   ErrorBoundary,
+  DropdownBox,
 } from "./utilities/ui-components"
 import {
   Config,
@@ -476,31 +477,30 @@ function MappingMatrix(props: {
                             backgroundColor: csscolor,
                           }}
                         />
-                        {expanded[0] === dest &&
-                          expanded[1] === src &&
-                          makeDropdown(
-                            cell,
-                            src,
-                            dest,
-                            map_idx,
-                            src_idx,
-                            errors,
-                            (cellupdate: Update<Source>) => {
-                              update((mixer) => {
-                                let cellCopy = cloneDeep(cell)
-                                cellupdate(cellCopy)
-                                updateCell(mixer, src, dest, cellCopy)
-                              })
-                            },
-                            () => {
-                              update((mixer) => {
-                                deleteCell(mixer, src, dest)
-                              })
-                            },
-                            () => {
-                              setExpanded([-1, -1])
-                            },
-                          )}
+                        {makeDropdown(
+                          cell,
+                          src,
+                          dest,
+                          expanded,
+                          map_idx,
+                          src_idx,
+                          errors,
+                          (cellupdate: Update<Source>) => {
+                            update((mixer) => {
+                              let cellCopy = cloneDeep(cell)
+                              cellupdate(cellCopy)
+                              updateCell(mixer, src, dest, cellCopy)
+                            })
+                          },
+                          () => {
+                            update((mixer) => {
+                              deleteCell(mixer, src, dest)
+                            })
+                          },
+                          () => {
+                            setExpanded([-1, -1])
+                          },
+                        )}
                       </div>
                     </td>
                   )
@@ -529,18 +529,22 @@ const makeDropdown = (
   cell: Source,
   src: number,
   dest: number,
+  expanded: number[],
   map_idx: number,
   src_idx: number,
   errors: Errors,
   update: any,
   remove: any,
-  close: any,
+  close: () => void,
 ) => {
+  if (expanded[0] !== dest || expanded[1] !== src) {
+    return null
+  }
   const errorsForCell = errors.forSubpath("mapping", map_idx, "sources", src_idx)
   return (
-    <div className="dropdown-menu" style={{ borderColor: cssColorAt(cell, errorsForCell) }} title="channels">
-      <SourceCell source={cell} errors={errorsForCell} update={update} remove={remove} close={close} />
-    </div>
+    <DropdownBox enabled={true} onOutsideClick={close} style={{ borderColor: cssColorAt(cell, errorsForCell) }}>
+      <SourceCell source={cell} errors={errorsForCell} update={update} remove={remove} />
+    </DropdownBox>
   )
 }
 
@@ -549,9 +553,8 @@ function SourceCell(props: {
   errors: Errors
   update: (update: Update<Source>) => void
   remove: () => void
-  close: () => void
 }) {
-  const { source, errors, update, remove, close } = props
+  const { source, errors, update, remove } = props
   return (
     <>
       <div className="vertically-spaced-content">
@@ -568,9 +571,6 @@ function SourceCell(props: {
             className="small-setting-input"
             onChange={(gain: number) => update((source) => (source.gain = gain))}
           />
-          <span style={{ float: "right", width: "100%" }}>
-            <CloseButton onClick={close} />
-          </span>
         </div>
         <ErrorMessage message={errors.forSubpath("gain").asText()} />
         <div
