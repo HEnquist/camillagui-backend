@@ -1,8 +1,8 @@
 import React from "react"
+import isEqual from "lodash/isEqual"
 import { Config } from "../camilladsp/config"
 import { Errors, NoErrors } from "../utilities/errors"
 import { delayedExecutor } from "../utilities/ui-components"
-import isEqual from "lodash/isEqual"
 
 export class Configcheckmessage extends React.Component<
   {

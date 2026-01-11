@@ -72,8 +72,8 @@ export class StatusPoller {
 
   private async updateStatus() {
     let status: Status
-    let now = Date.now()
-    let levelsSince = (now - this.lastLevelTime) / 1000.0
+    const now = Date.now()
+    const levelsSince = (now - this.lastLevelTime) / 1000.0
     try {
       status = await (await fetch("/api/status?since=" + levelsSince)).json()
     } catch (err) {

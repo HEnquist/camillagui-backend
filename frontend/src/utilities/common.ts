@@ -1,6 +1,6 @@
+import { isArray, isObject } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
 import isEqual from "lodash/isEqual"
-import { isArray, isObject } from "lodash"
 import { ConfigElement, Shortcut } from "../guiconfig"
 
 export interface Update<T> {
@@ -59,8 +59,8 @@ export function numberValue(object: any, shortcut: Shortcut, element: ConfigElem
     // these properties have been checked earlier, ok to use ! to skip null/undefined checks here.
     const range_from = shortcut.range_from!
     const range_to = shortcut.range_to!
-    let range = range_from - range_to
-    let fraction = (value - range_from) / range
+    const range = range_from - range_to
+    const fraction = (value - range_from) / range
     value = range_to - fraction * range
   }
   return value
@@ -69,7 +69,7 @@ export function numberValue(object: any, shortcut: Shortcut, element: ConfigElem
 export function numberValues(object: any, shortcut: Shortcut): (number | undefined)[] {
   if (object === undefined || object === null) return [undefined]
 
-  let values = []
+  const values = []
   for (const element of shortcut.config_elements) {
     values.push(numberValue(object, shortcut, element))
   }
@@ -94,7 +94,7 @@ export function boolValue(object: any, shortcut: Shortcut, element: ConfigElemen
 export function boolValues(object: any, shortcut: Shortcut): (boolean | undefined)[] {
   if (object === undefined || object === null) return [undefined]
 
-  let values = []
+  const values = []
   for (const element of shortcut.config_elements) {
     values.push(boolValue(object, shortcut, element))
   }
@@ -121,8 +121,8 @@ export function setNumberValues(object: any, shortcut: Shortcut, value: number) 
       // these properties have been checked earlier, ok to use ! to skip null/undefined checks here.
       const range_from = shortcut.range_from!
       const range_to = shortcut.range_to!
-      let range = range_from - range_to
-      let fraction = (value - range_from) / range
+      const range = range_from - range_to
+      const fraction = (value - range_from) / range
       elementValue = range_to - fraction * range
     }
     console.log(value, elementValue)

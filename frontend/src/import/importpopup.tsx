@@ -1,9 +1,8 @@
 import React, { ReactNode, useEffect, useState } from "react"
-import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
-import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
-import { Config } from "../camilladsp/config"
+import { mdiAlert, mdiInformation } from "@mdi/js"
 import { isObject } from "lodash"
-import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
+import { Tooltip } from "react-tooltip"
+import Popup from "reactjs-popup"
 import {
   Import,
   ImportedConfig,
@@ -13,10 +12,11 @@ import {
   mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator,
 } from "./configimport"
-import { mdiAlert, mdiInformation } from "@mdi/js"
+import { Config } from "../camilladsp/config"
+import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
+import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
 import { bottomMargin } from "../utilities/styles"
-import { Tooltip } from "react-tooltip"
-import Popup from "reactjs-popup"
+import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
 
 export type ImportPopupProps =
   | {}

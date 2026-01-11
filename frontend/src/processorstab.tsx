@@ -12,6 +12,8 @@ import {
   sortedProcessorNamesOf,
   ProcessorSortKeys,
 } from "./camilladsp/config"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { Errors } from "./utilities/errors"
 import {
   AddButton,
   BoolOption,
@@ -29,8 +31,6 @@ import {
   TextOption,
   ErrorBoundary,
 } from "./utilities/ui-components"
-import { Errors } from "./utilities/errors"
-import { modifiedCopyOf, Update } from "./utilities/common"
 
 export class ProcessorsTab extends React.Component<
   {
@@ -126,8 +126,8 @@ export class ProcessorsTab extends React.Component<
   }
 
   render() {
-    let { config, errors } = this.props
-    let processors = config.processors ? config.processors : {}
+    const { config, errors } = this.props
+    const processors = config.processors ? config.processors : {}
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div>
@@ -479,7 +479,7 @@ class ProcessorParams extends React.Component<
       if (info.type === "floatlist") return <FloatListOption {...commonProps} />
       if (info.type === "optional_float") return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
       if (info.type === "enum") {
-        let options = info.options!
+        const options = info.options!
         return <EnumOption {...commonProps} key={commonProps.key} options={options} />
       }
       return null

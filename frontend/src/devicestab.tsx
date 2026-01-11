@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react"
 import "./index.css"
+import { mdiMagnify } from "@mdi/js"
+import { Range } from "immutable"
 import {
   AsyncPolyDegreeOptions,
   AsyncSincInterpolationOptions,
@@ -19,6 +21,8 @@ import {
   getFormatOptions,
 } from "./camilladsp/config"
 import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig"
+import { Update } from "./utilities/common"
+import { Errors } from "./utilities/errors"
 import {
   add_default_option_inplace,
   Box,
@@ -42,11 +46,6 @@ import {
   TextInput,
   TextOption,
 } from "./utilities/ui-components"
-import { mdiMagnify } from "@mdi/js"
-import { Range } from "immutable"
-
-import { Errors } from "./utilities/errors"
-import { Update } from "./utilities/common"
 
 // TODO add volume_ramp_time
 // TODO redo resampler config
@@ -308,7 +307,7 @@ function SilenceOptions(props: {
 }
 
 function RateAdjustOptions(props: { devices: Devices; errors: Errors; onChange: (update: Update<Devices>) => void }) {
-  let playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type)
+  const playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type)
   if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"])) return null
   return (
     <Box title="Rate adjust">
@@ -371,7 +370,7 @@ function ResamplingOptions(props: {
       {devices.resampler && devices.resampler.type === "AsyncSinc" && (
         <EnumOption
           // @ts-ignore
-          value={devices.resampler.hasOwnProperty("profile") ? devices.resampler.profile : "Free"}
+          value={Object.hasOwn(devices.resampler, "profile") ? devices.resampler.profile : "Free"}
           error={errors.messageFor("resampler.profile")}
           options={AsyncSincProfiles}
           desc="profile"
@@ -379,7 +378,7 @@ function ResamplingOptions(props: {
           onChange={(profile) => props.onChange((devices) => (devices.resampler = changeResamplerProfile(profile)))}
         />
       )}
-      {devices.resampler && devices.resampler.type === "AsyncSinc" && !devices.resampler.hasOwnProperty("profile") && (
+      {devices.resampler && devices.resampler.type === "AsyncSinc" && !Object.hasOwn(devices.resampler, "profile") && (
         <>
           <EnumOption
             // @ts-ignore
@@ -550,7 +549,7 @@ function CaptureOptions(props: {
 }) {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
-  let [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [channels, setChannels] = useState(props.capture.type !== "WavFile" ? props.capture.channels : 2)
   if (props.hide_capture_device) return null
   const defaults: { [type: string]: CaptureDevice } = {
@@ -659,7 +658,7 @@ function CaptureOptions(props: {
   }
 
   const updateChannelLabels = (labels: (string | null)[] | null) => {
-    let channels = "channels" in props.capture ? props.capture.channels : 2
+    const channels = "channels" in props.capture ? props.capture.channels : 2
     if (labels !== null && labels.length > channels) {
       labels = labels.slice(0, channels)
     }

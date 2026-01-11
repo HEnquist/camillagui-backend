@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from "react"
 import "../index.css"
-import { clamp } from "lodash"
-import { cssStyles } from "../utilities/ui-components"
-import { getLabelForChannel } from "../camilladsp/config"
 import { Range } from "immutable"
+import { clamp } from "lodash"
+import { getLabelForChannel } from "../camilladsp/config"
+import { cssStyles } from "../utilities/ui-components"
 
 export function VuMeterGroup(props: {
   title: string

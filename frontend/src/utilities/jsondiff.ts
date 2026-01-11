@@ -1,6 +1,6 @@
+import { cloneDeep } from "lodash"
 import { createPatch, applyPatch } from "rfc6902"
 import { Pointer } from "rfc6902/pointer"
-import { cloneDeep } from "lodash"
 import { stringify } from "yaml"
 
 export function jsonUndoDiff(json1: any, json2: any): string {

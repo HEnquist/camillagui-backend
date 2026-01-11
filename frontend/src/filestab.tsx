@@ -1,18 +1,4 @@
-import React, { Component, createRef } from "react"
-import {
-  Box,
-  Button,
-  DropdownBox,
-  ErrorBoundary,
-  fileDateSort,
-  fileNameSort,
-  fileTitleSort,
-  fileValidSort,
-  MdiButton,
-  PlotButton,
-  UploadButton,
-} from "./utilities/ui-components"
-import { GuiConfig } from "./guiconfig"
+import React, { Component } from "react"
 import {
   mdiAlertCircle,
   mdiCheck,
@@ -27,7 +13,14 @@ import {
   mdiStarOutline,
   mdiUpload,
 } from "@mdi/js"
+import { isEqual } from "lodash"
+import DataTable from "react-data-table-component"
 import { Config, defaultConfig } from "./camilladsp/config"
+import { GuiConfig } from "./guiconfig"
+import { ImportPopup, ImportPopupProps } from "./import/importpopup"
+import { PipelinePopup } from "./pipeline/pipelineplotter"
+import { Update } from "./utilities/common"
+import { DiffPopup } from "./utilities/diffpopup"
 import {
   doUpload,
   download,
@@ -39,12 +32,19 @@ import {
   loadDefaultConfigJson,
   loadFiles,
 } from "./utilities/files"
-import { PipelinePopup } from "./pipeline/pipelineplotter"
-import { ImportPopup, ImportPopupProps } from "./import/importpopup"
-import { Update } from "./utilities/common"
-import DataTable from "react-data-table-component"
-import { isEqual } from "lodash"
-import { DiffPopup } from "./utilities/diffpopup"
+import {
+  Box,
+  Button,
+  DropdownBox,
+  ErrorBoundary,
+  fileDateSort,
+  fileNameSort,
+  fileTitleSort,
+  fileValidSort,
+  MdiButton,
+  PlotButton,
+  UploadButton,
+} from "./utilities/ui-components"
 
 const CURRENT_VERSION = 4
 
@@ -389,12 +389,10 @@ class FileTable extends Component<
       activeConfigFileName,
       filterText,
       showDiffPopup,
-      diffFileNameLeft,
-      diffFileNameRight,
       showPipelinePlot,
       configToPlot,
     } = this.state
-    let columns: any = []
+    const columns: any = []
     if (this.type === "coeff") {
       columns.push({
         name: "",
@@ -824,7 +822,7 @@ function LoadButton(props: {
   valid: boolean | undefined
   for_version: number | null | undefined
 }) {
-  const { filename, fileStatus, loadConfig, valid, for_version } = props
+  const { filename, fileStatus, loadConfig, for_version } = props
   let loadIcon: { icon: string; className?: string } = { icon: mdiRefresh }
   if (fileStatus !== null && fileStatus.action === "load" && fileStatus.filename === filename) {
     loadIcon = fileStatus.success
@@ -857,7 +855,7 @@ function CompareToGUIButton(props: {
   valid: boolean | undefined
 }) {
   const { filename, compareConfig, valid } = props
-  let loadIcon: { icon: string; className?: string } = {
+  const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
   let disabled_reason = ""
@@ -880,7 +878,7 @@ function CompareFilesButton(props: {
   compareConfigs: (name_left: string, name_right: string) => void
 }) {
   const { selectedFiles, compareConfigs } = props
-  let loadIcon: { icon: string; className?: string } = {
+  const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
   const enabled = selectedFiles.length === 2 && selectedFiles[0].valid && selectedFiles[1].valid
@@ -976,7 +974,7 @@ class NewConfig extends Component<
   }
 
   private loadBlankConfig() {
-    let config = defaultConfig()
+    const config = defaultConfig()
     this.props.setCurrentConfig!(undefined, config as Config)
   }
 

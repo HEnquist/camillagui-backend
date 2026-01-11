@@ -2,9 +2,9 @@ import Popup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
 import React from "react"
 import "../index.css"
-import { CloseButton } from "../utilities/ui-components"
-import { Config } from "../camilladsp/config"
 import { jsonDiff, DiffRow } from "./jsondiff"
+import { Config } from "../camilladsp/config"
+import { CloseButton } from "../utilities/ui-components"
 
 type DiffRowType = "header" | "prop" | "section" | "comment"
 
@@ -95,7 +95,7 @@ function renderDiff(left_config: Config, right_config: Config, left_name: string
     let prevPath = ""
     for (const row of rows) {
       const path = "/ " + row.path.slice(0, -1).join(" / ")
-      var header = null
+      let header = null
       if (path !== prevPath) {
         header = path
         prevPath = path

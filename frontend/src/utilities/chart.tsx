@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useRef } from "react"
-import { Scatter } from "react-chartjs-2"
 import { mdiHome, mdiImage, mdiTable } from "@mdi/js"
-import { Tooltip as ReactTooltip } from "react-tooltip"
-import { CloseButton, cssStyles, MdiButton } from "./ui-components"
-import Popup from "reactjs-popup"
 import { Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, PointElement, Tooltip } from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
+import { Scatter } from "react-chartjs-2"
+import { Tooltip as ReactTooltip } from "react-tooltip"
+import Popup from "reactjs-popup"
+import { CloseButton, cssStyles, MdiButton } from "./ui-components"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
 
@@ -51,7 +51,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
     link.download = props.data.name.replace(/\s/g, "_") + ".png"
 
     if (chartRef.current !== null) {
-      let current = chartRef.current as any
+      const current = chartRef.current as any
       link.href = current.toBase64Image()
       link.click()
     }
@@ -59,12 +59,12 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
 
   const resetView = useCallback(() => {
     if (chartRef.current !== null) {
-      let current = chartRef.current as any
+      const current = chartRef.current as any
       current.resetZoom()
     }
   }, [])
 
-  let data: any = { labels: [props.data.name], datasets: [] }
+  const data: any = { labels: [props.data.name], datasets: [] }
 
   function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
     return xvect.map((x, idx) => ({
@@ -74,9 +74,9 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
   }
 
   const downloadData = useCallback(() => {
-    let magdat = props.data.magnitude
-    let phasedat = props.data.phase
-    let delaydat = props.data.groupdelay
+    const magdat = props.data.magnitude
+    const phasedat = props.data.phase
+    const delaydat = props.data.groupdelay
 
     const table = props.data.f.map((f, i) => {
       let mag: number | null = null
@@ -87,7 +87,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
       if (delaydat !== undefined) delay = delaydat[i]
       return [f, mag, phase, delay]
     })
-    let csvContent =
+    const csvContent =
       "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
       table.map((row) => row.join(",")).join("\n")
     const link = document.createElement("a")
@@ -285,7 +285,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
         suggestedMax: 1,
         afterBuildTicks: function (scale: any) {
           let step = 1
-          let range = scale.max - scale.min
+          const range = scale.max - scale.min
           if (range > 150) {
             step = 50
           } else if (range > 60) {
@@ -317,7 +317,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
         max: 180,
         afterBuildTicks: function (scale: any) {
           let step = 1
-          let range = scale.max - scale.min
+          const range = scale.max - scale.min
           if (range > 180) {
             step = 45
           } else if (range > 45) {

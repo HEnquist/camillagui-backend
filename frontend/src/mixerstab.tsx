@@ -1,24 +1,8 @@
 import React, { useState } from "react"
 import Icon from "@mdi/react"
 import "./index.css"
-import {
-  AddButton,
-  Box,
-  CloseButton,
-  DeleteButton,
-  ErrorMessage,
-  IntOption,
-  MdiButton,
-  ParsedInput,
-  OptionalTextInput,
-  EnumInput,
-  null_to_default,
-  FloatInput,
-  MatrixCell,
-  cssStyles,
-  ErrorBoundary,
-  DropdownBox,
-} from "./utilities/ui-components"
+import { Range } from "immutable"
+import { cloneDeep } from "lodash"
 import {
   Config,
   defaultMixer,
@@ -43,10 +27,25 @@ import {
   mdiArrowDown,
   mdiArrowLeft,
 } from "@mdi/js"
-import { Errors } from "./utilities/errors"
 import { modifiedCopyOf, Update } from "./utilities/common"
-import { Range } from "immutable"
-import { cloneDeep } from "lodash"
+import { Errors } from "./utilities/errors"
+import {
+  AddButton,
+  Box,
+  DeleteButton,
+  ErrorMessage,
+  IntOption,
+  MdiButton,
+  ParsedInput,
+  OptionalTextInput,
+  EnumInput,
+  null_to_default,
+  FloatInput,
+  MatrixCell,
+  cssStyles,
+  ErrorBoundary,
+  DropdownBox,
+} from "./utilities/ui-components"
 
 const styles = cssStyles()
 const mutedCellColor = styles.getPropertyValue("--muted-cell-color")
@@ -290,7 +289,6 @@ function addCell(mixer: Mixer, source: number, dest: number) {
       mute: false,
     }
     mixer.mapping.push(mapping)
-    idx = mixer.mapping.length - 1
   }
   const cell = {
     channel: source,
@@ -303,7 +301,7 @@ function addCell(mixer: Mixer, source: number, dest: number) {
 }
 
 function deleteCell(mixer: Mixer, source: number, dest: number) {
-  let [cell, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
+  const [cell, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
   if (cell === undefined) {
     return
   }
@@ -314,7 +312,7 @@ function deleteCell(mixer: Mixer, source: number, dest: number) {
 }
 
 function updateCell(mixer: Mixer, source: number, dest: number, cell: Source) {
-  let [current, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
+  const [current, map_idx, src_idx] = getSource(mixer.mapping, source, dest)
   if (current === undefined) {
     return
   }
@@ -322,7 +320,7 @@ function updateCell(mixer: Mixer, source: number, dest: number, cell: Source) {
 }
 
 function toggleMappingMute(mixer: Mixer, dest: number) {
-  let [current, idx] = getMapping(mixer.mapping, dest)
+  const [current, idx] = getMapping(mixer.mapping, dest)
   if (current !== undefined) {
     if (current.mute === true) {
       mixer.mapping[idx].mute = false
@@ -334,7 +332,7 @@ function toggleMappingMute(mixer: Mixer, dest: number) {
 
 function pruneMixer(mixer: Mixer) {
   mixer.mapping = mixer.mapping.filter((map) => map.dest < mixer.channels.out)
-  for (var mapping of mixer.mapping) {
+  for (const mapping of mixer.mapping) {
     mapping.sources = mapping.sources.filter((src) => src.channel < mixer.channels.in)
   }
 }
@@ -348,8 +346,8 @@ function MappingMatrix(props: {
   updateLabel: (dest: number, new_label: string | null) => void
   inputLabels: (string | null)[] | null
 }) {
-  const { mixer, errors, channels, remove, update, updateLabel, inputLabels } = props
-  let [expanded, setExpanded] = useState([-1, -1])
+  const { mixer, errors, channels, update, updateLabel, inputLabels } = props
+  const [expanded, setExpanded] = useState([-1, -1])
   const toggleExpanded = (row: number, col: number) => {
     if (expanded[0] === row && expanded[1] === col) {
       setExpanded([-1, -1])
@@ -439,7 +437,7 @@ function MappingMatrix(props: {
                 const errorsForCell = errorsForRow.forSubpath("sources", src_idx)
                 if (cell) {
                   const csscolor = cssColorAt(cell, errorsForCell)
-                  var cellText
+                  let cellText
                   if (cell.scale === "linear") {
                     cellText = (+(cell.gain !== null ? cell.gain : 1).toPrecision(2)).toString()
                   } else {
@@ -487,7 +485,7 @@ function MappingMatrix(props: {
                           errors,
                           (cellupdate: Update<Source>) => {
                             update((mixer) => {
-                              let cellCopy = cloneDeep(cell)
+                              const cellCopy = cloneDeep(cell)
                               cellupdate(cellCopy)
                               updateCell(mixer, src, dest, cellCopy)
                             })
@@ -629,7 +627,7 @@ function OutputMute(props: { onClick: () => void; mute: boolean | null | undefin
   const { onClick, mute } = props
   const enabled = mute !== undefined
   const audible = mute === false || mute === null
-  var tooltip
+  let tooltip
   if (audible) {
     tooltip = "Mute this output channel"
   } else if (enabled) {

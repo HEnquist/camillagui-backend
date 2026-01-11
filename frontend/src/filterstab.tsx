@@ -9,6 +9,7 @@ import {
   mdiArrowCollapse,
   mdiArrowExpand,
 } from "@mdi/js"
+import { isEqual } from "lodash"
 import {
   Config,
   defaultFilter,
@@ -28,6 +29,10 @@ import {
   ConvSubtypeOptions,
   DitherSubtypeOptions,
 } from "./camilladsp/config"
+import { Chart, ChartData } from "./utilities/chart"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { Errors } from "./utilities/errors"
+import { doUpload, loadFiles, FileInfo } from "./utilities/files"
 import {
   AddButton,
   BoolOption,
@@ -53,11 +58,6 @@ import {
   UploadButton,
   ErrorBoundary,
 } from "./utilities/ui-components"
-import { Errors } from "./utilities/errors"
-import { modifiedCopyOf, Update } from "./utilities/common"
-import { isEqual } from "lodash"
-import { Chart, ChartData } from "./utilities/chart"
-import { doUpload, loadFiles, FileInfo } from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
@@ -171,7 +171,7 @@ export class FiltersTab extends React.Component<
   }
 
   render() {
-    let { config, errors } = this.props
+    const { config, errors } = this.props
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div>
@@ -381,7 +381,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   }
 
   private plotFilterInitially(file: string) {
-    const options = this.state.data!!.options
+    const options = this.state.data!.options
     const current = options.length === 0 ? undefined : options.filter((o) => o.name === file)[0]
     this.plotFilter(current?.samplerate, current?.channels)
   }
@@ -629,11 +629,11 @@ class FilterParams extends React.Component<
   }
 
   private eqBandFrequency(fmin: number, fmax: number, nbr_bands: number, band: number) {
-    let f_min_log = Math.log(fmin) / Math.log(2)
-    let f_max_log = Math.log(fmax) / Math.log(2)
-    let bw = (f_max_log - f_min_log) / nbr_bands
-    let freq_log = f_min_log + (band + 0.5) * bw
-    let freq = Math.pow(2.0, freq_log)
+    const f_min_log = Math.log(fmin) / Math.log(2)
+    const f_max_log = Math.log(fmax) / Math.log(2)
+    const bw = (f_max_log - f_min_log) / nbr_bands
+    const freq_log = f_min_log + (band + 0.5) * bw
+    const freq = Math.pow(2.0, freq_log)
     if (freq < 10) {
       return freq.toFixed(1)
     }

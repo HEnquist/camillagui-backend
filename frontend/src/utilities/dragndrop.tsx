@@ -1,8 +1,8 @@
-import { DndProvider, DragElementWrapper, DropTargetMonitor, useDrag, useDrop } from "react-dnd"
 import React, { ReactNode } from "react"
-import Icon from "@mdi/react"
 import { mdiDrag } from "@mdi/js"
+import Icon from "@mdi/react"
 import isEqual from "lodash/isEqual"
+import { DndProvider, DragElementWrapper, DropTargetMonitor, useDrag, useDrop } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 
 export function DndContainer(props: { children: ReactNode }) {

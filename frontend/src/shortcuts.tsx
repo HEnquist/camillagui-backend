@@ -1,11 +1,11 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
-import { Box, Button, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
 import { mdiHelpCircleOutline, mdiAlert } from "@mdi/js"
-import { loadConfigJson, loadFilenames } from "./utilities/files"
 import { Config } from "./camilladsp/config"
-import { numberValues, setNumberValues, Update, boolValues, setBoolValues } from "./utilities/common"
 import { ShortcutSection } from "./guiconfig"
+import { numberValues, setNumberValues, Update, boolValues, setBoolValues } from "./utilities/common"
+import { loadConfigJson, loadFilenames } from "./utilities/files"
+import { Box, Button, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
 
 export function Shortcuts(props: {
   currentConfigName?: string
@@ -75,7 +75,7 @@ function ShortcutSectionView(props: {
           shortcut_desc = shortcut_desc + path + " " + reverse + "<br>"
         }
         if (s.type && s.type === "boolean") {
-          let values = boolValues(config, s)
+          const values = boolValues(config, s)
           return (
             <div key={s.name}>
               <div className="horizontally-spaced-content">
@@ -88,7 +88,7 @@ function ShortcutSectionView(props: {
             </div>
           )
         } else {
-          let values = numberValues(config, s)
+          const values = numberValues(config, s)
           return (
             <div key={s.name}>
               <div className="horizontally-spaced-content">

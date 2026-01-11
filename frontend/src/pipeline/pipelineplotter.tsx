@@ -3,7 +3,6 @@ import "reactjs-popup/dist/index.css"
 import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
-import { CloseButton, cssStyles } from "../utilities/ui-components"
 import {
   CaptureDevice,
   Config,
@@ -12,19 +11,19 @@ import {
   getLabelForChannel,
   Source,
 } from "../camilladsp/config"
+import { CloseButton, cssStyles, MdiButton } from "../utilities/ui-components"
 import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
-import { MdiButton } from "../utilities/ui-components"
 import { Range } from "immutable"
 
 export function PipelinePopup(props: { config: Config; open: boolean; onClose: () => void }) {
   const [expandFiltersteps, setExpandFiltersteps] = useState(true)
   const [expandVertical, setExpandVertical] = useState(false)
   const downloadSvg = useCallback(() => {
-    var svg = document.getElementById("svg_pipeline")
+    const svg = document.getElementById("svg_pipeline")
     if (svg !== null) {
-      var serializer = new XMLSerializer()
-      var source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg)
-      var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source)
+      const serializer = new XMLSerializer()
+      const source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg)
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source)
       const link = document.createElement("a")
       link.download = "pipeline.svg"
       link.href = url
@@ -355,7 +354,7 @@ class PipelinePlot extends React.Component<Props, State> {
     let channel_labels = []
     const capturename = PipelinePlot.deviceText(capture)
     this.appendFrame(labels, boxes, capturename, 0, 0, 1.5, spacing_v * active_channels)
-    let cap_params = conf.devices.capture
+    const cap_params = conf.devices.capture
     let cap_tooltip = "<strong>Capture device</strong>"
     for (const [key, value] of Object.entries(cap_params)) {
       cap_tooltip = cap_tooltip + "<br>" + key + ": " + value
@@ -388,9 +387,9 @@ class PipelinePlot extends React.Component<Props, State> {
     // resampler
     if (conf.devices.resampler !== null && conf.devices.resampler !== undefined) {
       total_length += 1
-      let resampler_channels = []
+      const resampler_channels = []
       this.appendFrame(labels, boxes, "Resampler", spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
-      let res_params = conf.devices.resampler
+      const res_params = conf.devices.resampler
       let res_tooltip = "<strong>Resampler</strong>"
       for (const [key, value] of Object.entries(res_params)) {
         res_tooltip = res_tooltip + "<br>" + key + ": " + value
@@ -418,7 +417,7 @@ class PipelinePlot extends React.Component<Props, State> {
 
     // volume control
     total_length += 1
-    let vol_channels = []
+    const vol_channels = []
     this.appendFrame(labels, boxes, "Volume", spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
     for (let n = 0; n < active_channels; n++) {
       const label = channel_labels[n]
@@ -570,7 +569,7 @@ class PipelinePlot extends React.Component<Props, State> {
           if (expand_filters) {
             for (let m = 0; m < step.names.length; m++) {
               const name = step.names[m]
-              let params = conf.filters ? conf.filters[name] : null
+              const params = conf.filters ? conf.filters[name] : null
               let tooltip = "<strong>Filter</strong>"
               if (params !== null) {
                 for (const [key, value] of Object.entries(params)) {
@@ -579,7 +578,7 @@ class PipelinePlot extends React.Component<Props, State> {
                   }
                 }
                 if (params.hasOwnProperty("parameters")) {
-                  let fparams = params.parameters
+                  const fparams = params.parameters
                   tooltip = tooltip + "<br>parameters:"
                   for (const [key, value] of Object.entries(fparams)) {
                     tooltip = tooltip + "<br>  " + key + ": " + value
@@ -673,7 +672,7 @@ class PipelinePlot extends React.Component<Props, State> {
     max_h = (total_length + 1) * spacing_h
     const playbackname = PipelinePlot.deviceText(conf.devices.playback)
     this.appendFrame(labels, boxes, playbackname, spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
-    let pb_params = conf.devices.playback
+    const pb_params = conf.devices.playback
     let pb_tooltip = "<strong>Playback device</strong>"
     for (const [key, value] of Object.entries(pb_params)) {
       pb_tooltip = pb_tooltip + "<br>" + key + ": " + value
@@ -793,9 +792,9 @@ class PipelinePlot extends React.Component<Props, State> {
 
     const text = d3.select(node).selectAll("text").data(labels).enter().append("text")
 
-    let zoom_k = this.state.zoomTransform ? this.state.zoomTransform.k : 1
-    let zoom_x = this.state.zoomTransform ? this.state.zoomTransform.x : 0
-    let zoom_y = this.state.zoomTransform ? this.state.zoomTransform.y : 0
+    const zoom_k = this.state.zoomTransform ? this.state.zoomTransform.k : 1
+    const zoom_x = this.state.zoomTransform ? this.state.zoomTransform.x : 0
+    const zoom_y = this.state.zoomTransform ? this.state.zoomTransform.y : 0
 
     //Add SVG Text Element Attributes
     text
@@ -824,10 +823,10 @@ class PipelinePlot extends React.Component<Props, State> {
   }
 
   render() {
-    let x0 = 0
-    let y0 = 0
-    let width = this.state.width
-    let height = this.state.height
+    const x0 = 0
+    const y0 = 0
+    const width = this.state.width
+    const height = this.state.height
     return (
       <div
         id="svg_pipeline_div"

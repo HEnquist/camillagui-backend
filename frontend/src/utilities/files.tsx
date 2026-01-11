@@ -91,7 +91,7 @@ export function loadActiveConfigFilename(): Promise<{
 }
 
 export function download(filename: string, blob: any) {
-  let a = document.createElement("a")
+  const a = document.createElement("a")
   a.href = URL.createObjectURL(blob)
   a.download = filename
   a.hidden = true
@@ -120,7 +120,7 @@ export async function doUpload(
     })
     onSuccess(uploadedFiles)
   } catch (e) {
-    let err = e as Error
+    const err = e as Error
     onError(err.message)
   }
 }

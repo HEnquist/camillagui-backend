@@ -1,9 +1,8 @@
 import React, { ChangeEvent, CSSProperties, ErrorInfo, ReactNode, useEffect, useRef, useState } from "react"
+import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
 import Icon from "@mdi/react"
 import Popup from "reactjs-popup"
-import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
 import "reactjs-popup/dist/index.css"
-import { toMap } from "./arrays"
 import { Range } from "immutable"
 import DataTable from "react-data-table-component"
 import { FileInfo } from "./files"
@@ -506,7 +505,7 @@ export function FloatListOption(props: {
           parseValue={(rawValue: string) => {
             const parsedvalue = []
             const values = rawValue.split(",")
-            for (let value of values) {
+            for (const value of values) {
               const tempvalue = parseFloat(value)
               if (isNaN(tempvalue)) return undefined
               parsedvalue.push(tempvalue)
@@ -530,13 +529,13 @@ export function LabelListOption(props: {
   onButtonClick: () => void
 }) {
   const updateChannelLabels = (labels_str: string | null) => {
-    let labels: (string | null)[] = []
+    const labels: (string | null)[] = []
     if (labels_str === null) {
       props.onChange(null)
       return
     }
-    for (let label of labels_str.split(",")) {
-      let cleaned_label = label === "" ? null : label.trim()
+    for (const label of labels_str.split(",")) {
+      const cleaned_label = label === "" ? null : label.trim()
       labels.push(cleaned_label)
     }
     props.onChange(labels)
@@ -1179,7 +1178,7 @@ export function FileSelectPopup(props: {
     onClose()
   }
   const [filterText, setFilterText] = React.useState("")
-  var columns: any = [
+  const columns: any = [
     {
       name: "Filename",
       selector: (row: FileInfo) => row.name,
@@ -1249,10 +1248,10 @@ export function KeyValueSelectPopup(props: {
 }) {
   const { open, items, showItemKey, onSelect, onClose } = props
   const [filterText, setFilterText] = React.useState("")
-  var columns: any = [
+  const columns: any = [
     {
       name: "Name",
-      selector: (row: [String, String]) => {
+      selector: (row: [string, string]) => {
         if (row[0] === row[1] || showItemKey !== true) {
           return row[1]
         } else {
@@ -1315,7 +1314,7 @@ export function ChannelSelection(props: {
   labels?: (string | null)[] | null
 }) {
   const { channels, maxChannelCount, setChannels, label, multiSelect, labels } = props
-  let [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   if (maxChannelCount > 0) {
     if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
@@ -1325,7 +1324,7 @@ export function ChannelSelection(props: {
 
   const rowSize = 8
 
-  var _channels = cloneDeep(channels)
+  let _channels = cloneDeep(channels)
   const toggleAllChannels = () => {
     if (_channels === null) {
       _channels = []
@@ -1501,8 +1500,6 @@ export function DropdownBox(props: {
   children: React.ReactNode
   style?: CSSProperties
 }) {
-  if (!props.enabled) return null
-
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -1528,6 +1525,7 @@ export function DropdownBox(props: {
     }
   }, [props.onOutsideClick])
 
+  if (!props.enabled) return null
   return (
     <div className="dropdown-menu" ref={ref} title="dropdown" style={props.style}>
       {props.children}
