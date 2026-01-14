@@ -3,7 +3,7 @@ import { createPatch, applyPatch } from "rfc6902"
 import { Pointer } from "rfc6902/pointer"
 import { stringify } from "yaml"
 
-export function jsonUndoDiff(json1: any, json2: any): string {
+export function jsonUndoDiff(json1: unknown, json2: unknown): string {
   const json1copy = cloneDeep(json1)
   return createPatch(json1copy, json2)
     .map((op) => {
@@ -38,19 +38,19 @@ export type DiffAction = "add" | "remove" | "replace"
 export interface DiffRow {
   action: DiffAction
   path: string[]
-  before: any
-  after: any
+  before: unknown
+  after: unknown
 }
 
 // return true if the value is null, undefined, an emtpy string, array or object
-function isNullish(value: any): boolean {
+function isNullish(value: unknown): boolean {
   if (value === null || value === undefined || value === "") return true
   else if (Array.isArray(value)) return value.length === 0
   else if (typeof value === "object") return Object.getOwnPropertyNames(value).length === 0
   else return false
 }
 
-export function jsonDiff(json1: any, json2: any): DiffRow[] {
+export function jsonDiff(json1: unknown, json2: unknown): DiffRow[] {
   const json1copy = cloneDeep(json1)
   const ops = createPatch(json1copy, json2)
   const rows = []
@@ -109,31 +109,59 @@ export function jsonDiff(json1: any, json2: any): DiffRow[] {
   return rows
 }
 
-function rawValueAt(json: any, path: string[]): any {
+function rawValueAt(json: unknown, path: string[]): unknown {
   if (json === undefined) {
-    return
+    return undefined
   }
-  return path.length === 0 ? json : rawValueAt(json[path[0]], path.slice(1))
-}
-
-function valueAt(json: any, path: string[]): any {
-  if (json === undefined) {
-    return
+  if (path.length === 0) {
+    return json
   }
-  return path.length === 0 ? valueAsString(json) : valueAt(json[path[0]], path.slice(1))
-}
-
-function valueAsString(json: any): string {
   if (Array.isArray(json)) {
-    const array = json as any[]
+    if (Number.isInteger(Number(path[0]))) {
+      return rawValueAt(json[Number(path[0])], path.slice(1))
+    }
+    return undefined
+  }
+  if (json !== null && typeof json === "object" && Object.hasOwn(json, path[0])) {
+    const obj = json as Record<string, unknown>
+    return rawValueAt(obj[path[0]], path.slice(1))
+  }
+  return undefined
+}
+
+function valueAt(json: unknown, path: string[]): string {
+  if (json === undefined) {
+    return ""
+  }
+  if (path.length === 0) {
+    return valueAsString(json)
+  }
+  if (Array.isArray(json)) {
+    if (Number.isInteger(Number(path[0]))) {
+      return valueAt(json[Number(path[0])], path.slice(1))
+    }
+    return ""
+  }
+  if (json !== null && typeof json === "object" && Object.hasOwn(json, path[0])) {
+    const obj = json as Record<string, unknown>
+    return valueAt(obj[path[0]], path.slice(1))
+  }
+  return ""
+}
+
+function valueAsString(json: unknown): string {
+  if (Array.isArray(json)) {
+    const array = json as unknown[]
     return "[" + array.map((item) => valueAsString(item)).join() + "]"
-  } else if (json !== null && typeof json === "object")
+  } else if (json !== null && typeof json === "object") {
+    const obj = json as Record<string, unknown>
     return (
       "{" +
       Object.getOwnPropertyNames(json)
-        .map((property) => property + ":" + valueAsString(json[property]))
+        .map((property) => property + ":" + valueAsString(obj[property]))
         .join() +
       "}"
     )
-  else return json
+  }
+  return String(json)
 }

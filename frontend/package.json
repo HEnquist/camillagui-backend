@@ -30,6 +30,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "check": "tsc --noEmit",
     "build": "tsc && vite build",
     "serve": "vite preview",
     "test": "vitest",

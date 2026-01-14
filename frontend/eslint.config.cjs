@@ -55,9 +55,9 @@ module.exports = [
             },
         },
         rules: {
-            "prettier/prettier": ["error", { endOfLine: "auto" }],
+            "prettier/prettier": ["warn", { endOfLine: "auto" }],
             "react/react-in-jsx-scope": "off",
-            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-explicit-any": "warn",
             "jsx-a11y/no-static-element-interactions": "off",
             "jsx-a11y/click-events-have-key-events": "off",
             "import/order": [
