@@ -56,7 +56,7 @@ export function jsonDiff(json1: any, json2: any): DiffRow[] {
   const rows = []
   for (const op of ops) {
     const path = Pointer.fromJSON(op.path).tokens.slice(1)
-    var row
+    let row
     switch (op.op) {
       case "add": {
         applyPatch(json1copy, [op])

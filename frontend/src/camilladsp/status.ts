@@ -76,7 +76,7 @@ export class StatusPoller {
     const levelsSince = (now - this.lastLevelTime) / 1000.0
     try {
       status = await (await fetch("/api/status?since=" + levelsSince)).json()
-    } catch (err) {
+    } catch {
       status = defaultStatus()
     }
     if (status.capturesignalpeak.length > 0 && status.playbacksignalpeak.length > 0) {

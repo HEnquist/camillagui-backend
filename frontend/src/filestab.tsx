@@ -187,7 +187,7 @@ class FileTable extends Component<
   private update() {
     loadFiles(this.type).then((files) => {
       if (!isEqual(files, this.state.files)) {
-        return this.setState((prevState) => ({
+        return this.setState(() => ({
           files: files,
         }))
       }
@@ -412,7 +412,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Filename",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div>
             <FileDownloadLink type={this.type} filename={row.name} isCurrentConfig={false} />
             <FileStatusMessage filename={row.name} fileStatus={fileStatus} type={this.type} />
@@ -504,7 +504,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Filename",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div>
             <FileDownloadLink
               type={this.type}
@@ -521,7 +521,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Title",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div data-tooltip-html={row.description} data-tooltip-id="main-tooltip">
             {row.title ? row.title : row.description ? <i>{row.description.slice(0, 20) + "..."}</i> : null}
           </div>
@@ -533,7 +533,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Valid",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div data-tooltip-html={fileStatusDesc(row.errors)} data-tooltip-id="main-tooltip">
             {row.valid === true ? "✔️" : "❌"}
           </div>
@@ -687,7 +687,7 @@ class FileTable extends Component<
   }
 }
 
-function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZip: () => {} }) {
+function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZip: () => void }) {
   const { selectedFiles, downloadAsZip } = props
   const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
   return (
@@ -704,7 +704,7 @@ function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZi
   )
 }
 
-function DeleteFilesButton(props: { selectedFiles: string[]; delete: () => {} }) {
+function DeleteFilesButton(props: { selectedFiles: string[]; delete: () => void }) {
   const selectedFiles = props.selectedFiles
   const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
   return (

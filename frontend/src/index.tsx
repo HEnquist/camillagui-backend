@@ -20,15 +20,15 @@ import { FiltersTab } from "./filterstab"
 import { defaultGuiConfig, GuiConfig } from "./guiconfig"
 import { UndoRedo } from "./main/UndoRedo"
 import { MixersTab } from "./mixerstab"
-import { ProcessorsTab } from "./processorstab"
 import { PipelineTab } from "./pipeline/pipelinetab"
-import { TitleTab } from "./titletab"
+import { ProcessorsTab } from "./processorstab"
 import { Shortcuts } from "./shortcuts"
+import { SidePanel } from "./sidepanel/sidepanel"
+import { TitleTab } from "./titletab"
+import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
 import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
-import { SidePanel } from "./sidepanel/sidepanel"
-import { Update } from "./utilities/common"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -248,7 +248,7 @@ class CamillaConfig extends React.Component<
     this.setState({ errors: errors })
   }
 
-  componentDidUpdate(prevProps: unknown) {
+  componentDidUpdate() {
     //ReactTooltip.rebuild()
     document.title = this.state.guiConfig.page_title
   }

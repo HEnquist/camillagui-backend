@@ -1,8 +1,10 @@
-import Popup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
-import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
+import * as d3 from "d3"
+import { Range } from "immutable"
+import ReactjsPopup from "reactjs-popup"
 import {
   CaptureDevice,
   Config,
@@ -12,8 +14,6 @@ import {
   Source,
 } from "../camilladsp/config"
 import { CloseButton, cssStyles, MdiButton } from "../utilities/ui-components"
-import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
-import { Range } from "immutable"
 
 export function PipelinePopup(props: { config: Config; open: boolean; onClose: () => void }) {
   const [expandFiltersteps, setExpandFiltersteps] = useState(true)
@@ -33,7 +33,7 @@ export function PipelinePopup(props: { config: Config; open: boolean; onClose: (
   const toggleExpandFiltersteps = () => setExpandFiltersteps(!expandFiltersteps)
   const toggleExpandVertical = () => setExpandVertical(!expandVertical)
   return (
-    <Popup open={props.open} closeOnDocumentClick onClose={props.onClose} contentStyle={{ width: "90%" }}>
+    <ReactjsPopup open={props.open} closeOnDocumentClick onClose={props.onClose} contentStyle={{ width: "90%" }}>
       <CloseButton onClick={props.onClose} />
       <PipelinePlot config={props.config} expand_filters={expandFiltersteps} expand_vertical={expandVertical} />
       <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadSvg} />
@@ -51,7 +51,7 @@ export function PipelinePopup(props: { config: Config; open: boolean; onClose: (
         tooltip={"Reset zoom to display entire plot"}
         onClick={toggleExpandVertical}
       />
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
@@ -165,7 +165,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("user-select", "none")
   }
 
-  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
+  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
     if (this.props.expand_vertical !== prevProps.expand_vertical) {
       this.resetZoom()
     }
@@ -364,7 +364,7 @@ class PipelinePlot extends React.Component<Props, State> {
       channel_labels.push(getLabelForChannel(labels, n, true, false))
     }
     for (let n = 0; n < active_channels; n++) {
-      var label = channel_labels[n]
+      const label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
@@ -458,7 +458,7 @@ class PipelinePlot extends React.Component<Props, State> {
         this.appendFrame(labels, boxes, mixername, spacing_h * total_length, 0, 1.5, spacing_v * mixconf.channels.out)
         channel_labels = []
         for (let n = 0; n < mixconf.channels.out; n++) {
-          label = getLabelForChannel(mixconf.labels, n, true, false)
+          const label = getLabelForChannel(mixconf.labels, n, true, false)
           channel_labels.push(label)
         }
         for (let m = 0; m < mixconf.channels.out; m++) {
@@ -577,7 +577,7 @@ class PipelinePlot extends React.Component<Props, State> {
                     tooltip = tooltip + "<br>" + key + ": " + value
                   }
                 }
-                if (params.hasOwnProperty("parameters")) {
+                if (Object.hasOwn(params, "parameters")) {
                   const fparams = params.parameters
                   tooltip = tooltip + "<br>parameters:"
                   for (const [key, value] of Object.entries(fparams)) {
@@ -702,24 +702,26 @@ class PipelinePlot extends React.Component<Props, State> {
   createPipelinePlot() {
     d3.select(`#svg_pipeline`).selectAll("*").remove()
 
-    let { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
+    const { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
     // if (max_h > (2*this.width/this.height) * max_v)
     //   max_v = max_h / (2*this.width/this.height)
     // else
     //    max_h = (2*this.width/this.height) * max_v
+    let mut_max_h = max_h
+    let mut_max_v = max_v
 
-    if (max_h < 10) max_h = 10
-    if (max_v < 4) max_v = 4
-    const total_width = max_h + 2.5
-    const total_height = 2 * max_v
+    if (mut_max_h < 10) mut_max_h = 10
+    if (mut_max_v < 4) mut_max_v = 4
+    const total_width = mut_max_h + 2.5
+    const total_height = 2 * mut_max_v
     const calculated_height = (this.width * total_height) / total_width
     this.setState({ height: calculated_height, width: this.width })
 
-    this.fillBackground(boxes, -2.5, -max_v, total_width, total_height)
+    this.fillBackground(boxes, -2.5, -mut_max_v, total_width, total_height)
 
     const node = this.node
-    const yScale = d3.scaleLinear().domain([-max_v, max_v]).range([0, calculated_height])
-    const xScale = d3.scaleLinear().domain([-2.5, max_h]).range([0, this.width])
+    const yScale = d3.scaleLinear().domain([-mut_max_v, mut_max_v]).range([0, calculated_height])
+    const xScale = d3.scaleLinear().domain([-2.5, mut_max_h]).range([0, this.width])
 
     const linkGen = d3
       .linkHorizontal()
@@ -740,7 +742,6 @@ class PipelinePlot extends React.Component<Props, State> {
         .append("defs")
         .append("marker")
         .attr("id", "arrow" + color)
-        // @ts-ignore
         .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
         .attr("refX", refX)
         .attr("refY", refY)
@@ -750,7 +751,7 @@ class PipelinePlot extends React.Component<Props, State> {
         .attr("fill", color)
         .attr("stroke", color)
         .append("path")
-        // @ts-ignore
+        // @ts-expect-error this is ok but the compiler is not able to determine that
         .attr("d", d3.line()(arrowPoints))
     }
 
@@ -782,7 +783,7 @@ class PipelinePlot extends React.Component<Props, State> {
           this.tooltip.transition().duration(500).style("opacity", 0)
         }
       })
-      .on("mousemove", (event, d) => {
+      .on("mousemove", (event) => {
         // Move the tooltip with the cursor.
         const tt_node = this.tooltip.node()
         const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
@@ -813,7 +814,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .selectAll(null)
       .data(links)
       .join("path")
-      // @ts-ignore
+      // @ts-expect-error this is ok but the compiler is not able to determine that
       .attr("d", linkGen)
       .attr("marker-end", (d) => "url(#arrow" + d.color + ")")
       .attr("fill", "none")

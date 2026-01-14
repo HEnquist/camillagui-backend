@@ -45,7 +45,7 @@ export class Configcheckmessage extends React.Component<
         })
         this.props.setErrors(errors)
       }
-    } catch (err) {
+    } catch {
       this.setState({ message: "Validation failed" })
       this.props.setErrors(NoErrors)
     }

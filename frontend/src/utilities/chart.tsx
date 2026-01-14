@@ -4,7 +4,7 @@ import { Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, P
 import zoomPlugin from "chartjs-plugin-zoom"
 import { Scatter } from "react-chartjs-2"
 import { Tooltip as ReactTooltip } from "react-tooltip"
-import Popup from "reactjs-popup"
+import ReactjsPopup from "reactjs-popup"
 import { CloseButton, cssStyles, MdiButton } from "./ui-components"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
@@ -16,11 +16,11 @@ export function ChartPopup(props: {
   onClose: () => void
 }) {
   return (
-    <Popup open={props.open} onClose={props.onClose}>
+    <ReactjsPopup open={props.open} onClose={props.onClose}>
       <CloseButton onClick={props.onClose} />
       <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
       <Chart onChange={props.onChange} data={props.data} />
-    </Popup>
+    </ReactjsPopup>
   )
 }
 

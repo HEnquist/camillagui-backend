@@ -369,7 +369,7 @@ function ResamplingOptions(props: {
       />
       {devices.resampler && devices.resampler.type === "AsyncSinc" && (
         <EnumOption
-          // @ts-ignore
+          // @ts-expect-error this is ok but the compiler is not able to determine that
           value={Object.hasOwn(devices.resampler, "profile") ? devices.resampler.profile : "Free"}
           error={errors.messageFor("resampler.profile")}
           options={AsyncSincProfiles}
@@ -381,63 +381,62 @@ function ResamplingOptions(props: {
       {devices.resampler && devices.resampler.type === "AsyncSinc" && !Object.hasOwn(devices.resampler, "profile") && (
         <>
           <EnumOption
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.interpolation}
             error={errors.messageFor("interpolation")}
             options={AsyncSincInterpolationOptions}
             desc="interpolation"
             tooltip="Interpolation order"
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             onChange={(interp) => props.onChange((devices) => (devices.resampler.interpolation = interp))}
           />
           <IntOption
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.sinc_len}
             error={errors.messageFor("resampler", "sinc_len")}
             desc="sinc_len"
             tooltip="Length of sinc interpolation filter"
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             onChange={(len) => props.onChange((devices) => (devices.resampler.sinc_len = len))}
           />
           <IntOption
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.oversampling_factor}
             error={errors.messageFor("resampler", "oversampling_factor")}
             desc="oversampling_factor"
             tooltip="Oversampling factor"
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             onChange={(factor) => props.onChange((devices) => (devices.resampler.oversampling_factor = factor))}
           />
           <OptionalFloatOption
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.f_cutoff}
             error={errors.messageFor("f_cutoff")}
             desc="f_cutoff"
             tooltip="Relative cutoff frequency of interpolation filter"
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             onChange={(cutoff) => props.onChange((devices) => (devices.resampler.f_cutoff = cutoff))}
           />
           <EnumOption
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.window}
             error={errors.messageFor("window")}
             options={AsyncSincWindows}
             desc="window"
             tooltip="Window function for interpolation filter"
-            // @ts-ignore
+            // @ts-expect-error this is ok but the compiler is not able to determine that
             onChange={(window) => props.onChange((devices) => (devices.resampler.window = window))}
           />
         </>
       )}
       {devices.resampler && devices.resampler.type === "AsyncPoly" && (
         <EnumOption
-          // @ts-ignore
           value={devices.resampler.interpolation}
           error={errors.messageFor("interpolation")}
           options={AsyncPolyDegreeOptions}
           desc="interpolation"
           tooltip="Interpolation order"
-          // @ts-ignore
+          // @ts-expect-error this is ok but the compiler is not able to determine that
           onChange={(interp) => props.onChange((devices) => (devices.resampler.interpolation = interp))}
         />
       )}
@@ -551,7 +550,6 @@ function CaptureOptions(props: {
   const [availableDevices, setAvailableDevices] = useState([])
   const [expanded, setExpanded] = useState(false)
   const [channels, setChannels] = useState(props.capture.type !== "WavFile" ? props.capture.channels : 2)
-  if (props.hide_capture_device) return null
   const defaults: { [type: string]: CaptureDevice } = {
     Alsa: {
       type: "Alsa",
@@ -641,6 +639,12 @@ function CaptureOptions(props: {
     props.onChange((devices) => (devices.capture = defaults[captureTypes[0]]))
   }
 
+  useEffect(() => {
+    getCaptureDeviceChannelCount(capture).then((nbr) => setChannels(nbr))
+  }, [capture])
+
+  if (props.hide_capture_device) return null
+
   const toggleExpanded = () => {
     setExpanded(!expanded)
   }
@@ -665,15 +669,12 @@ function CaptureOptions(props: {
     onChange((devices) => (devices.capture.labels = labels))
   }
 
-  useEffect(() => {
-    getCaptureDeviceChannelCount(props.capture).then((nbr) => setChannels(nbr))
-  }, [capture])
-
   const makeDropdown = () => {
     return (
       <div>
         {Range(0, channels).map((row) => (
           <OptionalTextOption
+            key={row}
             value={capture.labels && capture.labels.length > row ? capture.labels[row] : null}
             error={errors.messageFor("labels")}
             desc={row.toString()}
@@ -697,7 +698,7 @@ function CaptureOptions(props: {
         onSelect={(device) =>
           onChange(
             (
-              devices, // @ts-ignore
+              devices, // @ts-expect-error this is ok but the compiler is not able to determine that
             ) => (devices.capture.device = device),
           )
         }
@@ -719,7 +720,7 @@ function CaptureOptions(props: {
           tooltip="Number of channels"
           withControls={true}
           min={1}
-          // @ts-ignore
+          // @ts-expect-error this is ok but the compiler is not able to determine that
           onChange={(channels) => onChange((devices) => (devices.capture.channels = channels))}
         />
       )}
@@ -738,7 +739,7 @@ function CaptureOptions(props: {
           onChange={(format) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.capture.format = format),
             )
           }
@@ -753,7 +754,7 @@ function CaptureOptions(props: {
             onChange={(device) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.device = device),
               )
             }
@@ -772,7 +773,7 @@ function CaptureOptions(props: {
             onChange={(link_volume_control) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.link_volume_control = link_volume_control),
               )
             }
@@ -785,7 +786,7 @@ function CaptureOptions(props: {
             onChange={(link_mute_control) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.link_mute_control = link_mute_control),
               )
             }
@@ -798,7 +799,7 @@ function CaptureOptions(props: {
             onChange={(stop_on_inactive) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.stop_on_inactive = stop_on_inactive),
               )
             }
@@ -813,7 +814,7 @@ function CaptureOptions(props: {
           onChange={(device) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.capture.device = device),
             )
           }
@@ -834,7 +835,7 @@ function CaptureOptions(props: {
           onChange={(device) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.capture.device = device),
             )
           }
@@ -850,7 +851,7 @@ function CaptureOptions(props: {
             onChange={(exclusive) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.exclusive = exclusive),
               )
             }
@@ -863,7 +864,7 @@ function CaptureOptions(props: {
             onChange={(polling) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.polling = polling),
               )
             }
@@ -876,7 +877,7 @@ function CaptureOptions(props: {
             onChange={(loopback) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.loopback = loopback),
               )
             }
@@ -892,7 +893,7 @@ function CaptureOptions(props: {
           onChange={(filename) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.capture.filename = filename),
             )
           }
@@ -907,7 +908,7 @@ function CaptureOptions(props: {
           onChange={(extra_samples) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.capture.extra_samples = extra_samples),
             )
           }
@@ -923,7 +924,7 @@ function CaptureOptions(props: {
             onChange={(skip_bytes) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.skip_bytes = skip_bytes),
               )
             }
@@ -936,7 +937,7 @@ function CaptureOptions(props: {
             onChange={(read_bytes) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.read_bytes = read_bytes),
               )
             }
@@ -953,7 +954,7 @@ function CaptureOptions(props: {
             onChange={(service) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.service = service),
               )
             }
@@ -966,7 +967,7 @@ function CaptureOptions(props: {
             onChange={(dbus_path) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.dbus_path = dbus_path),
               )
             }
@@ -983,7 +984,7 @@ function CaptureOptions(props: {
             onChange={(node_name) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.node_name = node_name),
               )
             }
@@ -996,7 +997,7 @@ function CaptureOptions(props: {
             onChange={(node_description) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.node_description = node_description),
               )
             }
@@ -1009,7 +1010,7 @@ function CaptureOptions(props: {
             onChange={(node_group_name) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.node_group_name = node_group_name),
               )
             }
@@ -1022,7 +1023,7 @@ function CaptureOptions(props: {
             onChange={(autoconnect_to) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.capture.autoconnect_to = autoconnect_to),
               )
             }
@@ -1108,7 +1109,7 @@ function PlaybackOptions(props: {
         onSelect={(device) =>
           onChange(
             (
-              devices, // @ts-ignore
+              devices, // @ts-expect-error this is ok but the compiler is not able to determine that
             ) => (devices.playback.device = device),
           )
         }
@@ -1145,7 +1146,7 @@ function PlaybackOptions(props: {
           onChange={(format) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.format = format),
             )
           }
@@ -1158,7 +1159,7 @@ function PlaybackOptions(props: {
           onChange={(device) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.device = device),
             )
           }
@@ -1178,7 +1179,7 @@ function PlaybackOptions(props: {
           onChange={(device) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.device = device),
             )
           }
@@ -1200,7 +1201,7 @@ function PlaybackOptions(props: {
           onChange={(device) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.device = device),
             )
           }
@@ -1215,7 +1216,7 @@ function PlaybackOptions(props: {
           onChange={(exclusive) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.exclusive = exclusive),
             )
           }
@@ -1230,7 +1231,7 @@ function PlaybackOptions(props: {
           onChange={(polling) =>
             onChange(
               (
-                devices, // @ts-ignore
+                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
               ) => (devices.playback.polling = polling),
             )
           }
@@ -1246,7 +1247,7 @@ function PlaybackOptions(props: {
             onChange={(filename) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.filename = filename),
               )
             }
@@ -1259,7 +1260,7 @@ function PlaybackOptions(props: {
             onChange={(wav_header) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.wav_header = wav_header),
               )
             }
@@ -1276,7 +1277,7 @@ function PlaybackOptions(props: {
             onChange={(node_name) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.node_name = node_name),
               )
             }
@@ -1289,7 +1290,7 @@ function PlaybackOptions(props: {
             onChange={(node_description) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.node_description = node_description),
               )
             }
@@ -1302,7 +1303,7 @@ function PlaybackOptions(props: {
             onChange={(node_group_name) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.node_group_name = node_group_name),
               )
             }
@@ -1315,7 +1316,7 @@ function PlaybackOptions(props: {
             onChange={(autoconnect_to) =>
               onChange(
                 (
-                  devices, // @ts-ignore
+                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
                 ) => (devices.playback.autoconnect_to = autoconnect_to),
               )
             }

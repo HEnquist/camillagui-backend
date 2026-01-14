@@ -187,7 +187,8 @@ interface ProcessorViewProps {
   remove: () => void
 }
 
-interface ProcessorViewState {}
+// empty placeholder for now
+type ProcessorViewState = Record<string, never>
 
 class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewState> {
   constructor(props: any) {
@@ -381,7 +382,7 @@ class ProcessorParams extends React.Component<
         />
         {hasChannelSelectors(processor) && (
           <div>
-            <label className="setting">
+            <label htmlFor="monitor_channels" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">
                   monitor_channels
@@ -396,7 +397,7 @@ class ProcessorParams extends React.Component<
                 labels={labels}
               />
             </label>
-            <label className="setting">
+            <label htmlFor="process_channels" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">
                   process_channels
@@ -415,7 +416,7 @@ class ProcessorParams extends React.Component<
         )}
         {processor.type === "RACE" && (
           <div>
-            <label className="setting">
+            <label htmlFor="channel_a" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channel A" data-tooltip-id="main-tooltip">
                   channel_a
@@ -430,7 +431,7 @@ class ProcessorParams extends React.Component<
                 labels={labels}
               />
             </label>
-            <label className="setting">
+            <label htmlFor="channel_b" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channel B" data-tooltip-id="main-tooltip">
                   channel_b
@@ -472,12 +473,13 @@ class ProcessorParams extends React.Component<
         tooltip: info.tooltip,
         onChange: (value: any) => this.onParamChange(parameter, value),
       }
-      if (info.type === "text") return <TextOption {...commonProps} />
-      if (info.type === "int") return <IntOption {...commonProps} />
-      if (info.type === "float") return <FloatOption {...commonProps} />
-      if (info.type === "bool") return <BoolOption {...commonProps} />
-      if (info.type === "floatlist") return <FloatListOption {...commonProps} />
-      if (info.type === "optional_float") return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
+      if (info.type === "text") return <TextOption {...commonProps} key={commonProps.key} />
+      if (info.type === "int") return <IntOption {...commonProps} key={commonProps.key} />
+      if (info.type === "float") return <FloatOption {...commonProps} key={commonProps.key} />
+      if (info.type === "bool") return <BoolOption {...commonProps} key={commonProps.key} />
+      if (info.type === "floatlist") return <FloatListOption {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_float")
+        return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} key={commonProps.key} />
       if (info.type === "enum") {
         const options = info.options!
         return <EnumOption {...commonProps} key={commonProps.key} options={options} />

@@ -162,7 +162,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
     const minVol = maxVol - this.props.guiConfig.volume_range
     const sliders = Range(0, faders.length).map((index) => {
       return (
-        <div style={{ display: "flex", flexDirection: "row" }}>
+        <div key={"slider" + index} style={{ display: "flex", flexDirection: "row" }}>
           <input
             style={{ width: "100%", margin: 0, padding: 0 }}
             type="range"

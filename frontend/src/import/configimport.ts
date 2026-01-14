@@ -1,4 +1,4 @@
-import { cloneDeep, isArray, isEqual, isNumber, isObject, isString } from "lodash"
+import { cloneDeep, isArray, isEqual, isObject, isString } from "lodash"
 import { Config, Devices, Pipeline, PipelineStep } from "../camilladsp/config"
 import { isComplexObject } from "../utilities/common"
 

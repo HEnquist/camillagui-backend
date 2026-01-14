@@ -40,7 +40,7 @@ export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
 export function loadFilenames(type: "config" | "coeff"): Promise<string[]> {
   return loadFiles(type).then(
     (files) => fileNamesOf(files),
-    (_) => [],
+    () => [],
   )
 }
 
@@ -90,7 +90,7 @@ export function loadActiveConfigFilename(): Promise<{
   })
 }
 
-export function download(filename: string, blob: any) {
+export function download(filename: string, blob: Blob) {
   const a = document.createElement("a")
   a.href = URL.createObjectURL(blob)
   a.download = filename

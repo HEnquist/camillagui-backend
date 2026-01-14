@@ -1,6 +1,15 @@
 import React, { useState } from "react"
-import Icon from "@mdi/react"
 import "./index.css"
+import {
+  mdiDelete,
+  mdiPlusMinusVariant,
+  mdiVolumeOff,
+  mdiPlus,
+  mdiVolumeHigh,
+  mdiArrowDown,
+  mdiArrowLeft,
+} from "@mdi/js"
+import Icon from "@mdi/react"
 import { Range } from "immutable"
 import { cloneDeep } from "lodash"
 import {
@@ -18,15 +27,6 @@ import {
   getMixerInputLabels,
   getLabelForChannel,
 } from "./camilladsp/config"
-import {
-  mdiDelete,
-  mdiPlusMinusVariant,
-  mdiVolumeOff,
-  mdiPlus,
-  mdiVolumeHigh,
-  mdiArrowDown,
-  mdiArrowLeft,
-} from "@mdi/js"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
 import {
@@ -281,7 +281,7 @@ function getSource(mappings: Mapping[], src: number, dest: number): [Source | un
 }
 
 function addCell(mixer: Mixer, source: number, dest: number) {
-  let [mapping, idx] = getMapping(mixer.mapping, dest)
+  let [mapping] = getMapping(mixer.mapping, dest)
   if (mapping === undefined) {
     mapping = {
       dest: dest,

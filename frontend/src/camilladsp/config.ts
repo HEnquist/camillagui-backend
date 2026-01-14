@@ -64,7 +64,7 @@ export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value"
 
 export const ProcessorSortKeys = ["Name", "Type"]
 
-function compare_named_vs_unnamed(a: any, b: any): number {
+function compare_named_vs_unnamed(a: { name: string }, b: { name: string }): number {
   const a_new = a["name"].startsWith("Unnamed ")
   const b_new = b["name"].startsWith("Unnamed ")
   if (a_new && !b_new) {

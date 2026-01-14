@@ -1,5 +1,4 @@
 import React from "react"
-import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
 import {
   mdiAlertCircle,
@@ -10,6 +9,7 @@ import {
   mdiArrowExpand,
 } from "@mdi/js"
 import { isEqual } from "lodash"
+import cloneDeep from "lodash/cloneDeep"
 import {
   Config,
   defaultFilter,
@@ -197,7 +197,7 @@ export class FiltersTab extends React.Component<
                 <FilterView
                   key={this.state.filterKeys[name]}
                   name={name}
-                  // @ts-ignore
+                  // @ts-expect-error this is ok but the compiler is not able to determine that
                   filter={config.filters[name]}
                   errors={errors.forSubpath(name)}
                   availableCoeffFiles={this.state.availableCoeffFiles}
@@ -351,7 +351,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     })
   }
 
-  componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>, snapshot?: any) {
+  componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>) {
     if (this.state.showFilterPlot) {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
@@ -621,7 +621,7 @@ class FilterParams extends React.Component<
       if (oldFilename && isConvolutionFileFilter(filter)) filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
       for (const par in oldParameters) {
         // Copy the value of any parameter common to old and new, except "type"
-        if (filter.parameters.hasOwnProperty(par) && par !== "type") {
+        if (Object.hasOwn(filter.parameters, par) && par !== "type") {
           filter.parameters[par] = oldParameters[par]
         }
       }
@@ -753,7 +753,7 @@ class FilterParams extends React.Component<
                     value={gain}
                     step="0.1"
                     onChange={(e) => this.adjustBand(index, e.target.value)}
-                    onDoubleClick={(e) => this.adjustBand(index, "0.0")}
+                    onDoubleClick={() => this.adjustBand(index, "0.0")}
                   />
                 </div>
                 <div
@@ -805,6 +805,7 @@ class FilterParams extends React.Component<
         return (
           <this.QorBandwithOrSlope
             {...commonProps}
+            key={parameter}
             parameter={parameter}
             parameters={parameters}
             onDescChange={(option) =>
@@ -1140,7 +1141,7 @@ class FilterParams extends React.Component<
     else return <ErrorMessage message={error} />
     return (
       <>
-        <label className="setting" style={{ textAlign: "right" }} data-tooltip-html={props.tooltip}>
+        <label htmlFor={desc} className="setting" style={{ textAlign: "right" }} data-tooltip-html={props.tooltip}>
           <EnumInput
             value={parameter}
             options={descOptions}

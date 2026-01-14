@@ -58,13 +58,14 @@ export function DndSortable(props: DndProps & { children: ReactNode }) {
 }
 
 export function DragHandle(props: { drag: DragElementWrapper<any>; tooltip: string }) {
+  const { drag, tooltip } = props
   return (
-    <span ref={props.drag} style={{ display: "flex", alignItems: "center" }}>
+    <span ref={drag} style={{ display: "flex", alignItems: "center" }}>
       <Icon
         path={mdiDrag}
         size={"24px"}
         className="drag-handle"
-        data-tooltip-html={props.tooltip}
+        data-tooltip-html={tooltip}
         data-tooltip-id="main-tooltip"
       />
     </span>

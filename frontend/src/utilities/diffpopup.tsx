@@ -1,8 +1,8 @@
-import Popup from "reactjs-popup"
-import "reactjs-popup/dist/index.css"
 import React from "react"
+import "reactjs-popup/dist/index.css"
+import ReactjsPopup from "reactjs-popup"
 import "../index.css"
-import { jsonDiff, DiffRow } from "./jsondiff"
+import { jsonDiff } from "./jsondiff"
 import { Config } from "../camilladsp/config"
 import { CloseButton } from "../utilities/ui-components"
 
@@ -24,7 +24,7 @@ export function DiffPopup(props: {
   onClose: () => void
 }) {
   return (
-    <Popup
+    <ReactjsPopup
       open={props.open}
       onClose={props.onClose}
       closeOnDocumentClick={true}
@@ -43,7 +43,7 @@ export function DiffPopup(props: {
           {renderDiff(props.left_config, props.right_config, props.left_name, props.right_name)}
         </table>
       </div>
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
