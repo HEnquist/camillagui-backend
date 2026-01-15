@@ -1,7 +1,7 @@
 import React from "react"
 import "../index.css"
 import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@mdi/js"
-import { throttle } from "lodash"
+import { throttle, DebouncedFuncLeading } from "lodash"
 import { VuMeterGroup } from "./vumeter"
 import { VuMeterStatus } from "../camilladsp/status"
 import { GuiConfig } from "../guiconfig"
@@ -83,7 +83,7 @@ export class VolumePoller {
 
 export class VolumeBox extends React.Component<Props, State> {
   private volumePoller = new VolumePoller((cdspVolume) => this.setState({ ...cdspVolume }), 1000.0, 2000.0)
-  private readonly setDspVolumeDebounced: any
+  private readonly setDspVolumeDebounced: DebouncedFuncLeading<(value: number) => Promise<void>>
 
   constructor(props: Props) {
     super(props)

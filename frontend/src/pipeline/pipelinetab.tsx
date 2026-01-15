@@ -43,12 +43,14 @@ import {
   PlotButton,
 } from "../utilities/ui-components"
 
+interface PipelineTabProps {
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
+
 export class PipelineTab extends React.Component<
-  {
-    config: Config
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  PipelineTabProps,
   {
     plotPipeline: boolean
     plotFilterStep: boolean
@@ -57,7 +59,7 @@ export class PipelineTab extends React.Component<
     capture_channels: number
   }
 > {
-  constructor(props: any) {
+  constructor(props: PipelineTabProps) {
     super(props)
     this.state = {
       plotPipeline: false,
@@ -218,14 +220,14 @@ export class PipelineTab extends React.Component<
               </div>
               <div className="pipeline-channel">Playback: {config.devices.playback.channels} channels out</div>
               <PipelinePopup
-                key={this.state.plotPipeline as any}
+                key={String(this.state.plotPipeline)}
                 open={this.state.plotPipeline}
                 config={config}
                 onClose={() => this.setState({ plotPipeline: false })}
               />
               {this.state.plotFilterStep && (
                 <ChartPopup
-                  key={this.state.plotFilterStep as any}
+                  key={String(this.state.plotFilterStep)}
                   open={this.state.plotFilterStep}
                   data={this.state.data}
                   onChange={(name) => {

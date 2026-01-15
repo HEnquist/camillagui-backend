@@ -63,15 +63,17 @@ import {
 // TODO optional bool in general notch
 // TODO update volume/loudness parameters
 
+interface FiltersTabProps {
+  config: Config
+  samplerate: number
+  channels: Promise<number>
+  coeffDir: string
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
+
 export class FiltersTab extends React.Component<
-  {
-    config: Config
-    samplerate: number
-    channels: Promise<number>
-    coeffDir: string
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  FiltersTabProps,
   {
     filterKeys: { [name: string]: number }
     availableCoeffFiles: FileInfo[]
@@ -79,7 +81,7 @@ export class FiltersTab extends React.Component<
     sortReverse: boolean
   }
 > {
-  constructor(props: any) {
+  constructor(props: FiltersTabProps) {
     super(props)
     this.filterNames = this.filterNames.bind(this)
     this.changeSortBy = this.changeSortBy.bind(this)
@@ -265,7 +267,7 @@ interface FilterViewState {
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
-  constructor(props: any) {
+  constructor(props: FilterViewProps) {
     super(props)
     this.uploadCoeffs = this.uploadCoeffs.bind(this)
     this.pickFilterFile = this.pickFilterFile.bind(this)
@@ -568,20 +570,19 @@ function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter>
 
 const hiddenParameters = ["skip_bytes_lines", "read_bytes_lines"]
 
-class FilterParams extends React.Component<
-  {
-    filter: Filter
-    errors: Errors
-    updateFilter: (update: Update<Filter>) => void
-    availableCoeffFiles: FileInfo[]
-    coeffDir: string
-    filterDefaults: FilterDefaults
-    setShowDefaults: () => void
-    showDefaults: boolean
-  },
-  unknown
-> {
-  constructor(props: any) {
+interface FilterParamsProps {
+  filter: Filter
+  errors: Errors
+  updateFilter: (update: Update<Filter>) => void
+  availableCoeffFiles: FileInfo[]
+  coeffDir: string
+  filterDefaults: FilterDefaults
+  setShowDefaults: () => void
+  showDefaults: boolean
+}
+
+class FilterParams extends React.Component<FilterParamsProps, unknown> {
+  constructor(props: FilterParamsProps) {
     super(props)
     this.onDescChange = this.onDescChange.bind(this)
     this.onTypeChange = this.onTypeChange.bind(this)
@@ -777,7 +778,7 @@ class FilterParams extends React.Component<
     )
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }, errors: Errors) {
+  private renderFilterParams(parameters: { [p: string]: unknown }, errors: Errors) {
     return Object.keys(parameters).map((parameter) => {
       if (parameter === "type")
         // 'type' is already rendered by parent component
@@ -787,19 +788,20 @@ class FilterParams extends React.Component<
         console.log(`Rendering for filter parameter '${parameter}' is not implemented`)
         return null
       }
+      const propValue = parameters[parameter] as unknown
       const commonProps = {
         key: parameter,
-        value: parameters[parameter],
         error: errors.messageFor(parameter),
         desc: info.desc,
         tooltip: info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
-        onChange: (value: any) => this.props.updateFilter((filter) => (filter.parameters[parameter] = value)),
+        onChange: (value: unknown) => this.props.updateFilter((filter) => (filter.parameters[parameter] = value)),
       }
-      if (parameter === "filename") return this.filenameField(parameters["filename"], commonProps)
+      if (parameter === "filename") return this.filenameField(parameters["filename"] as string, propValue, commonProps)
       if (this.isHiddenDefaultValue(parameter)) return null
       if (
-        (this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type)) &&
+        (this.qAndSlopeFilters.includes(parameters.type as string) ||
+          this.qAndBandwidthFilters.includes(parameters.type as string)) &&
         (parameter === "q" || parameter === "slope" || parameter === "bandwidth")
       )
         return (
@@ -808,6 +810,7 @@ class FilterParams extends React.Component<
             key={parameter}
             parameter={parameter}
             parameters={parameters}
+            value={propValue as number}
             onDescChange={(option) =>
               this.props.updateFilter((filter) => {
                 this.qBandwithSlope.forEach((parameter) => {
@@ -819,20 +822,26 @@ class FilterParams extends React.Component<
           />
         )
 
-      if (info.type === "text") return <TextOption {...commonProps} key={commonProps.key} />
-      if (info.type === "int") return <IntOption {...commonProps} key={commonProps.key} />
-      if (info.type === "float") return <FloatOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_int") return <OptionalIntOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_float") return <OptionalFloatOption {...commonProps} key={commonProps.key} />
-      if (info.type === "bool") return <BoolOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_bool") return <OptionalBoolOption {...commonProps} key={commonProps.key} />
-      if (info.type === "floatlist") return <FloatListOption {...commonProps} key={commonProps.key} />
+      if (info.type === "text") return <TextOption value={propValue as string} {...commonProps} key={commonProps.key} />
+      if (info.type === "int") return <IntOption value={propValue as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "float")
+        return <FloatOption value={propValue as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_int")
+        return <OptionalIntOption value={propValue as number | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_float")
+        return <OptionalFloatOption value={propValue as number | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "bool")
+        return <BoolOption value={propValue as boolean} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_bool")
+        return <OptionalBoolOption value={propValue as boolean | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "floatlist")
+        return <FloatListOption value={propValue as number[]} {...commonProps} key={commonProps.key} />
       if (info.type === "enum") {
         let options = info.options
         if (parameter === "fader" && this.props.filter.type === "Volume") {
           options = VolumeFaders
         }
-        return <EnumOption {...commonProps} key={commonProps.key} options={options} />
+        return <EnumOption value={propValue as string} {...commonProps} key={commonProps.key} options={options} />
       }
       return null
     })
@@ -840,10 +849,10 @@ class FilterParams extends React.Component<
 
   private filenameField(
     filename: string,
+    value: unknown,
     props: {
-      onChange: (value: any) => void
+      onChange: (value: unknown) => void
       tooltip: string
-      value: any
       key: string
       desc: string
     },
@@ -866,7 +875,7 @@ class FilterParams extends React.Component<
 
   private isHiddenDefaultValue(parameter: string) {
     const filter = this.props.filter
-    const filterDefaults: any = this.props.filterDefaults
+    const filterDefaults = this.props.filterDefaults as { [parameter: string]: unknown }
     return (
       !this.props.showDefaults &&
       parameter &&
@@ -886,7 +895,7 @@ class FilterParams extends React.Component<
           type: "enum"
           desc: string
           tooltip: string
-          options: string[] | { [option: string]: string }[]
+          options: string[] | { value: string | null; label: string }[]
         }
   } = {
     a: {
@@ -1118,7 +1127,7 @@ class FilterParams extends React.Component<
 
   QorBandwithOrSlope(props: {
     parameter: string
-    parameters: { [p: string]: any }
+    parameters: { [p: string]: unknown }
     desc: string
     value: number
     error?: string
@@ -1128,12 +1137,12 @@ class FilterParams extends React.Component<
   }) {
     const { parameter, parameters, desc, value, error, onDescChange, onChange } = props
     let descOptions: { value: string; label: string }[] = []
-    if (this.qAndSlopeFilters.includes(parameters.type))
+    if (this.qAndSlopeFilters.includes(parameters.type as string))
       descOptions = ["q", "slope"].map((p) => ({
         value: p,
         label: this.parameterInfos[p].desc,
       }))
-    else if (this.qAndBandwidthFilters.includes(parameters.type))
+    else if (this.qAndBandwidthFilters.includes(parameters.type as string))
       descOptions = ["q", "bandwidth"].map((p) => ({
         value: p,
         label: this.parameterInfos[p].desc,

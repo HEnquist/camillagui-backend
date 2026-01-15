@@ -12,6 +12,7 @@ import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } fr
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
+import { Errors } from "../utilities/errors"
 import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
@@ -21,7 +22,7 @@ interface SidePanelProps {
   fetchConfig: () => Promise<void>
   saveConfig: () => Promise<void>
   saveAndApplyConfig: () => Promise<void>
-  setErrors: (errors: any) => void
+  setErrors: (errors: Errors) => void
   currentConfigFile?: string
   message: string
   unsavedChanges: boolean

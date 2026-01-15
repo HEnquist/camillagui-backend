@@ -24,7 +24,7 @@ function removeEmptyProperties(object: any): any {
   })
 }
 
-export function isComplexObject(item: any): boolean {
+export function isComplexObject(item: unknown): boolean {
   return item !== null && item !== undefined && (isArray(item) || isObject(item))
 }
 

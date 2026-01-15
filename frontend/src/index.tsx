@@ -244,7 +244,7 @@ class CamillaConfig extends React.Component<
     })
   }
 
-  private setErrors(errors: any) {
+  private setErrors(errors: Errors) {
     this.setState({ errors: errors })
   }
 

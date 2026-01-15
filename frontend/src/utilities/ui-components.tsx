@@ -1,4 +1,4 @@
-import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState } from "react"
+import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState, KeyboardEvent } from "react"
 import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
 import Icon from "@mdi/react"
 import { Range } from "immutable"
@@ -607,7 +607,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
   }
 
-  handleSubmit(event: any) {
+  handleSubmit(event: KeyboardEvent) {
     if (!this.props.immediate && event.key === "Enter") {
       event.preventDefault()
       const parsed = this.props.parseValue(this.state.rawValue)
@@ -692,7 +692,7 @@ export class OptionalParsedInput<TYPE> extends React.Component<
     }
   }
 
-  handleSubmit(event: any) {
+  handleSubmit(event: KeyboardEvent) {
     if (!this.props.immediate && event.key === "Enter") {
       event.preventDefault()
       const parsed = this.props.parseValue(this.state.rawValue)

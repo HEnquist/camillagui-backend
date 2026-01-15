@@ -11,8 +11,8 @@ type DiffRowType = "header" | "prop" | "section" | "comment"
 interface DiffTableRow {
   type: DiffRowType
   label: string
-  left: any
-  right: any
+  left: string
+  right: string
 }
 
 export function DiffPopup(props: {
@@ -109,8 +109,8 @@ function renderDiff(left_config: Config, right_config: Config, left_name: string
       displayrows.push({
         type: "prop",
         label: row.path[row.path.length - 1],
-        left: row.before ? row.before : "null",
-        right: row.after ? row.after : "null",
+        left: row.before ? String(row.before) : "null",
+        right: row.after ? String(row.after) : "null",
       })
     }
     if (displayrows.length === 1) {

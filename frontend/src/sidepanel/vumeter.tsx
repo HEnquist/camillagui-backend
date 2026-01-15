@@ -21,9 +21,10 @@ export function VuMeterGroup(props: {
     />
   )
   useEffect(() => {
-    const canvas: any = canvasRef.current
+    const canvas: HTMLCanvasElement | null = canvasRef.current as HTMLCanvasElement | null
     if (canvas === null) return
-    const context = canvas.getContext("2d")
+    const context: CanvasRenderingContext2D | null = canvas.getContext("2d")
+    if (context === null) return
     const width = context.canvas.width
     const css = cssStyles()
     context.clearRect(0, 0, width, context.canvas.height)
@@ -73,12 +74,12 @@ function meterYOffset(index: number): number {
   return index * (meterHeightInPX + gapHeightInPX)
 }
 
-function fillBackground(context: any, css: CSSStyleDeclaration, index: number) {
+function fillBackground(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--button-background-color")
   context.fillRect(labelWidth, meterYOffset(index), meterWidth, meterHeightInPX)
 }
 
-function drawDbMarkers(context: any, css: CSSStyleDeclaration, index: number) {
+function drawDbMarkers(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--text-color")
   dbMarkersAt.forEach((marker) => {
     const x = labelWidth + (meterWidth * levelAsPercent(marker)) / 100 - 1
@@ -88,7 +89,7 @@ function drawDbMarkers(context: any, css: CSSStyleDeclaration, index: number) {
   })
 }
 
-function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, index: number) {
+function drawDbMarkerLabels(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--text-color")
   const dbMarkerHeight = gapHeightInPX
   dbMarkersAt.forEach((marker) => {
@@ -105,23 +106,29 @@ function drawDbMarkerLabels(context: any, css: CSSStyleDeclaration, index: numbe
   })
 }
 
-function drawLabel(context: any, css: CSSStyleDeclaration, label: string, index: number, x: number) {
+function drawLabel(
+  context: CanvasRenderingContext2D,
+  css: CSSStyleDeclaration,
+  label: string,
+  index: number,
+  x: number,
+) {
   context.fillStyle = css.getPropertyValue("--text-color")
   const dbMarkerHeight = gapHeightInPX
   const y = meterYOffset(index) - dbMarkerHeight
-  context.textAlign = "middle"
+  context.textAlign = "center"
   context.textBaseline = "middle"
   context.font = "13px Arial"
   context.fillText(label, x + labelWidth / 2, y + gapHeightInPX + dbMarkerHeight + 1, labelWidth)
 }
 
-function draw0DbMarker(context: any, css: CSSStyleDeclaration, index: number) {
+function draw0DbMarker(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--text-color")
   context.fillRect(labelWidth + (meterWidth * levelAsPercent(0)) / 100 - 1, meterYOffset(index), 2, meterHeightInPX)
 }
 
 function drawLevelBars(
-  context: any,
+  context: CanvasRenderingContext2D,
   css: CSSStyleDeclaration,
   levelInPercent: number,
   peakInPercent: number,

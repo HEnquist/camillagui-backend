@@ -4,16 +4,15 @@ import { Config } from "../camilladsp/config"
 import { Errors, NoErrors } from "../utilities/errors"
 import { delayedExecutor } from "../utilities/ui-components"
 
-export class Configcheckmessage extends React.Component<
-  {
-    config: Config
-    setErrors: (errors: Errors) => void
-  },
-  { message: string }
-> {
+interface ConfigcheckmessageProps {
+  config: Config
+  setErrors: (errors: Errors) => void
+}
+
+export class Configcheckmessage extends React.Component<ConfigcheckmessageProps, { message: string }> {
   default_message = "NOT CHECKED"
 
-  constructor(props: any) {
+  constructor(props: ConfigcheckmessageProps) {
     super(props)
     this.get_config_errors = this.get_config_errors.bind(this)
     this.state = { message: this.default_message }

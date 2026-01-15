@@ -2,7 +2,7 @@ import React from "react"
 import "../index.css"
 import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { Range } from "immutable"
-import { throttle } from "lodash"
+import { throttle, DebouncedFuncLeading } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
 import { GuiConfig } from "../guiconfig"
 import { Box, MdiButton } from "../utilities/ui-components"
@@ -70,7 +70,7 @@ export class FadersPoller {
 
 export class AuxFadersBox extends React.Component<Props, State> {
   private fadersPoller = new FadersPoller((faders) => this.setState({ faders: faders }), 1000.0, 2000.0)
-  private readonly setDspFadersDebounced: any
+  private readonly setDspFadersDebounced: DebouncedFuncLeading<(faders: Fader[], prevFaders: Fader[]) => Promise<void>>
 
   constructor(props: Props) {
     super(props)

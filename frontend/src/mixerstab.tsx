@@ -53,17 +53,19 @@ const normalCellColor = styles.getPropertyValue("--normal-cell-color")
 const invertedCellColor = styles.getPropertyValue("--inverted-cell-color")
 const errorCellColor = styles.getPropertyValue("--error-cell-color")
 
+interface MixersTabProps {
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
+
 export class MixersTab extends React.Component<
-  {
-    config: Config
-    errors: Errors
-    updateConfig: (update: Update<Config>) => void
-  },
+  MixersTabProps,
   {
     mixerKeys: { [name: string]: number }
   }
 > {
-  constructor(props: any) {
+  constructor(props: MixersTabProps) {
     super(props)
     this.mixerNames = this.mixerNames.bind(this)
     this.addMixer = this.addMixer.bind(this)
@@ -531,8 +533,8 @@ const makeDropdown = (
   map_idx: number,
   src_idx: number,
   errors: Errors,
-  update: any,
-  remove: any,
+  update: (update: Update<Source>) => void,
+  remove: () => void,
   close: () => void,
 ) => {
   if (expanded[0] !== dest || expanded[1] !== src) {
