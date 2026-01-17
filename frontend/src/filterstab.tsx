@@ -29,7 +29,7 @@ import {
   ConvSubtypeOptions,
   DitherSubtypeOptions,
 } from "./camilladsp/config"
-import { Chart, ChartData } from "./utilities/chart"
+import { Chart, ChartContent } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
 import { doUpload, loadFiles, FileInfo } from "./utilities/files"
@@ -259,7 +259,7 @@ interface FilterViewState {
   filterFilePopupOpen: boolean
   showFilterPlot: boolean
   expandPlot: boolean
-  data?: ChartData
+  data?: ChartContent
   filterDefaults: FilterDefaults
   showDefaults: boolean
   channels: number
@@ -403,7 +403,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       (result) =>
         result.json().then(
           (data) => {
-            if (this.state.showFilterPlot) this.setState({ data: data as ChartData })
+            if (this.state.showFilterPlot) this.setState({ data: data as ChartContent })
           },
           (error) => console.log("JSON parse failed", error),
         ),

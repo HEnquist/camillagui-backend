@@ -24,7 +24,7 @@ import {
   ProcessorStep,
 } from "../camilladsp/config"
 import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
-import { ChartData, ChartPopup } from "../utilities/chart"
+import { ChartContent, ChartPopup } from "../utilities/chart"
 import { Update } from "../utilities/common"
 import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/dragndrop"
 import { Errors } from "../utilities/errors"
@@ -55,7 +55,7 @@ export class PipelineTab extends React.Component<
     plotPipeline: boolean
     plotFilterStep: boolean
     stepIndex?: number
-    data: ChartData
+    data: ChartContent
     capture_channels: number
   }
 > {
