@@ -32,12 +32,14 @@ import {
   ErrorBoundary,
 } from "./utilities/ui-components"
 
+interface ProcessorsTabProps {
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
+
 export class ProcessorsTab extends React.Component<
-  {
-    config: Config
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  ProcessorsTabProps,
   {
     processorKeys: { [name: string]: number }
     availableCoeffFiles: string[]
@@ -45,7 +47,7 @@ export class ProcessorsTab extends React.Component<
     sortReverse: boolean
   }
 > {
-  constructor(props: any) {
+  constructor(props: ProcessorsTabProps) {
     super(props)
     this.processorNames = this.processorNames.bind(this)
     this.changeSortBy = this.changeSortBy.bind(this)
@@ -191,7 +193,7 @@ interface ProcessorViewProps {
 type ProcessorViewState = Record<string, never>
 
 class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewState> {
-  constructor(props: any) {
+  constructor(props: ProcessorViewProps) {
     super(props)
     this.state = {}
   }
@@ -285,16 +287,15 @@ const defaultParameters: {
   },
 }
 
-class ProcessorParams extends React.Component<
-  {
-    processor: Processor
-    errors: Errors
-    updateProcessor: (update: Update<Processor>) => void
-    labels: (string | null)[] | null
-  },
-  unknown
-> {
-  constructor(props: any) {
+interface ProcessorParamsProps {
+  processor: Processor
+  errors: Errors
+  updateProcessor: (update: Update<Processor>) => void
+  labels: (string | null)[] | null
+}
+
+class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
+  constructor(props: ProcessorParamsProps) {
     super(props)
     this.onDescChange = this.onDescChange.bind(this)
     this.onTypeChange = this.onTypeChange.bind(this)

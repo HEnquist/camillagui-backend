@@ -36,7 +36,7 @@ export class ImportPopup extends React.Component<
     }
   }
 > {
-  constructor(props: any) {
+  constructor(props: ImportPopupProps) {
     super(props)
     this.setImportConfig = this.setImportConfig.bind(this)
     this.state = {}

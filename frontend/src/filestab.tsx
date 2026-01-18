@@ -941,15 +941,17 @@ function isValidFilename(newFileName: string) {
   return newFileName.trim().length > 0
 }
 
+interface NewConfigProps   {
+  currentConfig: Config
+  setCurrentConfig?: (filename: string | undefined, config: Config) => void
+  updateConfig: (update: Update<Config>) => void
+}
+
 class NewConfig extends Component<
-  {
-    currentConfig: Config
-    setCurrentConfig?: (filename: string | undefined, config: Config) => void
-    updateConfig: (update: Update<Config>) => void
-  },
+  NewConfigProps,
   { importPopupProps: ImportPopupProps }
 > {
-  constructor(props: any) {
+  constructor(props: NewConfigProps) {
     super(props)
     this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
     this.state = { importPopupProps: {} }
