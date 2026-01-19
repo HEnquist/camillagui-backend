@@ -102,7 +102,7 @@ type State = {
   width: number
   height: number
   capture_channels: number
-  zoomTransform: any
+  zoomTransform: d3.ZoomTransform | null
 }
 
 class PipelinePlot extends React.Component<Props, State> {
@@ -118,9 +118,9 @@ class PipelinePlot extends React.Component<Props, State> {
   private disabledBlockBgColor?: string
   private blockTextColor?: string
   private disabledBlockTextColor?: string
-  private node?: any
-  private zoom: any
-  private tooltip: any
+  private node: SVGSVGElement | null = null
+  private zoom: d3.ZoomBehavior<HTMLDivElement, unknown>
+  private tooltip?: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>
 
   constructor(props: Props) {
     super(props)
@@ -131,7 +131,7 @@ class PipelinePlot extends React.Component<Props, State> {
       capture_channels: 2,
       zoomTransform: null,
     }
-    this.zoom = d3.zoom().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this))
+    this.zoom = d3.zoom<HTMLDivElement, unknown>().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this))
   }
 
   componentDidMount() {
@@ -152,11 +152,11 @@ class PipelinePlot extends React.Component<Props, State> {
       this.setState({ capture_channels: channels })
     })
     this.createPipelinePlot()
-    d3.select("#svg_pipeline_div").call(this.zoom)
+    d3.select<HTMLDivElement, unknown>("#svg_pipeline_div").call(this.zoom)
 
     // A div used to display tooltips
     this.tooltip = d3
-      .select(`#svg_pipeline_div`)
+      .select<HTMLDivElement, unknown>(`#svg_pipeline_div`)
       .append("div")
       .attr("class", "pipeline-tooltip")
       .style("opacity", 0)
@@ -180,14 +180,17 @@ class PipelinePlot extends React.Component<Props, State> {
     }
   }
 
-  zoomed(event: any) {
+  zoomed(event: d3.D3ZoomEvent<HTMLDivElement, unknown>) {
     this.setState({
       zoomTransform: event.transform,
     })
   }
 
   resetZoom() {
-    d3.select("#svg_pipeline_div").transition().duration(500).call(this.zoom.transform, d3.zoomIdentity)
+    d3.select<HTMLDivElement, unknown>("#svg_pipeline_div")
+      .transition()
+      .duration(500)
+      .call(this.zoom.transform, d3.zoomIdentity)
   }
 
   private appendBlock(
@@ -700,7 +703,11 @@ class PipelinePlot extends React.Component<Props, State> {
   }
 
   createPipelinePlot() {
-    d3.select(`#svg_pipeline`).selectAll("*").remove()
+    const node = this.node
+    if (!node) {
+      return
+    }
+    d3.select(node).selectAll("*").remove()
 
     const { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
     // if (max_h > (2*this.width/this.height) * max_v)
@@ -719,7 +726,6 @@ class PipelinePlot extends React.Component<Props, State> {
 
     this.fillBackground(boxes, -2.5, -mut_max_v, total_width, total_height)
 
-    const node = this.node
     const yScale = d3.scaleLinear().domain([-mut_max_v, mut_max_v]).range([0, calculated_height])
     const xScale = d3.scaleLinear().domain([-2.5, mut_max_h]).range([0, this.width])
 
@@ -761,7 +767,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .data(boxes)
       .enter()
       .append("rect")
-      .attr("transform", this.state.zoomTransform)
+      .attr("transform", this.state.zoomTransform ? this.state.zoomTransform.toString() : null)
 
     rects
       .attr("x", (d) => xScale(d.x))
@@ -774,21 +780,27 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("stroke", (d) => d.stroke)
       .style("stroke-width", (d) => d["stroke-width"])
       .on("mouseover", (event, d) => {
-        if (d.tooltip !== null) {
-          // This element has a tooltip, add the content and display the tooltip div.
-          this.tooltip.html(d.tooltip)
-          this.tooltip.transition().duration(500).style("opacity", 0.9)
-        } else {
-          // This element does not have a tooltip, hide the tooltip div.
-          this.tooltip.transition().duration(500).style("opacity", 0)
+        if (this.tooltip) {
+          if (d.tooltip !== null) {
+            // This element has a tooltip, add the content and display the tooltip div.
+            this.tooltip.html(d.tooltip)
+            this.tooltip.transition().duration(500).style("opacity", 0.9)
+          } else {
+            // This element does not have a tooltip, hide the tooltip div.
+            this.tooltip.transition().duration(500).style("opacity", 0)
+          }
         }
       })
       .on("mousemove", (event) => {
         // Move the tooltip with the cursor.
-        const tt_node = this.tooltip.node()
-        const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
-        const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
-        this.tooltip.style("left", event.pageX - tt_width / 2 + "px").style("top", event.pageY - tt_height - 10 + "px")
+        if (this.tooltip) {
+          const tt_node = this.tooltip.node()
+          const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
+          const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
+          this.tooltip
+            .style("left", event.pageX - tt_width / 2 + "px")
+            .style("top", event.pageY - tt_height - 10 + "px")
+        }
       })
 
     const text = d3.select(node).selectAll("text").data(labels).enter().append("text")
@@ -820,7 +832,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .attr("fill", "none")
       .attr("stroke", (d) => d.color)
       .attr("stroke-width", yScale(0.03) - yScale(0) + "px")
-      .attr("transform", this.state.zoomTransform)
+      .attr("transform", this.state.zoomTransform ? this.state.zoomTransform.toString() : null)
   }
 
   render() {
