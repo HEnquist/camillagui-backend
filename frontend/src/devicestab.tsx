@@ -3,13 +3,17 @@ import "./index.css"
 import { mdiMagnify } from "@mdi/js"
 import { Range } from "immutable"
 import {
+  AlsaFormat,
   AsyncPolyDegreeOptions,
   AsyncSincInterpolationOptions,
   AsyncSincProfile,
   AsyncSincProfiles,
+  AsyncSincWindow,
   AsyncSincWindows,
+  BinaryFormat,
   CaptureDevice,
   Config,
+  CoreAudioFormat,
   defaultResampler,
   defaultSincResampler,
   Devices,
@@ -19,6 +23,8 @@ import {
   ResamplerType,
   ResamplerTypeOptions,
   getFormatOptions,
+  WasapiFormat,
+  Signals,
 } from "./camilladsp/config"
 import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig"
 import { Update } from "./utilities/common"
@@ -38,6 +44,7 @@ import {
   MdiButton,
   null_to_default,
   OptionalBoolOption,
+  FloatOption,
   OptionalFloatOption,
   OptionalIntInput,
   OptionalIntOption,
@@ -369,8 +376,7 @@ function ResamplingOptions(props: {
       />
       {devices.resampler && devices.resampler.type === "AsyncSinc" && (
         <EnumOption
-          // @ts-expect-error this is ok but the compiler is not able to determine that
-          value={Object.hasOwn(devices.resampler, "profile") ? devices.resampler.profile : "Free"}
+          value={"profile" in devices.resampler ? devices.resampler.profile : "Free"}
           error={errors.messageFor("resampler.profile")}
           options={AsyncSincProfiles}
           desc="profile"
@@ -378,54 +384,74 @@ function ResamplingOptions(props: {
           onChange={(profile) => props.onChange((devices) => (devices.resampler = changeResamplerProfile(profile)))}
         />
       )}
-      {devices.resampler && devices.resampler.type === "AsyncSinc" && !Object.hasOwn(devices.resampler, "profile") && (
+      {devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler) && (
         <>
           <EnumOption
-            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.interpolation}
             error={errors.messageFor("interpolation")}
             options={AsyncSincInterpolationOptions}
             desc="interpolation"
             tooltip="Interpolation order"
-            // @ts-expect-error this is ok but the compiler is not able to determine that
-            onChange={(interp) => props.onChange((devices) => (devices.resampler.interpolation = interp))}
+            onChange={(interp) =>
+              props.onChange((devices) => {
+                if (devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler)) {
+                  devices.resampler.interpolation = interp
+                }
+              })
+            }
           />
           <IntOption
-            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.sinc_len}
             error={errors.messageFor("resampler", "sinc_len")}
             desc="sinc_len"
             tooltip="Length of sinc interpolation filter"
-            // @ts-expect-error this is ok but the compiler is not able to determine that
-            onChange={(len) => props.onChange((devices) => (devices.resampler.sinc_len = len))}
+            onChange={(len) =>
+              props.onChange((devices) => {
+                if (devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler)) {
+                  devices.resampler.sinc_len = len
+                }
+              })
+            }
           />
           <IntOption
-            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.oversampling_factor}
             error={errors.messageFor("resampler", "oversampling_factor")}
             desc="oversampling_factor"
             tooltip="Oversampling factor"
-            // @ts-expect-error this is ok but the compiler is not able to determine that
-            onChange={(factor) => props.onChange((devices) => (devices.resampler.oversampling_factor = factor))}
+            onChange={(factor) =>
+              props.onChange((devices) => {
+                if (devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler)) {
+                  devices.resampler.oversampling_factor = factor
+                }
+              })
+            }
           />
           <OptionalFloatOption
-            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.f_cutoff}
             error={errors.messageFor("f_cutoff")}
             desc="f_cutoff"
             tooltip="Relative cutoff frequency of interpolation filter"
-            // @ts-expect-error this is ok but the compiler is not able to determine that
-            onChange={(cutoff) => props.onChange((devices) => (devices.resampler.f_cutoff = cutoff))}
+            onChange={(cutoff) =>
+              props.onChange((devices) => {
+                if (devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler)) {
+                  devices.resampler.f_cutoff = cutoff
+                }
+              })
+            }
           />
           <EnumOption
-            // @ts-expect-error this is ok but the compiler is not able to determine that
             value={devices.resampler.window}
             error={errors.messageFor("window")}
             options={AsyncSincWindows}
             desc="window"
             tooltip="Window function for interpolation filter"
-            // @ts-expect-error this is ok but the compiler is not able to determine that
-            onChange={(window) => props.onChange((devices) => (devices.resampler.window = window))}
+            onChange={(window) =>
+              props.onChange((devices) => {
+                if (devices.resampler && devices.resampler.type === "AsyncSinc" && !("profile" in devices.resampler)) {
+                  devices.resampler.window = window as AsyncSincWindow
+                }
+              })
+            }
           />
         </>
       )}
@@ -436,8 +462,13 @@ function ResamplingOptions(props: {
           options={AsyncPolyDegreeOptions}
           desc="interpolation"
           tooltip="Interpolation order"
-          // @ts-expect-error this is ok but the compiler is not able to determine that
-          onChange={(interp) => props.onChange((devices) => (devices.resampler.interpolation = interp))}
+          onChange={(interp) =>
+            props.onChange((devices) => {
+              if (devices.resampler?.type === "AsyncPoly") {
+                devices.resampler.interpolation = interp
+              }
+            })
+          }
         />
       )}
       {!props.hide_capture_samplerate && devices.resampler !== null && (
@@ -627,6 +658,16 @@ function CaptureOptions(props: {
       channels: 2,
       labels: null,
     },
+    SignalGenerator: {
+      type: "SignalGenerator",
+      channels: 2,
+      signal: {
+        type: "Sine",
+        freq: 1000,
+        level: -12,
+      },
+      labels: null,
+    },
   }
 
   const { capture, onChange, errors, supported_capture_types } = props
@@ -696,11 +737,16 @@ function CaptureOptions(props: {
         items={availableDevices}
         onClose={() => setPopupState(false)}
         onSelect={(device) =>
-          onChange(
-            (
-              devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-            ) => (devices.capture.device = device),
-          )
+          onChange((devices) => {
+            if (
+              devices.capture.type === "Alsa" ||
+              devices.capture.type === "Wasapi" ||
+              devices.capture.type === "CoreAudio" ||
+              devices.capture.type === "Jack"
+            ) {
+              devices.capture.device = device
+            }
+          })
         }
       />
       <ErrorMessage message={errors.rootMessage()} />
@@ -720,8 +766,13 @@ function CaptureOptions(props: {
           tooltip="Number of channels"
           withControls={true}
           min={1}
-          // @ts-expect-error this is ok but the compiler is not able to determine that
-          onChange={(channels) => onChange((devices) => (devices.capture.channels = channels))}
+          onChange={(channels) =>
+            onChange((devices) => {
+              if ("channels" in devices.capture) {
+                devices.capture.channels = channels
+              }
+            })
+          }
         />
       )}
       {(capture.type === "Bluez" ||
@@ -737,11 +788,18 @@ function CaptureOptions(props: {
           desc="sampleformat"
           tooltip="Sample format"
           onChange={(format) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.capture.format = format),
-            )
+            onChange((devices) => {
+              const capture = devices.capture
+              if (capture.type === "Alsa") {
+                capture.format = format as AlsaFormat | null
+              } else if (capture.type === "CoreAudio") {
+                capture.format = format as CoreAudioFormat | null
+              } else if (capture.type === "Wasapi") {
+                capture.format = format as WasapiFormat | null
+              } else if (capture.type === "Stdin" || capture.type === "RawFile" || capture.type === "Bluez") {
+                capture.format = format as BinaryFormat
+              }
+            })
           }
         />
       )}
@@ -752,11 +810,11 @@ function CaptureOptions(props: {
             error={errors.messageFor("device")}
             desc="device"
             onChange={(device) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.device = device),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Alsa") {
+                  devices.capture.device = device
+                }
+              })
             }
             onButtonClick={() => {
               fetch("/api/capturedevices/" + capture.type)
@@ -771,11 +829,11 @@ function CaptureOptions(props: {
             desc="link_volume_control"
             tooltip="Name of volume control to link with CamillaDSP main volume"
             onChange={(link_volume_control) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.link_volume_control = link_volume_control),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Alsa") {
+                  devices.capture.link_volume_control = link_volume_control
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -784,11 +842,11 @@ function CaptureOptions(props: {
             desc="link_mute_control"
             tooltip="Name of mute control to link with CamillaDSP main mute"
             onChange={(link_mute_control) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.link_mute_control = link_mute_control),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Alsa") {
+                  devices.capture.link_mute_control = link_mute_control
+                }
+              })
             }
           />
           <OptionalBoolOption
@@ -797,11 +855,11 @@ function CaptureOptions(props: {
             desc="stop_on_inactive"
             tooltip="Stop if gadget or loopback capture device becomes inactive"
             onChange={(stop_on_inactive) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.stop_on_inactive = stop_on_inactive),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Alsa") {
+                  devices.capture.stop_on_inactive = stop_on_inactive
+                }
+              })
             }
           />
         </>
@@ -812,11 +870,11 @@ function CaptureOptions(props: {
           error={errors.messageFor("device")}
           desc="device"
           onChange={(device) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.capture.device = device),
-            )
+            onChange((devices) => {
+              if (devices.capture.type === "CoreAudio" || devices.capture.type === "Wasapi") {
+                devices.capture.device = device
+              }
+            })
           }
           onButtonClick={() => {
             fetch("/api/capturedevices/" + capture.type)
@@ -833,11 +891,11 @@ function CaptureOptions(props: {
           desc="device"
           tooltip="Name of device"
           onChange={(device) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.capture.device = device),
-            )
+            onChange((devices) => {
+              if (devices.capture.type === "Pulse") {
+                devices.capture.device = device
+              }
+            })
           }
         />
       )}
@@ -849,11 +907,11 @@ function CaptureOptions(props: {
             desc="exclusive"
             tooltip="Use exclusive mode"
             onChange={(exclusive) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.exclusive = exclusive),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Wasapi") {
+                  devices.capture.exclusive = exclusive
+                }
+              })
             }
           />
           <OptionalBoolOption
@@ -862,11 +920,11 @@ function CaptureOptions(props: {
             desc="polling"
             tooltip="Use polling instead of event driven mode"
             onChange={(polling) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.polling = polling),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Wasapi") {
+                  devices.capture.polling = polling
+                }
+              })
             }
           />
           <OptionalBoolOption
@@ -875,11 +933,11 @@ function CaptureOptions(props: {
             desc="loopback"
             tooltip="Use loopback capture mode to capture from a playback device"
             onChange={(loopback) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.loopback = loopback),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Wasapi") {
+                  devices.capture.loopback = loopback
+                }
+              })
             }
           />
         </>
@@ -891,11 +949,11 @@ function CaptureOptions(props: {
           desc="filename"
           tooltip="Filename including path"
           onChange={(filename) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.capture.filename = filename),
-            )
+            onChange((devices) => {
+              if (devices.capture.type === "RawFile" || devices.capture.type === "WavFile") {
+                devices.capture.filename = filename
+              }
+            })
           }
         />
       )}
@@ -906,11 +964,15 @@ function CaptureOptions(props: {
           desc="extra_samples"
           tooltip="Number of extra samples to insert after end of file"
           onChange={(extra_samples) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.capture.extra_samples = extra_samples),
-            )
+            onChange((devices) => {
+              if (
+                devices.capture.type === "RawFile" ||
+                devices.capture.type === "Stdin" ||
+                devices.capture.type === "WavFile"
+              ) {
+                devices.capture.extra_samples = extra_samples
+              }
+            })
           }
         />
       )}
@@ -922,11 +984,11 @@ function CaptureOptions(props: {
             desc="skip_bytes"
             tooltip="Number of bytes to skip at beginning of file"
             onChange={(skip_bytes) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.skip_bytes = skip_bytes),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "RawFile" || devices.capture.type === "Stdin") {
+                  devices.capture.skip_bytes = skip_bytes
+                }
+              })
             }
           />
           <OptionalIntOption
@@ -935,11 +997,11 @@ function CaptureOptions(props: {
             desc="read_bytes"
             tooltip="Read up to this number of bytes"
             onChange={(read_bytes) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.read_bytes = read_bytes),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "RawFile" || devices.capture.type === "Stdin") {
+                  devices.capture.read_bytes = read_bytes
+                }
+              })
             }
           />
         </>
@@ -952,11 +1014,11 @@ function CaptureOptions(props: {
             desc="service"
             tooltip="Name of d-bus service"
             onChange={(service) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.service = service),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Bluez") {
+                  devices.capture.service = service
+                }
+              })
             }
           />
           <TextOption
@@ -965,11 +1027,11 @@ function CaptureOptions(props: {
             desc="dbus_path"
             tooltip="d-bus path to Bluez"
             onChange={(dbus_path) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.dbus_path = dbus_path),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "Bluez") {
+                  devices.capture.dbus_path = dbus_path
+                }
+              })
             }
           />
         </>
@@ -982,11 +1044,11 @@ function CaptureOptions(props: {
             desc="node_name"
             tooltip="Name of node"
             onChange={(node_name) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.node_name = node_name),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "PipeWire") {
+                  devices.capture.node_name = node_name
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -995,11 +1057,11 @@ function CaptureOptions(props: {
             desc="node_description"
             tooltip="Description of node"
             onChange={(node_description) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.node_description = node_description),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "PipeWire") {
+                  devices.capture.node_description = node_description
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -1008,11 +1070,11 @@ function CaptureOptions(props: {
             desc="node_group_name"
             tooltip="Name of node group"
             onChange={(node_group_name) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.node_group_name = node_group_name),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "PipeWire") {
+                  devices.capture.node_group_name = node_group_name
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -1021,11 +1083,60 @@ function CaptureOptions(props: {
             desc="autoconnect_to"
             tooltip="Name of node to autoconnect to"
             onChange={(autoconnect_to) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.capture.autoconnect_to = autoconnect_to),
-              )
+              onChange((devices) => {
+                if (devices.capture.type === "PipeWire") {
+                  devices.capture.autoconnect_to = autoconnect_to
+                }
+              })
+            }
+          />
+        </>
+      )}
+      {capture.type === "SignalGenerator" && (
+        <>
+          <EnumOption
+            value={capture.signal.type}
+            error={errors.messageFor("signal.type")}
+            options={Signals}
+            desc="type"
+            tooltip="Signal type"
+            onChange={(signal) =>
+              onChange((devices) => {
+                if (devices.capture.type === "SignalGenerator") {
+                  devices.capture.signal.type = signal
+                }
+              })
+            }
+          />
+          {(capture.signal.type === "Sine" || capture.signal.type === "Square") && (
+            <FloatOption
+              value={capture.signal.freq}
+              error={errors.messageFor("signal.freq")}
+              desc="freq"
+              tooltip="Signal frequency in Hz"
+              onChange={(freq) =>
+                onChange((devices) => {
+                  if (
+                    devices.capture.type === "SignalGenerator" &&
+                    (devices.capture.signal.type === "Sine" || devices.capture.signal.type === "Square")
+                  ) {
+                    devices.capture.signal.freq = freq
+                  }
+                })
+              }
+            />
+          )}
+          <FloatOption
+            value={capture.signal.level}
+            error={errors.messageFor("signal.level")}
+            desc="level"
+            tooltip="Signal level in dB"
+            onChange={(level) =>
+              onChange((devices) => {
+                if (devices.capture.type === "SignalGenerator") {
+                  devices.capture.signal.level = level
+                }
+              })
             }
           />
         </>
@@ -1107,11 +1218,16 @@ function PlaybackOptions(props: {
         items={availableDevices}
         onClose={() => setPopupState(false)}
         onSelect={(device) =>
-          onChange(
-            (
-              devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-            ) => (devices.playback.device = device),
-          )
+          onChange((devices) => {
+            if (
+              devices.playback.type === "Alsa" ||
+              devices.playback.type === "Wasapi" ||
+              devices.playback.type === "CoreAudio" ||
+              devices.playback.type === "Jack"
+            ) {
+              devices.playback.device = device
+            }
+          })
         }
       />
       <ErrorMessage message={errors.rootMessage()} />
@@ -1144,11 +1260,18 @@ function PlaybackOptions(props: {
           desc="sampleformat"
           tooltip="Sample format"
           onChange={(format) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.format = format),
-            )
+            onChange((devices) => {
+              const playback = devices.playback
+              if (playback.type === "Alsa") {
+                playback.format = format as AlsaFormat | null
+              } else if (playback.type === "CoreAudio") {
+                playback.format = format as CoreAudioFormat | null
+              } else if (playback.type === "Wasapi") {
+                playback.format = format as WasapiFormat | null
+              } else if (playback.type === "File" || playback.type === "Stdout") {
+                playback.format = format as BinaryFormat
+              }
+            })
           }
         />
       )}
@@ -1157,11 +1280,11 @@ function PlaybackOptions(props: {
           value={playback.device}
           desc="device"
           onChange={(device) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.device = device),
-            )
+            onChange((devices) => {
+              if (devices.playback.type === "Alsa") {
+                devices.playback.device = device
+              }
+            })
           }
           error={errors.messageFor("device")}
           onButtonClick={() => {
@@ -1177,11 +1300,11 @@ function PlaybackOptions(props: {
           value={playback.device}
           desc="device"
           onChange={(device) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.device = device),
-            )
+            onChange((devices) => {
+              if (devices.playback.type === "CoreAudio" || devices.playback.type === "Wasapi") {
+                devices.playback.device = device
+              }
+            })
           }
           error={errors.messageFor("device")}
           onButtonClick={() => {
@@ -1199,11 +1322,11 @@ function PlaybackOptions(props: {
           desc="device"
           tooltip="Name of device"
           onChange={(device) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.device = device),
-            )
+            onChange((devices) => {
+              if (devices.playback.type === "Pulse") {
+                devices.playback.device = device
+              }
+            })
           }
         />
       )}
@@ -1214,11 +1337,11 @@ function PlaybackOptions(props: {
           desc="exclusive"
           tooltip="Use exclusive mode"
           onChange={(exclusive) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.exclusive = exclusive),
-            )
+            onChange((devices) => {
+              if (devices.playback.type === "Wasapi" || devices.playback.type === "CoreAudio") {
+                devices.playback.exclusive = exclusive
+              }
+            })
           }
         />
       )}
@@ -1229,11 +1352,11 @@ function PlaybackOptions(props: {
           desc="polling"
           tooltip="Use polling instead of event driven mode"
           onChange={(polling) =>
-            onChange(
-              (
-                devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-              ) => (devices.playback.polling = polling),
-            )
+            onChange((devices) => {
+              if (devices.playback.type === "Wasapi") {
+                devices.playback.polling = polling
+              }
+            })
           }
         />
       )}
@@ -1245,11 +1368,11 @@ function PlaybackOptions(props: {
             desc="filename"
             tooltip="Filename including path"
             onChange={(filename) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.filename = filename),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "File") {
+                  devices.playback.filename = filename
+                }
+              })
             }
           />
           <OptionalBoolOption
@@ -1258,11 +1381,11 @@ function PlaybackOptions(props: {
             desc="wav_header"
             tooltip="Write output as a wav file"
             onChange={(wav_header) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.wav_header = wav_header),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "File") {
+                  devices.playback.wav_header = wav_header
+                }
+              })
             }
           />
         </>
@@ -1275,11 +1398,11 @@ function PlaybackOptions(props: {
             desc="node_name"
             tooltip="Name of node"
             onChange={(node_name) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.node_name = node_name),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "PipeWire") {
+                  devices.playback.node_name = node_name
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -1288,11 +1411,11 @@ function PlaybackOptions(props: {
             desc="node_description"
             tooltip="Description of node"
             onChange={(node_description) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.node_description = node_description),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "PipeWire") {
+                  devices.playback.node_description = node_description
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -1301,11 +1424,11 @@ function PlaybackOptions(props: {
             desc="node_group_name"
             tooltip="Name of node group"
             onChange={(node_group_name) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.node_group_name = node_group_name),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "PipeWire") {
+                  devices.playback.node_group_name = node_group_name
+                }
+              })
             }
           />
           <OptionalTextOption
@@ -1314,11 +1437,11 @@ function PlaybackOptions(props: {
             desc="autoconnect_to"
             tooltip="Name of node to autoconnect to"
             onChange={(autoconnect_to) =>
-              onChange(
-                (
-                  devices, // @ts-expect-error this is ok but the compiler is not able to determine that
-                ) => (devices.playback.autoconnect_to = autoconnect_to),
-              )
+              onChange((devices) => {
+                if (devices.playback.type === "PipeWire") {
+                  devices.playback.autoconnect_to = autoconnect_to
+                }
+              })
             }
           />
         </>

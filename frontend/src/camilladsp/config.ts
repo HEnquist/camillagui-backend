@@ -986,7 +986,7 @@ export type CaptureDevice =
       type: "RawFile"
       channels: number
       format: BinaryFormat
-      filename: "/path/to/file"
+      filename: string
       extra_samples: number | null
       skip_bytes: number | null
       read_bytes: number | null
@@ -994,7 +994,7 @@ export type CaptureDevice =
     }
   | {
       type: "WavFile"
-      filename: "/path/to/file"
+      filename: string
       extra_samples: number | null
       labels: (string | null)[] | null
     }
@@ -1015,6 +1015,32 @@ export type CaptureDevice =
       dbus_path: string
       labels: (string | null)[] | null
     }
+  | {
+      type: "SignalGenerator"
+      channels: number
+      signal: SignalType
+      labels: (string | null)[] | null
+    }
+
+export type SignalType =
+  | {
+      type: "Sine"
+      freq: number
+      level: number
+    }
+  | {
+      type: "Square"
+      freq: number
+      level: number
+    }
+  | {
+      type: "WhiteNoise"
+      level: number
+    }
+
+export type Signal = "Sine" | "Square" | "WhiteNoise"
+
+export const Signals: Signal[] = ["Sine", "Square", "WhiteNoise"]
 
 export type PlaybackDevice =
   | {
