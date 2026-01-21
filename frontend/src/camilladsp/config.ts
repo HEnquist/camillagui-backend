@@ -109,7 +109,7 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
         }
         const a_val = a["def"]["parameters"]["freq"]
         const b_val = b["def"]["parameters"]["freq"]
-        const number_res = compare_values(a_val, b_val, reverse)
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -124,7 +124,7 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
         }
         const a_val = a["def"]["parameters"]["q"]
         const b_val = b["def"]["parameters"]["q"]
-        const number_res = compare_values(a_val, b_val, reverse)
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -139,7 +139,7 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
         }
         const a_val = a["def"]["parameters"]["gain"]
         const b_val = b["def"]["parameters"]["gain"]
-        const number_res = compare_values(a_val, b_val, reverse)
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -168,8 +168,8 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
         }
         const a_type = a["def"]["type"]
         const b_type = b["def"]["type"]
-        const a_val = a["def"]["parameters"]["type"]
-        const b_val = b["def"]["parameters"]["type"]
+        const a_val = a["def"]["parameters"]["type"] as string
+        const b_val = b["def"]["parameters"]["type"] as string
         if (a_type !== b_type) {
           return rev * a_type.localeCompare(b_type)
         } else if (a_val === undefined && b_val !== undefined) {
@@ -1279,8 +1279,11 @@ export interface Processors {
 export interface Processor {
   type: string
   description: string | null
-  parameters: { [name: string]: any }
+  parameters: { [name: string]: ProcessorParameterValue }
 }
+
+//export type FilterParameterValue = string | number | number[] | boolean | null
+export type ProcessorParameterValue = string | number | number[] | boolean | null
 
 export type Mixers = {
   [name: string]: Mixer
