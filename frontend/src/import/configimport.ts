@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* The import functionality supports data that is highly dynamic.
+   We allow the 'any' type here since it is difficult to avoid. */
+
 import { cloneDeep, isArray, isEqual, isObject, isString } from "lodash"
 import { Config, Devices, Pipeline, PipelineStep } from "../camilladsp/config"
 import { isComplexObject } from "../utilities/common"

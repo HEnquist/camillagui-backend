@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* The import functionality supports data that is highly dynamic.
+   We allow the 'any' type here since it is difficult to avoid. */
+
 import React, { ReactNode, useEffect, useState } from "react"
 import { mdiAlert, mdiInformation } from "@mdi/js"
 import { isObject } from "lodash"
