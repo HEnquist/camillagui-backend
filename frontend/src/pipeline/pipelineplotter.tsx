@@ -120,7 +120,7 @@ class PipelinePlot extends React.Component<Props, State> {
   private disabledBlockTextColor?: string
   private node: SVGSVGElement | null = null
   private zoom: d3.ZoomBehavior<HTMLDivElement, unknown>
-  private tooltip?: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>
+  private tooltip?: d3.Selection<HTMLDivElement, unknown, HTMLElement, unknown>
 
   constructor(props: Props) {
     super(props)
