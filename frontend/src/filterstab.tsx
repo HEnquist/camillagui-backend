@@ -28,6 +28,7 @@ import {
   BiquadComboSubtypeOptions,
   ConvSubtypeOptions,
   DitherSubtypeOptions,
+  FilterParameterValue,
 } from "./camilladsp/config"
 import { Chart, ChartContent } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
@@ -288,7 +289,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       channels: 2,
       plot_at_volume: 0.0,
     }
-    if (isConvolutionFileFilter(this.props.filter)) this.updateDefaults(this.props.filter.parameters.filename)
+    if (isConvolutionFileFilter(this.props.filter)) {
+      const filename = this.props.filter.parameters.filename
+      if (typeof filename === "string") {
+        this.updateDefaults(filename)
+      }
+    }
     this.plotFilter()
   }
 
@@ -336,14 +342,17 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter((filter) => {
       const subtype = defaults.type ? defaults.type : filter.parameters.type
-      const guiDefaults = DefaultFilterParameters[filter.type][subtype]
-      const channel = filter.parameters.channel
-      filter.parameters = {
-        ...guiDefaults,
-        ...defaults,
-        filename: filter.parameters.filename,
+      if (typeof subtype === "string") {
+        const guiDefaults = DefaultFilterParameters[filter.type][subtype]
+        const channel = filter.parameters.channel
+        const defaultsWithoutErrors = Object.fromEntries(Object.entries(defaults).filter(([key]) => key !== "errors"))
+        filter.parameters = {
+          ...guiDefaults,
+          ...defaultsWithoutErrors,
+          filename: filter.parameters.filename,
+        }
+        if (channel) filter.parameters.channel = channel
       }
-      if (channel) filter.parameters.channel = channel
     })
   }
 
@@ -649,20 +658,29 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
 
   private addBand() {
     this.props.updateFilter((filter) => {
-      filter.parameters.gains.push(0.0)
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains.push(0.0)
+      }
     })
   }
 
   private removeBand() {
     this.props.updateFilter((filter) => {
-      filter.parameters.gains.pop()
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains.pop()
+      }
     })
   }
 
   private adjustBand(band: number, value: string) {
     const val = parseFloat(value)
     this.props.updateFilter((filter) => {
-      filter.parameters.gains[band] = val
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains[band] = val
+      }
     })
   }
 
@@ -700,7 +718,7 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
         />
         {subtypeOptions[0] !== "Default" && (
           <EnumOption
-            value={filter.parameters.type}
+            value={typeof filter.parameters.type === "string" ? filter.parameters.type : "Default"}
             error={errors.messageFor("parameters", "type")}
             options={subtypeOptions}
             desc="subtype"
@@ -728,46 +746,52 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
               justifyContent: "center",
             }}
           >
-            {filter.parameters.gains.map((gain: number, index: number, gains: [number]) => (
-              <div
-                key={"eqslider" + index}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
+            {Array.isArray(filter.parameters.gains) &&
+              filter.parameters.gains.map((gain: number, index: number) => (
                 <div
+                  key={"eqslider" + index}
                   style={{
                     display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "center",
+                    flexDirection: "column",
                   }}
                 >
-                  {gain.toFixed(1)}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {gain.toFixed(1)}
+                  </div>
+                  <div className="eqslider-wrapper">
+                    <input
+                      className="eqslider"
+                      type="range"
+                      min="-10"
+                      max="10"
+                      value={gain}
+                      step="0.1"
+                      onChange={(e) => this.adjustBand(index, e.target.value)}
+                      onDoubleClick={() => this.adjustBand(index, "0.0")}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {this.eqBandFrequency(
+                      typeof filter.parameters.freq_min === "number" ? filter.parameters.freq_min : 0,
+                      typeof filter.parameters.freq_max === "number" ? filter.parameters.freq_max : 0,
+                      Array.isArray(filter.parameters.gains) ? filter.parameters.gains.length : 0,
+                      index,
+                    )}
+                  </div>
                 </div>
-                <div className="eqslider-wrapper">
-                  <input
-                    className="eqslider"
-                    type="range"
-                    min="-10"
-                    max="10"
-                    value={gain}
-                    step="0.1"
-                    onChange={(e) => this.adjustBand(index, e.target.value)}
-                    onDoubleClick={() => this.adjustBand(index, "0.0")}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                  }}
-                >
-                  {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
-                </div>
-              </div>
-            ))}
+              ))}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <AddButton tooltip="Add one band" onClick={this.addBand} />
               <DeleteButton tooltip="Remove one band" onClick={this.removeBand} />
@@ -795,7 +819,10 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
         desc: info.desc,
         tooltip: info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
-        onChange: (value: unknown) => this.props.updateFilter((filter) => (filter.parameters[parameter] = value)),
+        onChange: (value: unknown) =>
+          this.props.updateFilter((filter) => {
+            filter.parameters[parameter] = value as FilterParameterValue
+          }),
       }
       if (parameter === "filename") return this.filenameField(parameters["filename"] as string, propValue, commonProps)
       if (this.isHiddenDefaultValue(parameter)) return null

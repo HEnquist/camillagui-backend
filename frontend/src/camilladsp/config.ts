@@ -1270,7 +1270,7 @@ export interface Filters {
 export interface Filter {
   type: string
   description: string | null
-  parameters: { [name: string]: any }
+  parameters: { [name: string]: FilterParameterValue }
 }
 
 export interface Processors {
@@ -1282,7 +1282,7 @@ export interface Processor {
   parameters: { [name: string]: ProcessorParameterValue }
 }
 
-//export type FilterParameterValue = string | number | number[] | boolean | null
+export type FilterParameterValue = string | number | number[] | boolean | null
 export type ProcessorParameterValue = string | number | number[] | boolean | null
 
 export type Mixers = {
