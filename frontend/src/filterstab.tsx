@@ -175,6 +175,14 @@ export class FiltersTab extends React.Component<
 
   render() {
     const { config, errors } = this.props
+    // Determine which filters are referenced in the pipeline
+    const pipeline = config.pipeline ? config.pipeline : []
+    const usedFilters = new Set<string>()
+    for (const step of pipeline) {
+      if (step.type === "Filter") {
+        for (const n of step.names) usedFilters.add(n)
+      }
+    }
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div>
@@ -212,6 +220,7 @@ export class FiltersTab extends React.Component<
                   coeffDir={this.props.coeffDir}
                   samplerate={this.props.samplerate}
                   channels={this.props.channels}
+                  inPipeline={usedFilters.has(name)}
                 />
               ))}
               <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
@@ -253,6 +262,7 @@ interface FilterViewProps {
   coeffDir: string
   samplerate: number
   channels: Promise<number>
+  inPipeline: boolean
 }
 
 interface FilterViewState {
@@ -440,15 +450,26 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       <Box
         style={{ width: "700px" }}
         title={
-          <ParsedInput
-            style={{ width: "300px" }}
-            value={name}
-            asString={(x) => x}
-            parseValue={(newName) => (isValidFilterName(newName) ? newName : undefined)}
-            tooltip="Filter name, must be unique"
-            onChange={(newName) => this.props.rename(newName)}
-            immediate={false}
-          />
+          <>
+            <ParsedInput
+              style={{ width: "300px" }}
+              value={name}
+              asString={(x) => x}
+              parseValue={(newName) => (isValidFilterName(newName) ? newName : undefined)}
+              tooltip="Filter name, must be unique"
+              onChange={(newName) => this.props.rename(newName)}
+              immediate={false}
+            />
+            {!this.props.inPipeline && (
+              <span
+                className="unused-filter"
+                data-tooltip-html="Filter not included in pipeline"
+                data-tooltip-id="main-tooltip"
+              >
+                ⚠️ Unused
+              </span>
+            )}
+          </>
         }
       >
         <div
