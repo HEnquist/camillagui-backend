@@ -144,7 +144,7 @@ test("renameMixer throws on name collision", () => {
 test("maxChannelCount", async () => {
   const config = defaultConfig()
   config.mixers = {}
-  // @ts-ignore
+  // @ts-expect-error this is ok but the compiler is not able to determine that
   config.devices.capture.channels = 1
   config.devices.playback.channels = 9999
   config.mixers.mixer1 = defaultMixer()

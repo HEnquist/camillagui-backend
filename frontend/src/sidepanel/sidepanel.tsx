@@ -1,18 +1,19 @@
 import React from "react"
 import "../index.css"
-import isEqual from "lodash/isEqual"
 import { mdiScaleUnbalanced } from "@mdi/js"
-import camillalogo from "./camilladsp.svg"
-import { VolumeBox } from "./volumebox"
+import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
-import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
-import { Config, getOutputLabels } from "../camilladsp/config"
-import { GuiConfig } from "../guiconfig"
+import camillalogo from "./camilladsp.svg"
+import { Configcheckmessage } from "./configcheckmessage"
 import { LogFileViewerPopup } from "./logfileviewer"
+import { VolumeBox } from "./volumebox"
+import { Config } from "../camilladsp/config"
 import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
-import { Configcheckmessage } from "./configcheckmessage"
+import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
+import { Errors } from "../utilities/errors"
+import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   config: Config
@@ -21,7 +22,7 @@ interface SidePanelProps {
   fetchConfig: () => Promise<void>
   saveConfig: () => Promise<void>
   saveAndApplyConfig: () => Promise<void>
-  setErrors: (errors: any) => void
+  setErrors: (errors: Errors) => void
   currentConfigFile?: string
   message: string
   unsavedChanges: boolean

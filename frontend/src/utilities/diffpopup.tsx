@@ -1,18 +1,18 @@
-import Popup from "reactjs-popup"
-import "reactjs-popup/dist/index.css"
 import React from "react"
+import "reactjs-popup/dist/index.css"
+import ReactjsPopup from "reactjs-popup"
 import "../index.css"
-import { CloseButton } from "../utilities/ui-components"
+import { jsonDiff } from "./jsondiff"
 import { Config } from "../camilladsp/config"
-import { jsonDiff, DiffRow } from "./jsondiff"
+import { CloseButton } from "../utilities/ui-components"
 
 type DiffRowType = "header" | "prop" | "section" | "comment"
 
 interface DiffTableRow {
   type: DiffRowType
   label: string
-  left: any
-  right: any
+  left: string
+  right: string
 }
 
 export function DiffPopup(props: {
@@ -24,7 +24,7 @@ export function DiffPopup(props: {
   onClose: () => void
 }) {
   return (
-    <Popup
+    <ReactjsPopup
       open={props.open}
       onClose={props.onClose}
       closeOnDocumentClick={true}
@@ -43,7 +43,7 @@ export function DiffPopup(props: {
           {renderDiff(props.left_config, props.right_config, props.left_name, props.right_name)}
         </table>
       </div>
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
@@ -95,7 +95,7 @@ function renderDiff(left_config: Config, right_config: Config, left_name: string
     let prevPath = ""
     for (const row of rows) {
       const path = "/ " + row.path.slice(0, -1).join(" / ")
-      var header = null
+      let header = null
       if (path !== prevPath) {
         header = path
         prevPath = path
@@ -109,8 +109,8 @@ function renderDiff(left_config: Config, right_config: Config, left_name: string
       displayrows.push({
         type: "prop",
         label: row.path[row.path.length - 1],
-        left: row.before ? row.before : "null",
-        right: row.after ? row.after : "null",
+        left: row.before ? String(row.before) : "null",
+        right: row.after ? String(row.after) : "null",
       })
     }
     if (displayrows.length === 1) {

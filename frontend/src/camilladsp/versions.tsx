@@ -11,7 +11,7 @@ export interface Versions {
 
 export function VersionLabels(props: { versions: Status }) {
   const { cdsp_version, py_cdsp_version, py_cdsp_plot_version, backend_version } = props.versions
-  let tooltip = `
+  const tooltip = `
     <table>
       <tr>
         <th class=namecol>Component</th>

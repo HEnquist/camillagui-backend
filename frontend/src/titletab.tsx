@@ -1,8 +1,8 @@
 import React from "react"
 import "./index.css"
-import { TextInput, MultilineTextInput, Box, ErrorBoundary } from "./utilities/ui-components"
 import { Config } from "./camilladsp/config"
 import { Update } from "./utilities/common"
+import { TextInput, MultilineTextInput, Box, ErrorBoundary } from "./utilities/ui-components"
 
 export function TitleTab(props: { config: Config; updateConfig: (update: Update<Config>) => void }) {
   return (

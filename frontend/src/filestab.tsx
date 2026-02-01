@@ -1,18 +1,4 @@
-import React, { Component, createRef } from "react"
-import {
-  Box,
-  Button,
-  DropdownBox,
-  ErrorBoundary,
-  fileDateSort,
-  fileNameSort,
-  fileTitleSort,
-  fileValidSort,
-  MdiButton,
-  PlotButton,
-  UploadButton,
-} from "./utilities/ui-components"
-import { GuiConfig } from "./guiconfig"
+import React, { Component } from "react"
 import {
   mdiAlertCircle,
   mdiCheck,
@@ -27,7 +13,14 @@ import {
   mdiStarOutline,
   mdiUpload,
 } from "@mdi/js"
+import { isEqual } from "lodash"
+import DataTable, { TableColumn } from "react-data-table-component"
 import { Config, defaultConfig } from "./camilladsp/config"
+import { GuiConfig } from "./guiconfig"
+import { ImportPopup, ImportPopupProps } from "./import/importpopup"
+import { PipelinePopup } from "./pipeline/pipelineplotter"
+import { Update } from "./utilities/common"
+import { DiffPopup } from "./utilities/diffpopup"
 import {
   doUpload,
   download,
@@ -39,12 +32,19 @@ import {
   loadDefaultConfigJson,
   loadFiles,
 } from "./utilities/files"
-import { PipelinePopup } from "./pipeline/pipelineplotter"
-import { ImportPopup, ImportPopupProps } from "./import/importpopup"
-import { Update } from "./utilities/common"
-import DataTable from "react-data-table-component"
-import { isEqual } from "lodash"
-import { DiffPopup } from "./utilities/diffpopup"
+import {
+  Box,
+  Button,
+  DropdownBox,
+  ErrorBoundary,
+  fileDateSort,
+  fileNameSort,
+  fileTitleSort,
+  fileValidSort,
+  MdiButton,
+  PlotButton,
+  UploadButton,
+} from "./utilities/ui-components"
 
 const CURRENT_VERSION = 4
 
@@ -187,7 +187,7 @@ class FileTable extends Component<
   private update() {
     loadFiles(this.type).then((files) => {
       if (!isEqual(files, this.state.files)) {
-        return this.setState((prevState) => ({
+        return this.setState(() => ({
           files: files,
         }))
       }
@@ -231,7 +231,7 @@ class FileTable extends Component<
   private async loadConfig(name: string) {
     try {
       const jsonConfig = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
-      this.props.setCurrentConfig!(name, jsonConfig as Config)
+      this.props.setCurrentConfig!(name, jsonConfig)
       this.showSuccess(name, "load")
     } catch (e) {
       this.showErrorMessage(name, "load", e as string)
@@ -323,7 +323,7 @@ class FileTable extends Component<
     this.saveConfig(name)
   }
 
-  private setSelected(selected: any) {
+  private setSelected(selected: { allSelected: boolean; selectedCount: number; selectedRows: FileInfo[] }) {
     this.setState({ selectedFiles: selected.selectedRows })
   }
 
@@ -389,19 +389,17 @@ class FileTable extends Component<
       activeConfigFileName,
       filterText,
       showDiffPopup,
-      diffFileNameLeft,
-      diffFileNameRight,
       showPipelinePlot,
       configToPlot,
     } = this.state
-    let columns: any = []
+    const columns: TableColumn<FileInfo>[] = []
     if (this.type === "coeff") {
       columns.push({
         name: "",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo, index: number) => (
           <div style={{ display: "flex", flexDirection: "row" }}>
             <RenameButton
-              key={"rename" + id}
+              key={"rename" + index}
               filename={row.name}
               fileStatus={fileStatus}
               rename={() => this.rename(row.name, "coeff")}
@@ -414,7 +412,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Filename",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div>
             <FileDownloadLink type={this.type} filename={row.name} isCurrentConfig={false} />
             <FileStatusMessage filename={row.name} fileStatus={fileStatus} type={this.type} />
@@ -428,23 +426,23 @@ class FileTable extends Component<
     } else if (this.type === "config") {
       columns.push({
         name: "",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo, index: number) => (
           <div style={{ display: "flex", flexDirection: "row" }}>
             <SetActiveButton
-              key={"setactive" + id}
+              key={"setactive" + index}
               active={row.name === activeConfigFileName}
               onClick={() => this.setActiveConfig(row.name)}
               enabled={this.props.canUpdateActiveConfig && row.valid}
               valid={row.valid}
             />
             <SaveButton
-              key={"save" + id}
+              key={"save" + index}
               filename={row.name}
               fileStatus={fileStatus}
               saveConfig={this.overwriteConfig}
             />
             <LoadButton
-              key={"load" + id}
+              key={"load" + index}
               filename={row.name}
               fileStatus={fileStatus}
               valid={row.valid}
@@ -460,7 +458,7 @@ class FileTable extends Component<
               }}
             >
               <MdiButton
-                key={"filemenu" + id}
+                key={"filemenu" + index}
                 icon={mdiMenu}
                 tooltip="More actions"
                 highlighted={this.state.fileMenuOpen === index}
@@ -478,13 +476,13 @@ class FileTable extends Component<
                   }}
                 >
                   <RenameButton
-                    key={"rename" + id}
+                    key={"rename" + index}
                     filename={row.name}
                     fileStatus={fileStatus}
                     rename={() => this.rename(row.name, "config")}
                   />
                   <CompareToGUIButton
-                    key={"compare" + id}
+                    key={"compare" + index}
                     filename={row.name}
                     valid={row.valid}
                     compareConfig={this.compareConfig}
@@ -506,7 +504,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Filename",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div>
             <FileDownloadLink
               type={this.type}
@@ -523,7 +521,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Title",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div data-tooltip-html={row.description} data-tooltip-id="main-tooltip">
             {row.title ? row.title : row.description ? <i>{row.description.slice(0, 20) + "..."}</i> : null}
           </div>
@@ -535,7 +533,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Valid",
-        cell: (row: FileInfo, index: number, column: number, id: any) => (
+        cell: (row: FileInfo) => (
           <div data-tooltip-html={fileStatusDesc(row.errors)} data-tooltip-id="main-tooltip">
             {row.valid === true ? "✔️" : "❌"}
           </div>
@@ -547,7 +545,7 @@ class FileTable extends Component<
       })
       columns.push({
         name: "Version",
-        selector: (row: FileInfo) => row.version,
+        selector: (row: FileInfo) => (row.version === null || row.version === undefined ? "" : row.version),
         sortable: true,
         width: "60px",
         compact: true,
@@ -674,7 +672,7 @@ class FileTable extends Component<
           right_name={this.state.diffFileNameRight}
         />
         <PipelinePopup
-          key={showPipelinePlot as any}
+          key={showPipelinePlot ? "1" : "0"}
           open={showPipelinePlot}
           config={configToPlot}
           onClose={() =>
@@ -689,7 +687,7 @@ class FileTable extends Component<
   }
 }
 
-function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZip: () => {} }) {
+function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZip: () => void }) {
   const { selectedFiles, downloadAsZip } = props
   const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
   return (
@@ -706,7 +704,7 @@ function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZi
   )
 }
 
-function DeleteFilesButton(props: { selectedFiles: string[]; delete: () => {} }) {
+function DeleteFilesButton(props: { selectedFiles: string[]; delete: () => void }) {
   const selectedFiles = props.selectedFiles
   const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
   return (
@@ -824,7 +822,7 @@ function LoadButton(props: {
   valid: boolean | undefined
   for_version: number | null | undefined
 }) {
-  const { filename, fileStatus, loadConfig, valid, for_version } = props
+  const { filename, fileStatus, loadConfig, for_version } = props
   let loadIcon: { icon: string; className?: string } = { icon: mdiRefresh }
   if (fileStatus !== null && fileStatus.action === "load" && fileStatus.filename === filename) {
     loadIcon = fileStatus.success
@@ -857,7 +855,7 @@ function CompareToGUIButton(props: {
   valid: boolean | undefined
 }) {
   const { filename, compareConfig, valid } = props
-  let loadIcon: { icon: string; className?: string } = {
+  const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
   let disabled_reason = ""
@@ -880,7 +878,7 @@ function CompareFilesButton(props: {
   compareConfigs: (name_left: string, name_right: string) => void
 }) {
   const { selectedFiles, compareConfigs } = props
-  let loadIcon: { icon: string; className?: string } = {
+  const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
   const enabled = selectedFiles.length === 2 && selectedFiles[0].valid && selectedFiles[1].valid
@@ -943,15 +941,14 @@ function isValidFilename(newFileName: string) {
   return newFileName.trim().length > 0
 }
 
-class NewConfig extends Component<
-  {
-    currentConfig: Config
-    setCurrentConfig?: (filename: string | undefined, config: Config) => void
-    updateConfig: (update: Update<Config>) => void
-  },
-  { importPopupProps: ImportPopupProps }
-> {
-  constructor(props: any) {
+interface NewConfigProps {
+  currentConfig: Config
+  setCurrentConfig?: (filename: string | undefined, config: Config) => void
+  updateConfig: (update: Update<Config>) => void
+}
+
+class NewConfig extends Component<NewConfigProps, { importPopupProps: ImportPopupProps }> {
+  constructor(props: NewConfigProps) {
     super(props)
     this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
     this.state = { importPopupProps: {} }
@@ -976,8 +973,8 @@ class NewConfig extends Component<
   }
 
   private loadBlankConfig() {
-    let config = defaultConfig()
-    this.props.setCurrentConfig!(undefined, config as Config)
+    const config = defaultConfig()
+    this.props.setCurrentConfig!(undefined, config)
   }
 
   private openImportConfigPopup() {

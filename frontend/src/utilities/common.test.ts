@@ -151,37 +151,37 @@ describe("asFormattedText", () => {
   })
 
   test("setNumberValue for simple object", () => {
-    let object = { a: 1 }
+    const object = { a: 1 }
     setNumberValue(object, ["a"], 2)
     expect(object.a).toBe(2)
   })
 
   test("setNumberValue for complex object", () => {
-    let object = { a: { b: 1 } }
+    const object = { a: { b: 1 } }
     setNumberValue(object, ["a", "b"], 2)
     expect(object.a.b).toBe(2)
   })
 
   test("setNumberValue for wrong type", () => {
-    let object = { a: "string" }
+    const object = { a: "string" }
     setNumberValue(object, ["a"], 2)
     expect(object.a).toBe("string")
   })
 
   test("setBoolValue for simple object", () => {
-    let object = { a: true }
+    const object = { a: true }
     setBoolValue(object, ["a"], false)
     expect(object.a).toBe(false)
   })
 
   test("setBoolValue for complex object", () => {
-    let object = { a: { b: false } }
+    const object = { a: { b: false } }
     setBoolValue(object, ["a", "b"], true)
     expect(object.a.b).toBe(true)
   })
 
   test("setBoolValue for wrong type", () => {
-    let object = { a: 5 }
+    const object = { a: 5 }
     setBoolValue(object, ["a"], false)
     expect(object.a).toBe(5)
   })

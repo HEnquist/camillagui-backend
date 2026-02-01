@@ -1,5 +1,4 @@
 import React from "react"
-import cloneDeep from "lodash/cloneDeep"
 import "./index.css"
 import {
   mdiAlertCircle,
@@ -9,6 +8,8 @@ import {
   mdiArrowCollapse,
   mdiArrowExpand,
 } from "@mdi/js"
+import { isEqual } from "lodash"
+import cloneDeep from "lodash/cloneDeep"
 import {
   Config,
   defaultFilter,
@@ -27,7 +28,12 @@ import {
   BiquadComboSubtypeOptions,
   ConvSubtypeOptions,
   DitherSubtypeOptions,
+  FilterParameterValue,
 } from "./camilladsp/config"
+import { Chart, ChartContent } from "./utilities/chart"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { Errors } from "./utilities/errors"
+import { doUpload, loadFiles, FileInfo } from "./utilities/files"
 import {
   AddButton,
   BoolOption,
@@ -53,25 +59,22 @@ import {
   UploadButton,
   ErrorBoundary,
 } from "./utilities/ui-components"
-import { Errors } from "./utilities/errors"
-import { modifiedCopyOf, Update } from "./utilities/common"
-import { isEqual } from "lodash"
-import { Chart, ChartData } from "./utilities/chart"
-import { doUpload, loadFiles, FileInfo } from "./utilities/files"
 
 // TODO update conv parameters
 // TODO optional bool in general notch
 // TODO update volume/loudness parameters
 
+interface FiltersTabProps {
+  config: Config
+  samplerate: number
+  channels: Promise<number>
+  coeffDir: string
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
+
 export class FiltersTab extends React.Component<
-  {
-    config: Config
-    samplerate: number
-    channels: Promise<number>
-    coeffDir: string
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  FiltersTabProps,
   {
     filterKeys: { [name: string]: number }
     availableCoeffFiles: FileInfo[]
@@ -79,7 +82,7 @@ export class FiltersTab extends React.Component<
     sortReverse: boolean
   }
 > {
-  constructor(props: any) {
+  constructor(props: FiltersTabProps) {
     super(props)
     this.filterNames = this.filterNames.bind(this)
     this.changeSortBy = this.changeSortBy.bind(this)
@@ -171,7 +174,15 @@ export class FiltersTab extends React.Component<
   }
 
   render() {
-    let { config, errors } = this.props
+    const { config, errors } = this.props
+    // Determine which filters are referenced in the pipeline
+    const pipeline = config.pipeline ? config.pipeline : []
+    const usedFilters = new Set<string>()
+    for (const step of pipeline) {
+      if (step.type === "Filter") {
+        for (const n of step.names) usedFilters.add(n)
+      }
+    }
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div>
@@ -197,7 +208,7 @@ export class FiltersTab extends React.Component<
                 <FilterView
                   key={this.state.filterKeys[name]}
                   name={name}
-                  // @ts-ignore
+                  // @ts-expect-error this is ok but the compiler is not able to determine that
                   filter={config.filters[name]}
                   errors={errors.forSubpath(name)}
                   availableCoeffFiles={this.state.availableCoeffFiles}
@@ -209,6 +220,7 @@ export class FiltersTab extends React.Component<
                   coeffDir={this.props.coeffDir}
                   samplerate={this.props.samplerate}
                   channels={this.props.channels}
+                  inPipeline={usedFilters.has(name)}
                 />
               ))}
               <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
@@ -250,6 +262,7 @@ interface FilterViewProps {
   coeffDir: string
   samplerate: number
   channels: Promise<number>
+  inPipeline: boolean
 }
 
 interface FilterViewState {
@@ -257,7 +270,7 @@ interface FilterViewState {
   filterFilePopupOpen: boolean
   showFilterPlot: boolean
   expandPlot: boolean
-  data?: ChartData
+  data?: ChartContent
   filterDefaults: FilterDefaults
   showDefaults: boolean
   channels: number
@@ -265,7 +278,7 @@ interface FilterViewState {
 }
 
 class FilterView extends React.Component<FilterViewProps, FilterViewState> {
-  constructor(props: any) {
+  constructor(props: FilterViewProps) {
     super(props)
     this.uploadCoeffs = this.uploadCoeffs.bind(this)
     this.pickFilterFile = this.pickFilterFile.bind(this)
@@ -286,7 +299,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       channels: 2,
       plot_at_volume: 0.0,
     }
-    if (isConvolutionFileFilter(this.props.filter)) this.updateDefaults(this.props.filter.parameters.filename)
+    if (isConvolutionFileFilter(this.props.filter)) {
+      const filename = this.props.filter.parameters.filename
+      if (typeof filename === "string") {
+        this.updateDefaults(filename)
+      }
+    }
     this.plotFilter()
   }
 
@@ -334,14 +352,17 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   private updateFilterParamsWithDefaults(defaults: FilterDefaults) {
     this.props.updateFilter((filter) => {
       const subtype = defaults.type ? defaults.type : filter.parameters.type
-      const guiDefaults = DefaultFilterParameters[filter.type][subtype]
-      const channel = filter.parameters.channel
-      filter.parameters = {
-        ...guiDefaults,
-        ...defaults,
-        filename: filter.parameters.filename,
+      if (typeof subtype === "string") {
+        const guiDefaults = DefaultFilterParameters[filter.type][subtype]
+        const channel = filter.parameters.channel
+        const defaultsWithoutErrors = Object.fromEntries(Object.entries(defaults).filter(([key]) => key !== "errors"))
+        filter.parameters = {
+          ...guiDefaults,
+          ...defaultsWithoutErrors,
+          filename: filter.parameters.filename,
+        }
+        if (channel) filter.parameters.channel = channel
       }
-      if (channel) filter.parameters.channel = channel
     })
   }
 
@@ -351,7 +372,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     })
   }
 
-  componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>, snapshot?: any) {
+  componentDidUpdate(prevProps: Readonly<FilterViewProps>, prevState: Readonly<FilterViewState>) {
     if (this.state.showFilterPlot) {
       const prevFilter = prevProps.filter
       const currentFilter = this.props.filter
@@ -381,7 +402,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   }
 
   private plotFilterInitially(file: string) {
-    const options = this.state.data!!.options
+    const options = this.state.data!.options
     const current = options.length === 0 ? undefined : options.filter((o) => o.name === file)[0]
     this.plotFilter(current?.samplerate, current?.channels)
   }
@@ -401,7 +422,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       (result) =>
         result.json().then(
           (data) => {
-            if (this.state.showFilterPlot) this.setState({ data: data as ChartData })
+            if (this.state.showFilterPlot) this.setState({ data: data as ChartContent })
           },
           (error) => console.log("JSON parse failed", error),
         ),
@@ -429,15 +450,26 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       <Box
         style={{ width: "700px" }}
         title={
-          <ParsedInput
-            style={{ width: "300px" }}
-            value={name}
-            asString={(x) => x}
-            parseValue={(newName) => (isValidFilterName(newName) ? newName : undefined)}
-            tooltip="Filter name, must be unique"
-            onChange={(newName) => this.props.rename(newName)}
-            immediate={false}
-          />
+          <>
+            <ParsedInput
+              style={{ width: "300px" }}
+              value={name}
+              asString={(x) => x}
+              parseValue={(newName) => (isValidFilterName(newName) ? newName : undefined)}
+              tooltip="Filter name, must be unique"
+              onChange={(newName) => this.props.rename(newName)}
+              immediate={false}
+            />
+            {!this.props.inPipeline && (
+              <span
+                className="unused-filter"
+                data-tooltip-html="Filter not included in pipeline"
+                data-tooltip-id="main-tooltip"
+              >
+                ⚠️ Unused
+              </span>
+            )}
+          </>
         }
       >
         <div
@@ -568,20 +600,19 @@ function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter>
 
 const hiddenParameters = ["skip_bytes_lines", "read_bytes_lines"]
 
-class FilterParams extends React.Component<
-  {
-    filter: Filter
-    errors: Errors
-    updateFilter: (update: Update<Filter>) => void
-    availableCoeffFiles: FileInfo[]
-    coeffDir: string
-    filterDefaults: FilterDefaults
-    setShowDefaults: () => void
-    showDefaults: boolean
-  },
-  unknown
-> {
-  constructor(props: any) {
+interface FilterParamsProps {
+  filter: Filter
+  errors: Errors
+  updateFilter: (update: Update<Filter>) => void
+  availableCoeffFiles: FileInfo[]
+  coeffDir: string
+  filterDefaults: FilterDefaults
+  setShowDefaults: () => void
+  showDefaults: boolean
+}
+
+class FilterParams extends React.Component<FilterParamsProps, unknown> {
+  constructor(props: FilterParamsProps) {
     super(props)
     this.onDescChange = this.onDescChange.bind(this)
     this.onTypeChange = this.onTypeChange.bind(this)
@@ -621,7 +652,7 @@ class FilterParams extends React.Component<
       if (oldFilename && isConvolutionFileFilter(filter)) filter.parameters.filename = oldFilename //keep filename, if switch is between Raw and Wav
       for (const par in oldParameters) {
         // Copy the value of any parameter common to old and new, except "type"
-        if (filter.parameters.hasOwnProperty(par) && par !== "type") {
+        if (Object.hasOwn(filter.parameters, par) && par !== "type") {
           filter.parameters[par] = oldParameters[par]
         }
       }
@@ -629,11 +660,11 @@ class FilterParams extends React.Component<
   }
 
   private eqBandFrequency(fmin: number, fmax: number, nbr_bands: number, band: number) {
-    let f_min_log = Math.log(fmin) / Math.log(2)
-    let f_max_log = Math.log(fmax) / Math.log(2)
-    let bw = (f_max_log - f_min_log) / nbr_bands
-    let freq_log = f_min_log + (band + 0.5) * bw
-    let freq = Math.pow(2.0, freq_log)
+    const f_min_log = Math.log(fmin) / Math.log(2)
+    const f_max_log = Math.log(fmax) / Math.log(2)
+    const bw = (f_max_log - f_min_log) / nbr_bands
+    const freq_log = f_min_log + (band + 0.5) * bw
+    const freq = Math.pow(2.0, freq_log)
     if (freq < 10) {
       return freq.toFixed(1)
     }
@@ -648,20 +679,29 @@ class FilterParams extends React.Component<
 
   private addBand() {
     this.props.updateFilter((filter) => {
-      filter.parameters.gains.push(0.0)
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains.push(0.0)
+      }
     })
   }
 
   private removeBand() {
     this.props.updateFilter((filter) => {
-      filter.parameters.gains.pop()
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains.pop()
+      }
     })
   }
 
   private adjustBand(band: number, value: string) {
     const val = parseFloat(value)
     this.props.updateFilter((filter) => {
-      filter.parameters.gains[band] = val
+      const gains = filter.parameters.gains
+      if (Array.isArray(gains)) {
+        gains[band] = val
+      }
     })
   }
 
@@ -699,7 +739,7 @@ class FilterParams extends React.Component<
         />
         {subtypeOptions[0] !== "Default" && (
           <EnumOption
-            value={filter.parameters.type}
+            value={typeof filter.parameters.type === "string" ? filter.parameters.type : "Default"}
             error={errors.messageFor("parameters", "type")}
             options={subtypeOptions}
             desc="subtype"
@@ -727,46 +767,52 @@ class FilterParams extends React.Component<
               justifyContent: "center",
             }}
           >
-            {filter.parameters.gains.map((gain: number, index: number, gains: [number]) => (
-              <div
-                key={"eqslider" + index}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
+            {Array.isArray(filter.parameters.gains) &&
+              filter.parameters.gains.map((gain: number, index: number) => (
                 <div
+                  key={"eqslider" + index}
                   style={{
                     display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "center",
+                    flexDirection: "column",
                   }}
                 >
-                  {gain.toFixed(1)}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {gain.toFixed(1)}
+                  </div>
+                  <div className="eqslider-wrapper">
+                    <input
+                      className="eqslider"
+                      type="range"
+                      min="-10"
+                      max="10"
+                      value={gain}
+                      step="0.1"
+                      onChange={(e) => this.adjustBand(index, e.target.value)}
+                      onDoubleClick={() => this.adjustBand(index, "0.0")}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {this.eqBandFrequency(
+                      typeof filter.parameters.freq_min === "number" ? filter.parameters.freq_min : 0,
+                      typeof filter.parameters.freq_max === "number" ? filter.parameters.freq_max : 0,
+                      Array.isArray(filter.parameters.gains) ? filter.parameters.gains.length : 0,
+                      index,
+                    )}
+                  </div>
                 </div>
-                <div className="eqslider-wrapper">
-                  <input
-                    className="eqslider"
-                    type="range"
-                    min="-10"
-                    max="10"
-                    value={gain}
-                    step="0.1"
-                    onChange={(e) => this.adjustBand(index, e.target.value)}
-                    onDoubleClick={(e) => this.adjustBand(index, "0.0")}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                  }}
-                >
-                  {this.eqBandFrequency(filter.parameters.freq_min, filter.parameters.freq_max, gains.length, index)}
-                </div>
-              </div>
-            ))}
+              ))}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <AddButton tooltip="Add one band" onClick={this.addBand} />
               <DeleteButton tooltip="Remove one band" onClick={this.removeBand} />
@@ -777,7 +823,7 @@ class FilterParams extends React.Component<
     )
   }
 
-  private renderFilterParams(parameters: { [p: string]: any }, errors: Errors) {
+  private renderFilterParams(parameters: { [p: string]: unknown }, errors: Errors) {
     return Object.keys(parameters).map((parameter) => {
       if (parameter === "type")
         // 'type' is already rendered by parent component
@@ -787,26 +833,32 @@ class FilterParams extends React.Component<
         console.log(`Rendering for filter parameter '${parameter}' is not implemented`)
         return null
       }
+      const propValue = parameters[parameter] as unknown
       const commonProps = {
         key: parameter,
-        value: parameters[parameter],
         error: errors.messageFor(parameter),
         desc: info.desc,
         tooltip: info.tooltip,
         //onChange: (value: any) => this.timer(() => this.props.updateFilter(filter => filter.parameters[parameter] = value))
-        onChange: (value: any) => this.props.updateFilter((filter) => (filter.parameters[parameter] = value)),
+        onChange: (value: unknown) =>
+          this.props.updateFilter((filter) => {
+            filter.parameters[parameter] = value as FilterParameterValue
+          }),
       }
-      if (parameter === "filename") return this.filenameField(parameters["filename"], commonProps)
+      if (parameter === "filename") return this.filenameField(parameters["filename"] as string, propValue, commonProps)
       if (this.isHiddenDefaultValue(parameter)) return null
       if (
-        (this.qAndSlopeFilters.includes(parameters.type) || this.qAndBandwidthFilters.includes(parameters.type)) &&
+        (this.qAndSlopeFilters.includes(parameters.type as string) ||
+          this.qAndBandwidthFilters.includes(parameters.type as string)) &&
         (parameter === "q" || parameter === "slope" || parameter === "bandwidth")
       )
         return (
           <this.QorBandwithOrSlope
             {...commonProps}
+            key={parameter}
             parameter={parameter}
             parameters={parameters}
+            value={propValue as number}
             onDescChange={(option) =>
               this.props.updateFilter((filter) => {
                 this.qBandwithSlope.forEach((parameter) => {
@@ -818,20 +870,26 @@ class FilterParams extends React.Component<
           />
         )
 
-      if (info.type === "text") return <TextOption {...commonProps} key={commonProps.key} />
-      if (info.type === "int") return <IntOption {...commonProps} key={commonProps.key} />
-      if (info.type === "float") return <FloatOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_int") return <OptionalIntOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_float") return <OptionalFloatOption {...commonProps} key={commonProps.key} />
-      if (info.type === "bool") return <BoolOption {...commonProps} key={commonProps.key} />
-      if (info.type === "optional_bool") return <OptionalBoolOption {...commonProps} key={commonProps.key} />
-      if (info.type === "floatlist") return <FloatListOption {...commonProps} key={commonProps.key} />
+      if (info.type === "text") return <TextOption value={propValue as string} {...commonProps} key={commonProps.key} />
+      if (info.type === "int") return <IntOption value={propValue as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "float")
+        return <FloatOption value={propValue as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_int")
+        return <OptionalIntOption value={propValue as number | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_float")
+        return <OptionalFloatOption value={propValue as number | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "bool")
+        return <BoolOption value={propValue as boolean} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_bool")
+        return <OptionalBoolOption value={propValue as boolean | null} {...commonProps} key={commonProps.key} />
+      if (info.type === "floatlist")
+        return <FloatListOption value={propValue as number[]} {...commonProps} key={commonProps.key} />
       if (info.type === "enum") {
         let options = info.options
         if (parameter === "fader" && this.props.filter.type === "Volume") {
           options = VolumeFaders
         }
-        return <EnumOption {...commonProps} key={commonProps.key} options={options} />
+        return <EnumOption value={propValue as string} {...commonProps} key={commonProps.key} options={options} />
       }
       return null
     })
@@ -839,10 +897,10 @@ class FilterParams extends React.Component<
 
   private filenameField(
     filename: string,
+    value: unknown,
     props: {
-      onChange: (value: any) => void
+      onChange: (value: unknown) => void
       tooltip: string
-      value: any
       key: string
       desc: string
     },
@@ -865,7 +923,7 @@ class FilterParams extends React.Component<
 
   private isHiddenDefaultValue(parameter: string) {
     const filter = this.props.filter
-    const filterDefaults: any = this.props.filterDefaults
+    const filterDefaults = this.props.filterDefaults as { [parameter: string]: unknown }
     return (
       !this.props.showDefaults &&
       parameter &&
@@ -885,7 +943,7 @@ class FilterParams extends React.Component<
           type: "enum"
           desc: string
           tooltip: string
-          options: string[] | { [option: string]: string }[]
+          options: string[] | { value: string | null; label: string }[]
         }
   } = {
     a: {
@@ -1117,7 +1175,7 @@ class FilterParams extends React.Component<
 
   QorBandwithOrSlope(props: {
     parameter: string
-    parameters: { [p: string]: any }
+    parameters: { [p: string]: unknown }
     desc: string
     value: number
     error?: string
@@ -1127,12 +1185,12 @@ class FilterParams extends React.Component<
   }) {
     const { parameter, parameters, desc, value, error, onDescChange, onChange } = props
     let descOptions: { value: string; label: string }[] = []
-    if (this.qAndSlopeFilters.includes(parameters.type))
+    if (this.qAndSlopeFilters.includes(parameters.type as string))
       descOptions = ["q", "slope"].map((p) => ({
         value: p,
         label: this.parameterInfos[p].desc,
       }))
-    else if (this.qAndBandwidthFilters.includes(parameters.type))
+    else if (this.qAndBandwidthFilters.includes(parameters.type as string))
       descOptions = ["q", "bandwidth"].map((p) => ({
         value: p,
         label: this.parameterInfos[p].desc,
@@ -1140,7 +1198,7 @@ class FilterParams extends React.Component<
     else return <ErrorMessage message={error} />
     return (
       <>
-        <label className="setting" style={{ textAlign: "right" }} data-tooltip-html={props.tooltip}>
+        <label htmlFor={desc} className="setting" style={{ textAlign: "right" }} data-tooltip-html={props.tooltip}>
           <EnumInput
             value={parameter}
             options={descOptions}

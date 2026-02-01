@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
-import Popup from "reactjs-popup"
+import ReactjsPopup from "reactjs-popup"
 
 export function LogFileViewerPopup(props: { open: boolean; onClose: () => void }) {
   const { open, onClose } = props
@@ -17,7 +17,7 @@ export function LogFileViewerPopup(props: { open: boolean; onClose: () => void }
     }
   }, [open])
   return (
-    <Popup open={open} onClose={onClose} contentStyle={{ width: "90%", height: "90%" }}>
+    <ReactjsPopup open={open} onClose={onClose} contentStyle={{ width: "90%", height: "90%" }}>
       <textarea
         value={log}
         style={{
@@ -29,6 +29,6 @@ export function LogFileViewerPopup(props: { open: boolean; onClose: () => void }
         ref={textareaRef}
         readOnly={true}
       />
-    </Popup>
+    </ReactjsPopup>
   )
 }

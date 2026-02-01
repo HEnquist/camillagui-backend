@@ -1,30 +1,41 @@
 import React, { useCallback, useMemo, useRef } from "react"
-import { Scatter } from "react-chartjs-2"
 import { mdiHome, mdiImage, mdiTable } from "@mdi/js"
-import { Tooltip as ReactTooltip } from "react-tooltip"
-import { CloseButton, cssStyles, MdiButton } from "./ui-components"
-import Popup from "reactjs-popup"
-import { Chart as ChartJS, Legend, LinearScale, LineElement, LogarithmicScale, PointElement, Tooltip } from "chart.js"
+import {
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  LineElement,
+  LogarithmicScale,
+  PointElement,
+  Tooltip,
+  ChartData,
+  Scale,
+  Tick,
+} from "chart.js"
 import zoomPlugin from "chartjs-plugin-zoom"
+import { Scatter } from "react-chartjs-2"
+import { Tooltip as ReactTooltip } from "react-tooltip"
+import ReactjsPopup from "reactjs-popup"
+import { CloseButton, cssStyles, MdiButton } from "./ui-components"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
 
 export function ChartPopup(props: {
   open: boolean
-  data: ChartData
+  data: ChartContent
   onChange: (item: string) => void
   onClose: () => void
 }) {
   return (
-    <Popup open={props.open} onClose={props.onClose}>
+    <ReactjsPopup open={props.open} onClose={props.onClose}>
       <CloseButton onClick={props.onClose} />
       <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
       <Chart onChange={props.onChange} data={props.data} />
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
-export interface ChartData {
+export interface ChartContent {
   name: string
   samplerate?: number
   channels?: number
@@ -44,14 +55,14 @@ export interface FilterOption {
   samplerate?: number
 }
 
-export function Chart(props: { data: ChartData; onChange: (item: string) => void }) {
-  const chartRef = useRef(null)
+export function Chart(props: { data: ChartContent; onChange: (item: string) => void }) {
+  const chartRef = useRef<ChartJS<"scatter"> & { resetZoom: () => void }>(null)
   const downloadPlot = useCallback(() => {
     const link = document.createElement("a")
     link.download = props.data.name.replace(/\s/g, "_") + ".png"
 
     if (chartRef.current !== null) {
-      let current = chartRef.current as any
+      const current = chartRef.current
       link.href = current.toBase64Image()
       link.click()
     }
@@ -59,12 +70,11 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
 
   const resetView = useCallback(() => {
     if (chartRef.current !== null) {
-      let current = chartRef.current as any
-      current.resetZoom()
+      chartRef.current.resetZoom()
     }
   }, [])
 
-  let data: any = { labels: [props.data.name], datasets: [] }
+  const data: ChartData<"scatter"> = { labels: [props.data.name], datasets: [] }
 
   function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
     return xvect.map((x, idx) => ({
@@ -74,9 +84,9 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
   }
 
   const downloadData = useCallback(() => {
-    let magdat = props.data.magnitude
-    let phasedat = props.data.phase
-    let delaydat = props.data.groupdelay
+    const magdat = props.data.magnitude
+    const phasedat = props.data.phase
+    const delaydat = props.data.groupdelay
 
     const table = props.data.f.map((f, i) => {
       let mag: number | null = null
@@ -87,7 +97,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
       if (delaydat !== undefined) delay = delaydat[i]
       return [f, mag, phase, delay]
     })
-    let csvContent =
+    const csvContent =
       "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
       table.map((row) => row.join(",")).join("\n")
     const link = document.createElement("a")
@@ -217,7 +227,7 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
           maxRotation: 0,
           minRotation: 0,
           color: textColor,
-          callback(tickValue: number, index: number, values: any) {
+          callback(tickValue: number, index: number, values: Tick[]) {
             if (tickValue === 0) {
               return "0"
             }
@@ -243,8 +253,11 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
             return ""
           },
         },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.xAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.xAxisID === scale.id && !meta.hidden
+          })
           return
         },
       },
@@ -260,8 +273,11 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
           color: textColor,
         },
         grid: { display: false },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.xAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.xAxisID === scale.id && !meta.hidden
+          })
           return
         },
       },
@@ -283,9 +299,9 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
         },
         suggestedMin: -1,
         suggestedMax: 1,
-        afterBuildTicks: function (scale: any) {
+        afterBuildTicks: function (scale: Scale) {
           let step = 1
-          let range = scale.max - scale.min
+          const range = scale.max - scale.min
           if (range > 150) {
             step = 50
           } else if (range > 60) {
@@ -303,10 +319,13 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
             ticks.push({ value: tick })
             tick += step
           }
-          scale.ticks = ticks
+          return ticks
         },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.yAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
           return
         },
       },
@@ -315,9 +334,9 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
         position: "right",
         min: -180,
         max: 180,
-        afterBuildTicks: function (scale: any) {
+        afterBuildTicks: function (scale: Scale) {
           let step = 1
-          let range = scale.max - scale.min
+          const range = scale.max - scale.min
           if (range > 180) {
             step = 45
           } else if (range > 45) {
@@ -331,10 +350,13 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
             ticks.push({ value: tick })
             tick += step
           }
-          scale.ticks = ticks
+          return ticks
         },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.yAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
           return
         },
         ticks: {
@@ -364,8 +386,11 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
           color: impulseColor,
         },
         grid: { display: false },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.yAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
           return
         },
       },
@@ -388,13 +413,16 @@ export function Chart(props: { data: ChartData; onChange: (item: string) => void
           color: axesColor,
           borderDash: [1, 4],
         },
-        beforeUpdate: function (scale: any) {
-          scale.options.display = scale.chart._metasets.some((e: any) => e.yAxisID === scale.id && !e.hidden)
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
           return
         },
       },
     }
-    const options: { [key: string]: any } = {
+    const options: { [key: string]: unknown } = {
       scales: scales,
       plugins: {
         zoom: zoomOptions,

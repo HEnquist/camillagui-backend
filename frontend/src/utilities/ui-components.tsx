@@ -1,14 +1,13 @@
-import React, { ChangeEvent, CSSProperties, ErrorInfo, ReactNode, useEffect, useRef, useState } from "react"
-import Icon from "@mdi/react"
-import Popup from "reactjs-popup"
+import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState, KeyboardEvent } from "react"
 import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
-import "reactjs-popup/dist/index.css"
-import { toMap } from "./arrays"
+import Icon from "@mdi/react"
 import { Range } from "immutable"
-import DataTable from "react-data-table-component"
+import { cloneDeep } from "lodash"
+import DataTable, { TableColumn } from "react-data-table-component"
+import ReactjsPopup from "reactjs-popup"
+import "reactjs-popup/dist/index.css"
 import { FileInfo } from "./files"
 import { getLabelForChannel } from "../camilladsp/config"
-import { cloneDeep } from "lodash"
 
 export function cssStyles(): CSSStyleDeclaration {
   return getComputedStyle(document.body)
@@ -48,8 +47,8 @@ export function CheckBox(props: {
   const { tooltip, checked, onChange, style } = props
   const editable = props.editable !== false
   const checkboxRef = useRef<HTMLInputElement>(null)
-  const checkbox = checkboxRef.current
   useEffect(() => {
+    const checkbox = checkboxRef.current
     if (!checkbox) return
     if (checked === true) {
       checkbox.checked = true
@@ -61,9 +60,9 @@ export function CheckBox(props: {
       checkbox.checked = false
       checkbox.indeterminate = true
     }
-  }, [checked, checkbox])
+  }, [checked])
   return (
-    <label data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" className="checkbox-area" style={style}>
+    <label className="checkbox-area" data-tooltip-html={tooltip} data-tooltip-id="main-tooltip" style={style}>
       <input
         type="checkbox"
         data-tooltip-html={tooltip}
@@ -274,7 +273,13 @@ export function OptionLine(props: {
   const settingStyle = props.small ? { width: "min-content" } : {}
   const combinedStyle = Object.assign(settingStyle, props.style)
   return (
-    <label className="setting" data-tooltip-html={props.tooltip} data-tooltip-id="main-tooltip" style={combinedStyle}>
+    <label
+      htmlFor={props.desc}
+      className="setting"
+      data-tooltip-html={props.tooltip}
+      data-tooltip-id="main-tooltip"
+      style={combinedStyle}
+    >
       <span className="setting-label">{props.desc}</span>
       {props.children}
     </label>
@@ -506,7 +511,7 @@ export function FloatListOption(props: {
           parseValue={(rawValue: string) => {
             const parsedvalue = []
             const values = rawValue.split(",")
-            for (let value of values) {
+            for (const value of values) {
               const tempvalue = parseFloat(value)
               if (isNaN(tempvalue)) return undefined
               parsedvalue.push(tempvalue)
@@ -530,13 +535,13 @@ export function LabelListOption(props: {
   onButtonClick: () => void
 }) {
   const updateChannelLabels = (labels_str: string | null) => {
-    let labels: (string | null)[] = []
+    const labels: (string | null)[] = []
     if (labels_str === null) {
       props.onChange(null)
       return
     }
-    for (let label of labels_str.split(",")) {
-      let cleaned_label = label === "" ? null : label.trim()
+    for (const label of labels_str.split(",")) {
+      const cleaned_label = label === "" ? null : label.trim()
       labels.push(cleaned_label)
     }
     props.onChange(labels)
@@ -602,7 +607,7 @@ export class ParsedInput<TYPE> extends React.Component<ParsedInputProps<TYPE>, {
     }
   }
 
-  handleSubmit(event: any) {
+  handleSubmit(event: KeyboardEvent) {
     if (!this.props.immediate && event.key === "Enter") {
       event.preventDefault()
       const parsed = this.props.parseValue(this.state.rawValue)
@@ -687,7 +692,7 @@ export class OptionalParsedInput<TYPE> extends React.Component<
     }
   }
 
-  handleSubmit(event: any) {
+  handleSubmit(event: KeyboardEvent) {
     if (!this.props.immediate && event.key === "Enter") {
       event.preventDefault()
       const parsed = this.props.parseValue(this.state.rawValue)
@@ -763,7 +768,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, { errorOc
     this.state = { errorOccurred: false }
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  componentDidCatch() {
     this.setState({ errorOccurred: true })
   }
 
@@ -1179,7 +1184,7 @@ export function FileSelectPopup(props: {
     onClose()
   }
   const [filterText, setFilterText] = React.useState("")
-  var columns: any = [
+  const columns: TableColumn<FileInfo>[] = [
     {
       name: "Filename",
       selector: (row: FileInfo) => row.name,
@@ -1202,7 +1207,7 @@ export function FileSelectPopup(props: {
   ]
   const filteredFiles = files.filter((item) => item.name.toLowerCase().includes(filterText.toLowerCase()))
   return (
-    <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1235,7 +1240,7 @@ export function FileSelectPopup(props: {
           pointerOnHover
         />
       </div>
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
@@ -1249,10 +1254,10 @@ export function KeyValueSelectPopup(props: {
 }) {
   const { open, items, showItemKey, onSelect, onClose } = props
   const [filterText, setFilterText] = React.useState("")
-  var columns: any = [
+  const columns: TableColumn<[string, string]>[] = [
     {
       name: "Name",
-      selector: (row: [String, String]) => {
+      selector: (row: [string, string]) => {
         if (row[0] === row[1] || showItemKey !== true) {
           return row[1]
         } else {
@@ -1269,7 +1274,7 @@ export function KeyValueSelectPopup(props: {
   }
   const filteredItems = items.filter((item) => item[1].toLowerCase().includes(filterText.toLowerCase()))
   return (
-    <Popup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1302,7 +1307,7 @@ export function KeyValueSelectPopup(props: {
           pointerOnHover
         />
       </div>
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
@@ -1315,7 +1320,7 @@ export function ChannelSelection(props: {
   labels?: (string | null)[] | null
 }) {
   const { channels, maxChannelCount, setChannels, label, multiSelect, labels } = props
-  let [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   if (maxChannelCount > 0) {
     if (props.channels?.find((ch: number) => ch >= props.maxChannelCount)) {
@@ -1325,7 +1330,7 @@ export function ChannelSelection(props: {
 
   const rowSize = 8
 
-  var _channels = cloneDeep(channels)
+  let _channels = cloneDeep(channels)
   const toggleAllChannels = () => {
     if (_channels === null) {
       _channels = []
@@ -1361,9 +1366,9 @@ export function ChannelSelection(props: {
       <DropdownBox enabled={expanded} onOutsideClick={() => setExpanded(false)}>
         <table>
           {Range(0, rows).map((row) => (
-            <tr>
+            <tr key={"row" + row}>
               {Range(0, Math.min(rowSize, maxChannelCount - rowSize * row)).map((col) => (
-                <td>
+                <td key={"cell" + rowSize * row + col}>
                   <ChannelButton
                     key={rowSize * row + col}
                     channel={getLabelForChannel(labels, rowSize * row + col, true, false)}
@@ -1458,6 +1463,7 @@ function CompactChannelIndicator(props: { channelCount: number; channels: number
     <div className="channel-indicator-field">
       {Range(0, props.channelCount).map((ch) => (
         <div
+          key={ch}
           className="channel-indicator"
           style={{
             backgroundColor:
@@ -1501,9 +1507,9 @@ export function DropdownBox(props: {
   children: React.ReactNode
   style?: CSSProperties
 }) {
-  if (!props.enabled) return null
-
   const ref = useRef<HTMLDivElement>(null)
+
+  const { onOutsideClick } = props
 
   useEffect(() => {
     // Handler to detect outside clicks
@@ -1513,7 +1519,7 @@ export function DropdownBox(props: {
         !ref.current.contains(event.target as Node) &&
         !ref.current.parentNode?.contains(event.target as Node)
       ) {
-        props.onOutsideClick()
+        onOutsideClick()
       }
     }
 
@@ -1526,8 +1532,9 @@ export function DropdownBox(props: {
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("touchstart", handleClickOutside)
     }
-  }, [props.onOutsideClick])
+  }, [onOutsideClick])
 
+  if (!props.enabled) return null
   return (
     <div className="dropdown-menu" ref={ref} title="dropdown" style={props.style}>
       {props.children}

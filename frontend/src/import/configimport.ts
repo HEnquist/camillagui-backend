@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* The import functionality supports data that is highly dynamic.
+   We allow the 'any' type here since it is difficult to avoid. */
+
+import { cloneDeep, isArray, isEqual, isObject, isString } from "lodash"
 import { Config, Devices, Pipeline, PipelineStep } from "../camilladsp/config"
-import { cloneDeep, isArray, isEqual, isNumber, isObject, isString } from "lodash"
 import { isComplexObject } from "../utilities/common"
 
 /**
@@ -19,8 +23,8 @@ interface ParentProp {
 
 const topLevelElementOrder = ["title", "description", "devices", "filters", "mixers", "processors", "pipeline"]
 export function topLevelComparator(element1: string, element2: string): number {
-  let index1 = topLevelElementOrder.indexOf(element1)
-  let index2 = topLevelElementOrder.indexOf(element2)
+  const index1 = topLevelElementOrder.indexOf(element1)
+  const index2 = topLevelElementOrder.indexOf(element2)
   return index1 - index2
 }
 

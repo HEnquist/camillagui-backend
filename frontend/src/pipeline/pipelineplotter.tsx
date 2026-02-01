@@ -1,9 +1,10 @@
-import Popup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
-import * as d3 from "d3"
 import React, { useCallback, useState } from "react"
 import "../index.css"
-import { CloseButton, cssStyles } from "../utilities/ui-components"
+import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
+import * as d3 from "d3"
+import { Range } from "immutable"
+import ReactjsPopup from "reactjs-popup"
 import {
   CaptureDevice,
   Config,
@@ -12,19 +13,17 @@ import {
   getLabelForChannel,
   Source,
 } from "../camilladsp/config"
-import { mdiImage, mdiArrowExpandHorizontal, mdiArrowCollapseHorizontal, mdiArrowExpandAll } from "@mdi/js"
-import { MdiButton } from "../utilities/ui-components"
-import { Range } from "immutable"
+import { CloseButton, cssStyles, MdiButton } from "../utilities/ui-components"
 
 export function PipelinePopup(props: { config: Config; open: boolean; onClose: () => void }) {
   const [expandFiltersteps, setExpandFiltersteps] = useState(true)
   const [expandVertical, setExpandVertical] = useState(false)
   const downloadSvg = useCallback(() => {
-    var svg = document.getElementById("svg_pipeline")
+    const svg = document.getElementById("svg_pipeline")
     if (svg !== null) {
-      var serializer = new XMLSerializer()
-      var source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg)
-      var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source)
+      const serializer = new XMLSerializer()
+      const source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(svg)
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source)
       const link = document.createElement("a")
       link.download = "pipeline.svg"
       link.href = url
@@ -34,7 +33,7 @@ export function PipelinePopup(props: { config: Config; open: boolean; onClose: (
   const toggleExpandFiltersteps = () => setExpandFiltersteps(!expandFiltersteps)
   const toggleExpandVertical = () => setExpandVertical(!expandVertical)
   return (
-    <Popup open={props.open} closeOnDocumentClick onClose={props.onClose} contentStyle={{ width: "90%" }}>
+    <ReactjsPopup open={props.open} closeOnDocumentClick onClose={props.onClose} contentStyle={{ width: "90%" }}>
       <CloseButton onClick={props.onClose} />
       <PipelinePlot config={props.config} expand_filters={expandFiltersteps} expand_vertical={expandVertical} />
       <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadSvg} />
@@ -52,7 +51,7 @@ export function PipelinePopup(props: { config: Config; open: boolean; onClose: (
         tooltip={"Reset zoom to display entire plot"}
         onClick={toggleExpandVertical}
       />
-    </Popup>
+    </ReactjsPopup>
   )
 }
 
@@ -103,7 +102,7 @@ type State = {
   width: number
   height: number
   capture_channels: number
-  zoomTransform: any
+  zoomTransform: d3.ZoomTransform | null
 }
 
 class PipelinePlot extends React.Component<Props, State> {
@@ -119,9 +118,9 @@ class PipelinePlot extends React.Component<Props, State> {
   private disabledBlockBgColor?: string
   private blockTextColor?: string
   private disabledBlockTextColor?: string
-  private node?: any
-  private zoom: any
-  private tooltip: any
+  private node: SVGSVGElement | null = null
+  private zoom: d3.ZoomBehavior<HTMLDivElement, unknown>
+  private tooltip?: d3.Selection<HTMLDivElement, unknown, HTMLElement, unknown>
 
   constructor(props: Props) {
     super(props)
@@ -132,7 +131,7 @@ class PipelinePlot extends React.Component<Props, State> {
       capture_channels: 2,
       zoomTransform: null,
     }
-    this.zoom = d3.zoom().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this))
+    this.zoom = d3.zoom<HTMLDivElement, unknown>().scaleExtent([0.25, 10]).on("zoom", this.zoomed.bind(this))
   }
 
   componentDidMount() {
@@ -153,11 +152,11 @@ class PipelinePlot extends React.Component<Props, State> {
       this.setState({ capture_channels: channels })
     })
     this.createPipelinePlot()
-    d3.select("#svg_pipeline_div").call(this.zoom)
+    d3.select<HTMLDivElement, unknown>("#svg_pipeline_div").call(this.zoom)
 
     // A div used to display tooltips
     this.tooltip = d3
-      .select(`#svg_pipeline_div`)
+      .select<HTMLDivElement, unknown>(`#svg_pipeline_div`)
       .append("div")
       .attr("class", "pipeline-tooltip")
       .style("opacity", 0)
@@ -166,7 +165,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("user-select", "none")
   }
 
-  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>, snapshot?: any) {
+  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
     if (this.props.expand_vertical !== prevProps.expand_vertical) {
       this.resetZoom()
     }
@@ -181,14 +180,17 @@ class PipelinePlot extends React.Component<Props, State> {
     }
   }
 
-  zoomed(event: any) {
+  zoomed(event: d3.D3ZoomEvent<HTMLDivElement, unknown>) {
     this.setState({
       zoomTransform: event.transform,
     })
   }
 
   resetZoom() {
-    d3.select("#svg_pipeline_div").transition().duration(500).call(this.zoom.transform, d3.zoomIdentity)
+    d3.select<HTMLDivElement, unknown>("#svg_pipeline_div")
+      .transition()
+      .duration(500)
+      .call(this.zoom.transform, d3.zoomIdentity)
   }
 
   private appendBlock(
@@ -355,7 +357,7 @@ class PipelinePlot extends React.Component<Props, State> {
     let channel_labels = []
     const capturename = PipelinePlot.deviceText(capture)
     this.appendFrame(labels, boxes, capturename, 0, 0, 1.5, spacing_v * active_channels)
-    let cap_params = conf.devices.capture
+    const cap_params = conf.devices.capture
     let cap_tooltip = "<strong>Capture device</strong>"
     for (const [key, value] of Object.entries(cap_params)) {
       cap_tooltip = cap_tooltip + "<br>" + key + ": " + value
@@ -365,7 +367,7 @@ class PipelinePlot extends React.Component<Props, State> {
       channel_labels.push(getLabelForChannel(labels, n, true, false))
     }
     for (let n = 0; n < active_channels; n++) {
-      var label = channel_labels[n]
+      const label = channel_labels[n]
       const io_points = this.appendBlock(
         labels,
         boxes,
@@ -388,9 +390,9 @@ class PipelinePlot extends React.Component<Props, State> {
     // resampler
     if (conf.devices.resampler !== null && conf.devices.resampler !== undefined) {
       total_length += 1
-      let resampler_channels = []
+      const resampler_channels = []
       this.appendFrame(labels, boxes, "Resampler", spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
-      let res_params = conf.devices.resampler
+      const res_params = conf.devices.resampler
       let res_tooltip = "<strong>Resampler</strong>"
       for (const [key, value] of Object.entries(res_params)) {
         res_tooltip = res_tooltip + "<br>" + key + ": " + value
@@ -418,7 +420,7 @@ class PipelinePlot extends React.Component<Props, State> {
 
     // volume control
     total_length += 1
-    let vol_channels = []
+    const vol_channels = []
     this.appendFrame(labels, boxes, "Volume", spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
     for (let n = 0; n < active_channels; n++) {
       const label = channel_labels[n]
@@ -459,7 +461,7 @@ class PipelinePlot extends React.Component<Props, State> {
         this.appendFrame(labels, boxes, mixername, spacing_h * total_length, 0, 1.5, spacing_v * mixconf.channels.out)
         channel_labels = []
         for (let n = 0; n < mixconf.channels.out; n++) {
-          label = getLabelForChannel(mixconf.labels, n, true, false)
+          const label = getLabelForChannel(mixconf.labels, n, true, false)
           channel_labels.push(label)
         }
         for (let m = 0; m < mixconf.channels.out; m++) {
@@ -512,9 +514,11 @@ class PipelinePlot extends React.Component<Props, State> {
           let label = m.toString()
           if (procconf.type === "Compressor" || procconf.type === "NoiseGate") {
             const is_m =
-              procconf.parameters.monitor_channels === null || procconf.parameters.monitor_channels.includes(m)
+              procconf.parameters.monitor_channels === null ||
+              (procconf.parameters.monitor_channels as number[]).includes(m)
             const is_p =
-              procconf.parameters.process_channels === null || procconf.parameters.process_channels.includes(m)
+              procconf.parameters.process_channels === null ||
+              (procconf.parameters.process_channels as number[]).includes(m)
             if (is_m && is_p) {
               label = label + ": M+P"
             } else if (is_m) {
@@ -570,7 +574,7 @@ class PipelinePlot extends React.Component<Props, State> {
           if (expand_filters) {
             for (let m = 0; m < step.names.length; m++) {
               const name = step.names[m]
-              let params = conf.filters ? conf.filters[name] : null
+              const params = conf.filters ? conf.filters[name] : null
               let tooltip = "<strong>Filter</strong>"
               if (params !== null) {
                 for (const [key, value] of Object.entries(params)) {
@@ -578,8 +582,8 @@ class PipelinePlot extends React.Component<Props, State> {
                     tooltip = tooltip + "<br>" + key + ": " + value
                   }
                 }
-                if (params.hasOwnProperty("parameters")) {
-                  let fparams = params.parameters
+                if (Object.hasOwn(params, "parameters")) {
+                  const fparams = params.parameters
                   tooltip = tooltip + "<br>parameters:"
                   for (const [key, value] of Object.entries(fparams)) {
                     tooltip = tooltip + "<br>  " + key + ": " + value
@@ -673,7 +677,7 @@ class PipelinePlot extends React.Component<Props, State> {
     max_h = (total_length + 1) * spacing_h
     const playbackname = PipelinePlot.deviceText(conf.devices.playback)
     this.appendFrame(labels, boxes, playbackname, spacing_h * total_length, 0, 1.5, spacing_v * active_channels)
-    let pb_params = conf.devices.playback
+    const pb_params = conf.devices.playback
     let pb_tooltip = "<strong>Playback device</strong>"
     for (const [key, value] of Object.entries(pb_params)) {
       pb_tooltip = pb_tooltip + "<br>" + key + ": " + value
@@ -701,26 +705,31 @@ class PipelinePlot extends React.Component<Props, State> {
   }
 
   createPipelinePlot() {
-    d3.select(`#svg_pipeline`).selectAll("*").remove()
+    const node = this.node
+    if (!node) {
+      return
+    }
+    d3.select(node).selectAll("*").remove()
 
-    let { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
+    const { labels, boxes, links, max_h, max_v } = this.makeShapes(this.props.config, this.props.expand_filters)
     // if (max_h > (2*this.width/this.height) * max_v)
     //   max_v = max_h / (2*this.width/this.height)
     // else
     //    max_h = (2*this.width/this.height) * max_v
+    let mut_max_h = max_h
+    let mut_max_v = max_v
 
-    if (max_h < 10) max_h = 10
-    if (max_v < 4) max_v = 4
-    const total_width = max_h + 2.5
-    const total_height = 2 * max_v
+    if (mut_max_h < 10) mut_max_h = 10
+    if (mut_max_v < 4) mut_max_v = 4
+    const total_width = mut_max_h + 2.5
+    const total_height = 2 * mut_max_v
     const calculated_height = (this.width * total_height) / total_width
     this.setState({ height: calculated_height, width: this.width })
 
-    this.fillBackground(boxes, -2.5, -max_v, total_width, total_height)
+    this.fillBackground(boxes, -2.5, -mut_max_v, total_width, total_height)
 
-    const node = this.node
-    const yScale = d3.scaleLinear().domain([-max_v, max_v]).range([0, calculated_height])
-    const xScale = d3.scaleLinear().domain([-2.5, max_h]).range([0, this.width])
+    const yScale = d3.scaleLinear().domain([-mut_max_v, mut_max_v]).range([0, calculated_height])
+    const xScale = d3.scaleLinear().domain([-2.5, mut_max_h]).range([0, this.width])
 
     const linkGen = d3
       .linkHorizontal()
@@ -741,7 +750,6 @@ class PipelinePlot extends React.Component<Props, State> {
         .append("defs")
         .append("marker")
         .attr("id", "arrow" + color)
-        // @ts-ignore
         .attr("viewBox", [0, 0, markerBoxWidth, markerBoxHeight])
         .attr("refX", refX)
         .attr("refY", refY)
@@ -751,7 +759,7 @@ class PipelinePlot extends React.Component<Props, State> {
         .attr("fill", color)
         .attr("stroke", color)
         .append("path")
-        // @ts-ignore
+        // @ts-expect-error this is ok but the compiler is not able to determine that
         .attr("d", d3.line()(arrowPoints))
     }
 
@@ -761,7 +769,7 @@ class PipelinePlot extends React.Component<Props, State> {
       .data(boxes)
       .enter()
       .append("rect")
-      .attr("transform", this.state.zoomTransform)
+      .attr("transform", this.state.zoomTransform ? this.state.zoomTransform.toString() : null)
 
     rects
       .attr("x", (d) => xScale(d.x))
@@ -774,28 +782,34 @@ class PipelinePlot extends React.Component<Props, State> {
       .style("stroke", (d) => d.stroke)
       .style("stroke-width", (d) => d["stroke-width"])
       .on("mouseover", (event, d) => {
-        if (d.tooltip !== null) {
-          // This element has a tooltip, add the content and display the tooltip div.
-          this.tooltip.html(d.tooltip)
-          this.tooltip.transition().duration(500).style("opacity", 0.9)
-        } else {
-          // This element does not have a tooltip, hide the tooltip div.
-          this.tooltip.transition().duration(500).style("opacity", 0)
+        if (this.tooltip) {
+          if (d.tooltip !== null) {
+            // This element has a tooltip, add the content and display the tooltip div.
+            this.tooltip.html(d.tooltip)
+            this.tooltip.transition().duration(500).style("opacity", 0.9)
+          } else {
+            // This element does not have a tooltip, hide the tooltip div.
+            this.tooltip.transition().duration(500).style("opacity", 0)
+          }
         }
       })
-      .on("mousemove", (event, d) => {
+      .on("mousemove", (event) => {
         // Move the tooltip with the cursor.
-        const tt_node = this.tooltip.node()
-        const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
-        const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
-        this.tooltip.style("left", event.pageX - tt_width / 2 + "px").style("top", event.pageY - tt_height - 10 + "px")
+        if (this.tooltip) {
+          const tt_node = this.tooltip.node()
+          const tt_width = tt_node ? tt_node.getBoundingClientRect().width : 0
+          const tt_height = tt_node ? tt_node.getBoundingClientRect().height : 0
+          this.tooltip
+            .style("left", event.pageX - tt_width / 2 + "px")
+            .style("top", event.pageY - tt_height - 10 + "px")
+        }
       })
 
     const text = d3.select(node).selectAll("text").data(labels).enter().append("text")
 
-    let zoom_k = this.state.zoomTransform ? this.state.zoomTransform.k : 1
-    let zoom_x = this.state.zoomTransform ? this.state.zoomTransform.x : 0
-    let zoom_y = this.state.zoomTransform ? this.state.zoomTransform.y : 0
+    const zoom_k = this.state.zoomTransform ? this.state.zoomTransform.k : 1
+    const zoom_x = this.state.zoomTransform ? this.state.zoomTransform.x : 0
+    const zoom_y = this.state.zoomTransform ? this.state.zoomTransform.y : 0
 
     //Add SVG Text Element Attributes
     text
@@ -814,20 +828,20 @@ class PipelinePlot extends React.Component<Props, State> {
       .selectAll(null)
       .data(links)
       .join("path")
-      // @ts-ignore
+      // @ts-expect-error this is ok but the compiler is not able to determine that
       .attr("d", linkGen)
       .attr("marker-end", (d) => "url(#arrow" + d.color + ")")
       .attr("fill", "none")
       .attr("stroke", (d) => d.color)
       .attr("stroke-width", yScale(0.03) - yScale(0) + "px")
-      .attr("transform", this.state.zoomTransform)
+      .attr("transform", this.state.zoomTransform ? this.state.zoomTransform.toString() : null)
   }
 
   render() {
-    let x0 = 0
-    let y0 = 0
-    let width = this.state.width
-    let height = this.state.height
+    const x0 = 0
+    const y0 = 0
+    const width = this.state.width
+    const height = this.state.height
     return (
       <div
         id="svg_pipeline_div"

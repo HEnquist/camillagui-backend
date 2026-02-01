@@ -29,6 +29,7 @@ export type CaptureType =
   | "WavFile"
   | "Stdin"
   | "Bluez"
+  | "SignalGenerator"
 
 export type PlaybackType = "Alsa" | "Wasapi" | "Jack" | "CoreAudio" | "Pulse" | "PipeWire" | "File" | "Stdout"
 

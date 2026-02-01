@@ -11,7 +11,10 @@ import {
   renameProcessor,
   sortedProcessorNamesOf,
   ProcessorSortKeys,
+  ProcessorParameterValue,
 } from "./camilladsp/config"
+import { modifiedCopyOf, Update } from "./utilities/common"
+import { Errors } from "./utilities/errors"
 import {
   AddButton,
   BoolOption,
@@ -29,15 +32,15 @@ import {
   TextOption,
   ErrorBoundary,
 } from "./utilities/ui-components"
-import { Errors } from "./utilities/errors"
-import { modifiedCopyOf, Update } from "./utilities/common"
+
+interface ProcessorsTabProps {
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
 
 export class ProcessorsTab extends React.Component<
-  {
-    config: Config
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  ProcessorsTabProps,
   {
     processorKeys: { [name: string]: number }
     availableCoeffFiles: string[]
@@ -45,7 +48,7 @@ export class ProcessorsTab extends React.Component<
     sortReverse: boolean
   }
 > {
-  constructor(props: any) {
+  constructor(props: ProcessorsTabProps) {
     super(props)
     this.processorNames = this.processorNames.bind(this)
     this.changeSortBy = this.changeSortBy.bind(this)
@@ -126,8 +129,8 @@ export class ProcessorsTab extends React.Component<
   }
 
   render() {
-    let { config, errors } = this.props
-    let processors = config.processors ? config.processors : {}
+    const { config, errors } = this.props
+    const processors = config.processors ? config.processors : {}
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div>
@@ -187,10 +190,11 @@ interface ProcessorViewProps {
   remove: () => void
 }
 
-interface ProcessorViewState {}
+// empty placeholder for now
+type ProcessorViewState = Record<string, never>
 
 class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewState> {
-  constructor(props: any) {
+  constructor(props: ProcessorViewProps) {
     super(props)
     this.state = {}
   }
@@ -284,16 +288,15 @@ const defaultParameters: {
   },
 }
 
-class ProcessorParams extends React.Component<
-  {
-    processor: Processor
-    errors: Errors
-    updateProcessor: (update: Update<Processor>) => void
-    labels: (string | null)[] | null
-  },
-  unknown
-> {
-  constructor(props: any) {
+interface ProcessorParamsProps {
+  processor: Processor
+  errors: Errors
+  updateProcessor: (update: Update<Processor>) => void
+  labels: (string | null)[] | null
+}
+
+class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
+  constructor(props: ProcessorParamsProps) {
     super(props)
     this.onDescChange = this.onDescChange.bind(this)
     this.onTypeChange = this.onTypeChange.bind(this)
@@ -307,7 +310,7 @@ class ProcessorParams extends React.Component<
 
   //private timer = delayedExecutor(1000)
 
-  private onParamChange(parameter: string, value: any) {
+  private onParamChange(parameter: string, value: ProcessorParameterValue) {
     this.props.updateProcessor((processor) => {
       processor.parameters[parameter] = value
       //if (isCompressor(processor) && parameter === "channels") {
@@ -381,7 +384,7 @@ class ProcessorParams extends React.Component<
         />
         {hasChannelSelectors(processor) && (
           <div>
-            <label className="setting">
+            <label htmlFor="monitor_channels" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channels to monitor" data-tooltip-id="main-tooltip">
                   monitor_channels
@@ -389,14 +392,14 @@ class ProcessorParams extends React.Component<
               </span>
               <ChannelSelection
                 label={null}
-                maxChannelCount={processor.parameters.channels}
-                channels={processor.parameters.monitor_channels}
+                maxChannelCount={processor.parameters.channels as number}
+                channels={processor.parameters.monitor_channels as number[]}
                 setChannels={this.setMonitor}
                 multiSelect={true}
                 labels={labels}
               />
             </label>
-            <label className="setting">
+            <label htmlFor="process_channels" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channels to process" data-tooltip-id="main-tooltip">
                   process_channels
@@ -404,8 +407,8 @@ class ProcessorParams extends React.Component<
               </span>
               <ChannelSelection
                 label={null}
-                maxChannelCount={processor.parameters.channels}
-                channels={processor.parameters.process_channels}
+                maxChannelCount={processor.parameters.channels as number}
+                channels={processor.parameters.process_channels as number[]}
                 setChannels={this.setProcess}
                 multiSelect={true}
                 labels={labels}
@@ -415,7 +418,7 @@ class ProcessorParams extends React.Component<
         )}
         {processor.type === "RACE" && (
           <div>
-            <label className="setting">
+            <label htmlFor="channel_a" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channel A" data-tooltip-id="main-tooltip">
                   channel_a
@@ -423,14 +426,14 @@ class ProcessorParams extends React.Component<
               </span>
               <ChannelSelection
                 label={null}
-                maxChannelCount={processor.parameters.channels}
-                channels={[processor.parameters.channel_a]}
+                maxChannelCount={processor.parameters.channels as number}
+                channels={[processor.parameters.channel_a as number]}
                 setChannels={this.setChannelA}
                 multiSelect={false}
                 labels={labels}
               />
             </label>
-            <label className="setting">
+            <label htmlFor="channel_b" className="setting">
               <span className="setting-label">
                 <div data-tooltip-html="Channel B" data-tooltip-id="main-tooltip">
                   channel_b
@@ -438,8 +441,8 @@ class ProcessorParams extends React.Component<
               </span>
               <ChannelSelection
                 label={null}
-                maxChannelCount={processor.parameters.channels}
-                channels={[processor.parameters.channel_b]}
+                maxChannelCount={processor.parameters.channels as number}
+                channels={[processor.parameters.channel_b as number]}
                 setChannels={this.setChannelB}
                 multiSelect={false}
                 labels={labels}
@@ -451,7 +454,7 @@ class ProcessorParams extends React.Component<
     )
   }
 
-  private renderProcessorParams(parameters: { [p: string]: any }, errors: Errors) {
+  private renderProcessorParams(parameters: { [p: string]: ProcessorParameterValue }, errors: Errors) {
     return Object.keys(parameters).map((parameter) => {
       if (parameter === "type")
         // 'type' is already rendered by parent component
@@ -464,23 +467,32 @@ class ProcessorParams extends React.Component<
         console.log(`Rendering for processor parameter '${parameter}' is not implemented`)
         return null
       }
+      const value = parameters[parameter]
       const commonProps = {
         key: parameter,
-        value: parameters[parameter],
         error: errors.messageFor(parameter),
         desc: info.desc,
         tooltip: info.tooltip,
-        onChange: (value: any) => this.onParamChange(parameter, value),
+        onChange: (value: ProcessorParameterValue) => this.onParamChange(parameter, value),
       }
-      if (info.type === "text") return <TextOption {...commonProps} />
-      if (info.type === "int") return <IntOption {...commonProps} />
-      if (info.type === "float") return <FloatOption {...commonProps} />
-      if (info.type === "bool") return <BoolOption {...commonProps} />
-      if (info.type === "floatlist") return <FloatListOption {...commonProps} />
-      if (info.type === "optional_float") return <OptionalFloatOption placeholder={info.placeholder} {...commonProps} />
+      if (info.type === "text") return <TextOption value={value as string} {...commonProps} key={commonProps.key} />
+      if (info.type === "int") return <IntOption value={value as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "float") return <FloatOption value={value as number} {...commonProps} key={commonProps.key} />
+      if (info.type === "bool") return <BoolOption value={value as boolean} {...commonProps} key={commonProps.key} />
+      if (info.type === "floatlist")
+        return <FloatListOption value={value as number[]} {...commonProps} key={commonProps.key} />
+      if (info.type === "optional_float")
+        return (
+          <OptionalFloatOption
+            value={value as number | null}
+            placeholder={info.placeholder}
+            {...commonProps}
+            key={commonProps.key}
+          />
+        )
       if (info.type === "enum") {
-        let options = info.options!
-        return <EnumOption {...commonProps} key={commonProps.key} options={options} />
+        const options = info.options!
+        return <EnumOption value={value as string} {...commonProps} key={commonProps.key} options={options} />
       }
       return null
     })

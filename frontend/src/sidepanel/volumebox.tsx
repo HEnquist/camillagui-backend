@@ -1,11 +1,11 @@
 import React from "react"
 import "../index.css"
-import { VuMeterGroup } from "./vumeter"
-import { Box, MdiButton } from "../utilities/ui-components"
 import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@mdi/js"
+import { throttle, DebouncedFuncLeading } from "lodash"
+import { VuMeterGroup } from "./vumeter"
 import { VuMeterStatus } from "../camilladsp/status"
-import { throttle } from "lodash"
 import { GuiConfig } from "../guiconfig"
+import { Box, MdiButton } from "../utilities/ui-components"
 
 type Props = {
   vuMeterStatus: VuMeterStatus
@@ -83,7 +83,7 @@ export class VolumePoller {
 
 export class VolumeBox extends React.Component<Props, State> {
   private volumePoller = new VolumePoller((cdspVolume) => this.setState({ ...cdspVolume }), 1000.0, 2000.0)
-  private readonly setDspVolumeDebounced: any
+  private readonly setDspVolumeDebounced: DebouncedFuncLeading<(value: number) => Promise<void>>
 
   constructor(props: Props) {
     super(props)
@@ -102,8 +102,8 @@ export class VolumeBox extends React.Component<Props, State> {
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
     const { volume, mute, send_to_dsp } = this.state
     // Let's ignore any change smaller than 0.1 dB.
-    let vol_changed = Math.round(volume * 10) !== Math.round(prevState.volume * 10)
-    let mute_changed = mute !== prevState.mute
+    const vol_changed = Math.round(volume * 10) !== Math.round(prevState.volume * 10)
+    const mute_changed = mute !== prevState.mute
     if (send_to_dsp) {
       if (vol_changed || mute_changed) {
         // The volume or mute state was changed from this gui instance.
@@ -138,7 +138,7 @@ export class VolumeBox extends React.Component<Props, State> {
 
   private adjustVolume(delta: number) {
     const currentVol = this.state.volume
-    var targetVol = currentVol + delta
+    let targetVol = currentVol + delta
     const maxVol = this.props.guiConfig.volume_max
     const minVol = maxVol - this.props.guiConfig.volume_range
     if (targetVol >= maxVol) {
@@ -152,7 +152,7 @@ export class VolumeBox extends React.Component<Props, State> {
   private changeVolume(volume: number) {
     this.volumePoller.restart_timer()
     const current_volume = this.state.volume
-    var new_volume = volume
+    let new_volume = volume
     if (new_volume > current_volume + 3) new_volume = current_volume + 3
     else if (new_volume < current_volume - 3) new_volume = current_volume - 3
     this.setState({

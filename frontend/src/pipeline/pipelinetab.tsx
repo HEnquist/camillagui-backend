@@ -1,20 +1,7 @@
 import React, { ReactNode, useEffect, useState } from "react"
 import "../index.css"
+import { mdiArrowDownBold, mdiArrowUpBold } from "@mdi/js"
 import { PipelinePopup } from "./pipelineplotter"
-import {
-  AddButton,
-  Box,
-  ChannelSelection,
-  DeleteButton,
-  EnumInput,
-  ERROR_BACKGROUND_STYLE,
-  ErrorBoundary,
-  ErrorMessage,
-  MdiButton,
-  OptionalBoolOption,
-  OptionalTextInput,
-  PlotButton,
-} from "../utilities/ui-components"
 import {
   Config,
   defaultFilterStep,
@@ -36,28 +23,43 @@ import {
   Processors,
   ProcessorStep,
 } from "../camilladsp/config"
-import { mdiArrowDownBold, mdiArrowUpBold } from "@mdi/js"
-import { Errors } from "../utilities/errors"
-import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/dragndrop"
 import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
+import { ChartContent, ChartPopup } from "../utilities/chart"
 import { Update } from "../utilities/common"
-import { ChartData, ChartPopup } from "../utilities/chart"
+import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/dragndrop"
+import { Errors } from "../utilities/errors"
+import {
+  AddButton,
+  Box,
+  ChannelSelection,
+  DeleteButton,
+  EnumInput,
+  ERROR_BACKGROUND_STYLE,
+  ErrorBoundary,
+  ErrorMessage,
+  MdiButton,
+  OptionalBoolOption,
+  OptionalTextInput,
+  PlotButton,
+} from "../utilities/ui-components"
+
+interface PipelineTabProps {
+  config: Config
+  updateConfig: (update: Update<Config>) => void
+  errors: Errors
+}
 
 export class PipelineTab extends React.Component<
-  {
-    config: Config
-    updateConfig: (update: Update<Config>) => void
-    errors: Errors
-  },
+  PipelineTabProps,
   {
     plotPipeline: boolean
     plotFilterStep: boolean
     stepIndex?: number
-    data: ChartData
+    data: ChartContent
     capture_channels: number
   }
 > {
-  constructor(props: any) {
+  constructor(props: PipelineTabProps) {
     super(props)
     this.state = {
       plotPipeline: false,
@@ -218,19 +220,19 @@ export class PipelineTab extends React.Component<
               </div>
               <div className="pipeline-channel">Playback: {config.devices.playback.channels} channels out</div>
               <PipelinePopup
-                key={this.state.plotPipeline as any}
+                key={String(this.state.plotPipeline)}
                 open={this.state.plotPipeline}
                 config={config}
                 onClose={() => this.setState({ plotPipeline: false })}
               />
               {this.state.plotFilterStep && (
                 <ChartPopup
-                  key={this.state.plotFilterStep as any}
+                  key={String(this.state.plotFilterStep)}
                   open={this.state.plotFilterStep}
                   data={this.state.data}
                   onChange={(name) => {
                     const current = this.state.data.options.filter((o) => o.name === name)[0]
-                    this.plotFilterStep(this.state.stepIndex!!, current.samplerate, current.channels)
+                    this.plotFilterStep(this.state.stepIndex!, current.samplerate, current.channels)
                   }}
                   onClose={() => this.setState({ plotFilterStep: false })}
                 />

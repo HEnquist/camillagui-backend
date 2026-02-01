@@ -5,30 +5,30 @@ import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import { createRoot } from "react-dom/client"
+import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall } from "@mdi/js"
+import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
-import { FiltersTab } from "./filterstab"
-import { DevicesTab } from "./devicestab"
-import { MixersTab } from "./mixerstab"
-import { ProcessorsTab } from "./processorstab"
-import { PipelineTab } from "./pipeline/pipelinetab"
-import { TitleTab } from "./titletab"
-import { Shortcuts } from "./shortcuts"
-import { Errors, NoErrors } from "./utilities/errors"
+import { createTheme } from "react-data-table-component"
+import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
-import { Files } from "./filestab"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
-import { defaultGuiConfig, GuiConfig } from "./guiconfig"
-import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
-import { cloneDeep } from "lodash"
-import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall } from "@mdi/js"
-import { SidePanel } from "./sidepanel/sidepanel"
-import { Update } from "./utilities/common"
 import { CompactView, isCompactViewEnabled, setCompactViewEnabled } from "./compactview"
+import { DevicesTab } from "./devicestab"
+import { Files } from "./filestab"
+import { FiltersTab } from "./filterstab"
+import { defaultGuiConfig, GuiConfig } from "./guiconfig"
 import { UndoRedo } from "./main/UndoRedo"
+import { MixersTab } from "./mixerstab"
+import { PipelineTab } from "./pipeline/pipelinetab"
+import { ProcessorsTab } from "./processorstab"
+import { Shortcuts } from "./shortcuts"
+import { SidePanel } from "./sidepanel/sidepanel"
+import { TitleTab } from "./titletab"
+import { Update } from "./utilities/common"
+import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
-import { createTheme } from "react-data-table-component"
+import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -244,11 +244,11 @@ class CamillaConfig extends React.Component<
     })
   }
 
-  private setErrors(errors: any) {
+  private setErrors(errors: Errors) {
     this.setState({ errors: errors })
   }
 
-  componentDidUpdate(prevProps: unknown) {
+  componentDidUpdate() {
     //ReactTooltip.rebuild()
     document.title = this.state.guiConfig.page_title
   }

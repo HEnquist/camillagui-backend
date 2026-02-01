@@ -1,19 +1,18 @@
 import React from "react"
+import isEqual from "lodash/isEqual"
 import { Config } from "../camilladsp/config"
 import { Errors, NoErrors } from "../utilities/errors"
 import { delayedExecutor } from "../utilities/ui-components"
-import isEqual from "lodash/isEqual"
 
-export class Configcheckmessage extends React.Component<
-  {
-    config: Config
-    setErrors: (errors: Errors) => void
-  },
-  { message: string }
-> {
+interface ConfigcheckmessageProps {
+  config: Config
+  setErrors: (errors: Errors) => void
+}
+
+export class Configcheckmessage extends React.Component<ConfigcheckmessageProps, { message: string }> {
   default_message = "NOT CHECKED"
 
-  constructor(props: any) {
+  constructor(props: ConfigcheckmessageProps) {
     super(props)
     this.get_config_errors = this.get_config_errors.bind(this)
     this.state = { message: this.default_message }
@@ -45,7 +44,7 @@ export class Configcheckmessage extends React.Component<
         })
         this.props.setErrors(errors)
       }
-    } catch (err) {
+    } catch {
       this.setState({ message: "Validation failed" })
       this.props.setErrors(NoErrors)
     }

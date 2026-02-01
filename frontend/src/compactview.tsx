@@ -1,12 +1,12 @@
 import * as React from "react"
-import { VolumeBox } from "./sidepanel/volumebox"
-import { ErrorBoundary, MdiButton } from "./utilities/ui-components"
 import { mdiImageSizeSelectSmall } from "@mdi/js"
 import { Config } from "./camilladsp/config"
 import { defaultStatus } from "./camilladsp/status"
-import { Update } from "./utilities/common"
-import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
 import { GuiConfig } from "./guiconfig"
+import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
+import { VolumeBox } from "./sidepanel/volumebox"
+import { Update } from "./utilities/common"
+import { ErrorBoundary, MdiButton } from "./utilities/ui-components"
 
 export function isCompactViewEnabled(): boolean {
   return new URLSearchParams(window.location.search).has("compactview")

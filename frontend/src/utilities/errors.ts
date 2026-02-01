@@ -22,13 +22,13 @@ export class Errors {
     if (prefix.length === 0) return this
     return new Errors(
       this.errors
-        .filter(([path, _]) => path.length > 0 && path[0] === prefix[0])
+        .filter(([path]) => path.length > 0 && path[0] === prefix[0])
         .map(([path, message]) => [path.slice(1), message]),
     ).forSubpath(...prefix.slice(1))
   }
 
   rootMessage(): string | undefined {
-    const messages = this.errors.filter(([path, _]) => isEqual(path, [])).map(([_, message]) => message)
+    const messages = this.errors.filter(([path]) => isEqual(path, [])).map(([, message]) => message)
     return messages.length === 0 ? undefined : messages.join("\n")
   }
 

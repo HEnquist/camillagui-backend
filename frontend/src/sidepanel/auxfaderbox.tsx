@@ -1,11 +1,11 @@
 import React from "react"
 import "../index.css"
-import { Box, MdiButton } from "../utilities/ui-components"
 import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
-import { throttle } from "lodash"
 import { Range } from "immutable"
+import { throttle, DebouncedFuncLeading } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
 import { GuiConfig } from "../guiconfig"
+import { Box, MdiButton } from "../utilities/ui-components"
 
 type Props = {
   guiConfig: GuiConfig
@@ -38,8 +38,8 @@ export class FadersPoller {
   private async updateFaders() {
     this.timerId = undefined
     try {
-      let fadersreq = fetch("/api/getparamjson/faders")
-      let faders = (await (await fadersreq).json()) as Fader[]
+      const fadersreq = fetch("/api/getparamjson/faders")
+      const faders = (await (await fadersreq).json()) as Fader[]
       // Only update if the timer hasn't been restarted
       // while we were reading the volume and mute settings.
       if (this.timerId === undefined) {
@@ -70,7 +70,7 @@ export class FadersPoller {
 
 export class AuxFadersBox extends React.Component<Props, State> {
   private fadersPoller = new FadersPoller((faders) => this.setState({ faders: faders }), 1000.0, 2000.0)
-  private readonly setDspFadersDebounced: any
+  private readonly setDspFadersDebounced: DebouncedFuncLeading<(faders: Fader[], prevFaders: Fader[]) => Promise<void>>
 
   constructor(props: Props) {
     super(props)
@@ -103,7 +103,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
   componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
     const { faders, send_to_dsp } = this.state
     // Let's ignore any change smaller than 0.1 dB.
-    let changed = this.didFadersChange(faders, prevState)
+    const changed = this.didFadersChange(faders, prevState)
     if (send_to_dsp) {
       if (changed) {
         // The volume or mute state was changed from this gui instance.
@@ -122,7 +122,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
   private toggleMute(idx: number) {
     this.fadersPoller.restart_timer()
     this.setState(({ faders }) => {
-      let new_faders = cloneDeep(faders)
+      const new_faders = cloneDeep(faders)
       new_faders[idx].mute = !faders[idx].mute
       return { faders: new_faders, send_to_dsp: true }
     })
@@ -131,7 +131,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
   private moveFader(idx: number, value: number) {
     this.fadersPoller.restart_timer()
     this.setState(({ faders }) => {
-      let new_faders = cloneDeep(faders)
+      const new_faders = cloneDeep(faders)
       new_faders[idx].volume = value
       return { faders: new_faders, send_to_dsp: true }
     })
@@ -162,7 +162,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
     const minVol = maxVol - this.props.guiConfig.volume_range
     const sliders = Range(0, faders.length).map((index) => {
       return (
-        <div style={{ display: "flex", flexDirection: "row" }}>
+        <div key={"slider" + index} style={{ display: "flex", flexDirection: "row" }}>
           <input
             style={{ width: "100%", margin: 0, padding: 0 }}
             type="range"

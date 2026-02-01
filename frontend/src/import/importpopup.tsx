@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* The import functionality supports data that is highly dynamic.
+   We allow the 'any' type here since it is difficult to avoid. */
+
 import React, { ReactNode, useEffect, useState } from "react"
-import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
-import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
-import { Config } from "../camilladsp/config"
+import { mdiAlert, mdiInformation } from "@mdi/js"
 import { isObject } from "lodash"
-import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
+import { Tooltip } from "react-tooltip"
+import ReactjsPopup from "reactjs-popup"
 import {
   Import,
   ImportedConfig,
@@ -13,13 +16,14 @@ import {
   mergeTopLevelObjectsAndAppendTopLevelArrays,
   topLevelComparator,
 } from "./configimport"
-import { mdiAlert, mdiInformation } from "@mdi/js"
+import { Config } from "../camilladsp/config"
+import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
+import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
 import { bottomMargin } from "../utilities/styles"
-import { Tooltip } from "react-tooltip"
-import Popup from "reactjs-popup"
+import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
 
 export type ImportPopupProps =
-  | {}
+  | Record<string, never>
   | {
       currentConfig: Config
       updateConfig: (update: Update<Config>) => void
@@ -36,7 +40,7 @@ export class ImportPopup extends React.Component<
     }
   }
 > {
-  constructor(props: any) {
+  constructor(props: ImportPopupProps) {
     super(props)
     this.setImportConfig = this.setImportConfig.bind(this)
     this.state = {}
@@ -62,7 +66,7 @@ export class ImportPopup extends React.Component<
     const { currentConfig, updateConfig } = this.props
     const { importDoneFromFile, importConfig } = this.state
     return (
-      <Popup
+      <ReactjsPopup
         open={true}
         onClose={() => this.close()}
         closeOnDocumentClick={true}
@@ -88,7 +92,7 @@ export class ImportPopup extends React.Component<
             <FileList importDoneFromFile={importDoneFromFile} setImportConfig={this.setImportConfig} />
           )}
         </div>
-      </Popup>
+      </ReactjsPopup>
     )
   }
 }
@@ -209,7 +213,7 @@ function ConfigItemSelection(props: {
               <br />
               {isComplexObject(subElement) &&
                 Object.entries(subElement)
-                  .filter(([key, subValue]) => subValue !== null)
+                  .filter(([, subValue]) => subValue !== null)
                   .map(([key, subValue]) => {
                     return (
                       <div

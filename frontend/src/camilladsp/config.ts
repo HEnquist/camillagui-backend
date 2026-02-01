@@ -1,6 +1,5 @@
-import _ from "lodash"
-import { sortedAlphabetically } from "../utilities/arrays"
 import { List } from "immutable"
+import { sortedAlphabetically } from "../utilities/arrays"
 
 export function defaultConfig(): Config {
   return {
@@ -65,9 +64,9 @@ export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value"
 
 export const ProcessorSortKeys = ["Name", "Type"]
 
-function compare_named_vs_unnamed(a: any, b: any): number {
-  let a_new = a["name"].startsWith("Unnamed ")
-  let b_new = b["name"].startsWith("Unnamed ")
+function compare_named_vs_unnamed(a: { name: string }, b: { name: string }): number {
+  const a_new = a["name"].startsWith("Unnamed ")
+  const b_new = b["name"].startsWith("Unnamed ")
   if (a_new && !b_new) {
     return 1
   } else if (!a_new && b_new) {
@@ -77,7 +76,7 @@ function compare_named_vs_unnamed(a: any, b: any): number {
 }
 
 function compare_values(a: number, b: number, reverse: boolean): number {
-  let rev = reverse ? -1 : 1
+  const rev = reverse ? -1 : 1
   if (a === undefined && b !== undefined) {
     return rev
   } else if (a !== undefined && b === undefined) {
@@ -89,13 +88,13 @@ function compare_values(a: number, b: number, reverse: boolean): number {
 }
 
 export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
-  let names = Object.keys(filters)
-  let filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
-  let rev = reverse ? -1 : 1
+  const names = Object.keys(filters)
+  const filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
+  const rev = reverse ? -1 : 1
   switch (key) {
     case "Name":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
@@ -104,13 +103,13 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       break
     case "Frequency":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_val = a["def"]["parameters"]["freq"]
-        let b_val = b["def"]["parameters"]["freq"]
-        let number_res = compare_values(a_val, b_val, reverse)
+        const a_val = a["def"]["parameters"]["freq"]
+        const b_val = b["def"]["parameters"]["freq"]
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -119,13 +118,13 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       break
     case "Q-value":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_val = a["def"]["parameters"]["q"]
-        let b_val = b["def"]["parameters"]["q"]
-        let number_res = compare_values(a_val, b_val, reverse)
+        const a_val = a["def"]["parameters"]["q"]
+        const b_val = b["def"]["parameters"]["q"]
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -134,13 +133,13 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       break
     case "Gain":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_val = a["def"]["parameters"]["gain"]
-        let b_val = b["def"]["parameters"]["gain"]
-        let number_res = compare_values(a_val, b_val, reverse)
+        const a_val = a["def"]["parameters"]["gain"]
+        const b_val = b["def"]["parameters"]["gain"]
+        const number_res = compare_values(a_val as number, b_val as number, reverse)
         if (number_res !== 0) {
           return number_res
         }
@@ -149,12 +148,12 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       break
     case "Type":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_val = a["def"]["type"]
-        let b_val = b["def"]["type"]
+        const a_val = a["def"]["type"]
+        const b_val = b["def"]["type"]
         if (a_val !== b_val) {
           return rev * a_val.localeCompare(b_val)
         }
@@ -163,14 +162,14 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       break
     case "Subtype":
       filters_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_type = a["def"]["type"]
-        let b_type = b["def"]["type"]
-        let a_val = a["def"]["parameters"]["type"]
-        let b_val = b["def"]["parameters"]["type"]
+        const a_type = a["def"]["type"]
+        const b_type = b["def"]["type"]
+        const a_val = a["def"]["parameters"]["type"] as string
+        const b_val = b["def"]["parameters"]["type"] as string
         if (a_type !== b_type) {
           return rev * a_type.localeCompare(b_type)
         } else if (a_val === undefined && b_val !== undefined) {
@@ -184,21 +183,21 @@ export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, 
       })
       break
   }
-  let names_sorted = filters_as_list.map((n) => n["name"])
+  const names_sorted = filters_as_list.map((n) => n["name"])
   return names_sorted
 }
 
 export function processorsSortedAlphabeticallyOnKey(processors: Processors, key: string, reverse: boolean): string[] {
-  let names = Object.keys(processors)
-  let processors_as_list = names.map((n) => ({
+  const names = Object.keys(processors)
+  const processors_as_list = names.map((n) => ({
     name: n,
     def: processors[n],
   }))
-  let rev = reverse ? -1 : 1
+  const rev = reverse ? -1 : 1
   switch (key) {
     case "Name":
       processors_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
@@ -208,12 +207,12 @@ export function processorsSortedAlphabeticallyOnKey(processors: Processors, key:
 
     case "Type":
       processors_as_list.sort((a, b) => {
-        let unnamed_res = compare_named_vs_unnamed(a, b)
+        const unnamed_res = compare_named_vs_unnamed(a, b)
         if (unnamed_res !== 0) {
           return unnamed_res
         }
-        let a_val = a["def"]["type"]
-        let b_val = b["def"]["type"]
+        const a_val = a["def"]["type"]
+        const b_val = b["def"]["type"]
         if (a_val !== b_val) {
           return rev * a_val.localeCompare(b_val)
         }
@@ -221,7 +220,7 @@ export function processorsSortedAlphabeticallyOnKey(processors: Processors, key:
       })
       break
   }
-  let names_sorted = processors_as_list.map((n) => n["name"])
+  const names_sorted = processors_as_list.map((n) => n["name"])
   return names_sorted
 }
 
@@ -252,7 +251,7 @@ export function filterNamesOf(configOrFilters: Config | Filters | null): string[
 }
 
 function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
-  return maybeConfig !== null && maybeConfig.hasOwnProperty("devices")
+  return maybeConfig !== null && Object.hasOwn(maybeConfig, "devices")
 }
 
 export function newFilterName(filters: Filters | null): string {
@@ -580,7 +579,7 @@ export function defaultFilter() {
 export function removeFilter(config: Config, name: string) {
   delete config.filters?.[name]
   if (config.pipeline) {
-    for (let step of config.pipeline)
+    for (const step of config.pipeline)
       if (step.type === "Filter") step.names = step.names.filter((filterName) => filterName !== name)
   }
 }
@@ -590,7 +589,7 @@ export function renameFilter(config: Config, oldName: string, newName: string) {
   if (config.filters) {
     config.filters[newName] = config.filters[oldName]
     delete config.filters[oldName]
-    for (let step of config.pipeline ? config.pipeline : [])
+    for (const step of config.pipeline ? config.pipeline : [])
       if (step.type === "Filter")
         for (let i = 0; i < step.names.length; i++) if (step.names[i] === oldName) step.names[i] = newName
   }
@@ -660,7 +659,7 @@ export function renameProcessor(config: Config, oldName: string, newName: string
   if (config.processors) {
     config.processors[newName] = config.processors[oldName]
     delete config.processors[oldName]
-    for (let step of config.pipeline ? config.pipeline : [])
+    for (const step of config.pipeline ? config.pipeline : [])
       if (step.type === "Processor" && step.name === oldName) step.name = newName
   }
 }
@@ -689,7 +688,7 @@ export function renameMixer(config: Config, oldName: string, newName: string) {
   if (config.mixers) {
     config.mixers[newName] = config.mixers[oldName]
     delete config.mixers[oldName]
-    for (let step of config.pipeline ? config.pipeline : [])
+    for (const step of config.pipeline ? config.pipeline : [])
       if (step.type === "Mixer" && step.name === oldName) step.name = newName
   }
 }
@@ -987,7 +986,7 @@ export type CaptureDevice =
       type: "RawFile"
       channels: number
       format: BinaryFormat
-      filename: "/path/to/file"
+      filename: string
       extra_samples: number | null
       skip_bytes: number | null
       read_bytes: number | null
@@ -995,7 +994,7 @@ export type CaptureDevice =
     }
   | {
       type: "WavFile"
-      filename: "/path/to/file"
+      filename: string
       extra_samples: number | null
       labels: (string | null)[] | null
     }
@@ -1016,6 +1015,32 @@ export type CaptureDevice =
       dbus_path: string
       labels: (string | null)[] | null
     }
+  | {
+      type: "SignalGenerator"
+      channels: number
+      signal: SignalType
+      labels: (string | null)[] | null
+    }
+
+export type SignalType =
+  | {
+      type: "Sine"
+      freq: number
+      level: number
+    }
+  | {
+      type: "Square"
+      freq: number
+      level: number
+    }
+  | {
+      type: "WhiteNoise"
+      level: number
+    }
+
+export type Signal = "Sine" | "Square" | "WhiteNoise"
+
+export const Signals: Signal[] = ["Sine", "Square", "WhiteNoise"]
 
 export type PlaybackDevice =
   | {
@@ -1245,7 +1270,7 @@ export interface Filters {
 export interface Filter {
   type: string
   description: string | null
-  parameters: { [name: string]: any }
+  parameters: { [name: string]: FilterParameterValue }
 }
 
 export interface Processors {
@@ -1254,8 +1279,11 @@ export interface Processors {
 export interface Processor {
   type: string
   description: string | null
-  parameters: { [name: string]: any }
+  parameters: { [name: string]: ProcessorParameterValue }
 }
+
+export type FilterParameterValue = string | number | number[] | boolean | null
+export type ProcessorParameterValue = string | number | number[] | boolean | null
 
 export type Mixers = {
   [name: string]: Mixer
@@ -1308,7 +1336,7 @@ export interface FilterStep {
 }
 
 export async function maxChannelCount(config: Config, pipelineStepIndex: number): Promise<number> {
-  var lastValidMixerStepBeforeIndex = null
+  let lastValidMixerStepBeforeIndex = null
   if (config.pipeline) {
     lastValidMixerStepBeforeIndex = List(config.pipeline).findLast(
       (step, index) => step.type === "Mixer" && step.name !== "" && index < pipelineStepIndex,
@@ -1333,7 +1361,7 @@ export interface WavInfo {
 }
 
 async function getWavInfo(filename: string): Promise<WavInfo | null> {
-  let info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
+  const info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
   if (info_resp.ok) {
     const info = await info_resp.json()
     return info == null ? null : (info as WavInfo)
@@ -1353,9 +1381,9 @@ export async function getCaptureDeviceChannelCount(config: CaptureDevice): Promi
 
 export function getChannelLabels(config: Config, index: number): (string | null)[] | null {
   // Capture device labels
-  let cap_params = config.devices.capture
+  const cap_params = config.devices.capture
   let channel_labels = cap_params.labels
-  let pipeline = config.pipeline ? config.pipeline : []
+  const pipeline = config.pipeline ? config.pipeline : []
   for (let idx = 0; idx < index; idx++) {
     const step = pipeline[idx]
     const disabled = step.bypassed === true
@@ -1373,7 +1401,7 @@ export function getChannelLabels(config: Config, index: number): (string | null)
 }
 
 export function getOutputLabels(config: Config): (string | null)[] | null {
-  let pipeline_length = config.pipeline ? config.pipeline.length : 0
+  const pipeline_length = config.pipeline ? config.pipeline.length : 0
   return getChannelLabels(config, pipeline_length)
 }
 
@@ -1383,7 +1411,7 @@ export function getLabelForChannel(
   compact?: boolean,
   nullable?: boolean,
 ): string {
-  var result = ""
+  let result = ""
   if (!compact || !nullable) {
     result = channel.toString()
   }
