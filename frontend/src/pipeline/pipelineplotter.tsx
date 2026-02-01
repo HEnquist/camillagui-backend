@@ -446,6 +446,13 @@ class PipelinePlot extends React.Component<Props, State> {
     for (let n = 0; n < pipeline.length; n++) {
       const step = pipeline[n]
       const disabled = step.bypassed === true
+      if (disabled) {
+        // Skip bypassed steps for now.
+        // TODO fix the layout to show bypassed steps
+        // without messing up the placement of other steps.
+        console.log("Skipping bypassed step: " + n)
+        continue
+      }
       if (step.type === "Mixer" && conf.mixers) {
         total_length += 1
         const mixername = step.name
