@@ -34,7 +34,7 @@ export function VuMeterGroup(props: {
       const peak = peaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
-      const clipped = peak >= 0
+      const clipped = peak > 0
       fillBackground(context, css, index + 1)
       drawLabel(context, css, getLabelForChannel(labels, index, true, false), index + 1, 0)
       drawDbMarkers(context, css, index + 1)
