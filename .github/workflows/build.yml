@@ -124,7 +124,7 @@ jobs:
           - os: macos-latest
             asset_name: bundle_macos_aarch64.tar.gz
             filename: bundle.tar.gz
-          - os: macos-13
+          - os: macos-15-intel
             asset_name: bundle_macos_intel.tar.gz
             filename: bundle.tar.gz
     needs: build_and_test_be
