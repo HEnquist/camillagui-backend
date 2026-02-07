@@ -82,7 +82,7 @@ def test_coreaudio_device(basic_config):
     playback = config["devices"]["playback"]
     assert "change_format" not in capture
     assert "change_format" not in playback
-    assert capture["format"] == "S32LE"
+    assert capture["format"] == "S32"
     assert playback["format"] == None
 
 

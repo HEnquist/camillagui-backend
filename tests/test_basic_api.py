@@ -76,6 +76,9 @@ def mock_camillaclient(statefile):
             "playback_peak": [-3.0, -4.0],
         }
     )
+    client.levels.labels = MagicMock(
+        return_value={"capture": ["L", "R"], "playback": ["L", "R"]}
+    )
     client.rate = MagicMock()
     client.rate.capture = MagicMock(return_value=44100)
     client.general = MagicMock()

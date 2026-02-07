@@ -2,6 +2,7 @@ CURRENT_VERSION = 4
 
 V3_SAMPLE_FORMATS = ("S16LE", "S24LE3", "S24LE", "S32LE", "FLOAT32LE", "FLOAT64LE")
 
+
 # v1->v2 introduces the default volume control, remove old volume filters
 def _remove_volume_filters(config):
     """
@@ -135,14 +136,16 @@ def _modify_dither(config):
                 elif params["parameters"]["type"] == "Simple":
                     params["parameters"]["type"] = "Highpass"
 
+
 # v3->v4 changes all sample format names
 def _modify_conv_filters(config):
     if "filters" in config:
-        for filt in config["filters"]:
+        for name, filt in config["filters"].items():
             if filt["type"] == "Conv":
                 filt["parameters"]["format"] = _map_format(
                     None, filt["parameters"]["format"]
                 )
+
 
 def _modify_device_sample_format(dev):
     # Remove format for Pulse
@@ -179,6 +182,7 @@ def _map_format(backend, fmt):
     if fmt == "S24LE3":
         return "S24_3_LE"
     return fmt
+
 
 def _fix_rew_pipeline(config):
     if "pipeline" in config:
