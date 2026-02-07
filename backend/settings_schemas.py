@@ -41,6 +41,7 @@ BACKEND_CONFIG_SCHEMA = {
 GUI_CONFIG_SCHEMA = {
     "type": "object",
     "properties": {
+        "page_title": {"type": "string", "minLength": 1},
         "hide_capture_samplerate": {"type": "boolean"},
         "hide_silence": {"type": "boolean"},
         "hide_capture_device": {"type": "boolean"},

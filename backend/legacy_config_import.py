@@ -1,5 +1,6 @@
 CURRENT_VERSION = 4
 
+V3_SAMPLE_FORMATS = ("S16LE", "S24LE3", "S24LE", "S32LE", "FLOAT32LE", "FLOAT64LE")
 
 # v1->v2 introduces the default volume control, remove old volume filters
 def _remove_volume_filters(config):
@@ -91,10 +92,12 @@ def _modify_devices(config):
         if "capture" in config["devices"]:
             dev = config["devices"]["capture"]
             _modify_coreaudio_device(dev)
+            _modify_device_sample_format(dev)
         if "playback" in config["devices"]:
             dev = config["devices"]["playback"]
             _modify_coreaudio_device(dev)
             _modify_file_playback_device(dev)
+            _modify_device_sample_format(dev)
 
         # Resampler
         _modify_resampler(config)
@@ -132,6 +135,50 @@ def _modify_dither(config):
                 elif params["parameters"]["type"] == "Simple":
                     params["parameters"]["type"] = "Highpass"
 
+# v3->v4 changes all sample format names
+def _modify_conv_filters(config):
+    if "filters" in config:
+        for filt in config["filters"]:
+            if filt["type"] == "Conv":
+                filt["parameters"]["format"] = _map_format(
+                    None, filt["parameters"]["format"]
+                )
+
+def _modify_device_sample_format(dev):
+    # Remove format for Pulse
+    if dev["type"] == "Pulse":
+        del dev["format"]
+    else:
+        dev["format"] = _map_format(dev["type"], dev["format"])
+
+
+def _map_format(backend, fmt):
+    if fmt is None:
+        # Nothing to do, return early
+        return None
+    if backend in ("Wasapi", "CoreAudio"):
+        if fmt == "FLOAT32LE":
+            return "F32"
+        if fmt == "S16LE":
+            return "S16"
+        if fmt == "S32LE":
+            return "S32"
+        if fmt in ("S24LE", "S24LE3"):
+            return "S24"
+        return None
+    if fmt == "FLOAT32LE":
+        return "F32_LE"
+    if fmt == "FLOAT64LE":
+        return "F64_LE"
+    if fmt == "S16LE":
+        return "S16_LE"
+    if fmt == "S32LE":
+        return "S32_LE"
+    if fmt == "S24LE":
+        return "S24_4_RJ_LE"
+    if fmt == "S24LE3":
+        return "S24_3_LE"
+    return fmt
 
 def _fix_rew_pipeline(config):
     if "pipeline" in config:
@@ -198,6 +245,7 @@ def migrate_legacy_config(config):
     _modify_devices(config)
     _modify_pipeline_filter_steps(config)
     _modify_mixers(config)
+    _modify_conv_filters(config)
 
 
 def _look_for_v1_volume(config):
@@ -263,9 +311,9 @@ def _look_for_v2_pipeline(config):
 
 def _look_for_v3_mixer(config):
     if "mixers" in config and isinstance(config["mixers"], dict):
-        for mixer in config["mixers"]:
+        for _mixername, mixerconf in config["mixers"].items():
             output_channels = set()
-            for mapping in mixer["mapping"]:
+            for mapping in mixerconf["mapping"]:
                 # Check that there is no more than one mapping for each output channel
                 if mapping["dest"] in output_channels:
                     return True
@@ -277,6 +325,24 @@ def _look_for_v3_mixer(config):
                     if source["channel"] in input_channels:
                         return True
                     input_channels.add(source["channel"])
+    return False
+
+
+def _look_for_v3_sample_formats(config):
+    # Check for old sample formats in devices and Conv filters
+    if "devices" in config:
+        for direction in ("capture", "playback"):
+            device = config["devices"][direction]
+            if "format" in device and device["format"] in V3_SAMPLE_FORMATS:
+                return True
+            if device["type"] == "Pulse" and "format" in device:
+                # Format selection was removed from the Pulse backend
+                return True
+    if "filters" in config:
+        for filt in config["filters"]:
+            if filt["type"] == "Conv":
+                if filt["parameters"]["format"] in V3_SAMPLE_FORMATS:
+                    return True
     return False
 
 
@@ -296,5 +362,7 @@ def identify_version(config):
     if _look_for_v2_devices(config):
         return 2
     if _look_for_v3_mixer(config):
+        return 3
+    if _look_for_v3_sample_formats(config):
         return 3
     return CURRENT_VERSION

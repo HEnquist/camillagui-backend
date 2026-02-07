@@ -15,6 +15,7 @@ GUI_CONFIG_PATH = BASEPATH / "config" / "gui-config.yml"
 
 # Default values for the optional gui config.
 GUI_CONFIG_DEFAULTS = {
+    "page_title": "CamillaDSP",
     "hide_capture_samplerate": False,
     "hide_silence": False,
     "hide_capture_device": False,
