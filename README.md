@@ -46,7 +46,7 @@ for example to develop Python scrips that use the pycamilladsp library.
 Go to "Releases": https://github.com/HEnquist/camillagui-backend/releases
 Download the zip-file ("camillagui.zip") for the latest release. This includes both the backend and the frontend.
 
-Unzip the file and edit `config/camillagui.yml` as needed, see [Configuration](#configuration).
+Unzip the file and edit `camillagui_backend/config/camillagui.yml` as needed, see [Configuration](#configuration).
 
 ### Python dependencies
 The Python dependencies are listed in three different files,
@@ -184,10 +184,21 @@ The `on_get_active_config` command is expected to return a filename on stdout.
 As an example, read a filename from a text file: `on_get_active_config: "cat myconfig.txt"`.
 
 
-
 ## Customizing the GUI
 Some functionality of the GUI can be customized by editing `camillagui_backend/config/gui-config.yml`.
 The styling can be customized by editing `camillagui_backend/build/css-variables.css`.
+
+### GUI title
+Change the GUI title by setting `page_title`.
+This helps distinguish multiple CamillaDSP instances on the network,
+for example "Living room" and "Headphone system".
+This will be shown as the page title in the browser,
+making it easy to identify which GUI controls which setup.
+
+### Volume control range
+The range of the volume control slider can be customized by changing
+the valkues of `volume_range` and `volume_max`.
+The default values are a range of 50 dB and a maximum of 0 dB.
 
 ### Adding custom shortcut settings
 It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
