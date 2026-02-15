@@ -572,7 +572,6 @@ class FileTable extends Component<
         item.name.toLowerCase().includes(filterText.toLowerCase()) ||
         (item.title && item.title.toLowerCase().includes(filterText.toLowerCase())),
     )
-    console.log(filteredFiles)
 
     return (
       <Box title={this.props.title}>

@@ -581,7 +581,7 @@ function SourceCell(props: {
           }}
         >
           <EnumInput
-            value={null_to_default(source.scale, "default")}
+            value={null_to_default(source.scale, "dB")}
             options={GainScales}
             desc=""
             tooltip="Scale for gain"
