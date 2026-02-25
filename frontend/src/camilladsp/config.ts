@@ -955,6 +955,13 @@ export type CaptureDevice =
       labels: (string | null)[] | null
     }
   | {
+      type: "Asio"
+      channels: number
+      format: AsioFormat | null
+      device: string
+      labels: (string | null)[] | null
+    }
+  | {
       type: "Jack"
       channels: number
       device: string
@@ -1051,6 +1058,12 @@ export type PlaybackDevice =
       exclusive: boolean | null
       polling: boolean | null
     }
+  | {
+      type: "Asio"
+      channels: number
+      format: AsioFormat | null
+      device: string
+    }
   | { type: "Jack"; channels: number; device: string }
   | {
       type: "Alsa"
@@ -1101,6 +1114,8 @@ export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32"
 
 export type CoreAudioFormat = null | "S16" | "S24" | "S32" | "F32"
 
+export type AsioFormat = null | "S16_LE" | "S24_4_LE" | "S24_3_LE" | "S32_LE" | "F32_LE" | "F64_LE"
+
 export const CoreAudioFormatOptions: {
   value: CoreAudioFormat
   label: string
@@ -1147,6 +1162,37 @@ export const WasapiFormatOptions: { value: WasapiFormat; label: string }[] = [
   {
     value: "F32",
     label: "F32 : 32 bit float",
+  },
+]
+
+export const AsioFormatOptions: { value: AsioFormat; label: string }[] = [
+  {
+    value: null,
+    label: "Automatic",
+  },
+  {
+    value: "S16_LE",
+    label: "S16_LE : 16 bit integer, little-endian",
+  },
+  {
+    value: "S24_4_LE",
+    label: "S24_4_LE : 24 bit integer, padded, little-endian",
+  },
+  {
+    value: "S24_3_LE",
+    label: "S24_3_LE : 24 bit integer, packed, little-endian",
+  },
+  {
+    value: "S32_LE",
+    label: "S32_LE : 32 bit integer, little-endian",
+  },
+  {
+    value: "F32_LE",
+    label: "F32_LE : 32 bit float, little-endian",
+  },
+  {
+    value: "F64_LE",
+    label: "F64_LE : 64 bit float, little-endian",
   },
 ]
 
@@ -1253,6 +1299,8 @@ export const ConvBinaryFormatOptions: {
 export function getFormatOptions(backend: string): { value: string | null; label: string }[] {
   if (backend === "Alsa") {
     return AlsaFormatOptions
+  } else if (backend === "Asio") {
+    return AsioFormatOptions
   } else if (backend === "Wasapi") {
     return WasapiFormatOptions
   } else if (backend === "CoreAudio") {

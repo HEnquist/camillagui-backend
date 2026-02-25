@@ -20,6 +20,7 @@ export interface GuiConfig {
 
 export type CaptureType =
   | "Alsa"
+  | "Asio"
   | "Wasapi"
   | "Jack"
   | "CoreAudio"
@@ -31,7 +32,7 @@ export type CaptureType =
   | "Bluez"
   | "SignalGenerator"
 
-export type PlaybackType = "Alsa" | "Wasapi" | "Jack" | "CoreAudio" | "Pulse" | "PipeWire" | "File" | "Stdout"
+export type PlaybackType = "Alsa" | "Asio" | "Wasapi" | "Jack" | "CoreAudio" | "Pulse" | "PipeWire" | "File" | "Stdout"
 
 export interface ShortcutSection {
   section: string
