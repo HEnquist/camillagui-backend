@@ -221,6 +221,12 @@ export class SidePanel extends React.Component<
             tooltip="Apply to DSP and save to file"
             onClick={this.props.saveAndApplyConfig}
           />
+          <SuccessFailureButton
+            enabled={cdsp_online}
+            text="Stop processing"
+            tooltip="Stop the DSP processing"
+            onClick={() => this.stopProcessing()}
+          />
         </div>
         <div className="setting">
           <div
@@ -301,6 +307,14 @@ export class SidePanel extends React.Component<
     }
     const config = await conf_req.json()
     return config
+  }
+
+  private async stopProcessing() {
+    const stop_req = await fetch("/api/stop", { method: "POST" })
+    if (!stop_req.ok) {
+      const errorMessage = await stop_req.text()
+      throw new Error(errorMessage)
+    }
   }
 
   private async compareConfig() {
