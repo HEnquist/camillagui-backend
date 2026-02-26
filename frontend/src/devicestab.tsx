@@ -367,7 +367,7 @@ function ResamplingOptions(props: {
     <Box title="Resampling">
       <EnumOption
         value={devices.resampler ? devices.resampler.type : null}
-        error={errors.messageFor("resampler.type")}
+        error={errors.messageFor("resampler", "type")}
         options={ResamplerTypeOptions}
         desc="resampler_type"
         tooltip="Resampler type"
@@ -378,7 +378,7 @@ function ResamplingOptions(props: {
       {devices.resampler && devices.resampler.type === "AsyncSinc" && (
         <EnumOption
           value={"profile" in devices.resampler ? devices.resampler.profile : "Free"}
-          error={errors.messageFor("resampler.profile")}
+          error={errors.messageFor("resampler", "profile")}
           options={AsyncSincProfiles}
           desc="profile"
           tooltip="AsyncSinc resampler profile"
