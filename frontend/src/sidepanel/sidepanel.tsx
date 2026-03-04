@@ -138,6 +138,8 @@ export class SidePanel extends React.Component<
           <div>{status.bufferlevel}</div>
           <div className="alignRight">DSP load:</div>
           <div>{status.processingload ? status.processingload.toFixed(1) + "%" : ""} </div>
+          <div className="alignRight">Resampler load:</div>
+          <div>{status.resamplerload ? status.resamplerload.toFixed(1) + "%" : ""} </div>
           <div className="alignRight">Message:</div>
           <div>{this.props.message}</div>
         </div>

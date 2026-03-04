@@ -19,6 +19,7 @@ export interface Status extends Versions, VuMeterStatus {
   bufferlevel: number | ""
   clippedsamples: number | ""
   processingload: number | ""
+  resamplerload: number | ""
   labels: Labels
 }
 
@@ -34,6 +35,7 @@ export function defaultStatus(): Status {
     bufferlevel: "",
     clippedsamples: "",
     processingload: "",
+    resamplerload: "",
     cdsp_version: "",
     py_cdsp_version: "",
     py_cdsp_plot_version: "",
