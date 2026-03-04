@@ -53,6 +53,7 @@ OFFLINE_CACHE = {
     "bufferlevel": None,
     "clippedsamples": None,
     "processingload": None,
+    "resamplerload": None,
 }
 HEADERS = {"Cache-Control": "no-store"}
 
@@ -133,6 +134,7 @@ async def get_status(request):
                     "bufferlevel": cdsp.status.buffer_level(),
                     "clippedsamples": cdsp.status.clipped_samples(),
                     "processingload": cdsp.status.processing_load(),
+                    "resamplerload": cdsp.status.resampler_load(),
                     "labels": cdsp.levels.labels(),
                 }
             )
@@ -178,6 +180,8 @@ async def get_param(request):
         result = cdsp.config.active_raw()
     elif name == "processingload":
         result = cdsp.status.processing_load()
+    elif name == "resamplerload":
+        result = cdsp.status.resampler_load()
     else:
         raise web.HTTPNotFound(text=f"Unknown parameter {name}")
     return web.Response(text=str(result), headers=HEADERS)

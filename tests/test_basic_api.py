@@ -95,6 +95,7 @@ def mock_camillaclient(statefile):
     client.status.buffer_level = MagicMock(return_value=1234)
     client.status.clipped_samples = MagicMock(return_value=12)
     client.status.processing_load = MagicMock(return_value=0.5)
+    client.status.resampler_load = MagicMock(return_value=0.2)
     client.config = MagicMock()
     client.config.active = MagicMock(return_value=SAMPLE_CONFIG)
     client.config.file_path = MagicMock(return_value=SAMPLE_CONFIG_PATH)
@@ -163,6 +164,13 @@ async def test_read_status(server):
     assert resp.status == 200
     response = await resp.json()
     assert response["cdsp_status"] == "RUNNING"
+    assert response["resamplerload"] == 0.2
+
+
+async def test_read_resampler_load(mock_request):
+    mock_request.match_info = {"name": "resamplerload"}
+    reply = await views.get_param(mock_request)
+    assert reply.body == b"0.2"
 
 
 async def test_stop_processing(server):
