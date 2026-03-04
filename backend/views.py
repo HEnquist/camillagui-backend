@@ -358,6 +358,18 @@ async def set_config(request):
     return web.Response(text="OK", headers=HEADERS)
 
 
+async def stop_processing(request):
+    """
+    Stop CamillaDSP processing.
+    """
+    cdsp = request.app["CAMILLA"]
+    try:
+        cdsp.general.stop()
+    except CamillaError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    return web.Response(text="OK", headers=HEADERS)
+
+
 async def get_default_config_file(request):
     """
     Fetch the default config from file.

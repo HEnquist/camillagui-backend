@@ -165,6 +165,12 @@ async def test_read_status(server):
     assert response["cdsp_status"] == "RUNNING"
 
 
+async def test_stop_processing(server):
+    resp = await server.post("/api/stop")
+    assert resp.status == 200
+    server.app["CAMILLA"].general.stop.assert_called_once()
+
+
 @pytest.mark.parametrize(
     "endpoint, parameters",
     [

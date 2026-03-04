@@ -35,6 +35,7 @@ from .views import (
     set_config,
     set_param,
     set_param_index,
+    stop_processing,
     store_coeffs,
     store_configs,
     translate_convolver_to_json,
@@ -55,6 +56,7 @@ def setup_routes(app):
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
+    app.router.add_post("/api/stop", stop_processing)
     app.router.add_get("/api/getstartconfig", get_config_at_gui_start)
     app.router.add_get("/api/getactiveconfigfilename", get_active_config_name)
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
