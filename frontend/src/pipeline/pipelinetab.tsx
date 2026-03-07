@@ -30,6 +30,7 @@ import { DndContainer, DndSortable, DragHandle, useDndSort } from "../utilities/
 import { Errors } from "../utilities/errors"
 import {
   AddButton,
+  BypassOption,
   Box,
   ChannelSelection,
   DeleteButton,
@@ -38,7 +39,6 @@ import {
   ErrorBoundary,
   ErrorMessage,
   MdiButton,
-  OptionalBoolOption,
   OptionalTextInput,
   PlotButton,
 } from "../utilities/ui-components"
@@ -279,13 +279,13 @@ function MixerStepView(props: {
           <>
             <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order" />
             {typeSelect}
+            <span style={{ marginRight: "15px" }}>
+              <BypassOption
+                value={mixerStep.bypassed}
+                onChange={(bp) => update((step) => (step.bypassed = bp))}
+              />
+            </span>
             {channelInfo}
-            <OptionalBoolOption
-              value={mixerStep.bypassed}
-              desc="bypassed"
-              tooltip="Bypass this pipeline step"
-              onChange={(bp) => update((step) => (step.bypassed = bp))}
-            />
           </>
         }
       >
@@ -336,12 +336,12 @@ function ProcessorStepView(props: {
           <>
             <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order" />
             {typeSelect}
-            <OptionalBoolOption
-              value={processorStep.bypassed}
-              desc="bypassed"
-              tooltip="Bypass this pipeline step"
-              onChange={(bp) => update((step) => (step.bypassed = bp))}
-            />
+            <span style={{ marginRight: "15px" }}>
+              <BypassOption
+                value={processorStep.bypassed}
+                onChange={(bp) => update((step) => (step.bypassed = bp))}
+              />
+            </span>
           </>
         }
       >
@@ -409,6 +409,12 @@ function FilterStepView(props: {
     <>
       <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order" />
       {typeSelect}
+      <span style={{ marginRight: "15px" }}>
+        <BypassOption
+          value={filterStep.bypassed}
+          onChange={(bp) => update((step) => (step.bypassed = bp))}
+        />
+      </span>
       <ChannelSelection
         channels={filterStep.channels}
         maxChannelCount={maxChannels}
@@ -416,12 +422,6 @@ function FilterStepView(props: {
         setChannels={(channels) => update((step) => (step.channels = channels))}
         labels={props.labels}
         multiSelect={true}
-      />
-      <OptionalBoolOption
-        value={filterStep.bypassed}
-        desc="bypassed"
-        tooltip="Bypass this pipeline step"
-        onChange={(bp) => update((step) => (step.bypassed = bp))}
       />
     </>
   )

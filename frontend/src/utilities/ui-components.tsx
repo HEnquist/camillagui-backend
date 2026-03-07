@@ -98,7 +98,7 @@ export function Button(props: {
       style={props.style}
       onClick={enabled ? props.onClick : () => {}}
     >
-      {props.text}
+      <span className="button-text">{props.text}</span>
     </div>
   )
 }
@@ -836,6 +836,28 @@ export function OptionalBoolOption(props: {
       </OptionLine>
       <ErrorMessage message={props.error} />
     </>
+  )
+}
+
+export function BypassOption(props: {
+  value: boolean | null
+  onChange: (value: boolean | null) => void
+}) {
+  const bypassed = props.value === true
+  const buttonText = bypassed ? "Bypassed" : "Active"
+  const buttonTooltip = bypassed
+    ? "This pipeline step is bypassed. Click to activate."
+    : "This pipeline step is active. Click to bypass."
+  return (
+    <Button
+      text={buttonText}
+      tooltip={buttonTooltip}
+      onClick={() => props.onChange(bypassed ? false : true)}
+      highlighted={!bypassed}
+      className={
+        "bypass-toggle-button" + (bypassed ? " bypass-toggle-button-bypassed" : "")
+      }
+    />
   )
 }
 
