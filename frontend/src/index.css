@@ -463,6 +463,27 @@ div .popup-content {
   padding: 3px 6px;
 }
 
+.bypass-toggle-button {
+  display: inline-grid;
+  place-items: center;
+  white-space: nowrap;
+}
+
+.bypass-toggle-button .button-text {
+  grid-area: 1 / 1;
+}
+
+.bypass-toggle-button::after {
+  content: "Bypassed";
+  grid-area: 1 / 1;
+  font-style: italic;
+  visibility: hidden;
+}
+
+.bypass-toggle-button-bypassed {
+  font-style: italic;
+}
+
 .button-with-icon {
   width: 36px;
   height: 36px;
