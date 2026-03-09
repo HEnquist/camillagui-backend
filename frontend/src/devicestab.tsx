@@ -4,6 +4,7 @@ import { mdiMagnify } from "@mdi/js"
 import { Range } from "immutable"
 import {
   AlsaFormat,
+  AsioFormat,
   AsyncPolyDegreeOptions,
   AsyncSincInterpolationOptions,
   AsyncSincProfile,
@@ -366,7 +367,7 @@ function ResamplingOptions(props: {
     <Box title="Resampling">
       <EnumOption
         value={devices.resampler ? devices.resampler.type : null}
-        error={errors.messageFor("resampler.type")}
+        error={errors.messageFor("resampler", "type")}
         options={ResamplerTypeOptions}
         desc="resampler_type"
         tooltip="Resampler type"
@@ -377,7 +378,7 @@ function ResamplingOptions(props: {
       {devices.resampler && devices.resampler.type === "AsyncSinc" && (
         <EnumOption
           value={"profile" in devices.resampler ? devices.resampler.profile : "Free"}
-          error={errors.messageFor("resampler.profile")}
+          error={errors.messageFor("resampler", "profile")}
           options={AsyncSincProfiles}
           desc="profile"
           tooltip="AsyncSinc resampler profile"
@@ -602,7 +603,7 @@ function CaptureOptions(props: {
     Pulse: {
       type: "Pulse",
       channels: 2,
-      device: "something",
+      device: "enter device name...",
       labels: null,
     },
     PipeWire: {
@@ -622,6 +623,13 @@ function CaptureOptions(props: {
       exclusive: null,
       polling: null,
       loopback: false,
+      labels: null,
+    },
+    Asio: {
+      type: "Asio",
+      channels: 2,
+      format: null,
+      device: "enter device name...",
       labels: null,
     },
     Jack: { type: "Jack", channels: 2, device: "default", labels: null },
@@ -740,6 +748,7 @@ function CaptureOptions(props: {
           onChange((devices) => {
             if (
               devices.capture.type === "Alsa" ||
+              devices.capture.type === "Asio" ||
               devices.capture.type === "Wasapi" ||
               devices.capture.type === "CoreAudio" ||
               devices.capture.type === "Jack"
@@ -780,6 +789,7 @@ function CaptureOptions(props: {
         capture.type === "Stdin" ||
         capture.type === "CoreAudio" ||
         capture.type === "Alsa" ||
+        capture.type === "Asio" ||
         capture.type === "Wasapi") && (
         <EnumOption
           value={capture.format}
@@ -792,6 +802,8 @@ function CaptureOptions(props: {
               const capture = devices.capture
               if (capture.type === "Alsa") {
                 capture.format = format as AlsaFormat | null
+              } else if (capture.type === "Asio") {
+                capture.format = format as AsioFormat | null
               } else if (capture.type === "CoreAudio") {
                 capture.format = format as CoreAudioFormat | null
               } else if (capture.type === "Wasapi") {
@@ -801,6 +813,26 @@ function CaptureOptions(props: {
               }
             })
           }
+        />
+      )}
+      {capture.type === "Asio" && (
+        <DeviceOption
+          value={capture.device}
+          error={errors.messageFor("device")}
+          desc="device"
+          onChange={(device) =>
+            onChange((devices) => {
+              if (devices.capture.type === "Asio") {
+                devices.capture.device = device
+              }
+            })
+          }
+          onButtonClick={() => {
+            fetch("/api/capturedevices/" + capture.type)
+              .then((devices) => devices.json())
+              .then((names) => setAvailableDevices(names))
+            setPopupState(true)
+          }}
         />
       )}
       {capture.type === "Alsa" && (
@@ -1172,7 +1204,7 @@ function PlaybackOptions(props: {
       device: null,
       exclusive: null,
     },
-    Pulse: { type: "Pulse", channels: 2, device: "something" },
+    Pulse: { type: "Pulse", channels: 2, device: "enter device name..." },
     PipeWire: {
       type: "PipeWire",
       channels: 2,
@@ -1188,6 +1220,12 @@ function PlaybackOptions(props: {
       device: null,
       exclusive: null,
       polling: null,
+    },
+    Asio: {
+      type: "Asio",
+      channels: 2,
+      format: null,
+      device: "enter device name...",
     },
     Jack: { type: "Jack", channels: 2, device: "default" },
     Stdout: { type: "Stdout", channels: 2, format: "S32_LE" },
@@ -1221,6 +1259,7 @@ function PlaybackOptions(props: {
           onChange((devices) => {
             if (
               devices.playback.type === "Alsa" ||
+              devices.playback.type === "Asio" ||
               devices.playback.type === "Wasapi" ||
               devices.playback.type === "CoreAudio" ||
               devices.playback.type === "Jack"
@@ -1252,6 +1291,7 @@ function PlaybackOptions(props: {
         playback.type === "Stdout" ||
         playback.type === "CoreAudio" ||
         playback.type === "Alsa" ||
+        playback.type === "Asio" ||
         playback.type === "Wasapi") && (
         <EnumOption
           value={playback.format}
@@ -1264,6 +1304,8 @@ function PlaybackOptions(props: {
               const playback = devices.playback
               if (playback.type === "Alsa") {
                 playback.format = format as AlsaFormat | null
+              } else if (playback.type === "Asio") {
+                playback.format = format as AsioFormat | null
               } else if (playback.type === "CoreAudio") {
                 playback.format = format as CoreAudioFormat | null
               } else if (playback.type === "Wasapi") {
@@ -1273,6 +1315,26 @@ function PlaybackOptions(props: {
               }
             })
           }
+        />
+      )}
+      {playback.type === "Asio" && (
+        <DeviceOption
+          value={playback.device}
+          desc="device"
+          onChange={(device) =>
+            onChange((devices) => {
+              if (devices.playback.type === "Asio") {
+                devices.playback.device = device
+              }
+            })
+          }
+          error={errors.messageFor("device")}
+          onButtonClick={() => {
+            fetch("/api/playbackdevices/" + playback.type)
+              .then((devices) => devices.json())
+              .then((names) => setAvailableDevices(names))
+            setPopupState(true)
+          }}
         />
       )}
       {playback.type === "Alsa" && (
