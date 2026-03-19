@@ -1,42 +1,47 @@
 from .settings import BASEPATH
+from .statics import NoCacheStaticResource
 from .views import (
-    get_param,
-    get_list_param,
-    get_param_json,
-    set_param,
-    set_param_index,
-    eval_filter_values,
-    eval_filterstep_values,
-    get_config,
-    set_config,
-    get_active_config_file,
-    get_default_config_file,
-    set_active_config_name,
     config_to_yml,
-    yaml_to_json,
-    translate_convolver_to_json,
-    translate_eqapo_to_json,
-    parse_and_validate_yml_config_to_json,
-    validate_config,
-    get_gui_index,
-    get_stored_coeffs,
-    get_stored_configs,
-    store_configs,
-    store_coeffs,
     delete_coeffs,
     delete_configs,
     download_coeffs_zip,
     download_configs_zip,
-    get_gui_config,
-    get_config_file,
-    save_config_file,
-    get_defaults_for_coeffs,
-    get_status,
-    get_log_file,
-    get_capture_devices,
-    get_playback_devices,
+    eval_filter_values,
+    eval_filterstep_values,
+    get_config_at_gui_start,
+    get_active_config_name,
     get_backends,
+    get_capture_devices,
+    get_config,
+    get_config_file,
+    get_default_config_file,
+    get_defaults_for_coeffs,
+    get_gui_config,
+    get_gui_index,
+    get_list_param,
+    get_log_file,
+    get_param,
+    get_param_json,
+    get_playback_devices,
+    get_status,
+    get_stored_coeffs,
+    get_stored_configs,
     get_wav_info,
+    parse_and_validate_yml_config_to_json,
+    rename_coeff_file,
+    rename_config_file,
+    save_config_file,
+    set_active_config_name,
+    set_config,
+    set_param,
+    set_param_index,
+    stop_processing,
+    store_coeffs,
+    store_configs,
+    translate_convolver_to_json,
+    translate_eqapo_to_json,
+    validate_config,
+    yaml_to_json,
 )
 
 
@@ -51,7 +56,9 @@ def setup_routes(app):
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
-    app.router.add_get("/api/getactiveconfigfile", get_active_config_file)
+    app.router.add_post("/api/stop", stop_processing)
+    app.router.add_get("/api/getstartconfig", get_config_at_gui_start)
+    app.router.add_get("/api/getactiveconfigfilename", get_active_config_name)
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
     app.router.add_post("/api/setactiveconfigfile", set_active_config_name)
     app.router.add_post("/api/configtoyml", config_to_yml)
@@ -70,6 +77,8 @@ def setup_routes(app):
     app.router.add_post("/api/uploadcoeffs", store_coeffs)
     app.router.add_post("/api/deleteconfigs", delete_configs)
     app.router.add_post("/api/deletecoeffs", delete_coeffs)
+    app.router.add_post("/api/renameconfig", rename_config_file)
+    app.router.add_post("/api/renamecoeff", rename_coeff_file)
     app.router.add_post("/api/downloadconfigszip", download_configs_zip)
     app.router.add_post("/api/downloadcoeffszip", download_coeffs_zip)
     app.router.add_get("/api/guiconfig", get_gui_config)
@@ -84,6 +93,13 @@ def setup_routes(app):
 
 
 def setup_static_routes(app):
-    app.router.add_static("/gui/", path=BASEPATH / "build")
+    # Set no-cache for html and css to make sure they get updated.
+    # Without this browsers may continue running the old front end
+    # from cache after the gui was upgraded to a new version.
+    app.router.register_resource(
+        NoCacheStaticResource(
+            "/gui", BASEPATH / "build", file_endings=(".html", ".css")
+        )
+    )
     app.router.add_static("/config/", path=app["config_dir"])
     app.router.add_static("/coeff/", path=app["coeff_dir"])

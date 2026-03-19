@@ -1,14 +1,13 @@
+import logging
 import os
 import pathlib
 import sys
 
 import yaml
-from yaml.scanner import ScannerError
 from jsonschema import Draft202012Validator
+from yaml.scanner import ScannerError
 
-import logging
-
-from .settings_schemas import GUI_CONFIG_SCHEMA, BACKEND_CONFIG_SCHEMA
+from .settings_schemas import BACKEND_CONFIG_SCHEMA, GUI_CONFIG_SCHEMA
 
 BASEPATH = pathlib.Path(__file__).parent.parent.absolute()
 CONFIG_PATH = BASEPATH / "config" / "camillagui.yml"
@@ -16,6 +15,7 @@ GUI_CONFIG_PATH = BASEPATH / "config" / "gui-config.yml"
 
 # Default values for the optional gui config.
 GUI_CONFIG_DEFAULTS = {
+    "page_title": "CamillaDSP",
     "hide_capture_samplerate": False,
     "hide_silence": False,
     "hide_capture_device": False,
@@ -46,15 +46,15 @@ def _load_yaml(path):
     Logs the error and returns None if the file can't be read.
     """
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
             return config
     except ScannerError as e:
-        logging.error(f"Invalid yaml syntax in config file: {path}")
-        logging.error(f"Details: {e}")
+        logging.error("Invalid yaml syntax in config file: %s, details: %s", path, e)
+    except FileNotFoundError:
+        logging.error("Config file not found: %s", path)
     except OSError as e:
-        logging.error(f"Config file could not be opened: {path}")
-        logging.error(f"Details: {e}")
+        logging.error("Config file could not be opened: %s, details: %s", path, e)
     return None
 
 
@@ -65,11 +65,14 @@ def _read_and_validate_file(path, schema):
     validator = Draft202012Validator(schema)
     errors = list(validator.iter_errors(config))
     if len(errors) > 0:
-        logging.error(f"Error in config file '{path}'")
+        logging.error("Error in config file '%s'", path)
         for e in errors:
-            logging.error(f"Parameter '{'/'.join([str(p) for p in e.path])}': {e.message}")
+            logging.error(
+                "Parameter '%s': %s", "/".join([str(p) for p in e.path]), e.message
+            )
         return None
     return config
+
 
 def get_config(path):
     """
@@ -83,15 +86,17 @@ def get_config(path):
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
-    config["gui_config_file"] = absolute_path_or_none_if_empty(config["gui_config_file"])
+    config["gui_config_file"] = absolute_path_or_none_if_empty(
+        config["gui_config_file"]
+    )
     for key, value in BACKEND_CONFIG_DEFAULTS.items():
         if key not in config:
             config[key] = value
     logging.debug("Backend configuration:")
     logging.debug(yaml.dump(config))
-    
+
     config["can_update_active_config"] = can_update_active_config(config)
-    
+
     # Read the gui config.
     # This is only to validate the file and log any problems.
     # The result is not used.
@@ -115,7 +120,7 @@ def can_update_active_config(config):
         if is_writable:
             statefile_supported = True
         else:
-            logging.error(f"The statefile {statefile} is not writable.")
+            logging.error("The statefile %s is not writable.", statefile)
     if config["on_set_active_config"] and config["on_get_active_config"]:
         logging.debug(
             "Both 'on_set_active_config' and 'on_get_active_config' options are set"
@@ -133,9 +138,8 @@ def is_file_writable(path):
     exists = os.path.isfile(path)
     if exists:
         return _is_writable(path)
-    else:
-        parent = os.path.dirname(path)
-        return _is_writable(parent)
+    parent = os.path.dirname(path)
+    return _is_writable(parent)
 
 
 def _is_writable(path):
@@ -144,8 +148,7 @@ def _is_writable(path):
     """
     if os.access in os.supports_follow_symlinks:
         return os.access(path, os.W_OK, follow_symlinks=False)
-    else:
-        return os.access(path, os.W_OK)
+    return os.access(path, os.W_OK)
 
 
 def absolute_path_or_none_if_empty(path):
@@ -154,8 +157,7 @@ def absolute_path_or_none_if_empty(path):
     """
     if path:
         return os.path.abspath(os.path.expanduser(path))
-    else:
-        return None
+    return None
 
 
 def get_gui_config_or_defaults(path):
@@ -169,7 +171,5 @@ def get_gui_config_or_defaults(path):
             if key not in config:
                 config[key] = value
         return config
-    else:
-        logging.warning("Unable to read gui config file, using defaults")
-        return GUI_CONFIG_DEFAULTS
-
+    logging.warning("Unable to read gui config file, using defaults")
+    return GUI_CONFIG_DEFAULTS

@@ -1,29 +1,30 @@
 import io
+import logging
 import os
+import traceback
 import zipfile
 from copy import deepcopy
+from os import rename
 from os.path import (
-    isfile,
-    split,
-    join,
-    realpath,
-    relpath,
-    normpath,
-    isabs,
     commonpath,
     getmtime,
     getsize,
+    isabs,
+    isfile,
+    join,
+    normpath,
+    realpath,
+    relpath,
+    split,
 )
-import logging
-import traceback
+from typing import Optional
 
 import yaml
-from yaml.scanner import ScannerError
 from aiohttp import web
-
 from camilladsp import CamillaError
+from yaml.scanner import ScannerError
 
-from .legacy_config_import import identify_version
+from .legacy_config_import import identify_version, CURRENT_VERSION
 
 DEFAULT_STATEFILE = {
     "config_path": None,
@@ -41,9 +42,14 @@ def file_in_folder(folder, filename):
     return os.path.abspath(os.path.join(folder, filename))
 
 
-def path_of_configfile(request, config_name):
+def path_of_config_file(request, config_name):
     config_folder = request.app["config_dir"]
     return file_in_folder(config_folder, config_name)
+
+
+def path_of_coeff_file(request, coeff_name):
+    coeff_folder = request.app["coeff_dir"]
+    return file_in_folder(coeff_folder, coeff_name)
 
 
 async def store_files(folder, request):
@@ -53,7 +59,7 @@ async def store_files(folder, request):
     data = await request.post()
     i = 0
     while True:
-        filename = "file{}".format(i)
+        filename = f"file{i}"
         if filename not in data:
             break
         file = data[filename]
@@ -62,75 +68,96 @@ async def store_files(folder, request):
         with open(file_in_folder(folder, filename), "wb") as f:
             f.write(content)
         i += 1
-    return web.Response(text="Saved {} file(s)".format(i))
+    return web.Response(text=f"Saved {i} file(s)")
 
 
-def list_of_files_in_directory(folder, file_stats=True, title_and_desc=False, validator=None):
+def list_of_files_in_directory(
+    folder, file_stats=True, title_and_desc=False, validator=None
+):
     """
     Return a list of files (name and modification date) in a folder.
     """
 
     files_list = []
     for file in os.listdir(folder):
-        filepath = file_in_folder(folder, file)
-        if not isfile(filepath) or file.startswith("."):
-            # skip directories and hidden files
-            continue
-
-        file_data = {
-            "name": file,
-        }
-        if file_stats:
-            file_data["lastModified"] = getmtime(filepath)
-            file_data["size"] = getsize(filepath)
-
-        if title_and_desc:
-            valid = False
-            version = None
-            errors = None
-            title = None
-            desc = None
-            with open(filepath) as f:
-                try:
-                    parsed = yaml.safe_load(f)
-                    title = parsed.get("title")
-                    desc = parsed.get("description")
-                    version = identify_version(parsed)
-                    if version == 3 and validator is not None:
-                        parsed_abs = make_config_filter_paths_absolute(parsed, folder)
-                        validator.validate_config(parsed_abs)
-                        error_list = validator.get_errors()
-                        if len(error_list) > 0:
-                            errors = error_list
-                        else:
-                            valid = True
-                    elif version < 3:
-                        valid = False
-                        errors = [([], f"This config is made for the previous version {version} of CamillaDSP.")]
-                except yaml.YAMLError as e:
-                    if hasattr(e, 'problem_mark'):
-                        mark = e.problem_mark
-                        errordesc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
-                    else:
-                        errordesc = "This config file has a YAML syntax error."
-                    errors = [([], errordesc)]
-                except (AttributeError, UnicodeDecodeError) as e:
-                    errors = [([], "This does not appear to be a YAML file.")]
-                except Exception as e:
-                    errors = [([], f"Error: {e}")]
-            file_data["title"] = title
-            file_data["description"] = desc
-            file_data["version"] = version
-            file_data["valid"] = valid
-            file_data["errors"] = errors
-        files_list.append(file_data)
+        file_data = _get_file_data(
+            folder,
+            file,
+            file_stats=file_stats,
+            title_and_desc=title_and_desc,
+            validator=validator,
+        )
+        if file_data is not None:
+            files_list.append(file_data)
 
     sorted_files = sorted(files_list, key=lambda x: x["name"].lower())
     return sorted_files
 
 
+def _get_title_and_desc(filepath, file_data, folder, validator=None):
+    file_data["title"] = None
+    file_data["description"] = None
+    file_data["version"] = None
+    file_data["valid"] = False
+    file_data["errors"] = None
+    with open(filepath, encoding="utf-8") as f:
+        try:
+            parsed = yaml.safe_load(f)
+            file_data["title"] = parsed.get("title")
+            file_data["description"] = parsed.get("description")
+            file_data["version"] = identify_version(parsed)
+            if file_data["version"] == CURRENT_VERSION and validator is not None:
+                parsed_abs = make_config_filter_paths_absolute(parsed, folder)
+                validator.validate_config(parsed_abs)
+                error_list = validator.get_errors()
+                if len(error_list) > 0:
+                    file_data["errors"] = error_list
+                else:
+                    file_data["valid"] = True
+            elif file_data["version"] < CURRENT_VERSION:
+                file_data["valid"] = False
+                file_data["errors"] = [
+                    (
+                        [],
+                        f"This config is made for the previous version {file_data['version']} of CamillaDSP.",
+                    )
+                ]
+        except yaml.YAMLError as e:
+            if hasattr(e, "problem_mark"):
+                mark = e.problem_mark
+                errordesc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
+            else:
+                errordesc = "This config file has a YAML syntax error."
+            file_data["errors"] = [([], errordesc)]
+        except (AttributeError, UnicodeDecodeError):
+            file_data["errors"] = [([], "This does not appear to be a YAML file.")]
+        except Exception as e:
+            file_data["errors"] = [([], f"Error: {e}")]
+
+
+def _get_file_data(folder, file, file_stats=True, title_and_desc=False, validator=None):
+    filepath = file_in_folder(folder, file)
+    if not isfile(filepath) or file.startswith("."):
+        # skip directories and hidden files
+        return None
+
+    file_data = {
+        "name": file,
+    }
+    if file_stats:
+        file_data["lastModified"] = getmtime(filepath)
+        file_data["size"] = getsize(filepath)
+
+    if title_and_desc:
+        _get_title_and_desc(filepath, file_data, folder, validator=validator)
+
+    return file_data
+
+
 def list_of_filenames_in_directory(folder):
-    return [file["name"] for file in list_of_files_in_directory(folder, file_stats=False)]
+    return [
+        file["name"] for file in list_of_files_in_directory(folder, file_stats=False)
+    ]
 
 
 def delete_files(folder, files):
@@ -162,7 +189,7 @@ def zip_of_files(folder, files):
     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
         for file_name in files:
             file_path = file_in_folder(folder, file_name)
-            with open(file_path, "r") as file:
+            with open(file_path, "rb") as _file:
                 zip_file.write(file_path, file_name)
     return zip_buffer.getvalue()
 
@@ -195,32 +222,31 @@ def get_active_config_path(request):
             if dsp_statefile_path:
                 fpath = cdsp.config.file_path()
                 filename = _verify_path_in_config_dir(fpath, config_dir)
-                logging.debug(filename)
+                logging.debug("Config path from statefile: %s", filename)
                 return filename
-            else:
-                logging.error(
-                    "CamillaDSP runs without state file and is unable to persistently store config file path"
-                )
-                return None
-        elif statefile_path:
+            logging.error(
+                "CamillaDSP runs without state file and is unable to persistently store config file path"
+            )
+            return None
+        if statefile_path:
+            logging.debug("Getting config from statefile: %s", statefile_path)
             confpath = _read_statefile_config_path(statefile_path)
             return _verify_path_in_config_dir(confpath, config_dir)
-        else:
-            logging.error(
-                "The backend config has no state file and is unable to persistently store config file path"
-            )
-    else:
-        try:
-            logging.debug(f"Running command: {on_get}")
-            stream = os.popen(on_get)
-            result = stream.read().strip()
-            logging.debug(f"Command result: {result}")
-            fname = _verify_path_in_config_dir(result, config_dir)
-            return fname
-        except Exception as e:
-            logging.error(f"Failed to run on_get_active_config command")
-            traceback.print_exc()
-            return None
+        logging.error(
+            "The backend config has no state file and is unable to persistently store config file path"
+        )
+        return None
+    try:
+        logging.debug("Running command: %s", on_get)
+        stream = os.popen(on_get)
+        result = stream.read().strip()
+        logging.debug("Command result: %s", result)
+        fname = _verify_path_in_config_dir(result, config_dir)
+        return fname
+    except Exception:
+        logging.error("Failed to run on_get_active_config command")
+        traceback.print_exc()
+        return None
 
 
 def set_path_as_active_config(request, filepath):
@@ -238,10 +264,10 @@ def set_path_as_active_config(request, filepath):
     if not online:
         if statefile_path:
             try:
-                logging.debug(f"Update config file path in statefile to '{filepath}'")
+                logging.debug("Update config file path in statefile to '%s'", filepath)
                 _update_statefile_config_path(statefile_path, filepath)
-            except Exception as e:
-                logging.error(f"Failed to update statefile at {statefile_path}")
+            except Exception:
+                logging.error("Failed to update statefile at %s", statefile_path)
                 traceback.print_exc()
         else:
             logging.error(
@@ -250,7 +276,7 @@ def set_path_as_active_config(request, filepath):
     else:
         dsp_statefile_path = cdsp.general.state_file_path()
         if dsp_statefile_path:
-            logging.debug(f"Send set config file path command with '{filepath}'")
+            logging.debug("Send set config file path command with '%s'", filepath)
             cdsp.config.set_file_path(filepath)
         else:
             logging.error(
@@ -259,10 +285,10 @@ def set_path_as_active_config(request, filepath):
     if on_set:
         try:
             cmd = on_set.format(f'"{filepath}"')
-            logging.debug(f"Running command: {cmd}")
+            logging.debug("Running command: %s", cmd)
             os.system(cmd)
-        except Exception as e:
-            logging.error(f"Failed to run on_set_active_config command")
+        except Exception:
+            logging.error("Failed to run on_set_active_config command")
             traceback.print_exc()
 
 
@@ -279,7 +305,7 @@ def _verify_path_in_config_dir(path, config_dir):
         _head, tail = split(canonical)
         return tail
     logging.error(
-        f"The config file path '{path}' is not in the config dir '{config_dir}'"
+        "The config file path '%s' is not in the config dir '%s'", path, config_dir
     )
     return None
 
@@ -289,15 +315,17 @@ def _update_statefile_config_path(statefile_path, new_config_path):
     Read a statefile if possible, update the config filename, and write the result"
     """
     try:
-        with open(statefile_path) as f:
+        with open(statefile_path, encoding="utf-8") as f:
             state = yaml.safe_load(f)
     except ScannerError as e:
-        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
-        logging.error(f"Details: {e}")
+        logging.error(
+            "Invalid yaml syntax in statefile: %s, details: %s", statefile_path, e
+        )
         state = deepcopy(DEFAULT_STATEFILE)
     except OSError as e:
-        logging.error(f"Statefile could not be opened: {statefile_path}")
-        logging.error(f"Details: {e}")
+        logging.error(
+            "Statefile could not be opened: %s, details: %s", statefile_path, e
+        )
         state = deepcopy(DEFAULT_STATEFILE)
     state["config_path"] = new_config_path
     yaml_state = yaml.dump(state).encode("utf-8")
@@ -310,15 +338,17 @@ def _read_statefile_config_path(statefile_path):
     Read a statefile if possible, and get the config_path"
     """
     try:
-        with open(statefile_path) as f:
+        with open(statefile_path, encoding="utf-8") as f:
             state = yaml.safe_load(f)
             return state["config_path"]
     except ScannerError as e:
-        logging.error(f"Invalid yaml syntax in statefile: {statefile_path}")
-        logging.error(f"Details: {e}")
+        logging.error(
+            "Invalid yaml syntax in statefile: %s, details: %s", statefile_path, e
+        )
     except OSError as e:
-        logging.error(f"Statefile could not be opened: {statefile_path}")
-        logging.error(f"Details: {e}")
+        logging.error(
+            "Statefile could not be opened: %s, details: %s", statefile_path, e
+        )
     return None
 
 
@@ -326,7 +356,7 @@ def save_config_to_yaml_file(config_name, config_object, request):
     """
     Write a given config object to a yaml file.
     """
-    config_file = path_of_configfile(request, config_name)
+    config_file = path_of_config_file(request, config_name)
     yaml_config = yaml.dump(config_object).encode("utf-8")
     with open(config_file, "wb") as f:
         f.write(yaml_config)
@@ -347,7 +377,10 @@ def make_config_filter_paths_absolute(config_object, config_dir):
     """
     Convert paths to coefficient files in a config from relative to absolute.
     """
-    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
+
+    def conversion(path, config_dir=config_dir):
+        return make_absolute(path, config_dir)
+
     return convert_config_filter_paths(config_object, conversion)
 
 
@@ -355,7 +388,10 @@ def make_config_filter_paths_relative(config_object, config_dir):
     """
     Convert paths to coefficient files in a config from absolute to relative.
     """
-    conversion = lambda path, config_dir=config_dir: make_relative(path, config_dir)
+
+    def conversion(path, config_dir=config_dir):
+        return make_relative(path, config_dir)
+
     return convert_config_filter_paths(config_object, conversion)
 
 
@@ -389,7 +425,10 @@ def replace_relative_filter_path_with_absolute_paths(filter_as_dict, config_dir)
     """
     Convert paths to coefficient files in a config from absolute to relative.
     """
-    conversion = lambda path, config_dir=config_dir: make_absolute(path, config_dir)
+
+    def conversion(path, config_dir=config_dir):
+        return make_absolute(path, config_dir)
+
     convert_filter_path(filter_as_dict, conversion)
 
 
@@ -426,3 +465,21 @@ def is_path_in_folder(path, folder):
     Check if a file is in a given directory.
     """
     return folder == commonpath([path, folder])
+
+
+def rename_config_or_return_error(request, source, target) -> Optional[str]:
+    source_file = path_of_config_file(request, source)
+    target_file = path_of_config_file(request, target)
+    if os.path.isfile(target_file):
+        return "File " + target + " already exists"
+    rename(source_file, target_file)
+    return None
+
+
+def rename_coeff_or_return_error(request, source, target) -> Optional[str]:
+    source_file = path_of_coeff_file(request, source)
+    target_file = path_of_coeff_file(request, target)
+    if os.path.isfile(target_file):
+        return "File " + target + " already exists"
+    rename(source_file, target_file)
+    return None

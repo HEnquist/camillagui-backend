@@ -1,3 +1,8 @@
+CURRENT_VERSION = 4
+
+V3_SAMPLE_FORMATS = ("S16LE", "S24LE3", "S24LE", "S32LE", "FLOAT32LE", "FLOAT64LE")
+
+
 # v1->v2 introduces the default volume control, remove old volume filters
 def _remove_volume_filters(config):
     """
@@ -19,13 +24,14 @@ def _remove_volume_filters(config):
                     if len(step["names"]) == 0:
                         config["pipeline"].remove(step)
 
+
 # v1->v2 removes "ramp_time" from loudness filters
 def _modify_loundness_filters(config):
     """
     Modify Loudness filters
     """
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in config["filters"].items():
+        for _name, params in config["filters"].items():
             if params["type"] == "Loudness":
                 if "ramp_time" in params["parameters"]:
                     del params["parameters"]["ramp_time"]
@@ -87,13 +93,16 @@ def _modify_devices(config):
         if "capture" in config["devices"]:
             dev = config["devices"]["capture"]
             _modify_coreaudio_device(dev)
+            _modify_device_sample_format(dev)
         if "playback" in config["devices"]:
             dev = config["devices"]["playback"]
             _modify_coreaudio_device(dev)
             _modify_file_playback_device(dev)
+            _modify_device_sample_format(dev)
 
         # Resampler
         _modify_resampler(config)
+
 
 # v1->v2 removes the "change_format" and makes "format" optional
 def _modify_coreaudio_device(dev):
@@ -105,10 +114,12 @@ def _modify_coreaudio_device(dev):
         else:
             dev["format"] = None
 
+
 # vx-vx changes some of the file playback types
 def _modify_file_playback_device(dev):
     if dev["type"] == "File":
         dev["type"] = "RawFile"
+
 
 # v1->v2 changes some names for dither filters
 def _modify_dither(config):
@@ -124,6 +135,53 @@ def _modify_dither(config):
                     params["parameters"]["type"] = "Flat"
                 elif params["parameters"]["type"] == "Simple":
                     params["parameters"]["type"] = "Highpass"
+
+
+# v3->v4 changes all sample format names
+def _modify_conv_filters(config):
+    if "filters" in config:
+        for name, filt in config["filters"].items():
+            if filt["type"] == "Conv":
+                filt["parameters"]["format"] = _map_format(
+                    None, filt["parameters"]["format"]
+                )
+
+
+def _modify_device_sample_format(dev):
+    # Remove format for Pulse
+    if dev["type"] == "Pulse":
+        del dev["format"]
+    else:
+        dev["format"] = _map_format(dev["type"], dev["format"])
+
+
+def _map_format(backend, fmt):
+    if fmt is None:
+        # Nothing to do, return early
+        return None
+    if backend in ("Wasapi", "CoreAudio"):
+        if fmt == "FLOAT32LE":
+            return "F32"
+        if fmt == "S16LE":
+            return "S16"
+        if fmt == "S32LE":
+            return "S32"
+        if fmt in ("S24LE", "S24LE3"):
+            return "S24"
+        return None
+    if fmt == "FLOAT32LE":
+        return "F32_LE"
+    if fmt == "FLOAT64LE":
+        return "F64_LE"
+    if fmt == "S16LE":
+        return "S16_LE"
+    if fmt == "S32LE":
+        return "S32_LE"
+    if fmt == "S24LE":
+        return "S24_4_RJ_LE"
+    if fmt == "S24LE3":
+        return "S24_3_LE"
+    return fmt
 
 
 def _fix_rew_pipeline(config):
@@ -149,6 +207,36 @@ def _modify_pipeline_filter_steps(config):
                     del step["channel"]
 
 
+# Starting from v4, there can only be one mapping per desitiantion channel,
+# and within a mapping, each source channel can only be used once.
+# Migrate by merging mappings for the same destination.
+# If a mapping ends up containing the same source channel more than once,
+# drop the extras.
+def _modify_mixers(config):
+    if "mixers" not in config or config["mixers"] is None:
+        return
+    for _, mixer in config["mixers"].items():
+        merged_mappings = []
+        # step 1, merge mappings
+        for mapping in mixer["mapping"]:
+            existing = next(
+                (m for m in merged_mappings if m["dest"] == mapping["dest"]), None
+            )
+            if existing is not None:
+                existing["sources"].extend(mapping["sources"])
+            else:
+                merged_mappings.append(mapping)
+        # step 2: remove duplicated sources in each mapping
+        for mapping in merged_mappings:
+            cleaned_sources = []
+            for source in mapping["sources"]:
+                if any(s["channel"] == source["channel"] for s in cleaned_sources):
+                    continue
+                cleaned_sources.append(source)
+            mapping["sources"] = cleaned_sources
+        mixer["mapping"] = merged_mappings
+
+
 def migrate_legacy_config(config):
     """
     Modifies an older config file to the latest format.
@@ -160,35 +248,52 @@ def migrate_legacy_config(config):
     _modify_dither(config)
     _modify_devices(config)
     _modify_pipeline_filter_steps(config)
+    _modify_mixers(config)
+    _modify_conv_filters(config)
 
 
 def _look_for_v1_volume(config):
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in list(config["filters"].items()):
+        for _name, params in list(config["filters"].items()):
             if params["type"] == "Volume" and "fader" not in params["parameters"]:
                 return True
     return False
 
+
 def _look_for_v1_loudness(config):
     if "filters" in config and isinstance(config["filters"], dict):
-        for name, params in config["filters"].items():
+        for _name, params in config["filters"].items():
             if params["type"] == "Loudness" and "ramp_time" in params["parameters"]:
                 return True
     return False
 
+
 def _look_for_v1_resampler(config):
     return "devices" in config and "enable_resampling" in config["devices"]
+
 
 def _look_for_v1_devices(config):
     if "devices" in config:
         for direction in ("capture", "playback"):
-            if direction in config["devices"] and "type" in config["devices"][direction]:
-                if config["devices"][direction]["type"] == "CoreAudio" and "change_format" in config["devices"][direction]:
+            if (
+                direction in config["devices"]
+                and "type" in config["devices"][direction]
+            ):
+                if (
+                    config["devices"][direction]["type"] == "CoreAudio"
+                    and "change_format" in config["devices"][direction]
+                ):
                     return True
     return False
 
+
 def _look_for_v2_devices(config):
-    return "devices" in config and "capture" in config["devices"] and config["devices"]["capture"]["type"] == "File"
+    return (
+        "devices" in config
+        and "capture" in config["devices"]
+        and config["devices"]["capture"]["type"] == "File"
+    )
+
 
 def _look_for_v1_dither(config):
     if "filters" in config and isinstance(config["filters"], dict):
@@ -198,6 +303,7 @@ def _look_for_v1_dither(config):
                     return True
     return False
 
+
 def _look_for_v2_pipeline(config):
     if "pipeline" in config and isinstance(config["pipeline"], list):
         for step in config["pipeline"]:
@@ -205,6 +311,44 @@ def _look_for_v2_pipeline(config):
                 if "channel" in step:
                     return True
     return False
+
+
+def _look_for_v3_mixer(config):
+    if "mixers" in config and isinstance(config["mixers"], dict):
+        for _mixername, mixerconf in config["mixers"].items():
+            output_channels = set()
+            for mapping in mixerconf["mapping"]:
+                # Check that there is no more than one mapping for each output channel
+                if mapping["dest"] in output_channels:
+                    return True
+                output_channels.add(mapping["dest"])
+
+                input_channels = set()
+                for source in mapping["sources"]:
+                    # Check that each input channel is not listed more than once in a mapping
+                    if source["channel"] in input_channels:
+                        return True
+                    input_channels.add(source["channel"])
+    return False
+
+
+def _look_for_v3_sample_formats(config):
+    # Check for old sample formats in devices and Conv filters
+    if "devices" in config:
+        for direction in ("capture", "playback"):
+            device = config["devices"][direction]
+            if "format" in device and device["format"] in V3_SAMPLE_FORMATS:
+                return True
+            if device["type"] == "Pulse" and "format" in device:
+                # Format selection was removed from the Pulse backend
+                return True
+    if "filters" in config:
+        for _name, filt in config["filters"].items():
+            if filt["type"] == "Conv":
+                if filt["parameters"]["format"] in V3_SAMPLE_FORMATS:
+                    return True
+    return False
+
 
 def identify_version(config):
     if _look_for_v1_volume(config):
@@ -221,4 +365,8 @@ def identify_version(config):
         return 2
     if _look_for_v2_devices(config):
         return 2
-    return 3
+    if _look_for_v3_mixer(config):
+        return 3
+    if _look_for_v3_sample_formats(config):
+        return 3
+    return CURRENT_VERSION
