@@ -1,7 +1,7 @@
-import {expect, test} from 'vitest'
-import { levelAsPercent } from './vumeter'
+import { expect, test } from "vitest"
+import { levelAsPercent } from "./vumeter"
 
-test('levelAsPercent', () => {
+test("levelAsPercent", () => {
   // Very low level gives 0%
   expect(levelAsPercent(-200)).toBeCloseTo(0, 0)
   // -60dB gives ~25%

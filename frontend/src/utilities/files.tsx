@@ -1,85 +1,97 @@
-import {Config} from "../camilladsp/config"
+import { Config } from "../camilladsp/config"
 
 export interface FileInfo {
-  name: string,
-  lastModified: number,
-  formattedDate: string,
-  size: number,
-  title: string|null|undefined,
-  description: string|null|undefined,
-  version: number|null|undefined,
-  valid: boolean|undefined,
-  errors: [string[], string][]|null|undefined
+  name: string
+  lastModified: number
+  formattedDate: string
+  size: number
+  title: string | null | undefined
+  description: string | null | undefined
+  version: number | null | undefined
+  valid: boolean | undefined
+  errors: [string[], string][] | null | undefined
 }
 
 export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
   return fetch(`/api/stored${type}s`)
-      .then(response => {
+    .then(
+      (response) => {
         if (response.ok) return response.json()
         else throw Error(response.statusText)
       },
-      err => {
+      (err) => {
         console.log("Failed to fetch", err)
         throw Error(err)
-      })
-      .then(json => {
+      },
+    )
+    .then(
+      (json) => {
         const files = json as FileInfo[]
-        files.forEach(file =>
-            file.formattedDate = new Date(1000 * file.lastModified).toDateString()
-        )
+        files.forEach((file) => (file.formattedDate = new Date(1000 * file.lastModified).toDateString()))
         return files
       },
-      err => {
+      (err) => {
         console.log("Failed to get file list", err)
         return []
-      })
+      },
+    )
 }
 
 export function loadFilenames(type: "config" | "coeff"): Promise<string[]> {
-  return loadFiles(type)
-      .then(files => fileNamesOf(files), _ => [])
+  return loadFiles(type).then(
+    (files) => fileNamesOf(files),
+    () => [],
+  )
 }
 
 export function fileNamesOf(files: FileInfo[]): string[] {
-  return files.map(f => f.name)
+  return files.map((f) => f.name)
 }
 
 export function loadConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`)
-      .then(response => {
-        if (response.ok)
-          return response.json()
-        else
-          response.text().then(reason => onNotOk(reason))
-      })
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`).then((response) => {
+    if (response.ok) return response.json()
+    else response.text().then((reason) => onNotOk(reason))
+  })
 }
 
 export function loadMigratedConfigJson(name: string): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`)
-      .then(response => {
-        if (response.ok)
-          return response.json()
-        else
-          response.text()
-      })
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`).then((response) => {
+    if (response.ok) return response.json()
+    else response.text()
+  })
 }
 
 export function loadDefaultConfigJson(): Promise<Response> {
   return fetch(`/api/getdefaultconfigfile`)
 }
 
-export function loadActiveConfig(): Promise<{ configFileName: string, config: Config }> {
-  return fetch("/api/getactiveconfigfile")
-      .then(response => {
-        if (!response.ok) {
-          throw Error(response.statusText)
-        }
-        return response.json()
-      })
+export function loadStartupConfig(): Promise<{
+  configFileName: string | null
+  config: Config
+  source: string
+}> {
+  return fetch("/api/getstartconfig").then((response) => {
+    if (!response.ok) {
+      throw Error(response.statusText)
+    }
+    return response.json()
+  })
 }
 
-export function download(filename: string, blob: any) {
-  let a = document.createElement("a")
+export function loadActiveConfigFilename(): Promise<{
+  configFileName: string | null
+}> {
+  return fetch("/api/getactiveconfigfilename").then((response) => {
+    if (!response.ok) {
+      throw Error(response.statusText)
+    }
+    return response.json()
+  })
+}
+
+export function download(filename: string, blob: Blob) {
+  const a = document.createElement("a")
   a.href = URL.createObjectURL(blob)
   a.download = filename
   a.hidden = true
@@ -89,10 +101,10 @@ export function download(filename: string, blob: any) {
 }
 
 export async function doUpload(
-    type: 'config' | 'coeff',
-    files: FileList,
-    onSuccess: (filesnames: string[]) => void,
-    onError: (message: string) => void
+  type: "config" | "coeff",
+  files: FileList,
+  onSuccess: (filesnames: string[]) => void,
+  onError: (message: string) => void,
 ) {
   const formData = new FormData()
   const uploadedFiles: string[] = []
@@ -104,27 +116,26 @@ export async function doUpload(
   try {
     await fetch(`/api/upload${type}s`, {
       method: "POST",
-      body: formData
+      body: formData,
     })
     onSuccess(uploadedFiles)
   } catch (e) {
-    let err = e as Error
+    const err = e as Error
     onError(err.message)
   }
 }
 
-export function fileStatusDesc(errors: [string[], string][]|null|undefined): string {
+export function fileStatusDesc(errors: [string[], string][] | null | undefined): string {
   if (errors === null || errors === undefined) {
     return "Config is valid."
-  }
-  else {
+  } else {
     let desc = "Errors:"
     for (const error of errors) {
-      let path = error[0].join('/')
+      let path = error[0].join("/")
       if (path) {
-        path = path + ' : '
+        path = path + " : "
       }
-      desc = desc + '<br>' + path + error[1]
+      desc = desc + "<br>" + path + error[1]
     }
     return desc
   }

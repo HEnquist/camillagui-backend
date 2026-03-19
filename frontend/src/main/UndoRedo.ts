@@ -1,7 +1,6 @@
-import {jsonDiff} from "../utilities/jsondiff"
+import { jsonUndoDiff } from "../utilities/jsondiff"
 
 export class UndoRedo<T> {
-
   private readonly currentItem: T
   private readonly undoItems: T[]
   private readonly redoItems: T[]
@@ -20,13 +19,13 @@ export class UndoRedo<T> {
 
   changeTo(item: T): UndoRedo<T> {
     return new UndoRedo<T>(
-        item,
-        this.currentItem === undefined ? this.undoItems : this.undoItems.concat(this.currentItem),
-        []
+      item,
+      this.currentItem === undefined ? this.undoItems : this.undoItems.concat(this.currentItem),
+      [],
     )
   }
 
-  current() : T {
+  current(): T {
     return this.currentItem
   }
 
@@ -39,16 +38,14 @@ export class UndoRedo<T> {
     const undoItems = this.undoItems
     const redoItems = this.redoItems
     return new UndoRedo<T>(
-        undoItems[undoItems.length-1],
-        undoItems.slice(0, undoItems.length-1),
-        currentItem === undefined ? redoItems : redoItems.concat(currentItem)
+      undoItems[undoItems.length - 1],
+      undoItems.slice(0, undoItems.length - 1),
+      currentItem === undefined ? redoItems : redoItems.concat(currentItem),
     )
   }
 
   undoDiff(): string {
-    return this.canUndo() ?
-        jsonDiff(this.undoItems[this.undoItems.length-1], this.currentItem)
-        : ""
+    return this.canUndo() ? jsonUndoDiff(this.undoItems[this.undoItems.length - 1], this.currentItem) : ""
   }
 
   canRedo(): boolean {
@@ -60,16 +57,13 @@ export class UndoRedo<T> {
     const undoItems = this.undoItems
     const redoItems = this.redoItems
     return new UndoRedo<T>(
-        redoItems[redoItems.length-1],
-        undoItems.concat(currentItem),
-        redoItems.slice(0, redoItems.length-1)
+      redoItems[redoItems.length - 1],
+      undoItems.concat(currentItem),
+      redoItems.slice(0, redoItems.length - 1),
     )
   }
 
   redoDiff(): string {
-    return this.canRedo() ?
-        jsonDiff(this.currentItem, this.redoItems[this.redoItems.length-1])
-        : ""
+    return this.canRedo() ? jsonUndoDiff(this.currentItem, this.redoItems[this.redoItems.length - 1]) : ""
   }
-
 }

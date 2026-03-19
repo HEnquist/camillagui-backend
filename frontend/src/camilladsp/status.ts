@@ -1,4 +1,4 @@
-import {Versions} from "./versions"
+import { Versions } from "./versions"
 
 export interface VuMeterStatus {
   capturesignalrms: number[]
@@ -7,13 +7,20 @@ export interface VuMeterStatus {
   playbacksignalpeak: number[]
 }
 
+export interface Labels {
+  capture: (string | null)[] | null
+  playback: (string | null)[] | null
+}
+
 export interface Status extends Versions, VuMeterStatus {
   cdsp_status: string
-  capturerate: number | ''
-  rateadjust: number | ''
-  bufferlevel: number | ''
-  clippedsamples: number | ''
-  processingload: number | ''
+  capturerate: number | ""
+  rateadjust: number | ""
+  bufferlevel: number | ""
+  clippedsamples: number | ""
+  processingload: number | ""
+  resamplerload: number | ""
+  labels: Labels
 }
 
 export function defaultStatus(): Status {
@@ -23,20 +30,22 @@ export function defaultStatus(): Status {
     capturesignalpeak: [],
     playbacksignalrms: [],
     playbacksignalpeak: [],
-    capturerate: '',
-    rateadjust: '',
-    bufferlevel: '',
-    clippedsamples: '',
-    processingload: '',
-    cdsp_version: '',
-    py_cdsp_version: '',
-    py_cdsp_plot_version: '',
-    backend_version: '',
+    capturerate: "",
+    rateadjust: "",
+    bufferlevel: "",
+    clippedsamples: "",
+    processingload: "",
+    resamplerload: "",
+    cdsp_version: "",
+    py_cdsp_version: "",
+    py_cdsp_plot_version: "",
+    backend_version: "",
+    labels: { playback: null, capture: null },
   }
 }
 
-const CDSP_OFFLINE = 'Offline'
-export const BACKEND_OFFLINE = 'Backend offline'
+const CDSP_OFFLINE = "Offline"
+export const BACKEND_OFFLINE = "Backend offline"
 export const OFFLINE_STATES = [BACKEND_OFFLINE, CDSP_OFFLINE]
 
 export function isCdspOnline(status: Status): boolean {
@@ -48,7 +57,6 @@ export function isBackendOnline(status: Status): boolean {
 }
 
 export class StatusPoller {
-
   private timerId: NodeJS.Timeout
   private readonly onUpdate: (status: Status) => void
   private lastLevelTime: number = 0
@@ -66,11 +74,11 @@ export class StatusPoller {
 
   private async updateStatus() {
     let status: Status
-    let now = Date.now();
-    let levelsSince = (now - this.lastLevelTime)/1000.0
+    const now = Date.now()
+    const levelsSince = (now - this.lastLevelTime) / 1000.0
     try {
-      status = await (await fetch("/api/status?since="+levelsSince)).json()
-    } catch (err) {
+      status = await (await fetch("/api/status?since=" + levelsSince)).json()
+    } catch {
       status = defaultStatus()
     }
     if (status.capturesignalpeak.length > 0 && status.playbacksignalpeak.length > 0) {
@@ -81,10 +89,10 @@ export class StatusPoller {
       this.lastLevelTime = now
     } else {
       if (levelsSince > 2.0) {
-        this.capturesignalpeak.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
-        this.capturesignalrms.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
-        this.playbacksignalpeak.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
-        this.playbacksignalrms.forEach((_level, index, levelArray) => levelArray[index] = -1000.0)
+        this.capturesignalpeak.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
+        this.capturesignalrms.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
+        this.playbacksignalpeak.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
+        this.playbacksignalrms.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
       }
       status.capturesignalpeak = this.capturesignalpeak
       status.capturesignalrms = this.capturesignalrms
@@ -102,6 +110,4 @@ export class StatusPoller {
   set_interval(interval: number) {
     this.update_interval = interval
   }
-
 }
-

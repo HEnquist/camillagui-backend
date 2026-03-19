@@ -280,10 +280,139 @@ div .popup-content {
   gap: 5px;
 }
 
+
+
 .vertically-spaced-content {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+
+.centered-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.diff-table {
+  border-collapse: collapse;
+  min-width: 30vw;
+}
+
+.diff-table > td {
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.diff-cell {
+  text-align: left;
+  border: var(--box-border);
+  border-collapse: collapse;
+  padding: 5px;
+}
+
+.diff-filename {
+  text-align: center;
+  border-collapse: collapse;
+  padding: 5px;
+}
+
+.diff-section-header {
+  text-align: left;
+  border-collapse: collapse;
+  font-weight: bold;
+  padding: 20px 5px 5px 5px;
+}
+
+.diff-comment {
+  text-align: center;
+  border-collapse: collapse;
+  padding: 5px 5px 5px 5px;
+}
+
+.mixer-table {
+  border-collapse: collapse;
+}
+
+.mixer-table > td {
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.matrix-cell {
+  text-align: center;
+  border: var(--box-border);
+  border-collapse: collapse;
+}
+
+.centered {
+  text-align: center;
+}
+
+.centered-button {
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.centered-button-disabled {
+  text-align: center;
+  user-select: none;
+  color: var(--disabled-text-color);
+}
+
+.vertical-matrix-cell2 {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+.vertical-matrix-cell {
+  text-align: center;
+  display: block;
+  transform: rotate(270deg);
+}
+
+.mapping-cell {
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  color: black;
+  font-size: small;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mapping-cell-empty {
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  color: var(--text-color);
+  font-size: small;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.strikediag {
+  background: linear-gradient(to left top, transparent 47.75%, currentColor 49.5%, currentColor 50.5%, transparent 52.25%);
+}
+
+.rotate {
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  width: 1.5em;
+}
+.rotate div {
+  writing-mode:vertical-lr;
+  transform: rotate(180deg);
 }
 
 .two-column-grid {
@@ -332,6 +461,27 @@ div .popup-content {
 
 .button-with-text {
   padding: 3px 6px;
+}
+
+.bypass-toggle-button {
+  display: inline-grid;
+  place-items: center;
+  white-space: nowrap;
+}
+
+.bypass-toggle-button .button-text {
+  grid-area: 1 / 1;
+}
+
+.bypass-toggle-button::after {
+  content: "Bypassed";
+  grid-area: 1 / 1;
+  font-style: italic;
+  visibility: hidden;
+}
+
+.bypass-toggle-button-bypassed {
+  font-style: italic;
 }
 
 .button-with-icon {
@@ -386,7 +536,7 @@ div .popup-content {
   display: inline-block;
   width: 7ch;
   text-align: right;
-  margin-left: 5px;
+  margin-left: 0px;
 }
 
 .db-label-muted {
@@ -395,7 +545,7 @@ div .popup-content {
   display: inline-block;
   width: 7ch;
   text-align: right;
-  margin-left: 5px;
+  margin-left: 0px;
   color: var(--neutral-text-color);
   font-style: italic;
 }

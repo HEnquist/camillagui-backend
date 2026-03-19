@@ -18,6 +18,6 @@ export function moveItemDown<T>(array: T[], index: number) {
 
 export function toMap<T extends string>(array: T[]): { [key: string]: T } {
   const map: { [key: string]: T } = {}
-  array.forEach(value => map[value] = value)
+  array.forEach((value) => (map[value] = value))
   return map
 }

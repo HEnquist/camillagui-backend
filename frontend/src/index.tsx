@@ -1,34 +1,34 @@
 /* The CSS files have to be imported in exactly this order.
    Otherwise the custom react-tabs styles in index.css don't work */
 import "react-tabs/style/react-tabs.css"
-import 'react-tooltip/dist/react-tooltip.css'
+import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import {createRoot} from 'react-dom/client'
+import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall } from "@mdi/js"
+import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
-import {FiltersTab} from "./filterstab"
-import {DevicesTab} from "./devicestab"
-import {MixersTab} from "./mixerstab"
-import {ProcessorsTab} from "./processorstab"
-import {PipelineTab} from "./pipeline/pipelinetab"
-import {TitleTab} from "./titletab"
-import {Shortcuts} from "./shortcuts"
-import {Errors, NoErrors} from "./utilities/errors"
-import {Tab, TabList, TabPanel, Tabs} from "react-tabs"
-import {Tooltip} from 'react-tooltip'
-import {Files} from "./filestab"
-import {Config, defaultConfig, getCaptureDeviceChannelCount} from "./camilladsp/config"
-import {defaultGuiConfig, GuiConfig} from "./guiconfig"
-import {delayedExecutor, MdiButton, MdiIcon} from "./utilities/ui-components"
-import {cloneDeep} from "lodash"
-import {mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall} from "@mdi/js"
-import {SidePanel} from "./sidepanel/sidepanel"
-import {Update} from "./utilities/common"
-import {CompactView, isCompactViewEnabled, setCompactViewEnabled} from "./compactview"
-import {UndoRedo} from "./main/UndoRedo"
-import {loadActiveConfig} from "./utilities/files"
-import { createTheme } from 'react-data-table-component'
+import { createTheme } from "react-data-table-component"
+import { createRoot } from "react-dom/client"
+import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
+import { Tooltip } from "react-tooltip"
+import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
+import { CompactView, isCompactViewEnabled, setCompactViewEnabled } from "./compactview"
+import { DevicesTab } from "./devicestab"
+import { Files } from "./filestab"
+import { FiltersTab } from "./filterstab"
+import { defaultGuiConfig, GuiConfig } from "./guiconfig"
+import { UndoRedo } from "./main/UndoRedo"
+import { MixersTab } from "./mixerstab"
+import { PipelineTab } from "./pipeline/pipelinetab"
+import { ProcessorsTab } from "./processorstab"
+import { Shortcuts } from "./shortcuts"
+import { SidePanel } from "./sidepanel/sidepanel"
+import { TitleTab } from "./titletab"
+import { Update } from "./utilities/common"
+import { Errors, NoErrors } from "./utilities/errors"
+import { loadStartupConfig } from "./utilities/files"
+import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -44,7 +44,6 @@ class CamillaConfig extends React.Component<
     unappliedChanges: boolean
   }
 > {
-
   constructor(props: unknown) {
     super(props)
     this.updateConfig = this.updateConfig.bind(this)
@@ -66,53 +65,71 @@ class CamillaConfig extends React.Component<
       undoRedo: new UndoRedo(defaultConfig()),
       errors: NoErrors,
       compactView: isCompactViewEnabled(),
-      message: '',
+      message: "",
       unsavedChanges: false,
       unappliedChanges: true,
     }
     this.loadGuiConfig()
-    this.loadCurrentConfig()
+    this.loadConfigAtStart()
     createTheme(
-      'camilla',
+      "camilla",
       {
-          text: {
-              primary: 'var(--text-color)',
-              secondary: 'var(--text-color)',
-          },
-          background: {
-              default: 'var(--background-color)',
-          },
-          context: {
-              background: '#cb4b16',
-              text: '#FFFFFF',
-          },
-          divider: {
-              default: 'var(--box-border-color)',
-          },
-          highlightOnHover: {
-              default: 'var(--active-button-background-color)'
-          },
-          sortFocus: {
-              default: 'var(--success-text-color)',
-          },
+        text: {
+          primary: "var(--text-color)",
+          secondary: "var(--text-color)",
+        },
+        background: {
+          default: "var(--background-color)",
+        },
+        context: {
+          background: "#cb4b16",
+          text: "#FFFFFF",
+        },
+        divider: {
+          default: "var(--box-border-color)",
+        },
+        highlightOnHover: {
+          default: "var(--active-button-background-color)",
+        },
+        sortFocus: {
+          default: "var(--success-text-color)",
+        },
       },
-      'dark',
-  )
+      "dark",
+    )
   }
 
   private async loadGuiConfig() {
     fetch("/api/guiconfig")
-        .then(data => data.json(), err => {console.log('Failed to fetch guiconfig', err)})
-        .then(json => this.setState({guiConfig: json}), err => {console.log('Failed to parse guiconfig as json', err)})
+      .then(
+        (data) => data.json(),
+        (err) => {
+          console.log("Failed to fetch guiconfig", err)
+        },
+      )
+      .then(
+        (json) => this.setState({ guiConfig: json }),
+        (err) => {
+          console.log("Failed to parse guiconfig as json", err)
+        },
+      )
   }
 
-  private async loadCurrentConfig() {
+  private async loadConfigAtStart() {
     try {
-      const json = await loadActiveConfig()
-      this.setCurrentConfig(json.configFileName, json.config)
-      this.setState({message: 'OK'})
-    }
-    catch(err) {
+      const json = await loadStartupConfig()
+      this.setCurrentConfig(json.configFileName ? json.configFileName : undefined, json.config)
+      let message = ""
+      if (json.source === "dsp") {
+        message = "Loaded from DSP"
+      } else if (json.source === "active") {
+        message = "Loaded active"
+      } else if (json.source === "default") {
+        message = "Loaded default"
+      }
+
+      this.setState({ message: message })
+    } catch (err) {
       console.log("Failed getting active config:", err)
     }
   }
@@ -121,86 +138,89 @@ class CamillaConfig extends React.Component<
     const conf_req = await fetch("/api/getconfig")
     if (!conf_req.ok) {
       const errorMessage = await conf_req.text()
-      this.setState({message: errorMessage})
+      this.setState({ message: errorMessage })
       throw new Error(errorMessage)
     }
     const config = await conf_req.json()
     if (config)
-      this.setState({unsavedChanges: false, unappliedChanges: false, message: "OK", undoRedo: new UndoRedo(config)})
-    else
-      this.setState({message: "No config received"})
+      this.setState({
+        unsavedChanges: false,
+        unappliedChanges: false,
+        message: "OK",
+        undoRedo: new UndoRedo(config),
+      })
+    else this.setState({ message: "No config received" })
   }
 
   private setCompactViewEnabled(enabled: boolean) {
     setCompactViewEnabled(enabled)
-    this.setState({compactView: enabled})
+    this.setState({ compactView: enabled })
   }
 
   private saveNotify() {
-    this.setState({unsavedChanges: false})
+    this.setState({ unsavedChanges: false })
   }
 
   private applyNotify() {
-    this.setState({unappliedChanges: false})
+    this.setState({ unappliedChanges: false })
   }
 
   private readonly saveTimer = delayedExecutor(100)
 
   private updateConfig(update: Update<Config>, saveAfterDelay: boolean = false) {
     this.setState(
-        prevState => {
-          const newConfig = cloneDeep(prevState.undoRedo.current())
-          update(newConfig)
-          let unsavedChanges = true
-          let unappliedChanges = true
-          if (isEqual(newConfig, prevState.undoRedo.current())) {
-            unsavedChanges = prevState.unsavedChanges
-            unappliedChanges = prevState.unappliedChanges
-          }
-          return {unsavedChanges: unsavedChanges, unappliedChanges: unappliedChanges, undoRedo: prevState.undoRedo.changeTo(newConfig)}
-        },
-        () => {
-          if (saveAfterDelay)
-            this.saveTimer(this.applyConfig)
-        })
+      (prevState) => {
+        const newConfig = cloneDeep(prevState.undoRedo.current())
+        update(newConfig)
+        let unsavedChanges = true
+        let unappliedChanges = true
+        if (isEqual(newConfig, prevState.undoRedo.current())) {
+          unsavedChanges = prevState.unsavedChanges
+          unappliedChanges = prevState.unappliedChanges
+        }
+        return {
+          unsavedChanges: unsavedChanges,
+          unappliedChanges: unappliedChanges,
+          undoRedo: prevState.undoRedo.changeTo(newConfig),
+        }
+      },
+      () => {
+        if (saveAfterDelay) this.saveTimer(this.applyConfig)
+      },
+    )
   }
 
   private async applyConfig(): Promise<void> {
-    this.applyConfigRequest(
-      this.state.currentConfigFile,
-      this.state.undoRedo.current()
-    )
+    this.applyConfigRequest(this.state.currentConfigFile, this.state.undoRedo.current())
   }
 
   private async applyConfigRequest(filename: string | undefined, config: Config): Promise<void> {
     const conf_req = await fetch("/api/setconfig", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         filename: filename,
-        config: config
+        config: config,
       }),
     })
     const message = await conf_req.text()
-    this.setState({message: message, unappliedChanges: false})
-    if (!conf_req.ok)
-      throw new Error(message)
+    this.setState({ message: message, unappliedChanges: false })
+    if (!conf_req.ok) throw new Error(message)
   }
 
   private async saveConfig() {
     if (this.state.currentConfigFile) {
       const conf_req = await fetch("/api/saveconfigfile", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filename: this.state.currentConfigFile,
-          config: this.state.undoRedo.current()
+          config: this.state.undoRedo.current(),
         }),
       })
       const message = await conf_req.text()
-      this.setState({message: message, unsavedChanges: false})
-      if (!conf_req.ok)
-        throw new Error(message)
+      this.setState({ message: message, unsavedChanges: false })
+      if (!conf_req.ok) throw new Error(message)
     }
   }
 
@@ -212,9 +232,9 @@ class CamillaConfig extends React.Component<
   private setCurrentConfig(filename: string | undefined, config: Config) {
     this.setState({
       unsavedChanges: false,
-      unappliedChanges: true, 
+      unappliedChanges: true,
       currentConfigFile: filename,
-      undoRedo: new UndoRedo(config)
+      undoRedo: new UndoRedo(config),
     })
   }
 
@@ -224,43 +244,52 @@ class CamillaConfig extends React.Component<
     })
   }
 
-  private setErrors(errors: any) {
-    this.setState({errors: errors})
+  private setErrors(errors: Errors) {
+    this.setState({ errors: errors })
   }
 
-  componentDidUpdate(prevProps: unknown) {
+  componentDidUpdate() {
     //ReactTooltip.rebuild()
+    document.title = this.state.guiConfig.page_title
+  }
+
+  componentDidMount() {
+    document.title = this.state.guiConfig.page_title
   }
 
   private switchTab(index: number) {
-    this.setState({activetab: index})
+    this.setState({ activetab: index })
   }
 
   render() {
-    return <div className="configapp">
-      <Tooltip id="main-tooltip" className="tooltip"/>
-      {this.state.compactView ?
+    return (
+      <div className="configapp">
+        <Tooltip id="main-tooltip" className="tooltip" />
+        {this.state.compactView ? (
           <CompactView
-              currentConfigName={this.state.currentConfigFile}
-              config={this.state.undoRedo.current()}
-              setConfig={(filename, config) => {
-                this.setCurrentConfig(filename, config)
-                this.applyConfigRequest(filename, config)
-              }}
-              updateConfig={update => this.updateConfig(update, true)}
-              disableCompactView={() => this.setCompactViewEnabled(false)}
-              guiConfig={this.state.guiConfig}
+            currentConfigName={this.state.currentConfigFile}
+            config={this.state.undoRedo.current()}
+            setConfig={(filename, config) => {
+              this.setCurrentConfig(filename, config)
+              this.applyConfigRequest(filename, config)
+            }}
+            updateConfig={(update) => this.updateConfig(update, true)}
+            disableCompactView={() => this.setCompactViewEnabled(false)}
+            guiConfig={this.state.guiConfig}
           />
-          : <this.NormalContent/>
-      }
-    </div>
+        ) : (
+          <this.NormalContent />
+        )}
+      </div>
+    )
   }
 
   private NormalContent() {
-    const {errors, undoRedo, currentConfigFile} = this.state
+    const { errors, undoRedo, currentConfigFile } = this.state
     const config = undoRedo.current()
-    return <>
-      <SidePanel
+    return (
+      <>
+        <SidePanel
           currentConfigFile={currentConfigFile}
           config={config}
           guiConfig={this.state.guiConfig}
@@ -272,90 +301,85 @@ class CamillaConfig extends React.Component<
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
-      />
-      <Tabs
-          className="configtabs"
-          selectedIndex={this.state.activetab}
-          onSelect={this.switchTab}
-      >
-        <TabList>
-          <Tab disabled={true}>
-            <MdiButton
+        />
+        <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab}>
+          <TabList>
+            <Tab disabled={true}>
+              <MdiButton
                 icon={mdiImageSizeSelectSmall}
                 tooltip="Change to compact view"
                 onClick={() => this.setCompactViewEnabled(true)}
-                buttonSize="tiny"/>
-            <MdiButton
+                buttonSize="tiny"
+              />
+              <MdiButton
                 icon={mdiArrowULeftTop}
                 tooltip={"Undo last change<br>" + undoRedo.undoDiff()}
                 buttonSize="tiny"
-                style={{marginLeft: '10px', marginRight: '10px'}}
-                onClick={() => this.setState(prevState => ({undoRedo: prevState.undoRedo.undo()}))}
-                enabled={undoRedo.canUndo()}/>
-            <MdiButton
+                style={{
+                  marginLeft: "10px",
+                  marginRight: "10px",
+                }}
+                onClick={() =>
+                  this.setState((prevState) => ({
+                    undoRedo: prevState.undoRedo.undo(),
+                  }))
+                }
+                enabled={undoRedo.canUndo()}
+              />
+              <MdiButton
                 icon={mdiArrowURightTop}
                 tooltip={"Redo last change<br>" + undoRedo.redoDiff()}
                 buttonSize="tiny"
-                onClick={() => this.setState(prevState => ({undoRedo: prevState.undoRedo.redo()}))}
-                enabled={undoRedo.canRedo()}/>
-          </Tab>
-          <Tab>Title</Tab>
-          <Tab>Devices {errors.hasErrorsFor('devices') && <ErrorIcon/>}</Tab>
-          <Tab>Filters {errors.hasErrorsFor('filters') && <ErrorIcon/>}</Tab>
-          <Tab>Mixers {errors.hasErrorsFor('mixers') && <ErrorIcon/>}</Tab>
-          <Tab>Processors {errors.hasErrorsFor('processors') && <ErrorIcon/>}</Tab>
-          <Tab>Pipeline {errors.hasErrorsFor('pipeline') && <ErrorIcon/>}</Tab>
-          <Tab>Files</Tab>
-          <Tab>Shortcuts</Tab>
-        </TabList>
-        <TabPanel/>
-        <TabPanel>
-          <TitleTab
-              config={config}
-              updateConfig={this.updateConfig}
-          />
-        </TabPanel>
-        <TabPanel>
-          <DevicesTab
+                onClick={() =>
+                  this.setState((prevState) => ({
+                    undoRedo: prevState.undoRedo.redo(),
+                  }))
+                }
+                enabled={undoRedo.canRedo()}
+              />
+            </Tab>
+            <Tab>Title</Tab>
+            <Tab>Devices {errors.hasErrorsFor("devices") && <ErrorIcon />}</Tab>
+            <Tab>Filters {errors.hasErrorsFor("filters") && <ErrorIcon />}</Tab>
+            <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
+            <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
+            <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
+            <Tab>Files</Tab>
+            <Tab>Shortcuts</Tab>
+          </TabList>
+          <TabPanel />
+          <TabPanel>
+            <TitleTab config={config} updateConfig={this.updateConfig} />
+          </TabPanel>
+          <TabPanel>
+            <DevicesTab
               devices={config.devices}
               guiConfig={this.state.guiConfig}
               updateConfig={this.updateConfig}
-              errors={errors.forSubpath('devices')}
-          />
-        </TabPanel>
-        <TabPanel>
-          <FiltersTab
+              errors={errors.forSubpath("devices")}
+            />
+          </TabPanel>
+          <TabPanel>
+            <FiltersTab
               config={config}
               samplerate={config.devices.samplerate}
               channels={getCaptureDeviceChannelCount(config.devices.capture)}
               coeffDir={this.state.guiConfig.coeff_dir}
               updateConfig={this.updateConfig}
-              errors={errors.forSubpath('filters')}
-          />
-        </TabPanel>
-        <TabPanel>
-          <MixersTab
-              config={config}
-              updateConfig={this.updateConfig}
-              errors={errors.forSubpath('mixers')}
-          />
-        </TabPanel>
-        <TabPanel>
-          <ProcessorsTab
-              config={config}
-              updateConfig={this.updateConfig}
-              errors={errors.forSubpath('processors')}
-          />
-        </TabPanel>
-        <TabPanel>
-          <PipelineTab
-              config={config}
-              updateConfig={this.updateConfig}
-              errors={errors.forSubpath('pipeline')}
-          />
-        </TabPanel>
-        <TabPanel>
-          <Files
+              errors={errors.forSubpath("filters")}
+            />
+          </TabPanel>
+          <TabPanel>
+            <MixersTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("mixers")} />
+          </TabPanel>
+          <TabPanel>
+            <ProcessorsTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("processors")} />
+          </TabPanel>
+          <TabPanel>
+            <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
+          </TabPanel>
+          <TabPanel>
+            <Files
               currentConfigFile={currentConfigFile}
               config={config}
               setCurrentConfig={this.setCurrentConfig}
@@ -363,32 +387,30 @@ class CamillaConfig extends React.Component<
               updateConfig={this.updateConfig}
               saveNotify={this.saveNotify}
               guiConfig={this.state.guiConfig}
-          />
-        </TabPanel>
-        <TabPanel>
-          <Shortcuts
+            />
+          </TabPanel>
+          <TabPanel>
+            <Shortcuts
               currentConfigName={currentConfigFile}
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)
                 this.applyConfigRequest(filename, config)
               }}
-              updateConfig={update => this.updateConfig(update, true)}
+              updateConfig={(update) => this.updateConfig(update, true)}
               shortcutSections={this.state.guiConfig.custom_shortcuts}
-          />
-        </TabPanel>
-      </Tabs>
-    </>
+            />
+          </TabPanel>
+        </Tabs>
+      </>
+    )
   }
 }
 
 function ErrorIcon() {
-  return <MdiIcon
-      icon={mdiAlert}
-      tooltip="There are errors on this tab"
-      style={{color: 'var(--error-text-color)'}}/>
+  return <MdiIcon icon={mdiAlert} tooltip="There are errors on this tab" style={{ color: "var(--error-text-color)" }} />
 }
 
-const container = document.getElementById('root')
+const container = document.getElementById("root")
 const root = createRoot(container!)
-root.render(<CamillaConfig/>)
+root.render(<CamillaConfig />)

@@ -1,6 +1,6 @@
 {
   "name": "camillagui",
-  "version": "3.0.3",
+  "version": "4.0.0",
   "private": true,
   "homepage": ".",
   "type": "module",
@@ -11,7 +11,6 @@
     "chart.js": "^3.9.1",
     "chartjs-plugin-zoom": "^1.2.1",
     "d3": "^7.6.1",
-    "eslint": "^8.57.1",
     "immutable": "^4.1.0",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
@@ -26,14 +25,19 @@
     "reactjs-popup": "^2.0.5",
     "rfc6902": "^5.1.2",
     "vite": "^5.4.6",
-    "vite-tsconfig-paths": "^5.0.1"
+    "vite-tsconfig-paths": "^5.0.1",
+    "yaml": "^2.8.1"
   },
   "scripts": {
     "dev": "vite",
+    "check": "tsc --noEmit",
     "build": "tsc && vite build",
     "serve": "vite preview",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage --watch=false"
+    "test:coverage": "vitest run --coverage --watch=false",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --cache",
+    "lint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -51,13 +55,24 @@
     ]
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.1",
     "@types/d3": "^7.4.0",
     "@types/lodash": "^4.17.7",
     "@types/node": "^22.13.4",
     "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
     "@vitest/coverage-v8": "^2.1.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^25.0.0",
     "lodash": "^4.17.21",
+    "prettier": "^3.7.4",
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
   }
