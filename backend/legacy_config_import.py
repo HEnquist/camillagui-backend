@@ -344,7 +344,7 @@ def _look_for_v3_sample_formats(config):
                 return True
     if "filters" in config:
         for _name, filt in config["filters"].items():
-            if filt["type"] == "Conv":
+            if filt["type"] == "Conv" and "format" in filt["parameters"]:
                 if filt["parameters"]["format"] in V3_SAMPLE_FORMATS:
                     return True
     return False
