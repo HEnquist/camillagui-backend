@@ -250,7 +250,7 @@ async def test_startup_config_online(server):
     print(content)
     assert content["config"]["devices"]["samplerate"] == 44100
     assert content["source"] == "dsp"
-    assert "configFileName" not in content
+    assert content["configFileName"] == "config.yml"
 
 
 async def test_startup_config_offline(offline_server):

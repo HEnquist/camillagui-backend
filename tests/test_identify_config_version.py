@@ -187,3 +187,45 @@ def test_identify_v3(config_v3):
 
 def test_identify_v4(config_v4):
     assert identify_version(config_v4) == 4
+
+
+def test_look_for_helpers_with_null_optional_sections():
+    config = {
+        "devices": {
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16_LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S32_LE"},
+        },
+        "filters": None,
+        "pipeline": None,
+        "mixers": None,
+        "processors": None,
+    }
+
+    assert _look_for_v1_volume(config) is False
+    assert _look_for_v1_loudness(config) is False
+    assert _look_for_v1_resampler(config) is False
+    assert _look_for_v1_devices(config) is False
+    assert _look_for_v1_dither(config) is False
+    assert _look_for_v2_devices(config) is False
+    assert _look_for_v2_pipeline(config) is False
+    assert _look_for_v3_mixer(config) is False
+    assert _look_for_v3_sample_formats(config) is False
+
+
+def test_look_for_helpers_with_missing_optional_sections():
+    config = {
+        "devices": {
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16_LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S32_LE"},
+        }
+    }
+
+    assert _look_for_v1_volume(config) is False
+    assert _look_for_v1_loudness(config) is False
+    assert _look_for_v1_resampler(config) is False
+    assert _look_for_v1_devices(config) is False
+    assert _look_for_v1_dither(config) is False
+    assert _look_for_v2_devices(config) is False
+    assert _look_for_v2_pipeline(config) is False
+    assert _look_for_v3_mixer(config) is False
+    assert _look_for_v3_sample_formats(config) is False
