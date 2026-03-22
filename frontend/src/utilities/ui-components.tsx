@@ -839,10 +839,7 @@ export function OptionalBoolOption(props: {
   )
 }
 
-export function BypassOption(props: {
-  value: boolean | null
-  onChange: (value: boolean | null) => void
-}) {
+export function BypassOption(props: { value: boolean | null; onChange: (value: boolean | null) => void }) {
   const bypassed = props.value === true
   const buttonText = bypassed ? "Bypassed" : "Active"
   const buttonTooltip = bypassed
@@ -854,9 +851,7 @@ export function BypassOption(props: {
       tooltip={buttonTooltip}
       onClick={() => props.onChange(bypassed ? false : true)}
       highlighted={!bypassed}
-      className={
-        "bypass-toggle-button" + (bypassed ? " bypass-toggle-button-bypassed" : "")
-      }
+      className={"bypass-toggle-button" + (bypassed ? " bypass-toggle-button-bypassed" : "")}
     />
   )
 }

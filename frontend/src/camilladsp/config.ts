@@ -1108,7 +1108,7 @@ export type ConvBinaryFormat =
   | "F64_LE"
   | "TEXT"
 
-export type AlsaFormat = null | "S16_LE" | "S24_3_LE" | "S24_4_RJ_LE" | "S32_LE" | "F32_LE" | "F64_LE"
+export type AlsaFormat = null | "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"
 
 export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32"
 
@@ -1210,8 +1210,8 @@ export const AlsaFormatOptions: { value: AlsaFormat; label: string }[] = [
     label: "S24_3_LE : 24 bit integer, packed, little-endian",
   },
   {
-    value: "S24_4_RJ_LE",
-    label: "S24_4_RJ_LE : 24 bit integer, padded right justified, little-endian",
+    value: "S24_4_LE",
+    label: "S24_4_LE : 24 bit integer, padded right justified, little-endian",
   },
   {
     value: "S32_LE",
