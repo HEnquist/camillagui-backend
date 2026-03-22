@@ -419,9 +419,18 @@ async def get_config_at_gui_start(request):
         except Exception:
             pass
     if dsp_config is not None:
-        return web.json_response(
-            {"config": dsp_config, "source": "dsp"}, headers=HEADERS
-        )
+        config_file_name = get_active_config_path(request)
+        if not config_file_name:
+            try:
+                full_path = cdsp.config.file_path()
+                if full_path:
+                    config_file_name = full_path.rsplit("/", 1)[-1]
+            except Exception:
+                pass
+        data = {"config": dsp_config, "source": "dsp"}
+        if config_file_name:
+            data["configFileName"] = config_file_name
+        return web.json_response(data, headers=HEADERS)
 
     # get from file
     active_config_path = get_active_config_path(request)
