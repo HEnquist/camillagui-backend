@@ -342,7 +342,7 @@ def _look_for_v3_sample_formats(config):
             if device["type"] == "Pulse" and "format" in device:
                 # Format selection was removed from the Pulse backend
                 return True
-    if "filters" in config:
+    if "filters" in config and isinstance(config["filters"], dict):
         for _name, filt in config["filters"].items():
             if filt["type"] == "Conv" and "format" in filt["parameters"]:
                 if filt["parameters"]["format"] in V3_SAMPLE_FORMATS:
