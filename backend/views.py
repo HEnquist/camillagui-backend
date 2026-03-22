@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 import traceback
-from os.path import expanduser, isfile, join
+from os.path import basename, expanduser, isfile, join
 
 import yaml
 from aiohttp import web
@@ -424,7 +424,7 @@ async def get_config_at_gui_start(request):
             try:
                 full_path = cdsp.config.file_path()
                 if full_path:
-                    config_file_name = full_path.rsplit("/", 1)[-1]
+                    config_file_name = basename(full_path)
             except Exception:
                 pass
         data = {"config": dsp_config, "source": "dsp"}
