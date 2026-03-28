@@ -11,7 +11,7 @@
     "chart.js": "^3.9.1",
     "chartjs-plugin-zoom": "^1.2.1",
     "d3": "^7.6.1",
-    "immutable": "^4.1.0",
+    "immutable": "^4.3.8",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
     "react": "^18.2.0",
@@ -26,7 +26,7 @@
     "rfc6902": "^5.1.2",
     "vite": "^5.4.6",
     "vite-tsconfig-paths": "^5.0.1",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.3"
   },
   "scripts": {
     "dev": "vite",
@@ -71,7 +71,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^25.0.0",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "prettier": "^3.7.4",
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
