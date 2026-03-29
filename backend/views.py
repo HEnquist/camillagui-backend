@@ -549,6 +549,15 @@ async def get_config_file(request):
     """
     Read and return a config file. Takes a filename and tries to load the file from config_dir.
     """
+
+    def _format_validation_issues(issues):
+        details = []
+        for issue in issues:
+            path, message = issue[0], issue[1]
+            location = "/".join(path) if path else "config"
+            details.append(f"- {location}: {message}")
+        return "\n".join(details)
+
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
     migrate = str(request.query.get("migrate", "")).lower() in (
@@ -563,7 +572,7 @@ async def get_config_file(request):
                 config_object = yaml.safe_load(config_data)
             if not isinstance(config_object, dict):
                 raise web.HTTPBadRequest(
-                    text="Automatic migration failed, this does not appear to be a valid YAML config.",
+                    text="Migration failed: input is not a valid CamillaDSP config object.",
                     headers=HEADERS,
                 )
             migrate_legacy_config(config_object)
@@ -572,10 +581,15 @@ async def get_config_file(request):
             validator = request.app["VALIDATOR"]
             config_abs = make_config_filter_paths_absolute(config_object, config_dir)
             validator.validate_config(config_abs)
-            errors = validator.get_errors()
-            if len(errors) > 0:
+            issues = validator.get_errors()
+            blocking_errors = [issue for issue in issues if issue[2] == "error"]
+            if len(blocking_errors) > 0:
+                details = _format_validation_issues(blocking_errors)
                 raise web.HTTPBadRequest(
-                    text="Automatic migration failed to produce a valid config. Please try Import config instead.",
+                    text=(
+                        "Migration failed: migrated config validation reported problems:\n"
+                        + details
+                    ),
                     headers=HEADERS,
                 )
         else:
