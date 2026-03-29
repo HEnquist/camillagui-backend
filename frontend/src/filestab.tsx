@@ -240,11 +240,11 @@ class FileTable extends Component<
     } catch (e) {
       const error = e as Error
       if (migrateLegacyConfig) {
-        this.showErrorMessage(
-          name,
-          "load",
-          `${error.message}<br>Please try using the Import config functionality instead.`,
-        )
+        const importHint = "Please try using the Import config functionality instead."
+        const message = error.message.toLowerCase().includes("import config")
+          ? error.message
+          : `${error.message} ${importHint}`
+        this.showErrorMessage(name, "load", message)
       } else {
         this.showErrorMessage(name, "load", error.message)
       }
@@ -548,7 +548,7 @@ class FileTable extends Component<
         name: "Valid",
         cell: (row: FileInfo) => (
           <div data-tooltip-html={fileStatusDesc(row.errors)} data-tooltip-id="main-tooltip">
-            {row.valid === true ? (hasWarningIssues(row.errors) ? "⚠️" : "✔️") : "❌"}
+            {row.valid === true ? (hasWarningIssues(row.errors) ? "❗" : "✔️") : "❌"}
           </div>
         ),
         sortFunction: fileValidSort,
@@ -850,13 +850,13 @@ function LoadButton(props: {
   }
 
   let disabledReason = ""
-  let tooltipAction = `Open in GUI from ${filename}`
+  let tooltipAction = `Load "${filename}" into the GUI.`
   let enabled = false
   if (isLatestVersion && valid) {
     enabled = true
   } else if (isOlderVersion) {
     enabled = true
-    tooltipAction = `Load into GUI from ${filename} (with automatic migration)`
+    tooltipAction = `Load "${filename}" into the GUI with automatic migration.`
   } else if (isFutureVersion) {
     disabledReason =
       "<br>Disabled because this config file was made for a newer CamillaDSP version than this GUI supports."
