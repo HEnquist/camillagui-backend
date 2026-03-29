@@ -189,6 +189,15 @@ def test_identify_v4(config_v4):
     assert identify_version(config_v4) == 4
 
 
+def test_identify_non_mapping_returns_none():
+    assert identify_version("not a config mapping") is None
+    assert identify_version(["not", "a", "mapping"]) is None
+
+
+def test_identify_mapping_failing_sections_schema_returns_none():
+    assert identify_version({"title": "not a camilladsp config"}) is None
+
+
 def test_look_for_helpers_with_null_optional_sections():
     config = {
         "devices": {

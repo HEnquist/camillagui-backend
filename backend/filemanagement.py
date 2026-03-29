@@ -103,23 +103,44 @@ def _get_title_and_desc(filepath, file_data, folder, validator=None):
     with open(filepath, encoding="utf-8") as f:
         try:
             parsed = yaml.safe_load(f)
+            if not isinstance(parsed, dict):
+                file_data["errors"] = [
+                    (
+                        [],
+                        "This does not appear to be a CamillaDSP config file.",
+                        "error",
+                    )
+                ]
+                return
             file_data["title"] = parsed.get("title")
             file_data["description"] = parsed.get("description")
             file_data["version"] = identify_version(parsed)
-            if file_data["version"] == CURRENT_VERSION and validator is not None:
+            if file_data["version"] is None:
+                file_data["errors"] = [
+                    (
+                        [],
+                        "This does not appear to be a CamillaDSP config file.",
+                        "error",
+                    )
+                ]
+            elif file_data["version"] == CURRENT_VERSION and validator is not None:
                 parsed_abs = make_config_filter_paths_absolute(parsed, folder)
                 validator.validate_config(parsed_abs)
-                error_list = validator.get_errors()
-                if len(error_list) > 0:
-                    file_data["errors"] = error_list
+                issue_list = validator.get_errors()
+                blocking_errors = [issue for issue in issue_list if issue[2] == "error"]
+                if len(blocking_errors) > 0:
+                    file_data["errors"] = issue_list
                 else:
                     file_data["valid"] = True
+                    if len(issue_list) > 0:
+                        file_data["errors"] = issue_list
             elif file_data["version"] < CURRENT_VERSION:
                 file_data["valid"] = False
                 file_data["errors"] = [
                     (
                         [],
                         f"This config is made for the previous version {file_data['version']} of CamillaDSP.",
+                        "error",
                     )
                 ]
         except yaml.YAMLError as e:
@@ -128,11 +149,13 @@ def _get_title_and_desc(filepath, file_data, folder, validator=None):
                 errordesc = f"This file has a YAML syntax error on line: {mark.line + 1}, column: {mark.column + 1}"
             else:
                 errordesc = "This config file has a YAML syntax error."
-            file_data["errors"] = [([], errordesc)]
+            file_data["errors"] = [([], errordesc, "error")]
         except (AttributeError, UnicodeDecodeError):
-            file_data["errors"] = [([], "This does not appear to be a YAML file.")]
+            file_data["errors"] = [
+                ([], "This does not appear to be a YAML file.", "error")
+            ]
         except Exception as e:
-            file_data["errors"] = [([], f"Error: {e}")]
+            file_data["errors"] = [([], f"Error: {e}", "error")]
 
 
 def _get_file_data(folder, file, file_stats=True, title_and_desc=False, validator=None):
