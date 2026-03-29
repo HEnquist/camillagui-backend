@@ -6,7 +6,7 @@ import { cloneDeep } from "lodash"
 import DataTable, { TableColumn } from "react-data-table-component"
 import ReactjsPopup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
-import { FileInfo } from "./files"
+import { FileInfo, issueSeverity } from "./files"
 import { getLabelForChannel } from "../camilladsp/config"
 
 export function cssStyles(): CSSStyleDeclaration {
@@ -1177,12 +1177,24 @@ export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
 }
 
 export const fileValidSort = (rowA: FileInfo, rowB: FileInfo) => {
-  const a = rowA.valid === true
-  const b = rowB.valid === true
-  if (a && !b) {
+  const hasWarning = (row: FileInfo) => !!row.errors && row.errors.some((issue) => issueSeverity(issue) === "warning")
+
+  const rank = (row: FileInfo) => {
+    if (row.valid !== true) {
+      return 0
+    }
+    if (hasWarning(row)) {
+      return 1
+    }
+    return 2
+  }
+
+  const a = rank(rowA)
+  const b = rank(rowB)
+  if (a > b) {
     return 1
   }
-  if (b && !a) {
+  if (b > a) {
     return -1
   }
   return 0
