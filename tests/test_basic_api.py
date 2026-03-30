@@ -2,6 +2,7 @@ import json
 import os
 import random
 import string
+from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
 import camilladsp
@@ -17,13 +18,15 @@ SAMPLE_CONFIG_PATH = os.path.join(TESTFILE_DIR, "config.yml")
 STATEFILE_PATH = os.path.join(TESTFILE_DIR, "statefile.yml")
 STATEFILE_TEMPLATE_PATH = os.path.join(TESTFILE_DIR, "statefile_template.yml")
 LOGFILE_PATH = os.path.join(TESTFILE_DIR, "log.txt")
-SAMPLE_CONFIG = yaml.safe_load(open(SAMPLE_CONFIG_PATH))
+with open(SAMPLE_CONFIG_PATH, encoding="utf-8") as f:
+    SAMPLE_CONFIG = yaml.safe_load(f)
 GUI_CONFIG_PATH = os.path.join(TESTFILE_DIR, "gui_config.yml")
 
 
 @pytest.fixture
 def statefile():
-    statefile_data = yaml.safe_load(open(STATEFILE_TEMPLATE_PATH))
+    with open(STATEFILE_TEMPLATE_PATH, encoding="utf-8") as f:
+        statefile_data = yaml.safe_load(f)
     statefile_data["config_path"] = os.path.join(
         TESTFILE_DIR, statefile_data["config_path"]
     )
@@ -279,7 +282,8 @@ async def test_startup_config_offline_falls_back_to_default_for_legacy_active(
     with open(legacy_path, "w", encoding="utf-8") as f:
         yaml.dump(legacy_config, f)
 
-    state = yaml.safe_load(open(STATEFILE_PATH))
+    with open(STATEFILE_PATH, encoding="utf-8") as f:
+        state = yaml.safe_load(f)
     state["config_path"] = legacy_path
     with open(STATEFILE_PATH, "w", encoding="utf-8") as f:
         yaml.dump(state, f)
@@ -380,32 +384,32 @@ async def test_stored_configs_missing_files_plus_other_error_is_invalid(server):
     assert config_file["errors"] is not None
     assert any(issue[2] == "error" for issue in config_file["errors"])
 
-    async def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
-        filename = "eqapo_like.yml"
-        filepath = os.path.join(TESTFILE_DIR, filename)
-        content = """Preamp: -7.08 dB
-    Filter 1: ON LSC Fc 105.0 Hz Gain 7.2 dB Q 0.70
-    Filter 2: ON PK Fc 188.0 Hz Gain -3.2 dB Q 0.39
-    Filter 3: ON HSC Fc 10000.0 Hz Gain -1.8 dB Q 0.70
-    """
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
 
-        try:
-            resp = await server.get("/api/storedconfigs")
-            assert resp.status == 200
-            files = await resp.json()
-            config_file = next(
-                (item for item in files if item["name"] == filename), None
-            )
-            assert config_file is not None
-            assert config_file["version"] is None
-            assert config_file["valid"] is False
-            assert config_file["errors"] is not None
-            assert (
-                config_file["errors"][0][1]
-                == "This does not appear to be a CamillaDSP config file."
-            )
-        finally:
-            if os.path.exists(filepath):
-                os.remove(filepath)
+async def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
+    filename = "eqapo_like.yml"
+    filepath = os.path.join(TESTFILE_DIR, filename)
+    content = dedent("""
+        Preamp: -7.08 dB
+        Filter 1: ON LSC Fc 105.0 Hz Gain 7.2 dB Q 0.70
+        Filter 2: ON PK Fc 188.0 Hz Gain -3.2 dB Q 0.39
+        Filter 3: ON HSC Fc 10000.0 Hz Gain -1.8 dB Q 0.70
+        """).strip()
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    try:
+        resp = await server.get("/api/storedconfigs")
+        assert resp.status == 200
+        files = await resp.json()
+        config_file = next((item for item in files if item["name"] == filename), None)
+        assert config_file is not None
+        assert config_file["version"] is None
+        assert config_file["valid"] is False
+        assert config_file["errors"] is not None
+        assert (
+            config_file["errors"][0][1]
+            == "This does not appear to be a CamillaDSP config file."
+        )
+    finally:
+        if os.path.exists(filepath):
+            os.remove(filepath)

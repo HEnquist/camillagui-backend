@@ -598,6 +598,14 @@ async def get_config_file(request):
             )
     except CamillaError as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
+    except FileNotFoundError as e:
+        raise web.HTTPNotFound(
+            text=f"Config file '{config_name}' not found.", headers=HEADERS
+        ) from e
+    except OSError as e:
+        raise web.HTTPBadRequest(
+            text=f"Unable to read config file '{config_name}': {e}", headers=HEADERS
+        ) from e
     except yaml.YAMLError as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     except (KeyError, TypeError, ValueError) as e:
