@@ -5,7 +5,7 @@ import { Config } from "./camilladsp/config"
 import { ShortcutSection } from "./guiconfig"
 import { numberValues, setNumberValues, Update, boolValues, setBoolValues } from "./utilities/common"
 import { loadConfigJson, loadFilenames } from "./utilities/files"
-import { Box, Button, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
+import { Box, Button, ErrorBoundary, ErrorMessage, MdiIcon } from "./utilities/ui-components"
 
 export function Shortcuts(props: {
   currentConfigName?: string
@@ -177,18 +177,28 @@ export function QuickConfigSwitch(props: {
 }) {
   const { currentConfigName, setConfig } = props
   const [configFiles, setConfigFiles] = useState<string[]>([])
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | undefined>(undefined)
   useEffect(() => {
     loadFilenames("config").then((files) => setConfigFiles(files))
   }, [])
   return (
     <Box title="Quick Config Switch">
+      <ErrorMessage message={loadErrorMessage} />
       <div className="quick-config-switch">
         {configFiles.map((configFile) => (
           <Button
             key={configFile}
             text={configFile}
             onClick={() => {
-              loadConfigJson(configFile).then((config) => setConfig(configFile, config))
+              loadConfigJson(configFile)
+                .then((config) => {
+                  setLoadErrorMessage(undefined)
+                  setConfig(configFile, config)
+                })
+                .catch((error) => {
+                  const reason = error instanceof Error ? error.message : String(error)
+                  setLoadErrorMessage(`Could not load '${configFile}': ${reason}`)
+                })
             }}
             highlighted={configFile === currentConfigName}
           />

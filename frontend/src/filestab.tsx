@@ -6,6 +6,7 @@ import {
   mdiDelete,
   mdiDownload,
   mdiMenu,
+  mdiOpenInApp,
   mdiPencil,
   mdiRefresh,
   mdiScaleUnbalanced,
@@ -26,11 +27,13 @@ import {
   download,
   FileInfo,
   fileNamesOf,
+  hasWarningIssues,
   fileStatusDesc,
   loadActiveConfigFilename,
   loadConfigJson,
   loadDefaultConfigJson,
   loadFiles,
+  loadMigratedConfigJson,
 } from "./utilities/files"
 import {
   Box,
@@ -228,19 +231,28 @@ class FileTable extends Component<
     )
   }
 
-  private async loadConfig(name: string) {
+  private async loadConfig(name: string, migrateLegacyConfig = false) {
     try {
-      const jsonConfig = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const loadConfigJsonFn = migrateLegacyConfig ? loadMigratedConfigJson : loadConfigJson
+      const jsonConfig = await loadConfigJsonFn(name)
       this.props.setCurrentConfig!(name, jsonConfig)
       this.showSuccess(name, "load")
     } catch (e) {
-      this.showErrorMessage(name, "load", e as string)
+      const error = e as Error
+      const message = error instanceof Error ? error.message : String(error)
+      if (migrateLegacyConfig) {
+        const importHint = "Please try using the Import config functionality instead."
+        const errorMessage = message.toLowerCase().includes("import config") ? message : `${message} ${importHint}`
+        this.showErrorMessage(name, "load", errorMessage)
+      } else {
+        this.showErrorMessage(name, "load", message)
+      }
     }
   }
 
   private async compareConfig(name: string) {
     try {
-      const otherConfig = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const otherConfig = await loadConfigJson(name)
       const guiConfig = this.props.config
       this.setState({
         showDiffPopup: true,
@@ -251,16 +263,15 @@ class FileTable extends Component<
       })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name, "load", message)
     }
   }
 
   private async compareConfigFiles(name_left: string, name_right: string) {
     try {
-      const leftConfig = await loadConfigJson(name_left, (reason) => this.showErrorMessage(name_left, "load", reason))
-      const rightConfig = await loadConfigJson(name_right, (reason) =>
-        this.showErrorMessage(name_right, "load", reason),
-      )
+      const leftConfig = await loadConfigJson(name_left)
+      const rightConfig = await loadConfigJson(name_right)
       this.setState({
         showDiffPopup: true,
         diffConfigLeft: leftConfig,
@@ -270,17 +281,19 @@ class FileTable extends Component<
       })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name_left + " and " + name_right, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name_left + " and " + name_right, "load", message)
     }
   }
 
   private async plotConfig(name: string) {
     try {
-      const config = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const config = await loadConfigJson(name)
       this.setState({ showPipelinePlot: true, configToPlot: config })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name, "load", message)
     }
   }
 
@@ -535,7 +548,7 @@ class FileTable extends Component<
         name: "Valid",
         cell: (row: FileInfo) => (
           <div data-tooltip-html={fileStatusDesc(row.errors)} data-tooltip-id="main-tooltip">
-            {row.valid === true ? "✔️" : "❌"}
+            {row.valid === true ? (hasWarningIssues(row.errors) ? "❗" : "✔️") : "❌"}
           </div>
         ),
         sortFunction: fileValidSort,
@@ -817,33 +830,47 @@ function RenameButton(props: { filename: string; fileStatus: FileStatus | null; 
 function LoadButton(props: {
   filename: string
   fileStatus: FileStatus | null
-  loadConfig: (filename: string) => void
+  loadConfig: (filename: string, migrateLegacyConfig: boolean) => void
   valid: boolean | undefined
   for_version: number | null | undefined
 }) {
-  const { filename, fileStatus, loadConfig, for_version } = props
-  let loadIcon: { icon: string; className?: string } = { icon: mdiRefresh }
+  const { filename, fileStatus, loadConfig, valid, for_version } = props
+  const isLatestVersion = for_version === CURRENT_VERSION
+  const isOlderVersion = for_version !== null && for_version !== undefined && for_version < CURRENT_VERSION
+  const isFutureVersion = for_version !== null && for_version !== undefined && for_version > CURRENT_VERSION
+  const shouldMigrate = isOlderVersion
+
+  let loadIcon: { icon: string; className?: string } = {
+    icon: isLatestVersion ? mdiOpenInApp : mdiRefresh,
+  }
   if (fileStatus !== null && fileStatus.action === "load" && fileStatus.filename === filename) {
     loadIcon = fileStatus.success
       ? { icon: mdiCheck, className: "success-text" }
       : { icon: mdiAlertCircle, className: "error-text" }
   }
-  let disabled_reason
-  if (for_version === CURRENT_VERSION) {
-    disabled_reason = ""
-  } else if (for_version && for_version !== CURRENT_VERSION) {
-    disabled_reason =
-      "<br>Disabled because this config file made for an older CamillaDSP version.<br>Click 'Import Config' to convert and import it."
+
+  let disabledReason = ""
+  let tooltipAction = `Load "${filename}" into the GUI.`
+  let enabled = false
+  if (isLatestVersion && valid) {
+    enabled = true
+  } else if (isOlderVersion) {
+    enabled = true
+    tooltipAction = `Load "${filename}" into the GUI with automatic migration.`
+  } else if (isFutureVersion) {
+    disabledReason =
+      "<br>Disabled because this config file was made for a newer CamillaDSP version than this GUI supports."
   } else {
-    disabled_reason = "<br>Disabled because this config file is invalid."
+    disabledReason = "<br>Disabled because this config file is invalid."
   }
+
   return (
     <MdiButton
       icon={loadIcon.icon}
       className={loadIcon.className}
-      tooltip={`Load into GUI from ${filename}${disabled_reason}`}
-      enabled={!disabled_reason}
-      onClick={() => loadConfig(filename)}
+      tooltip={`${tooltipAction}${disabledReason}`}
+      enabled={enabled}
+      onClick={() => loadConfig(filename, shouldMigrate)}
     />
   )
 }

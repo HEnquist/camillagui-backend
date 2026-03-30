@@ -280,10 +280,7 @@ function MixerStepView(props: {
             <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order" />
             {typeSelect}
             <span style={{ marginRight: "15px" }}>
-              <BypassOption
-                value={mixerStep.bypassed}
-                onChange={(bp) => update((step) => (step.bypassed = bp))}
-              />
+              <BypassOption value={mixerStep.bypassed} onChange={(bp) => update((step) => (step.bypassed = bp))} />
             </span>
             {channelInfo}
           </>
@@ -337,10 +334,7 @@ function ProcessorStepView(props: {
             <DragHandle drag={dndProps.drag} tooltip="Drag mixer to change order" />
             {typeSelect}
             <span style={{ marginRight: "15px" }}>
-              <BypassOption
-                value={processorStep.bypassed}
-                onChange={(bp) => update((step) => (step.bypassed = bp))}
-              />
+              <BypassOption value={processorStep.bypassed} onChange={(bp) => update((step) => (step.bypassed = bp))} />
             </span>
           </>
         }
@@ -410,10 +404,7 @@ function FilterStepView(props: {
       <DragHandle drag={dndProps.drag} tooltip="Drag filter step to change order" />
       {typeSelect}
       <span style={{ marginRight: "15px" }}>
-        <BypassOption
-          value={filterStep.bypassed}
-          onChange={(bp) => update((step) => (step.bypassed = bp))}
-        />
+        <BypassOption value={filterStep.bypassed} onChange={(bp) => update((step) => (step.bypassed = bp))} />
       </span>
       <ChannelSelection
         channels={filterStep.channels}

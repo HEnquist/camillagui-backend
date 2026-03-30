@@ -1,5 +1,7 @@
 import { Config } from "../camilladsp/config"
 
+export type ValidationIssue = [string[], string, "error" | "warning"]
+
 export interface FileInfo {
   name: string
   lastModified: number
@@ -9,7 +11,7 @@ export interface FileInfo {
   description: string | null | undefined
   version: number | null | undefined
   valid: boolean | undefined
-  errors: [string[], string][] | null | undefined
+  errors: ValidationIssue[] | null | undefined
 }
 
 export function loadFiles(type: "config" | "coeff"): Promise<FileInfo[]> {
@@ -49,16 +51,20 @@ export function fileNamesOf(files: FileInfo[]): string[] {
 }
 
 export function loadConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`).then((response) => {
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`).then(async (response) => {
     if (response.ok) return response.json()
-    else response.text().then((reason) => onNotOk(reason))
+    const reason = await response.text()
+    onNotOk(reason)
+    throw new Error(reason)
   })
 }
 
-export function loadMigratedConfigJson(name: string): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`).then((response) => {
+export function loadMigratedConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
+  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`).then(async (response) => {
     if (response.ok) return response.json()
-    else response.text()
+    const reason = await response.text()
+    onNotOk(reason)
+    throw new Error(reason)
   })
 }
 
@@ -125,18 +131,40 @@ export async function doUpload(
   }
 }
 
-export function fileStatusDesc(errors: [string[], string][] | null | undefined): string {
-  if (errors === null || errors === undefined) {
+export function issueSeverity(issue: ValidationIssue): "error" | "warning" {
+  return issue[2]
+}
+
+export function hasWarningIssues(errors: ValidationIssue[] | null | undefined): boolean {
+  return !!errors && errors.some((issue) => issueSeverity(issue) === "warning")
+}
+
+export function fileStatusDesc(errors: ValidationIssue[] | null | undefined): string {
+  const hasIssues = errors !== null && errors !== undefined && errors.length > 0
+  if (!hasIssues) {
     return "Config is valid."
-  } else {
-    let desc = "Errors:"
-    for (const error of errors) {
-      let path = error[0].join("/")
+  }
+
+  const warningIssues = errors!.filter((issue) => issueSeverity(issue) === "warning")
+  const errorIssues = errors!.filter((issue) => issueSeverity(issue) === "error")
+
+  const formatIssues = (title: string, issues: ValidationIssue[]) => {
+    let desc = title
+    for (const issue of issues) {
+      let path = issue[0].join("/")
       if (path) {
         path = path + " : "
       }
-      desc = desc + "<br>" + path + error[1]
+      desc = desc + "<br>" + path + issue[1]
     }
     return desc
   }
+
+  if (errorIssues.length > 0 && warningIssues.length > 0) {
+    return `${formatIssues("Errors:", errorIssues)}<br><br>${formatIssues("Warnings:", warningIssues)}`
+  }
+  if (errorIssues.length > 0) {
+    return formatIssues("Errors:", errorIssues)
+  }
+  return formatIssues("Warnings:", warningIssues)
 }
