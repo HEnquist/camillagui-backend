@@ -234,26 +234,25 @@ class FileTable extends Component<
   private async loadConfig(name: string, migrateLegacyConfig = false) {
     try {
       const loadConfigJsonFn = migrateLegacyConfig ? loadMigratedConfigJson : loadConfigJson
-      const jsonConfig = await loadConfigJsonFn(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const jsonConfig = await loadConfigJsonFn(name)
       this.props.setCurrentConfig!(name, jsonConfig)
       this.showSuccess(name, "load")
     } catch (e) {
       const error = e as Error
+      const message = error instanceof Error ? error.message : String(error)
       if (migrateLegacyConfig) {
         const importHint = "Please try using the Import config functionality instead."
-        const message = error.message.toLowerCase().includes("import config")
-          ? error.message
-          : `${error.message} ${importHint}`
-        this.showErrorMessage(name, "load", message)
+        const errorMessage = message.toLowerCase().includes("import config") ? message : `${message} ${importHint}`
+        this.showErrorMessage(name, "load", errorMessage)
       } else {
-        this.showErrorMessage(name, "load", error.message)
+        this.showErrorMessage(name, "load", message)
       }
     }
   }
 
   private async compareConfig(name: string) {
     try {
-      const otherConfig = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const otherConfig = await loadConfigJson(name)
       const guiConfig = this.props.config
       this.setState({
         showDiffPopup: true,
@@ -264,16 +263,15 @@ class FileTable extends Component<
       })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name, "load", message)
     }
   }
 
   private async compareConfigFiles(name_left: string, name_right: string) {
     try {
-      const leftConfig = await loadConfigJson(name_left, (reason) => this.showErrorMessage(name_left, "load", reason))
-      const rightConfig = await loadConfigJson(name_right, (reason) =>
-        this.showErrorMessage(name_right, "load", reason),
-      )
+      const leftConfig = await loadConfigJson(name_left)
+      const rightConfig = await loadConfigJson(name_right)
       this.setState({
         showDiffPopup: true,
         diffConfigLeft: leftConfig,
@@ -283,17 +281,19 @@ class FileTable extends Component<
       })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name_left + " and " + name_right, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name_left + " and " + name_right, "load", message)
     }
   }
 
   private async plotConfig(name: string) {
     try {
-      const config = await loadConfigJson(name, (reason) => this.showErrorMessage(name, "load", reason))
+      const config = await loadConfigJson(name)
       this.setState({ showPipelinePlot: true, configToPlot: config })
     } catch (e) {
       console.log(e)
-      this.showErrorMessage(name, "load", e as string)
+      const message = e instanceof Error ? e.message : String(e)
+      this.showErrorMessage(name, "load", message)
     }
   }
 

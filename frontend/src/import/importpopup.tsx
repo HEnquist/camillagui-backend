@@ -20,7 +20,7 @@ import { Config } from "../camilladsp/config"
 import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
 import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
 import { bottomMargin } from "../utilities/styles"
-import { Box, Button, CheckBox, CloseButton, MdiIcon, UploadButton } from "../utilities/ui-components"
+import { Box, Button, CheckBox, CloseButton, ErrorMessage, MdiIcon, UploadButton } from "../utilities/ui-components"
 
 export type ImportPopupProps =
   | Record<string, never>
@@ -103,6 +103,7 @@ function FileList(props: {
 }) {
   const { importDoneFromFile, setImportConfig } = props
   const [fileList, setFileList] = useState<string[]>([])
+  const [importErrorMessage, setImportErrorMessage] = useState<string | undefined>(undefined)
   useEffect(() => {
     loadFilenames("config").then((files) => setFileList(files))
   }, [])
@@ -119,7 +120,15 @@ function FileList(props: {
     importedEqAPOConfigAsJson(files, 2).then((config) => setImportConfig(file.name, config))
   }
   function loadJsonConfigWithName(name: string): void {
-    loadMigratedConfigJson(name).then((config) => setImportConfig(name, config))
+    loadMigratedConfigJson(name)
+      .then((config) => {
+        setImportErrorMessage(undefined)
+        setImportConfig(name, config)
+      })
+      .catch((error) => {
+        const reason = error instanceof Error ? error.message : String(error)
+        setImportErrorMessage(`Could not load '${name}': ${reason}`)
+      })
   }
   return (
     <div className="tabpanel">
@@ -133,6 +142,7 @@ function FileList(props: {
       ) : (
         <div style={bottomMargin}>Select from which file to import.</div>
       )}
+      <ErrorMessage message={importErrorMessage} />
       <Box title="Upload new config file">
         <div
           style={{

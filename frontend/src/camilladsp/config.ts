@@ -1211,7 +1211,7 @@ export const AlsaFormatOptions: { value: AlsaFormat; label: string }[] = [
   },
   {
     value: "S24_4_LE",
-    label: "S24_4_LE : 24 bit integer, padded right justified, little-endian",
+    label: "S24_4_LE : 24 bit integer, padded, little-endian",
   },
   {
     value: "S32_LE",
