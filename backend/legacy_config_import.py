@@ -1,6 +1,10 @@
+from camilladsp_plot.validate_config import CamillaValidator
+
 CURRENT_VERSION = 4
 
 V3_SAMPLE_FORMATS = ("S16LE", "S24LE3", "S24LE", "S32LE", "FLOAT32LE", "FLOAT64LE")
+
+_VALIDATOR = CamillaValidator()
 
 
 # v1->v2 introduces the default volume control, remove old volume filters
@@ -140,7 +144,7 @@ def _modify_dither(config):
 # v3->v4 changes all sample format names
 def _modify_conv_filters(config):
     if "filters" in config:
-        for name, filt in config["filters"].items():
+        for _name, filt in config["filters"].items():
             if filt["type"] == "Conv":
                 filt["parameters"]["format"] = _map_format(
                     None, filt["parameters"]["format"]
@@ -351,6 +355,9 @@ def _look_for_v3_sample_formats(config):
 
 
 def identify_version(config):
+    if not isinstance(config, dict):
+        return None
+
     if _look_for_v1_volume(config):
         return 1
     if _look_for_v1_loudness(config):
@@ -369,4 +376,6 @@ def identify_version(config):
         return 3
     if _look_for_v3_sample_formats(config):
         return 3
-    return CURRENT_VERSION
+    if _VALIDATOR.passes_sections_schema(config):
+        return CURRENT_VERSION
+    return None

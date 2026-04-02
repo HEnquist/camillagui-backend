@@ -38,7 +38,11 @@ from .filters import (
     filter_plot_options,
     pipeline_step_plot_options,
 )
-from .legacy_config_import import migrate_legacy_config
+from .legacy_config_import import (
+    CURRENT_VERSION,
+    identify_version,
+    migrate_legacy_config,
+)
 from .settings import GUI_CONFIG_PATH, get_gui_config_or_defaults
 
 OFFLINE_CACHE = {
@@ -398,6 +402,89 @@ async def get_default_config_file(request):
     return web.json_response(config_object, headers=HEADERS)
 
 
+def _read_config_file_for_startup(request, config_path, config_dir):
+    try:
+        config_object = make_config_filter_paths_relative(
+            read_yaml_from_path_to_object(request, config_path), config_dir
+        )
+    except CamillaError as e:
+        logging.error(
+            "Failed to get startup config from file %s, error: %s", config_path, e
+        )
+        return None, str(e)
+    except Exception as e:
+        logging.error("Failed to load startup config from file %s", config_path)
+        traceback.print_exc()
+        return None, str(e)
+    return config_object, None
+
+
+def _fetch_dsp_startup_config(cdsp):
+    try:
+        return cdsp.config.active()
+    except Exception:
+        try:
+            cdsp.connect()
+            return cdsp.config.active()
+        except Exception:
+            return None
+
+
+def _dsp_startup_config_name(request, cdsp):
+    config_file_name = get_active_config_path(request)
+    if config_file_name:
+        return config_file_name
+    try:
+        full_path = cdsp.config.file_path()
+    except Exception:
+        return None
+    if full_path:
+        return basename(full_path)
+    return None
+
+
+def _collect_startup_config_candidates(request):
+    active_config_path = get_active_config_path(request)
+    logging.debug("Active config file path: %s", active_config_path)
+    default_config_path = request.app["default_config"]
+    config_dir = request.app["config_dir"]
+
+    candidates = []
+    if active_config_path and isfile(join(config_dir, active_config_path)):
+        candidates.append(
+            (join(config_dir, active_config_path), "active", active_config_path)
+        )
+    if default_config_path and isfile(default_config_path):
+        candidates.append(
+            (default_config_path, "default", basename(default_config_path))
+        )
+    return config_dir, candidates
+
+
+def _find_valid_startup_config_in_files(request, candidates, config_dir):
+    first_error = None
+    for config_path, source, config_name in candidates:
+        config_object, error = _read_config_file_for_startup(
+            request, config_path, config_dir
+        )
+        if error is not None:
+            if first_error is None:
+                first_error = error
+            continue
+
+        if identify_version(config_object) == CURRENT_VERSION:
+            return {
+                "configFileName": config_name,
+                "config": config_object,
+                "source": source,
+            }, None
+
+        logging.warning(
+            "Ignoring startup config %s, not valid for current GUI version", config_name
+        )
+    return None, first_error
+
+
 async def get_config_at_gui_start(request):
     """
     Get the config to load into the gui when starting.
@@ -406,68 +493,35 @@ async def get_config_at_gui_start(request):
     - loaded from file using the active file name
     - loaded from file using the default config file name
     """
-    # get from dsp
     cdsp = request.app["CAMILLA"]
-    dsp_config = None
-    try:
-        dsp_config = cdsp.config.active()
-    except Exception:
-        # if the request failed, reconnect and retry
-        try:
-            cdsp.connect()
-            dsp_config = cdsp.config.active()
-        except Exception:
-            pass
-    if dsp_config is not None:
-        config_file_name = get_active_config_path(request)
-        if not config_file_name:
-            try:
-                full_path = cdsp.config.file_path()
-                if full_path:
-                    config_file_name = basename(full_path)
-            except Exception:
-                pass
+    dsp_config = _fetch_dsp_startup_config(cdsp)
+    if dsp_config is not None and identify_version(dsp_config) == CURRENT_VERSION:
+        config_file_name = _dsp_startup_config_name(request, cdsp)
         data = {"config": dsp_config, "source": "dsp"}
         if config_file_name:
             data["configFileName"] = config_file_name
         return web.json_response(data, headers=HEADERS)
-
-    # get from file
-    active_config_path = get_active_config_path(request)
-    logging.debug("Active config file path: %s", active_config_path)
-    default_config_path = request.app["default_config"]
-    config_dir = request.app["config_dir"]
-
-    if active_config_path and isfile(join(config_dir, active_config_path)):
-        logging.debug("Loading active config")
-        config = join(config_dir, active_config_path)
-        source = "active"
-    elif default_config_path and isfile(default_config_path):
-        logging.debug("Loading default config")
-        config = default_config_path
-        source = "default"
-    else:
-        raise web.HTTPNotFound(text="No active or default config")
-    try:
-        config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config), config_dir
+    if dsp_config is not None:
+        logging.warning(
+            "Ignoring startup config from DSP, not valid for current GUI version"
         )
-    except CamillaError as e:
-        logging.error("Failed to get active config from CamillaDSP, error: %s", e)
-        raise web.HTTPInternalServerError(text=str(e))
-    except Exception as e:
-        logging.error("Failed to get active config")
-        traceback.print_exc()
-        raise web.HTTPInternalServerError(text=str(e))
-    if active_config_path:
-        data = {
-            "configFileName": active_config_path,
-            "config": config_object,
-            "source": source,
-        }
-    else:
-        data = {"config": config_object, "source": source}
-    return web.json_response(data, headers=HEADERS)
+
+    config_dir, candidates = _collect_startup_config_candidates(request)
+
+    if len(candidates) == 0:
+        raise web.HTTPNotFound(text="No active or default config")
+
+    data, first_error = _find_valid_startup_config_in_files(
+        request, candidates, config_dir
+    )
+    if data is not None:
+        return web.json_response(data, headers=HEADERS)
+
+    if first_error is not None:
+        raise web.HTTPInternalServerError(text=first_error)
+    raise web.HTTPNotFound(
+        text="No startup config is valid for the current GUI version"
+    )
 
 
 async def get_active_config_name(request):
@@ -495,17 +549,66 @@ async def get_config_file(request):
     """
     Read and return a config file. Takes a filename and tries to load the file from config_dir.
     """
+
+    def _format_validation_issues(issues):
+        details = []
+        for issue in issues:
+            path, message = issue[0], issue[1]
+            location = "/".join(path) if path else "config"
+            details.append(f"- {location}: {message}")
+        return "\n".join(details)
+
     config_dir = request.app["config_dir"]
     config_name = request.query["name"]
-    migrate = request.query.get("migrate", False)
+    migrate = str(request.query.get("migrate", "")).lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     config_file = path_of_config_file(request, config_name)
     try:
-        config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config_file), config_dir
-        )
         if migrate:
+            with open(config_file, encoding="utf-8") as config_data:
+                config_object = yaml.safe_load(config_data)
+            if not isinstance(config_object, dict):
+                raise web.HTTPBadRequest(
+                    text="Migration failed: input is not a valid CamillaDSP config object.",
+                    headers=HEADERS,
+                )
             migrate_legacy_config(config_object)
+            config_object = make_config_filter_paths_relative(config_object, config_dir)
+
+            validator = request.app["VALIDATOR"]
+            config_abs = make_config_filter_paths_absolute(config_object, config_dir)
+            validator.validate_config(config_abs)
+            issues = validator.get_errors()
+            blocking_errors = [issue for issue in issues if issue[2] == "error"]
+            if len(blocking_errors) > 0:
+                details = _format_validation_issues(blocking_errors)
+                raise web.HTTPBadRequest(
+                    text=(
+                        "Migration failed: migrated config validation reported problems:\n"
+                        + details
+                    ),
+                    headers=HEADERS,
+                )
+        else:
+            config_object = make_config_filter_paths_relative(
+                read_yaml_from_path_to_object(request, config_file), config_dir
+            )
     except CamillaError as e:
+        raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
+    except FileNotFoundError as e:
+        raise web.HTTPNotFound(
+            text=f"Config file '{config_name}' not found.", headers=HEADERS
+        ) from e
+    except OSError as e:
+        raise web.HTTPBadRequest(
+            text=f"Unable to read config file '{config_name}': {e}", headers=HEADERS
+        ) from e
+    except yaml.YAMLError as e:
+        raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
+    except (KeyError, TypeError, ValueError) as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     return web.json_response(config_object, headers=HEADERS)
 

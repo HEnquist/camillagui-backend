@@ -37,25 +37,21 @@ def test_channels_factors_and_inversions_as_list():
 
 
 def test_samplerate_is_imported():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         96000 1 2 0
         0
         0
-    """
-    )
+    """)
     conf = ConvolverConfig(convolver_config).to_object()
     assert conf["devices"] == {"samplerate": 96000}
 
 
 def test_delays_and_mixers_are_imported():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         96000 2 3 0
         3
         0 4
-    """
-    )
+    """)
     expected_filters = {
         "Delay3": {
             "type": "Delay",
@@ -94,8 +90,7 @@ def test_delays_and_mixers_are_imported():
 
 
 def test_simple_impulse_response():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 1 1 0
         0
         0
@@ -103,8 +98,7 @@ def test_simple_impulse_response():
         0
         0.0
         0.0
-    """
-    )
+    """)
 
     expected_filters = {
         "IR.wav-0": {
@@ -130,8 +124,7 @@ def test_simple_impulse_response():
 
 
 def test_path_is_ignored_for_impulse_response_files():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 1 1 0
         0
         0
@@ -147,8 +140,7 @@ def test_path_is_ignored_for_impulse_response_files():
         0
         0.0
         0.0
-    """
-    )
+    """)
     conf = ConvolverConfig(convolver_config).to_object()
     assert conf["filters"]["IR1.wav-0"]["parameters"]["filename"] == "IR1.wav"
     assert conf["filters"]["IR2.wav-0"]["parameters"]["filename"] == "IR2.wav"
@@ -156,8 +148,7 @@ def test_path_is_ignored_for_impulse_response_files():
 
 
 def test_wav_file_with_multiple_impulse_responses():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 1 1 0
         0
         0
@@ -169,16 +160,14 @@ def test_wav_file_with_multiple_impulse_responses():
         1
         0.0
         0.0
-    """
-    )
+    """)
     conf = ConvolverConfig(convolver_config).to_object()
     assert conf["filters"]["IR.wav-0"]["parameters"]["channel"] == 0
     assert conf["filters"]["IR.wav-1"]["parameters"]["channel"] == 1
 
 
 def test_impulse_responses_are_mapped_to_correct_channels():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 1 1 0
         0
         0
@@ -190,8 +179,7 @@ def test_impulse_responses_are_mapped_to_correct_channels():
         0
         0.0
         0.0
-    """
-    )
+    """)
 
     expected = [
         {"type": "Mixer", "name": "Mixer in", "description": None},
@@ -218,8 +206,7 @@ def test_impulse_responses_are_mapped_to_correct_channels():
 
 
 def test_impulse_response_with_input_scaling():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 2 2 0
         0 0
         0 0
@@ -235,8 +222,7 @@ def test_impulse_response_with_input_scaling():
         2
         -1.5 -0.4
         0.0
-    """
-    )
+    """)
     expected = {
         "channels": {"in": 2, "out": 3},
         "mapping": [
@@ -299,8 +285,7 @@ def test_impulse_response_with_input_scaling():
 
 
 def test_impulse_response_with_output_scaling():
-    convolver_config = clean_multi_line_string(
-        """
+    convolver_config = clean_multi_line_string("""
         0 2 2 0
         0 0
         0 0
@@ -316,8 +301,7 @@ def test_impulse_response_with_output_scaling():
         2
         0.0
         -1.5 -0.4
-    """
-    )
+    """)
     expected_mixer = {
         "channels": {"in": 3, "out": 2},
         "mapping": [

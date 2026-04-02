@@ -2,6 +2,7 @@ import json
 import os
 import random
 import string
+from textwrap import dedent
 from unittest.mock import MagicMock, patch
 
 import camilladsp
@@ -17,13 +18,15 @@ SAMPLE_CONFIG_PATH = os.path.join(TESTFILE_DIR, "config.yml")
 STATEFILE_PATH = os.path.join(TESTFILE_DIR, "statefile.yml")
 STATEFILE_TEMPLATE_PATH = os.path.join(TESTFILE_DIR, "statefile_template.yml")
 LOGFILE_PATH = os.path.join(TESTFILE_DIR, "log.txt")
-SAMPLE_CONFIG = yaml.safe_load(open(SAMPLE_CONFIG_PATH))
+with open(SAMPLE_CONFIG_PATH, encoding="utf-8") as f:
+    SAMPLE_CONFIG = yaml.safe_load(f)
 GUI_CONFIG_PATH = os.path.join(TESTFILE_DIR, "gui_config.yml")
 
 
 @pytest.fixture
 def statefile():
-    statefile_data = yaml.safe_load(open(STATEFILE_TEMPLATE_PATH))
+    with open(STATEFILE_TEMPLATE_PATH, encoding="utf-8") as f:
+        statefile_data = yaml.safe_load(f)
     statefile_data["config_path"] = os.path.join(
         TESTFILE_DIR, statefile_data["config_path"]
     )
@@ -263,6 +266,40 @@ async def test_startup_config_offline(offline_server):
     assert content["configFileName"] == "config2.yml"
 
 
+async def test_startup_config_offline_falls_back_to_default_for_legacy_active(
+    offline_server,
+):
+    legacy_name = "legacy_startup.yml"
+    legacy_path = os.path.join(TESTFILE_DIR, legacy_name)
+    legacy_config = {
+        "devices": {
+            "samplerate": 48000,
+            "chunksize": 1024,
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S16LE"},
+        }
+    }
+    with open(legacy_path, "w", encoding="utf-8") as f:
+        yaml.dump(legacy_config, f)
+
+    with open(STATEFILE_PATH, encoding="utf-8") as f:
+        state = yaml.safe_load(f)
+    state["config_path"] = legacy_path
+    with open(STATEFILE_PATH, "w", encoding="utf-8") as f:
+        yaml.dump(state, f)
+
+    try:
+        resp = await offline_server.get("/api/getstartconfig")
+        assert resp.status == 200
+        content = await resp.json()
+        assert content["source"] == "default"
+        assert content["configFileName"] == "config.yml"
+        assert content["config"]["devices"]["samplerate"] == 44100
+    finally:
+        if os.path.exists(legacy_path):
+            os.remove(legacy_path)
+
+
 async def test_translate_eqapo(server):
     from test_eqapo_config_import import EXAMPLE
 
@@ -283,3 +320,96 @@ async def test_translate_convolver(server):
     content = await resp.json()
     assert "devices" in content
     assert content["devices"]["samplerate"] == 96000
+
+
+async def test_get_config_file_with_migration_bypasses_file_validation(server):
+    server.app["VALIDATOR"].validate_file = MagicMock(
+        side_effect=camilladsp.CamillaError("strict file validation failed")
+    )
+
+    resp_without_migration = await server.get(
+        "/api/getconfigfile", params={"name": "config.yml"}
+    )
+    assert resp_without_migration.status == 400
+
+    resp_with_migration = await server.get(
+        "/api/getconfigfile", params={"name": "config.yml", "migrate": "TRUE"}
+    )
+    assert resp_with_migration.status == 200
+    content = await resp_with_migration.json()
+    assert isinstance(content["devices"]["samplerate"], int)
+
+
+async def test_stored_configs_missing_files_only_is_warning(server):
+    server.app["VALIDATOR"].validate_config = MagicMock(return_value=None)
+    server.app["VALIDATOR"].get_errors = MagicMock(
+        return_value=[
+            (
+                ["filters", "conv", "parameters", "filename"],
+                "Coefficient file not found",
+                "warning",
+            )
+        ]
+    )
+
+    resp = await server.get("/api/storedconfigs")
+    assert resp.status == 200
+    content = await resp.json()
+    config_file = next((item for item in content if item["name"] == "config.yml"), None)
+    assert config_file is not None
+    assert config_file["valid"] is True
+    assert config_file["errors"] is not None
+    assert config_file["errors"][0][2] == "warning"
+
+
+async def test_stored_configs_missing_files_plus_other_error_is_invalid(server):
+    server.app["VALIDATOR"].validate_config = MagicMock(return_value=None)
+    server.app["VALIDATOR"].get_errors = MagicMock(
+        return_value=[
+            (
+                ["filters", "conv", "parameters", "filename"],
+                "Coefficient file not found",
+                "warning",
+            ),
+            (["devices", "samplerate"], "Must be larger than 0", "error"),
+        ]
+    )
+
+    resp = await server.get("/api/storedconfigs")
+    assert resp.status == 200
+    content = await resp.json()
+    config_file = next((item for item in content if item["name"] == "config.yml"), None)
+    assert config_file is not None
+    assert config_file["valid"] is False
+    assert config_file["errors"] is not None
+    assert any(issue[2] == "error" for issue in config_file["errors"])
+
+
+async def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
+    filename = "eqapo_like.yml"
+    filepath = os.path.join(TESTFILE_DIR, filename)
+    content = dedent("""
+        Preamp: -7.08 dB
+        Filter 1: ON LSC Fc 105.0 Hz Gain 7.2 dB Q 0.70
+        Filter 2: ON PK Fc 188.0 Hz Gain -3.2 dB Q 0.39
+        Filter 3: ON HSC Fc 10000.0 Hz Gain -1.8 dB Q 0.70
+        """).strip()
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    try:
+        resp = await server.get("/api/storedconfigs")
+        assert resp.status == 200
+        files = await resp.json()
+        config_file = next((item for item in files if item["name"] == filename), None)
+        assert config_file is not None
+        assert config_file["version"] is None
+        assert config_file["valid"] is False
+        assert config_file["errors"] is not None
+        assert (
+            config_file["errors"][0][1]
+            == "This does not appear to be a CamillaDSP config file."
+        )
+    finally:
+        if os.path.exists(filepath):
+            os.remove(filepath)
