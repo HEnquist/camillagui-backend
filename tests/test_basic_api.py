@@ -50,6 +50,9 @@ server_config = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "can_update_active_config": True,
+    "enable_level_stream": False,
+    "level_smoothing_ms": 100,
+    "level_max_update_hz": 30,
 }
 
 

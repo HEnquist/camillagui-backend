@@ -8,6 +8,7 @@ from .views import (
     download_configs_zip,
     eval_filter_values,
     eval_filterstep_values,
+    get_events,
     get_config_at_gui_start,
     get_active_config_name,
     get_backends,
@@ -46,6 +47,7 @@ from .views import (
 
 
 def setup_routes(app):
+    app.router.add_get("/api/events", get_events)
     app.router.add_get("/api/status", get_status)
     app.router.add_get("/api/getparam/{name}", get_param)
     app.router.add_get("/api/getparamjson/{name}", get_param_json)

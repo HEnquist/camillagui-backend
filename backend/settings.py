@@ -23,7 +23,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_multithreading": False,
     "apply_config_automatically": False,
     "save_config_automatically": False,
-    "status_update_interval": 100,
+    "status_update_interval": 500,
     "volume_range": 50,
     "volume_max": 0,
 }
@@ -37,6 +37,8 @@ BACKEND_CONFIG_DEFAULTS = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "log_file": None,
+    "level_smoothing_ms": 300,
+    "level_max_update_hz": 30,
 }
 
 

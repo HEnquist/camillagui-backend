@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import threading
 import time
 import traceback
@@ -108,25 +109,9 @@ async def get_status(request):
     cachetime = request.app["STORE"]["cache_time"]
     validator = request.app["VALIDATOR"]
     try:
-        levels_since = float(request.query.get("since"))
-    except Exception:
-        levels_since = None
-    try:
         state = cdsp.general.state()
         state_str = state.name
         cache["cdsp_status"] = state_str
-        if levels_since is not None:
-            levels = cdsp.levels.levels_since(levels_since)
-        else:
-            levels = cdsp.levels.levels()
-        cache.update(
-            {
-                "capturesignalrms": levels["capture_rms"],
-                "capturesignalpeak": levels["capture_peak"],
-                "playbacksignalrms": levels["playback_rms"],
-                "playbacksignalpeak": levels["playback_peak"],
-            }
-        )
         now = time.time()
         # These values don't change that fast, let's update them only once per second.
         if now - cachetime > 1.0:
@@ -151,6 +136,42 @@ async def get_status(request):
             reconnect_thread.start()
             request.app["STORE"]["reconnect_thread"] = reconnect_thread
     return web.json_response(cache, headers=HEADERS)
+
+
+async def get_events(request):
+    """
+    Stream one-way server-sent events.
+    """
+    stream = request.app.get("LEVEL_STREAM")
+    if stream is None:
+        raise web.HTTPServiceUnavailable(text="Event stream is disabled", headers=HEADERS)
+
+    response = web.StreamResponse(
+        status=200,
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+    await response.prepare(request)
+    logging.debug("SSE /api/events connected from %s", request.remote)
+
+    queue = stream.add_client()
+    try:
+        await response.write(b"retry: 1000\n: connected\n\n")
+        while True:
+            try:
+                frame = await asyncio.wait_for(queue.get(), timeout=15.0)
+                await response.write(frame.encode("utf-8"))
+            except asyncio.TimeoutError:
+                await response.write(b": keepalive\n\n")
+    except (ConnectionResetError, asyncio.CancelledError) as exc:
+        logging.debug("SSE /api/events disconnected from %s: %s", request.remote, exc)
+    finally:
+        stream.remove_client(queue)
+    return response
 
 
 def version_string(version_array):
