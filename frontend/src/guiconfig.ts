@@ -66,7 +66,7 @@ export function defaultGuiConfig(): GuiConfig {
     coeff_dir: "",
     apply_config_automatically: false,
     save_config_automatically: false,
-    status_update_interval: 100,
+    status_update_interval: 500,
     can_update_active_config: false,
     custom_shortcuts: [],
     volume_max: 0,

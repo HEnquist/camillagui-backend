@@ -8,7 +8,7 @@ import { Configcheckmessage } from "./configcheckmessage"
 import { LogFileViewerPopup } from "./logfileviewer"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
-import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } from "../camilladsp/status"
+import { defaultStatus, isBackendOnline, isCdspOnline, LevelsEvent, LevelsEventStream, Status, StatusPoller } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
@@ -43,9 +43,19 @@ export class SidePanel extends React.Component<
   }
 > {
   private statusPoller = new StatusPoller(
-    (cdspStatus) => this.setState({ cdspStatus }),
+    (cdspStatus) =>
+      this.setState((prevState) => ({
+        cdspStatus: {
+          ...cdspStatus,
+          capturesignalrms: prevState.cdspStatus.capturesignalrms,
+          capturesignalpeak: prevState.cdspStatus.capturesignalpeak,
+          playbacksignalrms: prevState.cdspStatus.playbacksignalrms,
+          playbacksignalpeak: prevState.cdspStatus.playbacksignalpeak,
+        },
+      })),
     this.props.guiConfig.status_update_interval,
   )
+  private levelsEventStream = new LevelsEventStream((event) => this.updateLevels(event))
 
   private applyTimer = delayedExecutor(500)
   private saveTimer = delayedExecutor(500)
@@ -66,6 +76,21 @@ export class SidePanel extends React.Component<
 
   componentWillUnmount() {
     this.statusPoller.stop()
+    this.levelsEventStream.stop()
+  }
+
+  private updateLevels(event: LevelsEvent) {
+    this.setState((prevState) => {
+      const cdspStatus = { ...prevState.cdspStatus }
+      if (event.side === "capture") {
+        cdspStatus.capturesignalrms = event.rms
+        cdspStatus.capturesignalpeak = event.peak
+      } else {
+        cdspStatus.playbacksignalrms = event.rms
+        cdspStatus.playbacksignalpeak = event.peak
+      }
+      return { cdspStatus }
+    })
   }
 
   componentDidUpdate(prevProps: { config: Config; guiConfig: GuiConfig }) {

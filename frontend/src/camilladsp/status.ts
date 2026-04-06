@@ -23,6 +23,13 @@ export interface Status extends Versions, VuMeterStatus {
   labels: Labels
 }
 
+export interface LevelsEvent {
+  side: "capture" | "playback"
+  rms: number[]
+  peak: number[]
+  ts: number
+}
+
 export function defaultStatus(): Status {
   return {
     cdsp_status: BACKEND_OFFLINE,
@@ -56,14 +63,16 @@ export function isBackendOnline(status: Status): boolean {
   return status.cdsp_status !== BACKEND_OFFLINE
 }
 
+function levelsStreamUrl(): string {
+  if (import.meta.env.DEV && window.location.port !== "5005") {
+    return `${window.location.protocol}//${window.location.hostname}:5005/api/events`
+  }
+  return "/api/events"
+}
+
 export class StatusPoller {
   private timerId: NodeJS.Timeout
   private readonly onUpdate: (status: Status) => void
-  private lastLevelTime: number = 0
-  private capturesignalrms: number[] = []
-  private capturesignalpeak: number[] = []
-  private playbacksignalpeak: number[] = []
-  private playbacksignalrms: number[] = []
   private update_interval: number
 
   constructor(onUpdate: (status: Status) => void, update_interval: number) {
@@ -74,30 +83,10 @@ export class StatusPoller {
 
   private async updateStatus() {
     let status: Status
-    const now = Date.now()
-    const levelsSince = (now - this.lastLevelTime) / 1000.0
     try {
-      status = await (await fetch("/api/status?since=" + levelsSince)).json()
+      status = await (await fetch("/api/status")).json()
     } catch {
       status = defaultStatus()
-    }
-    if (status.capturesignalpeak.length > 0 && status.playbacksignalpeak.length > 0) {
-      this.capturesignalpeak = status.capturesignalpeak
-      this.capturesignalrms = status.capturesignalrms
-      this.playbacksignalpeak = status.playbacksignalpeak
-      this.playbacksignalrms = status.playbacksignalrms
-      this.lastLevelTime = now
-    } else {
-      if (levelsSince > 2.0) {
-        this.capturesignalpeak.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
-        this.capturesignalrms.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
-        this.playbacksignalpeak.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
-        this.playbacksignalrms.forEach((_level, index, levelArray) => (levelArray[index] = -1000.0))
-      }
-      status.capturesignalpeak = this.capturesignalpeak
-      status.capturesignalrms = this.capturesignalrms
-      status.playbacksignalpeak = this.playbacksignalpeak
-      status.playbacksignalrms = this.playbacksignalrms
     }
     this.onUpdate(status)
     this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
@@ -109,5 +98,48 @@ export class StatusPoller {
 
   set_interval(interval: number) {
     this.update_interval = interval
+  }
+}
+
+export class LevelsEventStream {
+  private source?: EventSource
+  private stopped = false
+  private readonly onUpdate: (event: LevelsEvent) => void
+
+  constructor(onUpdate: (event: LevelsEvent) => void) {
+    this.onUpdate = onUpdate
+    this.connect()
+  }
+
+  private connect() {
+    if (this.stopped) return
+    const url = levelsStreamUrl()
+    const source = new EventSource(url)
+    this.source = source
+    source.addEventListener("levels", (rawEvent: Event) => {
+      if (this.source !== source) return
+      const message = rawEvent as MessageEvent
+      try {
+        const parsed = JSON.parse(message.data) as LevelsEvent
+        if (parsed.side === "capture" || parsed.side === "playback") {
+          this.onUpdate(parsed)
+        }
+      } catch {
+        // Ignore malformed SSE payloads and wait for next frame.
+      }
+    })
+    source.onerror = () => {
+      if (this.source !== source) return
+      if (this.stopped) {
+        source.close()
+        this.source = undefined
+      }
+    }
+  }
+
+  stop() {
+    this.stopped = true
+    this.source?.close()
+    this.source = undefined
   }
 }
