@@ -1,6 +1,6 @@
 import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState, KeyboardEvent } from "react"
 import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
-import Icon from "@mdi/react"
+import { Icon } from "@mdi/react"
 import { Range } from "immutable"
 import { cloneDeep } from "lodash"
 import DataTable, { TableColumn } from "react-data-table-component"
@@ -184,7 +184,7 @@ export function UploadButton(
     style?: CSSProperties
     smallButton?: boolean
   },
-): JSX.Element {
+): React.JSX.Element {
   const style = Object.assign({ verticalAlign: "bottom" }, props.style)
   const upload = (e: ChangeEvent<HTMLInputElement>) => {
     props.upload(e.target.files!)

@@ -9,7 +9,7 @@ import {
   mdiArrowDown,
   mdiArrowLeft,
 } from "@mdi/js"
-import Icon from "@mdi/react"
+import { Icon } from "@mdi/react"
 import { Range } from "immutable"
 import { cloneDeep } from "lodash"
 import {

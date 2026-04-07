@@ -8,7 +8,15 @@ import { Configcheckmessage } from "./configcheckmessage"
 import { LogFileViewerPopup } from "./logfileviewer"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
-import { defaultStatus, isBackendOnline, isCdspOnline, LevelsEvent, LevelsEventStream, Status, StatusPoller } from "../camilladsp/status"
+import {
+  defaultStatus,
+  isBackendOnline,
+  isCdspOnline,
+  LevelsEvent,
+  LevelsEventStream,
+  Status,
+  StatusPoller,
+} from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
@@ -105,7 +113,7 @@ export class SidePanel extends React.Component<
       })
     const { status_update_interval } = this.props.guiConfig
     if (status_update_interval !== prevProps.guiConfig.status_update_interval)
-      this.statusPoller.set_interval(status_update_interval)
+      this.statusPoller.setInterval(status_update_interval)
     if (this.state.applyConfigAutomatically && !isEqual(prevProps.config, this.props.config))
       this.applyTimer(() => {
         this.props.applyConfig().catch(() => {})

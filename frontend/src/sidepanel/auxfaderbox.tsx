@@ -23,7 +23,7 @@ export interface Fader {
 }
 
 export class FadersPoller {
-  private timerId: NodeJS.Timeout | undefined
+  private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (faders: Fader[]) => void
   private readonly update_interval: number
   private readonly holdoff_interval: number

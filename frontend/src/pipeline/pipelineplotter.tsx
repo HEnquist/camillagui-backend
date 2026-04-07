@@ -860,7 +860,9 @@ class PipelinePlot extends React.Component<Props, State> {
         }}
       >
         <svg
-          ref={(node) => (this.node = node)}
+          ref={(node) => {
+            this.node = node
+          }}
           id="svg_pipeline"
           viewBox={`${x0} ${y0} ${width} ${height}`}
           style={{ height: "99%", width: "100%" }}

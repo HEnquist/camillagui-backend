@@ -63,15 +63,8 @@ export function isBackendOnline(status: Status): boolean {
   return status.cdsp_status !== BACKEND_OFFLINE
 }
 
-function levelsStreamUrl(): string {
-  if (import.meta.env.DEV && window.location.port !== "5005") {
-    return `${window.location.protocol}//${window.location.hostname}:5005/api/events`
-  }
-  return "/api/events"
-}
-
 export class StatusPoller {
-  private timerId: NodeJS.Timeout
+  private timerId: ReturnType<typeof setTimeout>
   private readonly onUpdate: (status: Status) => void
   private update_interval: number
 
@@ -96,13 +89,16 @@ export class StatusPoller {
     clearTimeout(this.timerId)
   }
 
-  set_interval(interval: number) {
+  setInterval(interval: number) {
     this.update_interval = interval
   }
 }
 
 export class LevelsEventStream {
+  private static readonly reconnectDelayMs = 1000
+  private static readonly staleEventThresholdMs = 5000
   private source?: EventSource
+  private reconnectTimer?: ReturnType<typeof setTimeout>
   private stopped = false
   private readonly onUpdate: (event: LevelsEvent) => void
 
@@ -111,13 +107,36 @@ export class LevelsEventStream {
     this.connect()
   }
 
+  private clearReconnectTimer() {
+    if (this.reconnectTimer !== undefined) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = undefined
+    }
+  }
+
+  private scheduleReconnect(source: EventSource, delayMs: number) {
+    this.clearReconnectTimer()
+    if (this.stopped) return
+    this.reconnectTimer = setTimeout(() => {
+      if (this.stopped || this.source !== source) return
+      source.close()
+      this.source = undefined
+      this.connect()
+    }, delayMs)
+  }
+
+  private markActivity(source: EventSource) {
+    this.scheduleReconnect(source, LevelsEventStream.staleEventThresholdMs)
+  }
+
   private connect() {
     if (this.stopped) return
-    const url = levelsStreamUrl()
-    const source = new EventSource(url)
+    const source = new EventSource("/api/events")
     this.source = source
+    this.markActivity(source)
     source.addEventListener("levels", (rawEvent: Event) => {
       if (this.source !== source) return
+      this.markActivity(source)
       const message = rawEvent as MessageEvent
       try {
         const parsed = JSON.parse(message.data) as LevelsEvent
@@ -133,12 +152,16 @@ export class LevelsEventStream {
       if (this.stopped) {
         source.close()
         this.source = undefined
+        this.clearReconnectTimer()
+        return
       }
+      this.scheduleReconnect(source, LevelsEventStream.reconnectDelayMs)
     }
   }
 
   stop() {
     this.stopped = true
+    this.clearReconnectTimer()
     this.source?.close()
     this.source = undefined
   }

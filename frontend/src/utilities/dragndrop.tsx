@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react"
 import { mdiDrag } from "@mdi/js"
-import Icon from "@mdi/react"
+import { Icon } from "@mdi/react"
 import isEqual from "lodash/isEqual"
 import {
   DndProvider,
@@ -53,9 +53,17 @@ export function useDndSort<POSITION extends anyNonPrimitiveObject>(
 export function DndSortable(props: DndProps & { children: ReactNode }) {
   const { isDragging, canDrop, preview, drop, children } = props
   return (
-    <div ref={preview} className="dropTargetParent" style={{ width: "100%" }}>
+    <div
+      ref={(node) => {
+        preview(node)
+      }}
+      className="dropTargetParent"
+      style={{ width: "100%" }}
+    >
       <div
-        ref={drop}
+        ref={(node) => {
+          drop(node)
+        }}
         style={{ width: "100%" }}
         className={`horizontally-spaced-content${isDragging ? " dragSource" : ""}${canDrop ? " dropTarget" : ""}`}
       >
@@ -68,7 +76,12 @@ export function DndSortable(props: DndProps & { children: ReactNode }) {
 export function DragHandle(props: { drag: ConnectDragSource; tooltip: string }) {
   const { drag, tooltip } = props
   return (
-    <span ref={drag} style={{ display: "flex", alignItems: "center" }}>
+    <span
+      ref={(node) => {
+        drag(node)
+      }}
+      style={{ display: "flex", alignItems: "center" }}
+    >
       <Icon
         path={mdiDrag}
         size={"24px"}

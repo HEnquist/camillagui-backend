@@ -16,6 +16,8 @@ It uses a number of open source libraries and components.
 See `package.json` for the full list.
 
 ## Development
+Select the frontend Node version with `nvm use`.
+
 Install the dependencies with `npm install`.
 
 Start the development server with `npm run dev`.
