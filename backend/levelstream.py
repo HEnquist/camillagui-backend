@@ -29,7 +29,7 @@ class LevelEventStream:
         self._attack_time_constant_seconds = 0.35 * base_tau_seconds
         self._release_time_constant_seconds = 2.0 * base_tau_seconds
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._clients: Set[asyncio.Queue] = set()
+        self._clients: Set[asyncio.Queue[bytes]] = set()
         self._clients_lock = threading.Lock()
         self._running = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -81,8 +81,8 @@ class LevelEventStream:
                 break
             time.sleep(min(0.1, remaining))
 
-    def add_client(self) -> asyncio.Queue:
-        queue: asyncio.Queue = asyncio.Queue(maxsize=32)
+    def add_client(self) -> asyncio.Queue[bytes]:
+        queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
         with self._clients_lock:
             self._clients.add(queue)
             client_count = len(self._clients)
@@ -90,32 +90,34 @@ class LevelEventStream:
         self._publish_json("stream_status", {"state": "connected", "ts": int(time.time() * 1000)})
         return queue
 
-    def remove_client(self, queue: asyncio.Queue):
+    def remove_client(self, queue: asyncio.Queue[bytes]):
         with self._clients_lock:
             self._clients.discard(queue)
             client_count = len(self._clients)
         logging.debug("LevelEventStream client removed, total clients=%s", client_count)
 
-    def _enqueue_frame(self, frame: str):
+    def _has_clients(self) -> bool:
+        with self._clients_lock:
+            return bool(self._clients)
+
+    def _enqueue_frame(self, frame: bytes):
         with self._clients_lock:
             clients = list(self._clients)
         for queue in clients:
-            try:
-                queue.put_nowait(frame)
-            except asyncio.QueueFull:
+            if queue.full():
                 try:
                     queue.get_nowait()
                 except asyncio.QueueEmpty:
                     pass
-                try:
-                    queue.put_nowait(frame)
-                except asyncio.QueueFull:
-                    pass
+            try:
+                queue.put_nowait(frame)
+            except asyncio.QueueFull:
+                pass
 
     def _publish_json(self, event: str, data):
-        if self._loop is None:
+        if self._loop is None or not self._has_clients():
             return
-        frame = f"event: {event}\ndata: {json.dumps(data)}\n\n"
+        frame = f"event: {event}\ndata: {json.dumps(data)}\n\n".encode("utf-8")
         try:
             self._loop.call_soon_threadsafe(self._enqueue_frame, frame)
         except RuntimeError:
@@ -129,21 +131,34 @@ class LevelEventStream:
             return 0.0
         return 1.0 - math.exp(-dt_seconds / tau)
 
+    def _smoothing_alphas(self, dt_seconds: float) -> tuple[float, float]:
+        return (
+            self._smoothing_alpha(dt_seconds, self._attack_time_constant_seconds),
+            self._smoothing_alpha(dt_seconds, self._release_time_constant_seconds),
+        )
+
     def _smooth_series(
-        self, previous: Optional[List[float]], current: List[float], dt_seconds: float
+        self,
+        previous: Optional[List[float]],
+        current: List[float],
+        attack_alpha: float,
+        release_alpha: float,
     ) -> List[float]:
         if previous is None or len(previous) != len(current):
             return current
+        if attack_alpha >= 1.0 and release_alpha >= 1.0:
+            return current
+        if attack_alpha <= 0.0 and release_alpha <= 0.0:
+            return previous
         smoothed = []
         for prev, cur in zip(previous, current):
             if cur > prev:
-                tau = self._attack_time_constant_seconds
+                alpha = attack_alpha
             elif cur < prev:
-                tau = self._release_time_constant_seconds
+                alpha = release_alpha
             else:
                 smoothed.append(prev)
                 continue
-            alpha = self._smoothing_alpha(dt_seconds, tau)
             smoothed.append(prev + alpha * (cur - prev))
         return smoothed
 
@@ -162,8 +177,13 @@ class LevelEventStream:
             return {"rms": rms, "peak": peak}
 
         dt_seconds = now_mono - float(prev_ts)
-        smoothed_rms = self._smooth_series(side_state["rms"], rms, dt_seconds)  # type: ignore[arg-type]
-        smoothed_peak = self._smooth_series(side_state["peak"], peak, dt_seconds)  # type: ignore[arg-type]
+        attack_alpha, release_alpha = self._smoothing_alphas(dt_seconds)
+        smoothed_rms = self._smooth_series(  # type: ignore[arg-type]
+            side_state["rms"], rms, attack_alpha, release_alpha
+        )
+        smoothed_peak = self._smooth_series(  # type: ignore[arg-type]
+            side_state["peak"], peak, attack_alpha, release_alpha
+        )
         side_state["ts"] = now_mono
         side_state["rms"] = smoothed_rms
         side_state["peak"] = smoothed_peak
@@ -209,12 +229,6 @@ class LevelEventStream:
                     elif side == "playback":
                         self._status_cache["playbacksignalrms"] = rms
                         self._status_cache["playbacksignalpeak"] = peak
-                    payload = {
-                        "side": side,
-                        "rms": rms,
-                        "peak": peak,
-                        "ts": int(now_wall * 1000),
-                    }
                     last_ts = self._last_published_ts.get(side)
                     gap_ms = None
                     if last_ts is not None:
@@ -230,6 +244,12 @@ class LevelEventStream:
                         return self._running.is_set()
                     if not self._should_publish_level_event(side, now_wall):
                         return self._running.is_set()
+                    payload = {
+                        "side": side,
+                        "rms": rms,
+                        "peak": peak,
+                        "ts": int(now_wall * 1000),
+                    }
                     self._publish_json("levels", payload)
                     return self._running.is_set()
 

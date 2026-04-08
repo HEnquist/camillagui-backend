@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import random
@@ -171,6 +172,47 @@ async def test_read_status(server):
     response = await resp.json()
     assert response["cdsp_status"] == "RUNNING"
     assert response["resamplerload"] == 0.2
+
+
+async def test_get_events_writes_queued_bytes(mock_app):
+    queue: asyncio.Queue[bytes] = asyncio.Queue()
+    queued_frame = b"event: levels\ndata: {\"side\": \"capture\"}\n\n"
+    await queue.put(queued_frame)
+
+    class FakeLevelStream:
+        def __init__(self):
+            self.removed_queue = None
+
+        def add_client(self):
+            return queue
+
+        def remove_client(self, client_queue):
+            self.removed_queue = client_queue
+
+    class FakeStreamResponse:
+        def __init__(self, *args, **kwargs):
+            self.writes = []
+
+        async def prepare(self, request):
+            return self
+
+        async def write(self, data):
+            self.writes.append(data)
+            if data == queued_frame:
+                raise ConnectionResetError()
+
+    stream = FakeLevelStream()
+    mock_app["LEVEL_STREAM"] = stream
+    request = MagicMock()
+    request.app = mock_app
+    request.remote = "127.0.0.1"
+
+    with patch("backend.views.web.StreamResponse", FakeStreamResponse):
+        response = await views.get_events(request)
+
+    assert response.writes[0] == b"retry: 1000\n: connected\n\n"
+    assert response.writes[1] == queued_frame
+    assert stream.removed_queue is queue
 
 
 async def test_read_resampler_load(mock_request):

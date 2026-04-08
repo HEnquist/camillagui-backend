@@ -164,7 +164,7 @@ async def get_events(request):
         while True:
             try:
                 frame = await asyncio.wait_for(queue.get(), timeout=15.0)
-                await response.write(frame.encode("utf-8"))
+                await response.write(frame)
             except asyncio.TimeoutError:
                 await response.write(b": keepalive\n\n")
     except (ConnectionResetError, asyncio.CancelledError) as exc:
