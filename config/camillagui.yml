@@ -15,5 +15,5 @@ on_set_active_config: null
 on_get_active_config: null
 supported_capture_types: null
 supported_playback_types: null
-level_smoothing_ms: 300
+level_smoothing_ms: 200
 level_max_update_hz: 30

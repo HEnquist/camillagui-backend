@@ -37,7 +37,7 @@ BACKEND_CONFIG_DEFAULTS = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "log_file": None,
-    "level_smoothing_ms": 300,
+    "level_smoothing_ms": 200,
     "level_max_update_hz": 30,
 }
 

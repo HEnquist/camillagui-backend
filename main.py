@@ -31,7 +31,7 @@ async def _start_background_services(app):
 async def _stop_background_services(app):
     stream = app.get("LEVEL_STREAM")
     if stream is not None:
-        stream.stop()
+        await stream.stop()
 
 
 def build_app(backend_config):

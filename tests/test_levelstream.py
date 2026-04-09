@@ -1,70 +1,133 @@
-import math
+import asyncio
+import json
 
-import pytest
+import aiohttp
 
 from backend.levelstream import LevelEventStream
 
 
-def test_smoothing_alpha_respects_time_constant():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=100)
-    alpha = stream._smoothing_alpha(0.1, 0.1)
-    assert alpha == pytest.approx(1.0 - math.exp(-1.0), abs=1e-6)
+def test_vu_subscription_config_preserves_backend_tuning():
+    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=100, max_update_hz=30)
+
+    assert stream._vu_subscription == {"max_rate": 30.0, "attack": 10.0, "release": 200.0}
 
 
-def test_smoothing_can_be_disabled_with_zero_time_constant():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=0)
-    first = stream._apply_smoothing("capture", [0.0], [0.0], 1.0)
-    second = stream._apply_smoothing("capture", [10.0], [20.0], 1.0)
-    assert first["rms"] == [0.0]
-    assert second["rms"] == [10.0]
-    assert second["peak"] == [20.0]
+def test_vu_subscription_can_disable_smoothing_and_rate_limit():
+    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=0, max_update_hz=0)
+
+    assert stream._vu_subscription == {"max_rate": 0.0, "attack": 0.0, "release": 0.0}
 
 
-def test_apply_smoothing_uses_exponential_moving_average():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=100)
-    stream._apply_smoothing("playback", [0.0], [0.0], 10.0)
+async def test_level_stream_reads_events_via_aiohttp_websocket(monkeypatch):
+    status_cache = {}
+    stream = LevelEventStream(
+        "127.0.0.1",
+        1234,
+        status_cache,
+        smoothing_time_constant_ms=0,
+        max_update_hz=0,
+    )
 
-    smoothed = stream._apply_smoothing("playback", [10.0], [20.0], 10.1)
-    expected_alpha = 1.0 - math.exp(-0.1 / (0.35 * 0.1))
+    class FakeWebSocket:
+        def __init__(self):
+            self.closed = False
+            self.sent = []
+            self._command_replies = [
+                aiohttp.WSMessage(
+                    aiohttp.WSMsgType.TEXT,
+                    json.dumps({"GetVersion": {"result": "Ok", "value": "1.2.3"}}),
+                    None,
+                ),
+                aiohttp.WSMessage(
+                    aiohttp.WSMsgType.TEXT,
+                    json.dumps({"SubscribeVuLevels": {"result": "Ok"}}),
+                    None,
+                ),
+                aiohttp.WSMessage(
+                    aiohttp.WSMsgType.TEXT,
+                    json.dumps({"StopSubscription": {"result": "Ok"}}),
+                    None,
+                ),
+            ]
+            self._event_messages = [
+                aiohttp.WSMessage(
+                    aiohttp.WSMsgType.TEXT,
+                    json.dumps(
+                        {
+                            "VuLevelsEvent": {
+                                "result": "Ok",
+                                "value": {
+                                    "capture_rms": [1.0, 2.0],
+                                    "capture_peak": [3.0, 4.0],
+                                    "playback_rms": [5.0, 6.0],
+                                    "playback_peak": [7.0, 8.0],
+                                },
+                            }
+                        }
+                    ),
+                    None,
+                )
+            ]
+            self._closed_event = asyncio.Event()
 
-    assert smoothed["rms"][0] == pytest.approx(expected_alpha * 10.0, abs=1e-6)
-    assert smoothed["peak"][0] == pytest.approx(expected_alpha * 20.0, abs=1e-6)
+        async def send_str(self, data):
+            self.sent.append(data)
 
+        async def receive(self):
+            return self._command_replies.pop(0)
 
-def test_asymmetric_smoothing_rises_faster_than_it_falls():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=100)
+        def __aiter__(self):
+            return self
 
-    stream._apply_smoothing("capture", [0.0], [0.0], 1.0)
-    rising = stream._apply_smoothing("capture", [10.0], [10.0], 1.1)
-    # Reset side to compare using the same dt but opposite direction.
-    stream._apply_smoothing("playback", [10.0], [10.0], 2.0)
-    falling = stream._apply_smoothing("playback", [0.0], [0.0], 2.1)
+        async def __anext__(self):
+            if self._event_messages:
+                return self._event_messages.pop(0)
+            await self._closed_event.wait()
+            raise StopAsyncIteration
 
-    rise_step = rising["rms"][0] - 0.0
-    fall_step = 10.0 - falling["rms"][0]
-    assert rise_step > fall_step
+        async def close(self):
+            self.closed = True
+            self._closed_event.set()
 
+    class FakeSession:
+        def __init__(self):
+            self.websocket = FakeWebSocket()
+            self.closed = False
+            self.url = None
 
-def test_level_rate_limit_allows_first_publish_then_throttles():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, max_update_hz=30)
+        async def ws_connect(self, url):
+            self.url = url
+            return self.websocket
 
-    assert stream._should_publish_level_event("capture", 1.0) is True
-    assert stream._should_publish_level_event("capture", 1.02) is False
-    assert stream._should_publish_level_event("capture", 1.04) is True
+        async def close(self):
+            self.closed = True
 
+    fake_session = FakeSession()
+    monkeypatch.setattr("backend.levelstream.aiohttp.ClientSession", lambda: fake_session)
 
-def test_level_rate_limit_is_independent_per_side():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, max_update_hz=30)
+    queue = stream.add_client()
+    stream.start(asyncio.get_running_loop())
 
-    assert stream._should_publish_level_event("playback", 1.0) is True
-    # Capture should still be allowed immediately because it has its own limiter.
-    assert stream._should_publish_level_event("capture", 1.001) is True
-    assert stream._should_publish_level_event("playback", 1.01) is False
-    assert stream._should_publish_level_event("capture", 1.011) is False
+    level_frame = None
+    for _ in range(3):
+        frame = await asyncio.wait_for(queue.get(), timeout=0.5)
+        if b"event: levels" in frame:
+            level_frame = frame
+            break
 
+    assert level_frame is not None
+    assert status_cache["capturesignalrms"] == [1.0, 2.0]
+    assert status_cache["capturesignalpeak"] == [3.0, 4.0]
+    assert status_cache["playbacksignalrms"] == [5.0, 6.0]
+    assert status_cache["playbacksignalpeak"] == [7.0, 8.0]
+    assert fake_session.url == "ws://127.0.0.1:1234"
+    assert fake_session.websocket.sent[0] == json.dumps("GetVersion")
+    assert fake_session.websocket.sent[1] == json.dumps(
+        {"SubscribeVuLevels": {"max_rate": 0.0, "attack": 0.0, "release": 0.0}}
+    )
 
-def test_level_rate_limit_can_be_disabled():
-    stream = LevelEventStream("127.0.0.1", 1234, {}, max_update_hz=0)
+    await stream.stop()
 
-    assert stream._should_publish_level_event("capture", 1.0) is True
-    assert stream._should_publish_level_event("capture", 1.001) is True
+    assert json.dumps("StopSubscription") in fake_session.websocket.sent
+    assert fake_session.websocket.closed is True
+    assert fake_session.closed is True

@@ -1,12 +1,11 @@
 import asyncio
+from contextlib import suppress
 import json
 import logging
-import math
-import threading
 import time
-from typing import Dict, List, Optional, Set
+from typing import Dict, Optional, Set, Tuple, Union
 
-import camilladsp
+import aiohttp
 
 
 class LevelEventStream:
@@ -21,89 +20,66 @@ class LevelEventStream:
         self._host = host
         self._port = int(port)
         self._status_cache = status_cache
-        base_tau_seconds = max(0.0, float(smoothing_time_constant_ms) / 1000.0)
-        self._min_publish_interval_seconds = (
-            0.0 if max_update_hz <= 0.0 else 1.0 / float(max_update_hz)
-        )
-        # Use asymmetric smoothing so level rises react faster than level falls.
-        self._attack_time_constant_seconds = 0.35 * base_tau_seconds
-        self._release_time_constant_seconds = 2.0 * base_tau_seconds
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._clients: Set[asyncio.Queue[bytes]] = set()
-        self._clients_lock = threading.Lock()
-        self._running = threading.Event()
-        self._thread: Optional[threading.Thread] = None
-        self._subscriber: Optional[camilladsp.CamillaClient] = None
-        self._smoothed_levels: Dict[str, Dict[str, object]] = {
-            "capture": {"ts": None, "rms": None, "peak": None},
-            "playback": {"ts": None, "rms": None, "peak": None},
+        smoothing_ms = max(0.0, float(smoothing_time_constant_ms))
+        self._vu_subscription = {
+            "max_rate": max(0.0, float(max_update_hz)),
+            "attack": 0.1 * smoothing_ms,
+            "release": smoothing_ms,
         }
-        self._last_level_event_publish_ts = {"capture": None, "playback": None}
-        self._last_published_ts = {"capture": None, "playback": None}
+        self._clients: Set[asyncio.Queue[bytes]] = set()
+        self._running = False
+        self._task: Optional[asyncio.Task[None]] = None
+        self._session: Optional[aiohttp.ClientSession] = None
+        self._websocket: Optional[aiohttp.ClientWebSocketResponse] = None
+        self._websocket_url = f"ws://{self._host}:{self._port}"
 
     def start(self, loop: asyncio.AbstractEventLoop):
-        if self._thread is not None:
+        if self._task is not None and not self._task.done():
             return
         logging.debug("LevelEventStream starting")
-        self._loop = loop
-        self._running.set()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+        self._running = True
+        self._task = loop.create_task(self._run())
 
-    def stop(self):
+    async def stop(self):
         logging.debug("LevelEventStream stopping")
-        self._running.clear()
-        self._loop = None
-        subscriber = self._subscriber
-        self._subscriber = None
-        # Never block process shutdown on websocket close/join.
-        # The stream thread is daemonized and will terminate with the process.
-        self._thread = None
-        if subscriber is not None:
-            threading.Thread(
-                target=self._disconnect_subscriber,
-                args=(subscriber,),
-                daemon=True,
-            ).start()
-
-    @staticmethod
-    def _disconnect_subscriber(subscriber):
-        try:
-            subscriber.disconnect()
-        except Exception:
-            pass
-
-    def _interruptible_wait(self, seconds: float):
-        deadline = time.monotonic() + max(0.0, seconds)
-        while self._running.is_set():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0.0:
-                break
-            time.sleep(min(0.1, remaining))
+        self._running = False
+        task = self._task
+        self._task = None
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        websocket = self._websocket
+        self._websocket = None
+        if websocket is not None:
+            with suppress(Exception):
+                await websocket.close()
+        session = self._session
+        self._session = None
+        if session is not None:
+            with suppress(Exception):
+                await session.close()
 
     def add_client(self) -> asyncio.Queue[bytes]:
         queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
-        with self._clients_lock:
-            self._clients.add(queue)
-            client_count = len(self._clients)
+        self._clients.add(queue)
+        client_count = len(self._clients)
         logging.debug("LevelEventStream client added, total clients=%s", client_count)
-        self._publish_json("stream_status", {"state": "connected", "ts": int(time.time() * 1000)})
+        self._publish_json(
+            "stream_status", {"state": "connected", "ts": int(time.time() * 1000)}
+        )
         return queue
 
     def remove_client(self, queue: asyncio.Queue[bytes]):
-        with self._clients_lock:
-            self._clients.discard(queue)
-            client_count = len(self._clients)
+        self._clients.discard(queue)
+        client_count = len(self._clients)
         logging.debug("LevelEventStream client removed, total clients=%s", client_count)
 
     def _has_clients(self) -> bool:
-        with self._clients_lock:
-            return bool(self._clients)
+        return bool(self._clients)
 
     def _enqueue_frame(self, frame: bytes):
-        with self._clients_lock:
-            clients = list(self._clients)
-        for queue in clients:
+        for queue in tuple(self._clients):
             if queue.full():
                 try:
                     queue.get_nowait()
@@ -115,155 +91,136 @@ class LevelEventStream:
                 pass
 
     def _publish_json(self, event: str, data):
-        if self._loop is None or not self._has_clients():
+        if not self._has_clients():
             return
         frame = f"event: {event}\ndata: {json.dumps(data)}\n\n".encode("utf-8")
+        self._enqueue_frame(frame)
+
+    def _format_command(self, command: str, arg=None) -> str:
+        if arg is None:
+            return json.dumps(command)
+        return json.dumps({command: arg})
+
+    @staticmethod
+    def _handle_result(result: Union[str, Dict[str, str]]) -> Tuple[str, Optional[str]]:
+        if isinstance(result, str):
+            return result, None
+        return next(iter(result.items()))
+
+    def _handle_reply(self, command: str, rawreply: Union[str, bytes]):
         try:
-            self._loop.call_soon_threadsafe(self._enqueue_frame, frame)
-        except RuntimeError:
-            # Event loop is shutting down.
-            pass
+            reply = json.loads(rawreply)
+        except json.JSONDecodeError as exc:
+            raise IOError(f"Invalid response received: {rawreply!r}") from exc
+        if command not in reply:
+            raise IOError(f"Invalid response received: {rawreply!r}")
+        response_data = reply[command]
+        if "error" in response_data:
+            raise IOError(response_data["error"])
+        state, message = self._handle_result(response_data["result"])
+        if state != "Ok":
+            raise IOError(message or f"{command} failed")
+        return response_data.get("value")
 
-    def _smoothing_alpha(self, dt_seconds: float, tau: float) -> float:
-        if tau <= 0.0:
-            return 1.0
-        if dt_seconds <= 0.0:
-            return 0.0
-        return 1.0 - math.exp(-dt_seconds / tau)
+    def _handle_event_reply(self, event_name: str, rawreply: Union[str, bytes]):
+        try:
+            reply = json.loads(rawreply)
+        except json.JSONDecodeError as exc:
+            raise IOError(f"Invalid response received: {rawreply!r}") from exc
+        if event_name not in reply:
+            return None
+        response_data = reply[event_name]
+        state, message = self._handle_result(response_data["result"])
+        if state != "Ok":
+            raise IOError(message or f"{event_name} failed")
+        return response_data.get("value")
 
-    def _smoothing_alphas(self, dt_seconds: float) -> tuple[float, float]:
-        return (
-            self._smoothing_alpha(dt_seconds, self._attack_time_constant_seconds),
-            self._smoothing_alpha(dt_seconds, self._release_time_constant_seconds),
-        )
+    async def _send_command(self, websocket: aiohttp.ClientWebSocketResponse, command: str, arg=None):
+        await websocket.send_str(self._format_command(command, arg))
+        reply = await websocket.receive()
+        return self._handle_reply(command, self._message_payload(reply))
 
-    def _smooth_series(
-        self,
-        previous: Optional[List[float]],
-        current: List[float],
-        attack_alpha: float,
-        release_alpha: float,
-    ) -> List[float]:
-        if previous is None or len(previous) != len(current):
-            return current
-        if attack_alpha >= 1.0 and release_alpha >= 1.0:
-            return current
-        if attack_alpha <= 0.0 and release_alpha <= 0.0:
-            return previous
-        smoothed = []
-        for prev, cur in zip(previous, current):
-            if cur > prev:
-                alpha = attack_alpha
-            elif cur < prev:
-                alpha = release_alpha
-            else:
-                smoothed.append(prev)
-                continue
-            smoothed.append(prev + alpha * (cur - prev))
-        return smoothed
+    @staticmethod
+    def _message_payload(message: aiohttp.WSMessage) -> Union[str, bytes]:
+        if message.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
+            return message.data
+        if message.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
+            raise IOError("Websocket closed")
+        if message.type == aiohttp.WSMsgType.ERROR:
+            raise IOError("Websocket error") from message.data
+        raise IOError(f"Unexpected websocket message type: {message.type}")
 
-    def _apply_smoothing(
-        self, side: str, rms: List[float], peak: List[float], now_mono: float
-    ) -> Dict[str, List[float]]:
-        side_state = self._smoothed_levels.get(side)
-        if side_state is None:
-            return {"rms": rms, "peak": peak}
+    def _process_level_event(self, event_data: Dict[str, object]):
+        payload = {
+            "capturesignalrms": [float(v) for v in event_data.get("capture_rms", [])],
+            "capturesignalpeak": [float(v) for v in event_data.get("capture_peak", [])],
+            "playbacksignalrms": [float(v) for v in event_data.get("playback_rms", [])],
+            "playbacksignalpeak": [float(v) for v in event_data.get("playback_peak", [])],
+            "ts": int(time.time() * 1000),
+        }
+        self._status_cache.update(payload)
+        self._publish_json("levels", payload)
 
-        prev_ts = side_state["ts"]
-        if prev_ts is None:
-            side_state["ts"] = now_mono
-            side_state["rms"] = rms
-            side_state["peak"] = peak
-            return {"rms": rms, "peak": peak}
-
-        dt_seconds = now_mono - float(prev_ts)
-        attack_alpha, release_alpha = self._smoothing_alphas(dt_seconds)
-        smoothed_rms = self._smooth_series(  # type: ignore[arg-type]
-            side_state["rms"], rms, attack_alpha, release_alpha
-        )
-        smoothed_peak = self._smooth_series(  # type: ignore[arg-type]
-            side_state["peak"], peak, attack_alpha, release_alpha
-        )
-        side_state["ts"] = now_mono
-        side_state["rms"] = smoothed_rms
-        side_state["peak"] = smoothed_peak
-        return {"rms": smoothed_rms, "peak": smoothed_peak}
-
-    def _should_publish_level_event(self, side: str, now_wall: float) -> bool:
-        if self._min_publish_interval_seconds <= 0.0:
-            self._last_level_event_publish_ts[side] = now_wall
-            return True
-        last_publish_ts = self._last_level_event_publish_ts.get(side)
-        if last_publish_ts is None:
-            self._last_level_event_publish_ts[side] = now_wall
-            return True
-        if now_wall - last_publish_ts < self._min_publish_interval_seconds:
-            return False
-        self._last_level_event_publish_ts[side] = now_wall
-        return True
-
-    def _run(self):
-        while self._running.is_set():
-            client = camilladsp.CamillaClient(self._host, self._port)
-            self._subscriber = client
-            try:
-                logging.debug("LevelEventStream connecting to CamillaDSP at %s:%s", self._host, self._port)
-                client.connect()
-                logging.debug("LevelEventStream connected to CamillaDSP")
-                self._publish_json(
-                    "stream_status",
-                    {"state": "connected", "ts": int(time.time() * 1000)},
-                )
-
-                def on_level_event(event_data):
-                    side = event_data.get("side")
-                    now_wall = time.time()
-                    rms = [float(v) for v in event_data.get("rms", [])]
-                    peak = [float(v) for v in event_data.get("peak", [])]
-                    smoothed = self._apply_smoothing(side, rms, peak, time.monotonic())
-                    rms = smoothed["rms"]
-                    peak = smoothed["peak"]
-                    if side == "capture":
-                        self._status_cache["capturesignalrms"] = rms
-                        self._status_cache["capturesignalpeak"] = peak
-                    elif side == "playback":
-                        self._status_cache["playbacksignalrms"] = rms
-                        self._status_cache["playbacksignalpeak"] = peak
-                    last_ts = self._last_published_ts.get(side)
-                    gap_ms = None
-                    if last_ts is not None:
-                        gap_ms = (now_wall - last_ts) * 1000.0
-                    self._last_published_ts[side] = now_wall
-                    if gap_ms is not None and gap_ms > 300.0:
-                        logging.debug(
-                            "LevelEventStream slow publish gap for %s: %.1f ms",
-                            side,
-                            gap_ms,
-                        )
-                    if side not in self._last_level_event_publish_ts:
-                        return self._running.is_set()
-                    if not self._should_publish_level_event(side, now_wall):
-                        return self._running.is_set()
-                    payload = {
-                        "side": side,
-                        "rms": rms,
-                        "peak": peak,
-                        "ts": int(now_wall * 1000),
-                    }
-                    self._publish_json("levels", payload)
-                    return self._running.is_set()
-
-                client.levels.subscribe_signal_levels(on_level_event, side="both")
-            except Exception as exc:
-                logging.debug("Level event stream disconnected: %s", exc)
-                self._publish_json(
-                    "stream_status",
-                    {"state": "reconnecting", "ts": int(time.time() * 1000)},
-                )
-                self._interruptible_wait(1.0)
-            finally:
+    async def _run(self):
+        session = aiohttp.ClientSession()
+        self._session = session
+        try:
+            while self._running:
+                websocket: Optional[aiohttp.ClientWebSocketResponse] = None
+                subscribed = False
+                should_wait = True
                 try:
-                    client.disconnect()
-                except Exception:
-                    pass
-                self._subscriber = None
+                    logging.debug(
+                        "LevelEventStream connecting to CamillaDSP at %s:%s",
+                        self._host,
+                        self._port,
+                    )
+                    websocket = await session.ws_connect(self._websocket_url)
+                    self._websocket = websocket
+                    await self._send_command(websocket, "GetVersion")
+                    await self._send_command(
+                        websocket, "SubscribeVuLevels", self._vu_subscription
+                    )
+                    subscribed = True
+                    logging.debug("LevelEventStream connected to CamillaDSP")
+                    self._publish_json(
+                        "stream_status",
+                        {"state": "connected", "ts": int(time.time() * 1000)},
+                    )
+                    async for message in websocket:
+                        if not self._running:
+                            should_wait = False
+                            break
+                        event_data = self._handle_event_reply(
+                            "VuLevelsEvent", self._message_payload(message)
+                        )
+                        if event_data is None:
+                            continue
+                        self._process_level_event(event_data)
+                    if self._running:
+                        raise IOError("Lost connection to CamillaDSP")
+                    should_wait = False
+                except asyncio.CancelledError:
+                    should_wait = False
+                    raise
+                except Exception as exc:
+                    logging.debug("Level event stream disconnected: %s", exc)
+                    if self._running:
+                        self._publish_json(
+                            "stream_status",
+                            {"state": "reconnecting", "ts": int(time.time() * 1000)},
+                        )
+                finally:
+                    if websocket is not None:
+                        if subscribed and not websocket.closed:
+                            with suppress(Exception):
+                                await self._send_command(websocket, "StopSubscription")
+                        with suppress(Exception):
+                            await websocket.close()
+                    self._websocket = None
+                if self._running and should_wait:
+                    await asyncio.sleep(1.0)
+        finally:
+            self._websocket = None
+            self._session = None
+            await session.close()
