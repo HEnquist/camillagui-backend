@@ -89,13 +89,12 @@ export class SidePanel extends React.Component<
 
   private updateLevels(event: LevelsEvent) {
     this.setState((prevState) => {
-      const cdspStatus = { ...prevState.cdspStatus }
-      if (event.side === "capture") {
-        cdspStatus.capturesignalrms = event.rms
-        cdspStatus.capturesignalpeak = event.peak
-      } else {
-        cdspStatus.playbacksignalrms = event.rms
-        cdspStatus.playbacksignalpeak = event.peak
+      const cdspStatus = {
+        ...prevState.cdspStatus,
+        capturesignalrms: event.capturesignalrms,
+        capturesignalpeak: event.capturesignalpeak,
+        playbacksignalrms: event.playbacksignalrms,
+        playbacksignalpeak: event.playbacksignalpeak,
       }
       return { cdspStatus }
     })

@@ -24,9 +24,10 @@ export interface Status extends Versions, VuMeterStatus {
 }
 
 export interface LevelsEvent {
-  side: "capture" | "playback"
-  rms: number[]
-  peak: number[]
+  capturesignalrms: number[]
+  capturesignalpeak: number[]
+  playbacksignalrms: number[]
+  playbacksignalpeak: number[]
   ts: number
 }
 
@@ -140,7 +141,12 @@ export class LevelsEventStream {
       const message = rawEvent as MessageEvent
       try {
         const parsed = JSON.parse(message.data) as LevelsEvent
-        if (parsed.side === "capture" || parsed.side === "playback") {
+        if (
+          Array.isArray(parsed.capturesignalrms) &&
+          Array.isArray(parsed.capturesignalpeak) &&
+          Array.isArray(parsed.playbacksignalrms) &&
+          Array.isArray(parsed.playbacksignalpeak)
+        ) {
           this.onUpdate(parsed)
         }
       } catch {
