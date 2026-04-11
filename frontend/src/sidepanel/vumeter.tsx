@@ -15,7 +15,7 @@ export function VuMeterGroup(props: {
   const canvasRef = useRef(null)
   const meters = (
     <canvas
-      width={meterWidth + labelWidth + "px"}
+      width="290px"
       height={levels.length * meterHeightInPX + (levels.length + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight + "px"}
       ref={canvasRef}
     />
@@ -28,18 +28,24 @@ export function VuMeterGroup(props: {
     const width = context.canvas.width
     const css = cssStyles()
     context.clearRect(0, 0, width, context.canvas.height)
-    drawLabel(context, css, title, 0, 0)
+    drawChannelLabel(context, css, title, 0)
+    drawChannelLevel(context, css, "LV", 0)
+    drawChannelPeak(context, css, "PK", 0)
     Range(0, levels.length).forEach((index) => {
       const level = levels[index]
       const peak = peaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
+      const levelText = level < -99 ? "-∞" : Math.round(level).toString()
+      const peakText = peak < -99 ? "-∞" : Math.round(peak).toString()
       const clipped = peak > 0
       fillBackground(context, css, index + 1)
-      drawLabel(context, css, getLabelForChannel(labels, index, true, false), index + 1, 0)
+      drawChannelLabel(context, css, getLabelForChannel(labels, index, true, false), index + 1)
       drawDbMarkers(context, css, index + 1)
       draw0DbMarker(context, css, index + 1)
       drawLevelBars(context, css, levelInPercent, peakInPercent, clipped, index + 1)
+      drawChannelLevel(context, css, levelText, index + 1)
+      drawChannelPeak(context, css, peakText, index + 1)
     })
     drawDbMarkerLabels(context, css, 0)
     drawDbMarkerLabels(context, css, levels.length + 1)
@@ -106,20 +112,33 @@ function drawDbMarkerLabels(context: CanvasRenderingContext2D, css: CSSStyleDecl
   })
 }
 
-function drawLabel(
+function drawChannelText(
   context: CanvasRenderingContext2D,
   css: CSSStyleDeclaration,
   label: string,
   index: number,
   x: number,
+  align: CanvasTextAlign,
 ) {
   context.fillStyle = css.getPropertyValue("--text-color")
   const dbMarkerHeight = gapHeightInPX
   const y = meterYOffset(index) - dbMarkerHeight
-  context.textAlign = "center"
+  context.textAlign = align
   context.textBaseline = "middle"
   context.font = "13px Arial"
   context.fillText(label, x + labelWidth / 2, y + gapHeightInPX + dbMarkerHeight + 1, labelWidth)
+}
+
+function drawChannelLabel(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
+  drawChannelText(context, css, label, index, 0, "center")
+}
+
+function drawChannelLevel(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
+  drawChannelText(context, css, label, index, 234, "right")
+}
+
+function drawChannelPeak(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
+  drawChannelText(context, css, label, index, 260, "right")
 }
 
 function draw0DbMarker(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
