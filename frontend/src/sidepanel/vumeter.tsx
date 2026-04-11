@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import "../index.css"
 import { Range } from "immutable"
 import { clamp } from "lodash"
@@ -13,13 +13,9 @@ export function VuMeterGroup(props: {
 }) {
   const { title, levels, peaks, labels } = props
   const canvasRef = useRef(null)
-  const meters = (
-    <canvas
-      width="290px"
-      height={levels.length * meterHeightInPX + (levels.length + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight + "px"}
-      ref={canvasRef}
-    />
-  )
+  const [displayedLevels, setDisplayedLevels] = useState<number[]>(levels)
+  const [displayedPeaks, setDisplayedPeaks] = useState<number[]>(peaks)
+  useUpdatePeakAndLevelLabelsEvery500ms(levels, setDisplayedLevels, peaks, setDisplayedPeaks)
   useEffect(() => {
     const canvas: HTMLCanvasElement | null = canvasRef.current as HTMLCanvasElement | null
     if (canvas === null) return
@@ -34,10 +30,12 @@ export function VuMeterGroup(props: {
     Range(0, levels.length).forEach((index) => {
       const level = levels[index]
       const peak = peaks[index]
+      const displayedLevel = displayedLevels[index]
+      const displayedPeak = displayedPeaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
-      const levelText = level < -99 ? "-∞" : Math.round(level).toString()
-      const peakText = peak < -99 ? "-∞" : Math.round(peak).toString()
+      const levelText = displayedLevel < -99 ? "-∞" : Math.round(displayedLevel).toString()
+      const peakText = displayedPeak < -99 ? "-∞" : Math.round(displayedPeak).toString()
       const clipped = peak > 0
       fillBackground(context, css, index + 1)
       drawChannelLabel(context, css, getLabelForChannel(labels, index, true, false), index + 1)
@@ -49,9 +47,54 @@ export function VuMeterGroup(props: {
     })
     drawDbMarkerLabels(context, css, 0)
     drawDbMarkerLabels(context, css, levels.length + 1)
-  }, [levels, peaks, labels, title])
+  }, [levels, peaks, displayedLevels, displayedPeaks, labels, title])
+  const meters = (
+    <canvas
+      width="290px"
+      height={levels.length * meterHeightInPX + (levels.length + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight + "px"}
+      ref={canvasRef}
+    />
+  )
   if (levels.length === 0 || levels.length !== peaks.length) return null
   else return <div>{meters}</div>
+}
+
+function useUpdatePeakAndLevelLabelsEvery500ms(
+  levels: number[],
+  setDisplayedLevels: (value: ((prevState: number[]) => number[]) | number[]) => void,
+  peaks: number[],
+  setDisplayedPeaks: (value: ((prevState: number[]) => number[]) | number[]) => void,
+) {
+  const lastUpdateRef = useRef(0)
+  const levelsAccumRef = useRef<number[]>([])
+  const peaksAccumRef = useRef<number[]>([])
+  const countRef = useRef(0)
+
+  useEffect(() => {
+    if (levelsAccumRef.current.length !== levels.length) {
+      levelsAccumRef.current = new Array(levels.length).fill(0)
+      peaksAccumRef.current = new Array(levels.length).fill(-Infinity)
+    }
+    const count = countRef.current
+    const levelsAccum = levelsAccumRef.current
+    const peaksAccum = peaksAccumRef.current
+
+    for (let i = 0; i < levels.length; i++) {
+      levelsAccum[i] = count === 0 ? levels[i] : ((count - 1) * levelsAccum[i] + levels[i]) / count // cumulative mean
+      peaksAccum[i] = Math.max(peaksAccum[i], peaks[i])
+    }
+    countRef.current++
+
+    const now = Date.now()
+    if (now - lastUpdateRef.current >= 500) {
+      lastUpdateRef.current = now
+      setDisplayedLevels([...levelsAccum])
+      setDisplayedPeaks([...peaksAccum])
+      levelsAccum.fill(0)
+      peaksAccum.fill(-Infinity)
+      countRef.current = 0
+    }
+  }, [levels, setDisplayedLevels, peaks, setDisplayedPeaks])
 }
 
 const meterHeightInPX = 10
