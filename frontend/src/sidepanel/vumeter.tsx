@@ -34,8 +34,8 @@ export function VuMeterGroup(props: {
       const displayedPeak = displayedPeaks[index]
       const levelInPercent = levelAsPercent(level)
       const peakInPercent = levelAsPercent(peak)
-      const levelText = displayedLevel < -99 ? "-∞" : Math.round(displayedLevel).toString()
-      const peakText = displayedPeak < -99 ? "-∞" : Math.round(displayedPeak).toString()
+      const levelText = displayedLevel < -99 ? "---" : Math.round(displayedLevel).toString()
+      const peakText = displayedPeak < -99 ? "---" : Math.round(displayedPeak).toString()
       const clipped = peak > 0
       fillBackground(context, css, index + 1)
       drawChannelLabel(context, css, getLabelForChannel(labels, index, true, false), index + 1)
@@ -50,13 +50,14 @@ export function VuMeterGroup(props: {
   }, [levels, peaks, displayedLevels, displayedPeaks, labels, title])
   const meters = (
     <canvas
-      width="290px"
-      height={levels.length * meterHeightInPX + (levels.length + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight + "px"}
+      width={totalMeterWidth}
+      height={levels.length * meterHeightInPX + (levels.length + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight}
+      style={{ width: totalMeterWidth + "px" }}
       ref={canvasRef}
     />
   )
   if (levels.length === 0 || levels.length !== peaks.length) return null
-  else return <div>{meters}</div>
+  else return <div style={{ width: totalMeterWidth + "px" }}>{meters}</div>
 }
 
 function useUpdatePeakAndLevelLabelsEvery500ms(
@@ -103,7 +104,11 @@ const dbMarkerLabelHeight = 10
 const dbMarkersAt = [6, 0, -6, -12, -24, -48, -72, -96]
 const dbMarkersWithTextLabel = [6, 0, -6, -12, -24, -48, -72, -96]
 const labelWidth = 40
-const meterWidth = 190
+const meterWidth = 250
+const totalMeterWidth = labelWidth + meterWidth
+const levelLabelWidth = 20
+const peakLabelWidth = 20
+const meterBarWidth = meterWidth - levelLabelWidth - peakLabelWidth
 
 /**
  * Converts volume level to percent
@@ -125,13 +130,13 @@ function meterYOffset(index: number): number {
 
 function fillBackground(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--button-background-color")
-  context.fillRect(labelWidth, meterYOffset(index), meterWidth, meterHeightInPX)
+  context.fillRect(labelWidth, meterYOffset(index), meterBarWidth, meterHeightInPX)
 }
 
 function drawDbMarkers(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--text-color")
   dbMarkersAt.forEach((marker) => {
-    const x = labelWidth + (meterWidth * levelAsPercent(marker)) / 100 - 1
+    const x = labelWidth + (meterBarWidth * levelAsPercent(marker)) / 100 - 1
     const y = meterYOffset(index) - gapHeightInPX
     context.fillRect(x, y, 2, gapHeightInPX)
     context.fillRect(x, y + meterHeightInPX + gapHeightInPX, 2, gapHeightInPX)
@@ -142,7 +147,7 @@ function drawDbMarkerLabels(context: CanvasRenderingContext2D, css: CSSStyleDecl
   context.fillStyle = css.getPropertyValue("--text-color")
   const dbMarkerHeight = gapHeightInPX
   dbMarkersAt.forEach((marker) => {
-    const x = labelWidth + (meterWidth * levelAsPercent(marker)) / 100 - 1
+    const x = labelWidth + (meterBarWidth * levelAsPercent(marker)) / 100 - 1
     const y = meterYOffset(index) - dbMarkerHeight
     context.fillRect(x, y, 2, dbMarkerHeight)
     context.fillRect(x, y + meterHeightInPX + dbMarkerHeight, 2, dbMarkerHeight)
@@ -161,6 +166,7 @@ function drawChannelText(
   label: string,
   index: number,
   x: number,
+  maxWidth: number,
   align: CanvasTextAlign,
 ) {
   context.fillStyle = css.getPropertyValue("--text-color")
@@ -169,24 +175,32 @@ function drawChannelText(
   context.textAlign = align
   context.textBaseline = "middle"
   context.font = "13px Arial"
-  context.fillText(label, x + labelWidth / 2, y + gapHeightInPX + dbMarkerHeight + 1, labelWidth)
+  context.fillText(label, x, y + gapHeightInPX + dbMarkerHeight + 1, maxWidth)
 }
 
 function drawChannelLabel(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
-  drawChannelText(context, css, label, index, 0, "center")
+  drawChannelText(context, css, label, index, labelWidth / 2, labelWidth, "center")
 }
 
 function drawChannelLevel(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
-  drawChannelText(context, css, label, index, 234, "right")
+  drawChannelText(context, css, label, index, labelWidth + meterBarWidth + levelLabelWidth, levelLabelWidth, "right")
 }
 
 function drawChannelPeak(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, label: string, index: number) {
-  drawChannelText(context, css, label, index, 260, "right")
+  drawChannelText(
+    context,
+    css,
+    label,
+    index,
+    labelWidth + meterBarWidth + levelLabelWidth + peakLabelWidth,
+    peakLabelWidth,
+    "right",
+  )
 }
 
 function draw0DbMarker(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, index: number) {
   context.fillStyle = css.getPropertyValue("--text-color")
-  context.fillRect(labelWidth + (meterWidth * levelAsPercent(0)) / 100 - 1, meterYOffset(index), 2, meterHeightInPX)
+  context.fillRect(labelWidth + (meterBarWidth * levelAsPercent(0)) / 100 - 1, meterYOffset(index), 2, meterHeightInPX)
 }
 
 function drawLevelBars(
@@ -198,8 +212,8 @@ function drawLevelBars(
   index: number,
 ) {
   context.fillStyle = css.getPropertyValue(clipped ? "--error-text-color" : "--success-text-color")
-  const rmsBarWidth = Math.round((meterWidth * levelInPercent) / 100)
+  const rmsBarWidth = Math.round((meterBarWidth * levelInPercent) / 100)
   context.fillRect(labelWidth, meterYOffset(index), rmsBarWidth, meterHeightInPX) // draw rms bar
-  const peakX = labelWidth + Math.min(meterWidth - 2, Math.round((meterWidth * peakInPercent) / 100 - 1))
+  const peakX = labelWidth + Math.min(meterBarWidth - 2, Math.round((meterBarWidth * peakInPercent) / 100 - 1))
   context.fillRect(peakX, meterYOffset(index), 2, meterHeightInPX) // draw peak bar
 }
