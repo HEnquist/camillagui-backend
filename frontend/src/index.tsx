@@ -5,7 +5,7 @@ import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall } from "@mdi/js"
+import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiHome, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
 import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
 import { createTheme } from "react-data-table-component"
@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
-import { CompactView, isCompactViewEnabled, setCompactViewEnabled } from "./compactview"
+import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import { DevicesTab } from "./devicestab"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
@@ -38,7 +38,7 @@ class CamillaConfig extends React.Component<
     guiConfig: GuiConfig
     undoRedo: UndoRedo<Config>
     errors: Errors
-    compactView: boolean
+    viewMode: ViewMode
     message: string
     unsavedChanges: boolean
     unappliedChanges: boolean
@@ -55,7 +55,7 @@ class CamillaConfig extends React.Component<
     this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
-    this.setCompactViewEnabled = this.setCompactViewEnabled.bind(this)
+    this.setViewMode = this.setViewMode.bind(this)
     this.NormalContent = this.NormalContent.bind(this)
     this.saveNotify = this.saveNotify.bind(this)
     this.applyNotify = this.applyNotify.bind(this)
@@ -64,7 +64,7 @@ class CamillaConfig extends React.Component<
       guiConfig: defaultGuiConfig(),
       undoRedo: new UndoRedo(defaultConfig()),
       errors: NoErrors,
-      compactView: isCompactViewEnabled(),
+      viewMode: getViewMode(),
       message: "",
       unsavedChanges: false,
       unappliedChanges: true,
@@ -152,9 +152,9 @@ class CamillaConfig extends React.Component<
     else this.setState({ message: "No config received" })
   }
 
-  private setCompactViewEnabled(enabled: boolean) {
-    setCompactViewEnabled(enabled)
-    this.setState({ compactView: enabled })
+  private setViewMode(mode: ViewMode) {
+    setViewMode(mode)
+    this.setState({ viewMode: mode })
   }
 
   private saveNotify() {
@@ -265,7 +265,7 @@ class CamillaConfig extends React.Component<
     return (
       <div className="configapp">
         <Tooltip id="main-tooltip" className="tooltip" />
-        {this.state.compactView ? (
+        {this.state.viewMode === "compact" ? (
           <CompactView
             currentConfigName={this.state.currentConfigFile}
             config={this.state.undoRedo.current()}
@@ -274,8 +274,26 @@ class CamillaConfig extends React.Component<
               this.applyConfigRequest(filename, config)
             }}
             updateConfig={(update) => this.updateConfig(update, true)}
-            disableCompactView={() => this.setCompactViewEnabled(false)}
+            switchToNormalView={() => this.setViewMode("normal")}
+            switchToDashboardView={() => this.setViewMode("dashboard")}
             guiConfig={this.state.guiConfig}
+          />
+        ) : this.state.viewMode === "dashboard" ? (
+          <SidePanel
+            currentConfigFile={this.state.currentConfigFile}
+            config={this.state.undoRedo.current()}
+            guiConfig={this.state.guiConfig}
+            applyConfig={this.applyConfig}
+            fetchConfig={this.fetchConfig}
+            saveConfig={this.saveConfig}
+            saveAndApplyConfig={this.saveAndApplyConfig}
+            setErrors={this.setErrors}
+            message={this.state.message}
+            unsavedChanges={this.state.unsavedChanges}
+            unappliedChanges={this.state.unappliedChanges}
+            dashboardExpanded={true}
+            switchToNormalView={() => this.setViewMode("normal")}
+            switchToCompactView={() => this.setViewMode("compact")}
           />
         ) : (
           <this.NormalContent />
@@ -301,14 +319,24 @@ class CamillaConfig extends React.Component<
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
+          dashboardExpanded={false}
+          switchToNormalView={() => this.setViewMode("normal")}
+          switchToCompactView={() => this.setViewMode("compact")}
         />
         <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab}>
           <TabList>
             <Tab disabled={true}>
               <MdiButton
+                icon={mdiPoll}
+                tooltip="Change to dashboard view"
+                onClick={() => this.setViewMode("dashboard")}
+                buttonSize="tiny"
+                rotation={90}
+              />
+              <MdiButton
                 icon={mdiImageSizeSelectSmall}
                 tooltip="Change to compact view"
-                onClick={() => this.setCompactViewEnabled(true)}
+                onClick={() => this.setViewMode("compact")}
                 buttonSize="tiny"
               />
               <MdiButton

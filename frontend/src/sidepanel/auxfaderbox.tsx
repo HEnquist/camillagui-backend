@@ -9,6 +9,7 @@ import { Box, MdiButton } from "../utilities/ui-components"
 
 type Props = {
   guiConfig: GuiConfig
+  dashboardExpanded?: boolean
 }
 
 type State = {
@@ -161,8 +162,21 @@ export class AuxFadersBox extends React.Component<Props, State> {
     const maxVol = this.props.guiConfig.volume_max
     const minVol = maxVol - this.props.guiConfig.volume_range
     const sliders = Range(0, faders.length).map((index) => {
+      const valueLabel = `${faders[index].volume.toFixed(1)} dB`
       return (
-        <div key={"slider" + index} style={{ display: "flex", flexDirection: "row" }}>
+        <div
+          key={"slider" + index}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            width: "100%",
+            gap: this.props.dashboardExpanded ? "8px" : 0,
+          }}
+        >
+          {this.props.dashboardExpanded && (
+            <div style={{ minWidth: "4.5em", textAlign: "right", whiteSpace: "nowrap" }}>{valueLabel}</div>
+          )}
           <input
             style={{ width: "100%", margin: 0, padding: 0 }}
             type="range"

@@ -1,6 +1,6 @@
 import React from "react"
 import "../index.css"
-import { mdiScaleUnbalanced } from "@mdi/js"
+import { mdiHome, mdiImageSizeSelectSmall, mdiScaleUnbalanced } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
@@ -15,6 +15,7 @@ import {
   LevelsEvent,
   LevelsEventStream,
   Status,
+  StatusWithLevels,
   StatusPoller,
 } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
@@ -22,6 +23,7 @@ import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
 import { Errors } from "../utilities/errors"
 import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
+import { VuMeterSize } from "./vumeter"
 
 interface SidePanelProps {
   config: Config
@@ -35,15 +37,19 @@ interface SidePanelProps {
   message: string
   unsavedChanges: boolean
   unappliedChanges: boolean
+  dashboardExpanded: boolean
+  switchToNormalView: () => void
+  switchToCompactView: () => void
 }
 
 export class SidePanel extends React.Component<
   SidePanelProps,
   {
-    cdspStatus: Status
+    cdspStatus: StatusWithLevels
     applyConfigAutomatically: boolean
     saveConfigAutomatically: boolean
     msg: string
+    dspConfigFileName: string | null
     logFileViewerOpen: boolean
     diffConfigDSP: Config
     diffConfigGUI: Config
@@ -75,11 +81,18 @@ export class SidePanel extends React.Component<
       applyConfigAutomatically: props.guiConfig.apply_config_automatically,
       saveConfigAutomatically: props.guiConfig.save_config_automatically,
       msg: "",
+      dspConfigFileName: null,
       logFileViewerOpen: false,
       diffConfigDSP: {} as Config,
       diffConfigGUI: {} as Config,
       showDiffPopup: false,
     }
+  }
+
+  componentDidMount() {
+    this.refreshDSPConfigFileName().catch((error) => {
+      console.log("Failed to fetch DSP config filename", error)
+    })
   }
 
   componentWillUnmount() {
@@ -100,7 +113,7 @@ export class SidePanel extends React.Component<
     })
   }
 
-  componentDidUpdate(prevProps: { config: Config; guiConfig: GuiConfig }) {
+  componentDidUpdate(prevProps: SidePanelProps, prevState: Readonly<React.ComponentState>) {
     const { apply_config_automatically, save_config_automatically } = this.props.guiConfig
     if (apply_config_automatically !== prevProps.guiConfig.apply_config_automatically)
       this.setState({
@@ -121,25 +134,66 @@ export class SidePanel extends React.Component<
       this.saveTimer(() => {
         this.props.saveConfig().catch(() => {})
       })
+    if (
+      this.props.dashboardExpanded &&
+      ((!isCdspOnline((prevState as Readonly<{ cdspStatus: StatusWithLevels }>).cdspStatus) &&
+        isCdspOnline(this.state.cdspStatus)) ||
+        prevProps.dashboardExpanded !== this.props.dashboardExpanded ||
+        prevProps.unappliedChanges !== this.props.unappliedChanges ||
+        prevProps.currentConfigFile !== this.props.currentConfigFile)
+    ) {
+      this.refreshDSPConfigFileName().catch((error) => {
+        console.log("Failed to refresh DSP config filename", error)
+      })
+    }
     // TODO save
   }
 
   render() {
+    const { dashboardExpanded } = this.props
+    const meterSize = this.meterSize(dashboardExpanded)
     return (
-      <section className="sidepanel">
-        <img src={camillalogo} alt="graph" width="100%" height="100%" />
-        {isCdspOnline(this.state.cdspStatus) && (
-          <VolumeBox
-            vuMeterStatus={this.state.cdspStatus}
-            setMessage={(message) => this.setState({ msg: message })}
-            inputLabels={this.state.cdspStatus.labels.capture}
-            outputLabels={this.state.cdspStatus.labels.playback}
-            guiConfig={this.props.guiConfig}
-          />
-        )}
-        {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
-        {this.cdspStateBox()}
-        {this.configBox()}
+      <section className={dashboardExpanded ? "sidepanel sidepanel-expanded" : "sidepanel"}>
+        <div className="sidepanel-header">
+          <div className="sidepanel-header-main">
+            <img className="sidepanel-logo" src={camillalogo} alt="graph" />
+            {dashboardExpanded && this.dashboardConfigSummary()}
+          </div>
+          {dashboardExpanded && (
+            <div className="sidepanel-header-actions">
+              <MdiButton
+                icon={mdiHome}
+                tooltip="Change to normal view"
+                buttonSize="small"
+                onClick={this.props.switchToNormalView}
+              />
+              <MdiButton
+                icon={mdiImageSizeSelectSmall}
+                tooltip="Change to compact view"
+                buttonSize="small"
+                onClick={this.props.switchToCompactView}
+              />
+            </div>
+          )}
+        </div>
+        <div className={dashboardExpanded ? "sidepanel-content sidepanel-content-expanded" : "sidepanel-content"}>
+          {isCdspOnline(this.state.cdspStatus) && (
+            <VolumeBox
+              vuMeterStatus={this.state.cdspStatus}
+              setMessage={(message) => this.setState({ msg: message })}
+              inputLabels={this.state.cdspStatus.labels.capture}
+              outputLabels={this.state.cdspStatus.labels.playback}
+              guiConfig={this.props.guiConfig}
+              meterSize={meterSize}
+            />
+          )}
+          {isCdspOnline(this.state.cdspStatus) && (
+            <AuxFadersBox guiConfig={this.props.guiConfig} dashboardExpanded={dashboardExpanded} />
+          )}
+          {this.cdspStateBox()}
+          {!dashboardExpanded && this.configBox()}
+          <VersionLabels versions={this.state.cdspStatus} />
+        </div>
         <DiffPopup
           open={this.state.showDiffPopup}
           onClose={() => this.setState({ showDiffPopup: false })}
@@ -148,8 +202,26 @@ export class SidePanel extends React.Component<
           right_config={this.state.diffConfigGUI}
           right_name="GUI"
         />
-        <VersionLabels versions={this.state.cdspStatus} />
       </section>
+    )
+  }
+
+  private meterSize(expanded: boolean): VuMeterSize {
+    if (!expanded) {
+      return { width: 290, channelHeight: 10 }
+    }
+    const width = typeof window === "undefined" ? 1100 : Math.max(290, Math.min(window.innerWidth - 80, 1100))
+    return { width, channelHeight: 24 }
+  }
+
+  private dashboardConfigSummary() {
+    const { cdspStatus, dspConfigFileName } = this.state
+    return (
+      <div className="dashboard-config-summary">
+        <div className="dashboard-config-title">{cdspStatus.title || "Untitled configuration"}</div>
+        <div className="dashboard-config-description">{cdspStatus.description || "No description"}</div>
+        <div className="dashboard-config-filename">{dspConfigFileName || "No active config file"}</div>
+      </div>
     )
   }
 
@@ -341,6 +413,28 @@ export class SidePanel extends React.Component<
     }
     const config = await conf_req.json()
     return config
+  }
+
+  private async fetchDSPConfigFileName() {
+    const response = await fetch("/api/getactiveconfigfilename")
+    if (!response.ok) {
+      const errorMessage = await response.text()
+      throw new Error(errorMessage)
+    }
+    const json = await response.json()
+    return (json.configFileName as string | null) ?? null
+  }
+
+  private async refreshDSPConfigFileName() {
+    if (!isCdspOnline(this.state.cdspStatus)) {
+      this.setState({
+        dspConfigFileName: null,
+      })
+      return
+    }
+    this.setState({
+      dspConfigFileName: await this.fetchDSPConfigFileName(),
+    })
   }
 
   private async stopProcessing() {

@@ -2,7 +2,7 @@ import React from "react"
 import "../index.css"
 import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@mdi/js"
 import { throttle, DebouncedFuncLeading } from "lodash"
-import { VuMeterGroup } from "./vumeter"
+import { VuMeterGroup, VuMeterSize } from "./vumeter"
 import { VuMeterStatus } from "../camilladsp/status"
 import { GuiConfig } from "../guiconfig"
 import { Box, MdiButton } from "../utilities/ui-components"
@@ -13,6 +13,7 @@ type Props = {
   inputLabels: null | (string | null)[]
   outputLabels: null | (string | null)[]
   guiConfig: GuiConfig
+  meterSize?: VuMeterSize
 }
 
 type State = Volume & {
@@ -24,6 +25,8 @@ export interface Volume {
   volume: number
   mute: boolean
 }
+
+let cachedVolume: Volume | null = null
 
 export class VolumePoller {
   private timerId: ReturnType<typeof setTimeout> | undefined
@@ -53,6 +56,7 @@ export class VolumePoller {
               volume: Number.NEGATIVE_INFINITY,
               mute: false,
             }
+          cachedVolume = volume
       // Only update if the timer hasn't been restarted
       // while we were reading the volume and mute settings.
       if (this.timerId === undefined) {
@@ -91,9 +95,12 @@ export class VolumeBox extends React.Component<Props, State> {
     this.toggleDim = this.toggleDim.bind(this)
     this.adjustVolume = this.adjustVolume.bind(this)
     this.setDspVolumeDebounced = throttle(this.setDspVolume, 250)
-    this.state = {
+    const initialVolume = cachedVolume ?? {
       volume: Number.NEGATIVE_INFINITY,
       mute: false,
+    }
+    this.state = {
+      ...initialVolume,
       dim: false,
       send_to_dsp: false,
     }
@@ -184,21 +191,24 @@ export class VolumeBox extends React.Component<Props, State> {
 
   render() {
     const { volume, mute, dim } = this.state
-    if (volume === Number.NEGATIVE_INFINITY) return null
     const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms } = this.props.vuMeterStatus
     const maxVol = this.props.guiConfig.volume_max
     const minVol = maxVol - this.props.guiConfig.volume_range
+    const volumeAvailable = Number.isFinite(volume)
+    const volumeLabel = volumeAvailable ? `${volume.toFixed(1)}dB` : "---"
+    const sliderValue = volumeAvailable ? 10.0 * volume : 10.0 * minVol
     return (
       <Box
         title={
           <>
             Vol:
-            <div className={mute ? "db-label-muted" : "db-label"}>{volume.toFixed(1)}dB</div>
+            <div className={mute ? "db-label-muted" : "db-label"}>{volumeLabel}</div>
             <MdiButton
               icon={mdiVolumeOff}
               tooltip={mute ? "Un-Mute" : "Mute"}
               buttonSize="small"
               highlighted={mute}
+              enabled={volumeAvailable}
               onClick={this.toggleMute}
             />
             <MdiButton
@@ -206,32 +216,41 @@ export class VolumeBox extends React.Component<Props, State> {
               tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
               buttonSize="small"
               highlighted={dim}
-              enabled={(dim && volume <= maxVol - 20) || (!dim && volume >= minVol + 20)}
+              enabled={volumeAvailable && ((dim && volume <= maxVol - 20) || (!dim && volume >= minVol + 20))}
               onClick={this.toggleDim}
             />
             <MdiButton
               icon={mdiVolumeMinus}
               tooltip="Lower volume by 1 dB"
               buttonSize="small"
+              enabled={volumeAvailable}
               onClick={() => this.adjustVolume(-1)}
             />
             <MdiButton
               icon={mdiVolumePlus}
               tooltip="Raise volume by 1 dB"
               buttonSize="small"
+              enabled={volumeAvailable}
               onClick={() => this.adjustVolume(1)}
             />
           </>
         }
       >
-        <VuMeterGroup title="IN" levels={capturesignalrms} peaks={capturesignalpeak} labels={this.props.inputLabels} />
+        <VuMeterGroup
+          title="IN"
+          levels={capturesignalrms}
+          peaks={capturesignalpeak}
+          labels={this.props.inputLabels}
+          size={this.props.meterSize}
+        />
         <input
           style={{ width: "100%", margin: 0, padding: 0 }}
           type="range"
           min={10.0 * minVol}
           max={10.0 * maxVol}
-          value={10.0 * volume}
+          value={sliderValue}
           id="volume"
+          disabled={!volumeAvailable}
           onChange={(e) => this.changeVolume(e.target.valueAsNumber / 10.0)}
         />
         <VuMeterGroup
@@ -239,6 +258,7 @@ export class VolumeBox extends React.Component<Props, State> {
           levels={playbacksignalrms}
           peaks={playbacksignalpeak}
           labels={this.props.outputLabels}
+          size={this.props.meterSize}
         />
       </Box>
     )

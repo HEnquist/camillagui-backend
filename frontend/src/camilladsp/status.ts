@@ -12,7 +12,7 @@ export interface Labels {
   playback: (string | null)[] | null
 }
 
-export interface Status extends Versions, VuMeterStatus {
+export interface Status extends Versions {
   cdsp_status: string
   capturerate: number | ""
   rateadjust: number | ""
@@ -21,7 +21,11 @@ export interface Status extends Versions, VuMeterStatus {
   processingload: number | ""
   resamplerload: number | ""
   labels: Labels
+  title: string | null
+  description: string | null
 }
+
+export interface StatusWithLevels extends Status, VuMeterStatus {}
 
 export interface LevelsEvent {
   capturesignalrms: number[]
@@ -31,13 +35,24 @@ export interface LevelsEvent {
   ts: number
 }
 
-export function defaultStatus(): Status {
+const CACHE_MAX_AGE_MS = 5000
+
+let cachedStatus: Status | null = null
+let cachedLevels: VuMeterStatus | null = null
+let lastCacheUpdate = 0
+
+function emptyVuMeterStatus(): VuMeterStatus {
   return {
-    cdsp_status: BACKEND_OFFLINE,
     capturesignalrms: [],
     capturesignalpeak: [],
     playbacksignalrms: [],
     playbacksignalpeak: [],
+  }
+}
+
+function offlineStatus(): Status {
+  return {
+    cdsp_status: BACKEND_OFFLINE,
     capturerate: "",
     rateadjust: "",
     bufferlevel: "",
@@ -49,6 +64,40 @@ export function defaultStatus(): Status {
     py_cdsp_plot_version: "",
     backend_version: "",
     labels: { playback: null, capture: null },
+    title: null,
+    description: null,
+  }
+}
+
+function isCacheFresh() {
+  return lastCacheUpdate > 0 && Date.now() - lastCacheUpdate < CACHE_MAX_AGE_MS
+}
+
+function cacheStatus(status: Status) {
+  cachedStatus = { ...status, labels: { ...status.labels } }
+  lastCacheUpdate = Date.now()
+}
+
+function cacheLevels(levels: VuMeterStatus) {
+  cachedLevels = {
+    capturesignalrms: [...levels.capturesignalrms],
+    capturesignalpeak: [...levels.capturesignalpeak],
+    playbacksignalrms: [...levels.playbacksignalrms],
+    playbacksignalpeak: [...levels.playbacksignalpeak],
+  }
+  lastCacheUpdate = Date.now()
+}
+
+export function defaultStatus(): StatusWithLevels {
+  if (isCacheFresh()) {
+    return {
+      ...(cachedStatus ?? offlineStatus()),
+      ...(cachedLevels ?? emptyVuMeterStatus()),
+    }
+  }
+  return {
+    ...offlineStatus(),
+    ...emptyVuMeterStatus(),
   }
 }
 
@@ -79,6 +128,7 @@ export class StatusPoller {
     let status: Status
     try {
       status = await (await fetch("/api/status")).json()
+      cacheStatus(status)
     } catch {
       status = defaultStatus()
     }
@@ -147,6 +197,7 @@ export class LevelsEventStream {
           Array.isArray(parsed.playbacksignalrms) &&
           Array.isArray(parsed.playbacksignalpeak)
         ) {
+          cacheLevels(parsed)
           this.onUpdate(parsed)
         }
       } catch {
