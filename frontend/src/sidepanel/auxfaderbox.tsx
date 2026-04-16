@@ -23,6 +23,8 @@ export interface Fader {
   mute: boolean
 }
 
+let auxFadersVisible = false
+
 export class FadersPoller {
   private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (faders: Fader[]) => void
@@ -86,7 +88,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
         { volume: -99, mute: false },
       ],
       send_to_dsp: false,
-      visible: false,
+      visible: auxFadersVisible,
     }
   }
 
@@ -209,7 +211,8 @@ export class AuxFadersBox extends React.Component<Props, State> {
               buttonSize="small"
               highlighted={visible}
               onClick={() => {
-                this.setState({ visible: !visible })
+                auxFadersVisible = !visible
+                this.setState({ visible: auxFadersVisible })
               }}
             />
             Aux faders

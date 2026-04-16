@@ -56,7 +56,7 @@ export class VolumePoller {
               volume: Number.NEGATIVE_INFINITY,
               mute: false,
             }
-          cachedVolume = volume
+      cachedVolume = volume
       // Only update if the timer hasn't been restarted
       // while we were reading the volume and mute settings.
       if (this.timerId === undefined) {

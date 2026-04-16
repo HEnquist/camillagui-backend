@@ -5,7 +5,7 @@ import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiHome, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
+import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
 import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
 import { createTheme } from "react-data-table-component"
@@ -14,6 +14,7 @@ import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
+import { DashboardView } from "./dashboardview"
 import { DevicesTab } from "./devicestab"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
@@ -279,19 +280,9 @@ class CamillaConfig extends React.Component<
             guiConfig={this.state.guiConfig}
           />
         ) : this.state.viewMode === "dashboard" ? (
-          <SidePanel
-            currentConfigFile={this.state.currentConfigFile}
-            config={this.state.undoRedo.current()}
+          <DashboardView
             guiConfig={this.state.guiConfig}
-            applyConfig={this.applyConfig}
-            fetchConfig={this.fetchConfig}
-            saveConfig={this.saveConfig}
-            saveAndApplyConfig={this.saveAndApplyConfig}
-            setErrors={this.setErrors}
             message={this.state.message}
-            unsavedChanges={this.state.unsavedChanges}
-            unappliedChanges={this.state.unappliedChanges}
-            dashboardExpanded={true}
             switchToNormalView={() => this.setViewMode("normal")}
             switchToCompactView={() => this.setViewMode("compact")}
           />
@@ -319,9 +310,6 @@ class CamillaConfig extends React.Component<
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
-          dashboardExpanded={false}
-          switchToNormalView={() => this.setViewMode("normal")}
-          switchToCompactView={() => this.setViewMode("compact")}
         />
         <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab}>
           <TabList>

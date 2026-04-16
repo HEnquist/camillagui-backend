@@ -44,7 +44,7 @@ export function VuMeterGroup(props: {
   const dynamicCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const [displayedLevels, setDisplayedLevels] = useState<number[]>(levels)
   const [displayedPeaks, setDisplayedPeaks] = useState<number[]>(peaks)
-  const layout = useMemo(() => makeMeterLayout(size, levels.length), [size?.width, size?.channelHeight, levels.length])
+  const layout = useMemo(() => makeMeterLayout(size, levels.length), [size, levels.length])
   useUpdatePeakAndLevelLabelsEvery500ms(levels, setDisplayedLevels, peaks, setDisplayedPeaks)
   useEffect(() => {
     const canvas = staticCanvasRef.current
@@ -186,8 +186,7 @@ function makeMeterLayout(size: Partial<VuMeterSize> | undefined, channelCount: n
     maxWidth: peakLabelWidth,
     align: "right" as CanvasTextAlign,
   }
-  const totalHeight =
-    channelCount * channelHeight + (channelCount + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight
+  const totalHeight = channelCount * channelHeight + (channelCount + 1) * gapHeightInPX + 2 * dbMarkerLabelHeight
   return {
     width,
     channelHeight,
@@ -236,7 +235,12 @@ function meterYOffset(layout: VuMeterLayout, index: number): number {
   return index * (layout.channelHeight + layout.gapHeight)
 }
 
-function fillBackground(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, layout: VuMeterLayout, index: number) {
+function fillBackground(
+  context: CanvasRenderingContext2D,
+  css: CSSStyleDeclaration,
+  layout: VuMeterLayout,
+  index: number,
+) {
   context.fillStyle = css.getPropertyValue("--button-background-color")
   context.fillRect(layout.labelWidth, meterYOffset(layout, index), layout.meterBarWidth, layout.channelHeight)
 }
@@ -269,7 +273,12 @@ function dbLabelTextY(layout: VuMeterLayout, index: number, tickHeight: number):
   )
 }
 
-function drawDbMarkers(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, layout: VuMeterLayout, index: number) {
+function drawDbMarkers(
+  context: CanvasRenderingContext2D,
+  css: CSSStyleDeclaration,
+  layout: VuMeterLayout,
+  index: number,
+) {
   context.fillStyle = css.getPropertyValue("--text-color")
   layout.dbMarkerXs.forEach((x) => {
     context.fillRect(x, topTickY(layout, index, layout.dbMarkerTickHeight), 2, layout.dbMarkerTickHeight)
@@ -347,7 +356,12 @@ function drawChannelPeak(
   drawChannelText(context, css, layout, label, index, column.x, column.maxWidth, column.align)
 }
 
-function draw0DbMarker(context: CanvasRenderingContext2D, css: CSSStyleDeclaration, layout: VuMeterLayout, index: number) {
+function draw0DbMarker(
+  context: CanvasRenderingContext2D,
+  css: CSSStyleDeclaration,
+  layout: VuMeterLayout,
+  index: number,
+) {
   context.fillStyle = css.getPropertyValue("--text-color")
   context.fillRect(
     layout.labelWidth + (layout.meterBarWidth * levelAsPercent(0)) / 100 - 1,

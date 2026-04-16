@@ -1,11 +1,11 @@
 import React from "react"
 import "../index.css"
-import { mdiHome, mdiImageSizeSelectSmall, mdiScaleUnbalanced } from "@mdi/js"
+import { mdiScaleUnbalanced } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
+import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
-import { LogFileViewerPopup } from "./logfileviewer"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
 import {
@@ -14,7 +14,6 @@ import {
   isCdspOnline,
   LevelsEvent,
   LevelsEventStream,
-  Status,
   StatusWithLevels,
   StatusPoller,
 } from "../camilladsp/status"
@@ -22,8 +21,7 @@ import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
 import { Errors } from "../utilities/errors"
-import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
-import { VuMeterSize } from "./vumeter"
+import { Box, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   config: Config
@@ -37,9 +35,6 @@ interface SidePanelProps {
   message: string
   unsavedChanges: boolean
   unappliedChanges: boolean
-  dashboardExpanded: boolean
-  switchToNormalView: () => void
-  switchToCompactView: () => void
 }
 
 export class SidePanel extends React.Component<
@@ -49,8 +44,6 @@ export class SidePanel extends React.Component<
     applyConfigAutomatically: boolean
     saveConfigAutomatically: boolean
     msg: string
-    dspConfigFileName: string | null
-    logFileViewerOpen: boolean
     diffConfigDSP: Config
     diffConfigGUI: Config
     showDiffPopup: boolean
@@ -81,18 +74,10 @@ export class SidePanel extends React.Component<
       applyConfigAutomatically: props.guiConfig.apply_config_automatically,
       saveConfigAutomatically: props.guiConfig.save_config_automatically,
       msg: "",
-      dspConfigFileName: null,
-      logFileViewerOpen: false,
       diffConfigDSP: {} as Config,
       diffConfigGUI: {} as Config,
       showDiffPopup: false,
     }
-  }
-
-  componentDidMount() {
-    this.refreshDSPConfigFileName().catch((error) => {
-      console.log("Failed to fetch DSP config filename", error)
-    })
   }
 
   componentWillUnmount() {
@@ -113,7 +98,7 @@ export class SidePanel extends React.Component<
     })
   }
 
-  componentDidUpdate(prevProps: SidePanelProps, prevState: Readonly<React.ComponentState>) {
+  componentDidUpdate(prevProps: SidePanelProps) {
     const { apply_config_automatically, save_config_automatically } = this.props.guiConfig
     if (apply_config_automatically !== prevProps.guiConfig.apply_config_automatically)
       this.setState({
@@ -134,49 +119,18 @@ export class SidePanel extends React.Component<
       this.saveTimer(() => {
         this.props.saveConfig().catch(() => {})
       })
-    if (
-      this.props.dashboardExpanded &&
-      ((!isCdspOnline((prevState as Readonly<{ cdspStatus: StatusWithLevels }>).cdspStatus) &&
-        isCdspOnline(this.state.cdspStatus)) ||
-        prevProps.dashboardExpanded !== this.props.dashboardExpanded ||
-        prevProps.unappliedChanges !== this.props.unappliedChanges ||
-        prevProps.currentConfigFile !== this.props.currentConfigFile)
-    ) {
-      this.refreshDSPConfigFileName().catch((error) => {
-        console.log("Failed to refresh DSP config filename", error)
-      })
-    }
     // TODO save
   }
 
   render() {
-    const { dashboardExpanded } = this.props
-    const meterSize = this.meterSize(dashboardExpanded)
     return (
-      <section className={dashboardExpanded ? "sidepanel sidepanel-expanded" : "sidepanel"}>
+      <section className="sidepanel">
         <div className="sidepanel-header">
           <div className="sidepanel-header-main">
             <img className="sidepanel-logo" src={camillalogo} alt="graph" />
-            {dashboardExpanded && this.dashboardConfigSummary()}
           </div>
-          {dashboardExpanded && (
-            <div className="sidepanel-header-actions">
-              <MdiButton
-                icon={mdiHome}
-                tooltip="Change to normal view"
-                buttonSize="small"
-                onClick={this.props.switchToNormalView}
-              />
-              <MdiButton
-                icon={mdiImageSizeSelectSmall}
-                tooltip="Change to compact view"
-                buttonSize="small"
-                onClick={this.props.switchToCompactView}
-              />
-            </div>
-          )}
         </div>
-        <div className={dashboardExpanded ? "sidepanel-content sidepanel-content-expanded" : "sidepanel-content"}>
+        <div className="sidepanel-content">
           {isCdspOnline(this.state.cdspStatus) && (
             <VolumeBox
               vuMeterStatus={this.state.cdspStatus}
@@ -184,14 +138,12 @@ export class SidePanel extends React.Component<
               inputLabels={this.state.cdspStatus.labels.capture}
               outputLabels={this.state.cdspStatus.labels.playback}
               guiConfig={this.props.guiConfig}
-              meterSize={meterSize}
+              meterSize={{ width: 290, channelHeight: 10 }}
             />
           )}
-          {isCdspOnline(this.state.cdspStatus) && (
-            <AuxFadersBox guiConfig={this.props.guiConfig} dashboardExpanded={dashboardExpanded} />
-          )}
-          {this.cdspStateBox()}
-          {!dashboardExpanded && this.configBox()}
+          {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
+          <CdspStateBox status={this.state.cdspStatus} message={this.props.message} />
+          {this.configBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
         <DiffPopup
@@ -203,61 +155,6 @@ export class SidePanel extends React.Component<
           right_name="GUI"
         />
       </section>
-    )
-  }
-
-  private meterSize(expanded: boolean): VuMeterSize {
-    if (!expanded) {
-      return { width: 290, channelHeight: 10 }
-    }
-    const width = typeof window === "undefined" ? 1100 : Math.max(290, Math.min(window.innerWidth - 80, 1100))
-    return { width, channelHeight: 24 }
-  }
-
-  private dashboardConfigSummary() {
-    const { cdspStatus, dspConfigFileName } = this.state
-    return (
-      <div className="dashboard-config-summary">
-        <div className="dashboard-config-title">{cdspStatus.title || "Untitled configuration"}</div>
-        <div className="dashboard-config-description">{cdspStatus.description || "No description"}</div>
-        <div className="dashboard-config-filename">{dspConfigFileName || "No active config file"}</div>
-      </div>
-    )
-  }
-
-  private cdspStateBox() {
-    const status = this.state.cdspStatus
-    return (
-      <Box title="CamillaDSP">
-        <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto" }}>
-          <div className="alignRight">State:</div>
-          <div>{status.cdsp_status}</div>
-          <div className="alignRight">Capt. samplerate:</div>
-          <div>{status.capturerate}</div>
-          <div className="alignRight">Rate adjust:</div>
-          <div>{status.rateadjust ? status.rateadjust.toFixed(4) : ""}</div>
-          <div className="alignRight">Clipped samples:</div>
-          <div>{status.clippedsamples}</div>
-          <div className="alignRight">Buffer level:</div>
-          <div>{status.bufferlevel}</div>
-          <div className="alignRight">DSP load:</div>
-          <div>{status.processingload ? status.processingload.toFixed(1) + "%" : ""} </div>
-          <div className="alignRight">Resampler load:</div>
-          <div>{status.resamplerload ? status.resamplerload.toFixed(1) + "%" : ""} </div>
-          <div className="alignRight">Message:</div>
-          <div>{this.props.message}</div>
-        </div>
-        <Button
-          text="Show log file"
-          onClick={() => this.setState({ logFileViewerOpen: true })}
-          style={{ marginTop: "10px" }}
-          enabled={isBackendOnline(status)}
-        />
-        <LogFileViewerPopup
-          open={this.state.logFileViewerOpen}
-          onClose={() => this.setState({ logFileViewerOpen: false })}
-        />
-      </Box>
     )
   }
 
@@ -413,28 +310,6 @@ export class SidePanel extends React.Component<
     }
     const config = await conf_req.json()
     return config
-  }
-
-  private async fetchDSPConfigFileName() {
-    const response = await fetch("/api/getactiveconfigfilename")
-    if (!response.ok) {
-      const errorMessage = await response.text()
-      throw new Error(errorMessage)
-    }
-    const json = await response.json()
-    return (json.configFileName as string | null) ?? null
-  }
-
-  private async refreshDSPConfigFileName() {
-    if (!isCdspOnline(this.state.cdspStatus)) {
-      this.setState({
-        dspConfigFileName: null,
-      })
-      return
-    }
-    this.setState({
-      dspConfigFileName: await this.fetchDSPConfigFileName(),
-    })
   }
 
   private async stopProcessing() {

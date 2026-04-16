@@ -141,16 +141,25 @@ textarea.logfileviewer {
   height: auto;
 }
 
-.sidepanel-expanded .sidepanel-logo {
-  max-width: 320px;
-}
-
 .sidepanel-expanded .sidepanel-header {
   align-items: flex-start;
 }
 
 .sidepanel-expanded .sidepanel-header-main {
   align-items: stretch;
+}
+
+.dashboard-header-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.dashboard-header-actions {
+  justify-content: flex-start;
 }
 
 .sidepanel-content {
@@ -169,10 +178,6 @@ textarea.logfileviewer {
   box-sizing: border-box;
   width: 100%;
   margin-bottom: 12px;
-  padding: 12px 16px;
-  border: var(--box-border);
-  border-radius: var(--border-radius);
-  background-color: var(--button-background-color);
 }
 
 .sidepanel-expanded .dashboard-config-summary {

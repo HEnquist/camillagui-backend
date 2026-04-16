@@ -1,14 +1,8 @@
 import * as React from "react"
-import { mdiHome, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
+import { mdiHome, mdiPoll } from "@mdi/js"
 import { Config } from "./camilladsp/config"
-import {
-  defaultStatus,
-  isCdspOnline,
-  LevelsEvent,
-  LevelsEventStream,
-  StatusPoller,
-  StatusWithLevels,
-} from "./camilladsp/status"
+import { isCdspOnline } from "./camilladsp/status"
+import { useVuMeterStatus } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
 import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
 import { VolumeBox } from "./sidepanel/volumebox"
@@ -58,49 +52,13 @@ export function CompactView(props: {
 }) {
   const { currentConfigName, config, setConfig, updateConfig, switchToNormalView, switchToDashboardView, guiConfig } =
     props
-  const [vuMeterStatus, setVuMeterStatus] = React.useState<StatusWithLevels>(defaultStatus())
-
-  React.useEffect(() => {
-    const updateLevels = (event: LevelsEvent) => {
-      setVuMeterStatus((prevState) => ({
-        ...prevState,
-        capturesignalrms: event.capturesignalrms,
-        capturesignalpeak: event.capturesignalpeak,
-        playbacksignalrms: event.playbacksignalrms,
-        playbacksignalpeak: event.playbacksignalpeak,
-      }))
-    }
-
-    const statusPoller = new StatusPoller(
-      (status) => {
-        setVuMeterStatus((prevState) => ({
-          ...status,
-          capturesignalrms: prevState.capturesignalrms,
-          capturesignalpeak: prevState.capturesignalpeak,
-          playbacksignalrms: prevState.playbacksignalrms,
-          playbacksignalpeak: prevState.playbacksignalpeak,
-        }))
-      },
-      guiConfig.status_update_interval,
-    )
-    const levelsEventStream = new LevelsEventStream(updateLevels)
-
-    return () => {
-      statusPoller.stop()
-      levelsEventStream.stop()
-    }
-  }, [guiConfig.status_update_interval])
+  const vuMeterStatus = useVuMeterStatus(guiConfig)
 
   return (
     <div className="tabpanel" style={{ margin: "auto" }}>
       <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
         <MdiButton icon={mdiHome} tooltip="Change to normal view" onClick={switchToNormalView} />
-        <MdiButton
-          icon={mdiPoll}
-          tooltip="Change to dashboard view"
-          onClick={switchToDashboardView}
-          rotation={90}
-        />
+        <MdiButton icon={mdiPoll} tooltip="Change to dashboard view" onClick={switchToDashboardView} rotation={90} />
       </div>
       <ErrorBoundary>
         {isCdspOnline(vuMeterStatus) && (
