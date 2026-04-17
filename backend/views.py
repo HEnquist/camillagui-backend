@@ -49,16 +49,14 @@ from .settings import GUI_CONFIG_PATH, get_gui_config_or_defaults
 OFFLINE_CACHE = {
     "cdsp_status": "Offline",
     "cdsp_version": "(offline)",
-    "capturesignalrms": [],
-    "capturesignalpeak": [],
-    "playbacksignalrms": [],
-    "playbacksignalpeak": [],
     "capturerate": None,
     "rateadjust": None,
     "bufferlevel": None,
     "clippedsamples": None,
     "processingload": None,
     "resamplerload": None,
+    "title": None,
+    "description": None,
 }
 HEADERS = {"Cache-Control": "no-store"}
 
@@ -125,6 +123,8 @@ async def get_status(request):
                     "processingload": cdsp.status.processing_load(),
                     "resamplerload": cdsp.status.resampler_load(),
                     "labels": cdsp.levels.labels(),
+                    "title": cdsp.config.title(),
+                    "description": cdsp.config.description(),
                 }
             )
     except IOError:
