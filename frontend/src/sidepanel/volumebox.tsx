@@ -4,16 +4,20 @@ import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@m
 import { throttle, DebouncedFuncLeading } from "lodash"
 import { VuMeterGroup, VuMeterSize } from "./vumeter"
 import { VuMeterStatus } from "../camilladsp/status"
+import { useVuMeterLevels } from "../camilladsp/usevumeterstatus"
 import { GuiConfig } from "../guiconfig"
 import { Box, MdiButton } from "../utilities/ui-components"
 
-type Props = {
-  vuMeterStatus: VuMeterStatus
+type SharedProps = {
   setMessage: (message: string) => void
   inputLabels: null | (string | null)[]
   outputLabels: null | (string | null)[]
   guiConfig: GuiConfig
   meterSize?: VuMeterSize
+}
+
+type Props = SharedProps & {
+  vuMeterStatus: VuMeterStatus
 }
 
 type State = Volume & {
@@ -28,21 +32,43 @@ export interface Volume {
 
 let cachedVolume: Volume | null = null
 
+export function VolumeBox(props: SharedProps) {
+  const vuMeterStatus = useVuMeterLevels()
+  return <VolumeBoxInner {...props} vuMeterStatus={vuMeterStatus} />
+}
+
 export class VolumePoller {
   private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (volume: Volume) => void
   private readonly update_interval: number
   private readonly holdoff_interval: number
+  private stopped = false
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.schedule(this.update_interval)
+  }
 
   constructor(onUpdate: (volume: Volume) => void, update_interval: number, holdoff_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
     this.holdoff_interval = holdoff_interval
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.schedule(this.update_interval)
+    }
   }
 
   private async updateVolume() {
     this.timerId = undefined
+    if (this.stopped || document.hidden) {
+      return
+    }
     try {
       const volreq = await fetch("/api/getparam/volume")
       const mutereq = await fetch("/api/getparam/mute")
@@ -66,26 +92,37 @@ export class VolumePoller {
       console.log(err)
     }
     if (this.timerId === undefined) {
-      this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
+      this.schedule(this.update_interval)
     }
   }
 
-  stop() {
+  private clearTimer() {
     if (this.timerId !== undefined) {
       clearTimeout(this.timerId)
       this.timerId = undefined
     }
   }
 
-  restart_timer() {
-    if (this.timerId !== undefined) {
-      clearTimeout(this.timerId)
+  private schedule(delayMs: number) {
+    this.clearTimer()
+    if (this.stopped || document.hidden) {
+      return
     }
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.holdoff_interval)
+    this.timerId = setTimeout(this.updateVolume.bind(this), delayMs)
+  }
+
+  stop() {
+    this.stopped = true
+    this.clearTimer()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  restart_timer() {
+    this.schedule(this.holdoff_interval)
   }
 }
 
-export class VolumeBox extends React.Component<Props, State> {
+class VolumeBoxInner extends React.Component<Props, State> {
   private volumePoller = new VolumePoller((cdspVolume) => this.setState({ ...cdspVolume }), 1000.0, 2000.0)
   private readonly setDspVolumeDebounced: DebouncedFuncLeading<(value: number) => Promise<void>>
 

@@ -221,6 +221,87 @@ textarea.logfileviewer {
   overflow-y: auto;
 }
 
+.data-table-shell {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--box-border-color);
+  vertical-align: middle;
+}
+
+.data-table th {
+  text-align: left;
+}
+
+.data-table-sortable,
+.data-table-static-header {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.data-table-sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.data-table-static-header {
+  display: inline-flex;
+  align-items: center;
+}
+
+.data-table-sortable:hover {
+  color: var(--success-text-color);
+}
+
+.data-table-sort-indicator {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.data-table-hover:hover {
+  background-color: var(--active-button-background-color);
+}
+
+.data-table-pointer {
+  cursor: pointer;
+}
+
+.data-table-selected {
+  background-color: color-mix(in srgb, var(--active-button-background-color) 55%, transparent);
+}
+
+.data-table-compact {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
 .tabspacer {
   width: 100%;
 }
@@ -560,6 +641,25 @@ div .popup-content {
   text-decoration: none;
   user-select: none;
   font-weight: bold;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.file-link:hover {
+  text-decoration: underline;
+}
+
+.file-link:focus-visible {
+  outline: var(--focused-input-border);
+  outline-offset: 2px;
 }
 
 .button-with-text {

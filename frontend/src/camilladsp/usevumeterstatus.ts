@@ -1,37 +1,50 @@
 import * as React from "react"
-import { defaultStatus, LevelsEvent, LevelsEventStream, StatusPoller, StatusWithLevels } from "./status"
+import {
+  defaultStatus,
+  defaultVuMeterStatus,
+  LevelsEvent,
+  LevelsEventStream,
+  Status,
+  StatusPoller,
+  VuMeterStatus,
+} from "./status"
 import { GuiConfig } from "../guiconfig"
 
-export function useVuMeterStatus(guiConfig: GuiConfig) {
-  const [vuMeterStatus, setVuMeterStatus] = React.useState<StatusWithLevels>(defaultStatus())
+export function useCdspStatus(guiConfig: GuiConfig) {
+  const [status, setStatus] = React.useState<Status>(defaultStatus())
+
+  React.useEffect(() => {
+    const statusPoller = new StatusPoller((nextStatus) => {
+      setStatus(nextStatus)
+    }, guiConfig.status_update_interval)
+
+    return () => {
+      statusPoller.stop()
+    }
+  }, [guiConfig.status_update_interval])
+
+  return status
+}
+
+export function useVuMeterLevels() {
+  const [levels, setLevels] = React.useState<VuMeterStatus>(defaultVuMeterStatus())
 
   React.useEffect(() => {
     const updateLevels = (event: LevelsEvent) => {
-      setVuMeterStatus((prevState) => ({
-        ...prevState,
+      setLevels({
         capturesignalrms: event.capturesignalrms,
         capturesignalpeak: event.capturesignalpeak,
         playbacksignalrms: event.playbacksignalrms,
         playbacksignalpeak: event.playbacksignalpeak,
-      }))
+      })
     }
 
-    const statusPoller = new StatusPoller((status) => {
-      setVuMeterStatus((prevState) => ({
-        ...status,
-        capturesignalrms: prevState.capturesignalrms,
-        capturesignalpeak: prevState.capturesignalpeak,
-        playbacksignalrms: prevState.playbacksignalrms,
-        playbacksignalpeak: prevState.playbacksignalpeak,
-      }))
-    }, guiConfig.status_update_interval)
     const levelsEventStream = new LevelsEventStream(updateLevels)
 
     return () => {
-      statusPoller.stop()
       levelsEventStream.stop()
     }
-  }, [guiConfig.status_update_interval])
+  }, [])
 
-  return vuMeterStatus
+  return levels
 }

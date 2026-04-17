@@ -106,6 +106,14 @@ export function download(filename: string, blob: Blob) {
   a.click()
 }
 
+export async function downloadFromUrl(filename: string, url: string) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+  download(filename, await response.blob())
+}
+
 export async function doUpload(
   type: "config" | "coeff",
   files: FileList,

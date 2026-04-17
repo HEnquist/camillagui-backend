@@ -36,6 +36,7 @@ export interface LevelsEvent {
 }
 
 const CACHE_MAX_AGE_MS = 5000
+const VISIBILITY_RESUME_DELAY_MS = 100
 
 let cachedStatus: Status | null = null
 let cachedLevels: VuMeterStatus | null = null
@@ -48,6 +49,10 @@ function emptyVuMeterStatus(): VuMeterStatus {
     playbacksignalrms: [],
     playbacksignalpeak: [],
   }
+}
+
+export function defaultVuMeterStatus(): VuMeterStatus {
+  return cachedLevels ?? emptyVuMeterStatus()
 }
 
 function offlineStatus(): Status {
@@ -114,17 +119,36 @@ export function isBackendOnline(status: Status): boolean {
 }
 
 export class StatusPoller {
-  private timerId: ReturnType<typeof setTimeout>
+  private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (status: Status) => void
   private update_interval: number
+  private stopped = false
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.scheduleNext(VISIBILITY_RESUME_DELAY_MS)
+  }
 
   constructor(onUpdate: (status: Status) => void, update_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
-    this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.scheduleNext(this.update_interval)
+    }
   }
 
   private async updateStatus() {
+    if (this.stopped || document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.timerId = undefined
     let status: Status
     try {
       status = await (await fetch("/api/status")).json()
@@ -133,15 +157,35 @@ export class StatusPoller {
       status = defaultStatus()
     }
     this.onUpdate(status)
-    this.timerId = setTimeout(this.updateStatus.bind(this), this.update_interval)
+    this.scheduleNext(this.update_interval)
+  }
+
+  private clearTimer() {
+    if (this.timerId !== undefined) {
+      clearTimeout(this.timerId)
+      this.timerId = undefined
+    }
+  }
+
+  private scheduleNext(delayMs: number) {
+    this.clearTimer()
+    if (this.stopped || document.hidden) {
+      return
+    }
+    this.timerId = setTimeout(this.updateStatus.bind(this), delayMs)
   }
 
   stop() {
-    clearTimeout(this.timerId)
+    this.stopped = true
+    this.clearTimer()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
   }
 
   setInterval(interval: number) {
     this.update_interval = interval
+    if (!document.hidden) {
+      this.scheduleNext(this.update_interval)
+    }
   }
 }
 
@@ -152,10 +196,27 @@ export class LevelsEventStream {
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private stopped = false
   private readonly onUpdate: (event: LevelsEvent) => void
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearReconnectTimer()
+      this.source?.close()
+      this.source = undefined
+      return
+    }
+    if (!this.source) {
+      this.connect()
+    }
+  }
 
   constructor(onUpdate: (event: LevelsEvent) => void) {
     this.onUpdate = onUpdate
-    this.connect()
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.connect()
+    }
   }
 
   private clearReconnectTimer() {
@@ -167,9 +228,9 @@ export class LevelsEventStream {
 
   private scheduleReconnect(source: EventSource, delayMs: number) {
     this.clearReconnectTimer()
-    if (this.stopped) return
+    if (this.stopped || document.hidden) return
     this.reconnectTimer = setTimeout(() => {
-      if (this.stopped || this.source !== source) return
+      if (this.stopped || document.hidden || this.source !== source) return
       source.close()
       this.source = undefined
       this.connect()
@@ -181,7 +242,7 @@ export class LevelsEventStream {
   }
 
   private connect() {
-    if (this.stopped) return
+    if (this.stopped || document.hidden) return
     const source = new EventSource("/api/events")
     this.source = source
     this.markActivity(source)
@@ -221,5 +282,6 @@ export class LevelsEventStream {
     this.clearReconnectTimer()
     this.source?.close()
     this.source = undefined
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
   }
 }

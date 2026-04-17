@@ -2,7 +2,7 @@ import * as React from "react"
 import { mdiHome, mdiPoll } from "@mdi/js"
 import { Config } from "./camilladsp/config"
 import { isCdspOnline } from "./camilladsp/status"
-import { useVuMeterStatus } from "./camilladsp/usevumeterstatus"
+import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
 import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
 import { VolumeBox } from "./sidepanel/volumebox"
@@ -52,7 +52,7 @@ export function CompactView(props: {
 }) {
   const { currentConfigName, config, setConfig, updateConfig, switchToNormalView, switchToDashboardView, guiConfig } =
     props
-  const vuMeterStatus = useVuMeterStatus(guiConfig)
+  const cdspStatus = useCdspStatus(guiConfig)
 
   return (
     <div className="tabpanel" style={{ margin: "auto" }}>
@@ -61,12 +61,11 @@ export function CompactView(props: {
         <MdiButton icon={mdiPoll} tooltip="Change to dashboard view" onClick={switchToDashboardView} rotation={90} />
       </div>
       <ErrorBoundary>
-        {isCdspOnline(vuMeterStatus) && (
+        {isCdspOnline(cdspStatus) && (
           <VolumeBox
-            vuMeterStatus={vuMeterStatus}
             setMessage={() => {}}
-            inputLabels={vuMeterStatus.labels.capture}
-            outputLabels={vuMeterStatus.labels.playback}
+            inputLabels={cdspStatus.labels.capture}
+            outputLabels={cdspStatus.labels.playback}
             guiConfig={guiConfig}
           />
         )}

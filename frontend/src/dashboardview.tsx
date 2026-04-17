@@ -2,7 +2,7 @@ import * as React from "react"
 import { mdiHome, mdiImageSizeSelectSmall } from "@mdi/js"
 import "./index.css"
 import { isCdspOnline } from "./camilladsp/status"
-import { useVuMeterStatus } from "./camilladsp/usevumeterstatus"
+import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { VersionLabels } from "./camilladsp/versions"
 import { GuiConfig } from "./guiconfig"
 import { AuxFadersBox } from "./sidepanel/auxfaderbox"
@@ -18,7 +18,7 @@ export function DashboardView(props: {
   switchToCompactView: () => void
 }) {
   const { guiConfig, message, switchToNormalView, switchToCompactView } = props
-  const cdspStatus = useVuMeterStatus(guiConfig)
+  const cdspStatus = useCdspStatus(guiConfig)
   const [dspConfigFileName, setDspConfigFileName] = React.useState<string | null>(null)
 
   const cdspOnline = isCdspOnline(cdspStatus)
@@ -87,7 +87,6 @@ export function DashboardView(props: {
       <div className="sidepanel-content sidepanel-content-expanded">
         {cdspOnline && (
           <VolumeBox
-            vuMeterStatus={cdspStatus}
             setMessage={() => {}}
             inputLabels={cdspStatus.labels.capture}
             outputLabels={cdspStatus.labels.playback}

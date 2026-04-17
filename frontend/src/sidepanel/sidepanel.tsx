@@ -8,15 +8,7 @@ import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
-import {
-  defaultStatus,
-  isBackendOnline,
-  isCdspOnline,
-  LevelsEvent,
-  LevelsEventStream,
-  StatusWithLevels,
-  StatusPoller,
-} from "../camilladsp/status"
+import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
@@ -40,7 +32,7 @@ interface SidePanelProps {
 export class SidePanel extends React.Component<
   SidePanelProps,
   {
-    cdspStatus: StatusWithLevels
+    cdspStatus: Status
     applyConfigAutomatically: boolean
     saveConfigAutomatically: boolean
     msg: string
@@ -50,19 +42,9 @@ export class SidePanel extends React.Component<
   }
 > {
   private statusPoller = new StatusPoller(
-    (cdspStatus) =>
-      this.setState((prevState) => ({
-        cdspStatus: {
-          ...cdspStatus,
-          capturesignalrms: prevState.cdspStatus.capturesignalrms,
-          capturesignalpeak: prevState.cdspStatus.capturesignalpeak,
-          playbacksignalrms: prevState.cdspStatus.playbacksignalrms,
-          playbacksignalpeak: prevState.cdspStatus.playbacksignalpeak,
-        },
-      })),
+    (cdspStatus) => this.setState({ cdspStatus }),
     this.props.guiConfig.status_update_interval,
   )
-  private levelsEventStream = new LevelsEventStream((event) => this.updateLevels(event))
 
   private applyTimer = delayedExecutor(500)
   private saveTimer = delayedExecutor(500)
@@ -82,20 +64,6 @@ export class SidePanel extends React.Component<
 
   componentWillUnmount() {
     this.statusPoller.stop()
-    this.levelsEventStream.stop()
-  }
-
-  private updateLevels(event: LevelsEvent) {
-    this.setState((prevState) => {
-      const cdspStatus = {
-        ...prevState.cdspStatus,
-        capturesignalrms: event.capturesignalrms,
-        capturesignalpeak: event.capturesignalpeak,
-        playbacksignalrms: event.playbacksignalrms,
-        playbacksignalpeak: event.playbacksignalpeak,
-      }
-      return { cdspStatus }
-    })
   }
 
   componentDidUpdate(prevProps: SidePanelProps) {
@@ -133,7 +101,6 @@ export class SidePanel extends React.Component<
         <div className="sidepanel-content">
           {isCdspOnline(this.state.cdspStatus) && (
             <VolumeBox
-              vuMeterStatus={this.state.cdspStatus}
               setMessage={(message) => this.setState({ msg: message })}
               inputLabels={this.state.cdspStatus.labels.capture}
               outputLabels={this.state.cdspStatus.labels.playback}

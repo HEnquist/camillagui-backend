@@ -8,13 +8,13 @@ import * as React from "react"
 import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
 import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
-import { createTheme } from "react-data-table-component"
 import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import { DashboardView } from "./dashboardview"
+import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
@@ -72,32 +72,6 @@ class CamillaConfig extends React.Component<
     }
     this.loadGuiConfig()
     this.loadConfigAtStart()
-    createTheme(
-      "camilla",
-      {
-        text: {
-          primary: "var(--text-color)",
-          secondary: "var(--text-color)",
-        },
-        background: {
-          default: "var(--background-color)",
-        },
-        context: {
-          background: "#cb4b16",
-          text: "#FFFFFF",
-        },
-        divider: {
-          default: "var(--box-border-color)",
-        },
-        highlightOnHover: {
-          default: "var(--active-button-background-color)",
-        },
-        sortFocus: {
-          default: "var(--success-text-color)",
-        },
-      },
-      "dark",
-    )
   }
 
   private async loadGuiConfig() {
@@ -428,5 +402,6 @@ function ErrorIcon() {
 }
 
 const container = document.getElementById("root")
+installDemoBackend()
 const root = createRoot(container!)
 root.render(<CamillaConfig />)

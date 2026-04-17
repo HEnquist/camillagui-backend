@@ -30,16 +30,33 @@ export class FadersPoller {
   private readonly onUpdate: (faders: Fader[]) => void
   private readonly update_interval: number
   private readonly holdoff_interval: number
+  private stopped = false
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.schedule(this.update_interval)
+  }
 
   constructor(onUpdate: (faders: Fader[]) => void, update_interval: number, holdoff_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
     this.holdoff_interval = holdoff_interval
-    this.timerId = setTimeout(this.updateFaders.bind(this), this.update_interval)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.schedule(this.update_interval)
+    }
   }
 
   private async updateFaders() {
     this.timerId = undefined
+    if (this.stopped || document.hidden) {
+      return
+    }
     try {
       const fadersreq = fetch("/api/getparamjson/faders")
       const faders = (await (await fadersreq).json()) as Fader[]
@@ -52,22 +69,33 @@ export class FadersPoller {
       console.log("unable to read faders", err)
     }
     if (this.timerId === undefined) {
-      this.timerId = setTimeout(this.updateFaders.bind(this), this.update_interval)
+      this.schedule(this.update_interval)
     }
   }
 
-  stop() {
+  private clearTimer() {
     if (this.timerId !== undefined) {
       clearTimeout(this.timerId)
       this.timerId = undefined
     }
   }
 
-  restart_timer() {
-    if (this.timerId !== undefined) {
-      clearTimeout(this.timerId)
+  private schedule(delayMs: number) {
+    this.clearTimer()
+    if (this.stopped || document.hidden) {
+      return
     }
-    this.timerId = setTimeout(this.updateFaders.bind(this), this.holdoff_interval)
+    this.timerId = setTimeout(this.updateFaders.bind(this), delayMs)
+  }
+
+  stop() {
+    this.stopped = true
+    this.clearTimer()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  restart_timer() {
+    this.schedule(this.holdoff_interval)
   }
 }
 
