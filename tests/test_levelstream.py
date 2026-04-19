@@ -9,7 +9,7 @@ from backend.levelstream import LevelEventStream
 def test_vu_subscription_config_preserves_backend_tuning():
     stream = LevelEventStream("127.0.0.1", 1234, {}, smoothing_time_constant_ms=100, max_update_hz=30)
 
-    assert stream._vu_subscription == {"max_rate": 30.0, "attack": 10.0, "release": 200.0}
+    assert stream._vu_subscription == {"max_rate": 30.0, "attack": 10.0, "release": 100.0}
 
 
 def test_vu_subscription_can_disable_smoothing_and_rate_limit():

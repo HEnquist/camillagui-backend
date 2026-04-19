@@ -106,6 +106,8 @@ def mock_camillaclient(statefile):
     client.config = MagicMock()
     client.config.active = MagicMock(return_value=SAMPLE_CONFIG)
     client.config.file_path = MagicMock(return_value=SAMPLE_CONFIG_PATH)
+    client.config.title = MagicMock(return_value="Test config")
+    client.config.description = MagicMock(return_value="Test description")
     client.versions = MagicMock()
     client.versions.library = MagicMock(return_value="1.2.3")
     yield client_constructor
