@@ -9,6 +9,7 @@ import { Box, MdiButton } from "../utilities/ui-components"
 
 type Props = {
   guiConfig: GuiConfig
+  dashboardExpanded?: boolean
 }
 
 type State = {
@@ -22,21 +23,40 @@ export interface Fader {
   mute: boolean
 }
 
+let auxFadersVisible = false
+
 export class FadersPoller {
-  private timerId: NodeJS.Timeout | undefined
+  private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (faders: Fader[]) => void
   private readonly update_interval: number
   private readonly holdoff_interval: number
+  private stopped = false
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.schedule(this.update_interval)
+  }
 
   constructor(onUpdate: (faders: Fader[]) => void, update_interval: number, holdoff_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
     this.holdoff_interval = holdoff_interval
-    this.timerId = setTimeout(this.updateFaders.bind(this), this.update_interval)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.schedule(this.update_interval)
+    }
   }
 
   private async updateFaders() {
     this.timerId = undefined
+    if (this.stopped || document.hidden) {
+      return
+    }
     try {
       const fadersreq = fetch("/api/getparamjson/faders")
       const faders = (await (await fadersreq).json()) as Fader[]
@@ -49,22 +69,33 @@ export class FadersPoller {
       console.log("unable to read faders", err)
     }
     if (this.timerId === undefined) {
-      this.timerId = setTimeout(this.updateFaders.bind(this), this.update_interval)
+      this.schedule(this.update_interval)
     }
   }
 
-  stop() {
+  private clearTimer() {
     if (this.timerId !== undefined) {
       clearTimeout(this.timerId)
       this.timerId = undefined
     }
   }
 
-  restart_timer() {
-    if (this.timerId !== undefined) {
-      clearTimeout(this.timerId)
+  private schedule(delayMs: number) {
+    this.clearTimer()
+    if (this.stopped || document.hidden) {
+      return
     }
-    this.timerId = setTimeout(this.updateFaders.bind(this), this.holdoff_interval)
+    this.timerId = setTimeout(this.updateFaders.bind(this), delayMs)
+  }
+
+  stop() {
+    this.stopped = true
+    this.clearTimer()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  restart_timer() {
+    this.schedule(this.holdoff_interval)
   }
 }
 
@@ -85,7 +116,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
         { volume: -99, mute: false },
       ],
       send_to_dsp: false,
-      visible: false,
+      visible: auxFadersVisible,
     }
   }
 
@@ -161,8 +192,21 @@ export class AuxFadersBox extends React.Component<Props, State> {
     const maxVol = this.props.guiConfig.volume_max
     const minVol = maxVol - this.props.guiConfig.volume_range
     const sliders = Range(0, faders.length).map((index) => {
+      const valueLabel = `${faders[index].volume.toFixed(1)} dB`
       return (
-        <div key={"slider" + index} style={{ display: "flex", flexDirection: "row" }}>
+        <div
+          key={"slider" + index}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            width: "100%",
+            gap: this.props.dashboardExpanded ? "8px" : 0,
+          }}
+        >
+          {this.props.dashboardExpanded && (
+            <div style={{ minWidth: "4.5em", textAlign: "right", whiteSpace: "nowrap" }}>{valueLabel}</div>
+          )}
           <input
             style={{ width: "100%", margin: 0, padding: 0 }}
             type="range"
@@ -195,7 +239,8 @@ export class AuxFadersBox extends React.Component<Props, State> {
               buttonSize="small"
               highlighted={visible}
               onClick={() => {
-                this.setState({ visible: !visible })
+                auxFadersVisible = !visible
+                this.setState({ visible: auxFadersVisible })
               }}
             />
             Aux faders

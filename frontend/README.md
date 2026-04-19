@@ -16,12 +16,19 @@ It uses a number of open source libraries and components.
 See `package.json` for the full list.
 
 ## Development
+Select the frontend Node version with `nvm use`.
+
 Install the dependencies with `npm install`.
 
 Start the development server with `npm run dev`.
 This makes the GUI available on `http://localhost:5173/gui`.
 The development server watches for changes in the source files
 and updates the running version automatically.
+
+For a frontend-only demo build that can be deployed to GitHub Pages,
+use `npm run dev:demo` for local development or `npm run build:demo` for a production build.
+That mode installs an in-browser mock backend only when the `demo` Vite mode is selected,
+so the normal backend integration remains unchanged.
 
 To make a production build, run `npm run build`.
 The build will be stored in the `build` folder.

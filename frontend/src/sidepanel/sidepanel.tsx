@@ -4,8 +4,8 @@ import { mdiScaleUnbalanced } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
+import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
-import { LogFileViewerPopup } from "./logfileviewer"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
 import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } from "../camilladsp/status"
@@ -13,7 +13,7 @@ import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
 import { Errors } from "../utilities/errors"
-import { Box, Button, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
+import { Box, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   config: Config
@@ -36,7 +36,6 @@ export class SidePanel extends React.Component<
     applyConfigAutomatically: boolean
     saveConfigAutomatically: boolean
     msg: string
-    logFileViewerOpen: boolean
     diffConfigDSP: Config
     diffConfigGUI: Config
     showDiffPopup: boolean
@@ -57,7 +56,6 @@ export class SidePanel extends React.Component<
       applyConfigAutomatically: props.guiConfig.apply_config_automatically,
       saveConfigAutomatically: props.guiConfig.save_config_automatically,
       msg: "",
-      logFileViewerOpen: false,
       diffConfigDSP: {} as Config,
       diffConfigGUI: {} as Config,
       showDiffPopup: false,
@@ -68,7 +66,7 @@ export class SidePanel extends React.Component<
     this.statusPoller.stop()
   }
 
-  componentDidUpdate(prevProps: { config: Config; guiConfig: GuiConfig }) {
+  componentDidUpdate(prevProps: SidePanelProps) {
     const { apply_config_automatically, save_config_automatically } = this.props.guiConfig
     if (apply_config_automatically !== prevProps.guiConfig.apply_config_automatically)
       this.setState({
@@ -80,7 +78,7 @@ export class SidePanel extends React.Component<
       })
     const { status_update_interval } = this.props.guiConfig
     if (status_update_interval !== prevProps.guiConfig.status_update_interval)
-      this.statusPoller.set_interval(status_update_interval)
+      this.statusPoller.setInterval(status_update_interval)
     if (this.state.applyConfigAutomatically && !isEqual(prevProps.config, this.props.config))
       this.applyTimer(() => {
         this.props.applyConfig().catch(() => {})
@@ -95,19 +93,26 @@ export class SidePanel extends React.Component<
   render() {
     return (
       <section className="sidepanel">
-        <img src={camillalogo} alt="graph" width="100%" height="100%" />
-        {isCdspOnline(this.state.cdspStatus) && (
-          <VolumeBox
-            vuMeterStatus={this.state.cdspStatus}
-            setMessage={(message) => this.setState({ msg: message })}
-            inputLabels={this.state.cdspStatus.labels.capture}
-            outputLabels={this.state.cdspStatus.labels.playback}
-            guiConfig={this.props.guiConfig}
-          />
-        )}
-        {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
-        {this.cdspStateBox()}
-        {this.configBox()}
+        <div className="sidepanel-header">
+          <div className="sidepanel-header-main">
+            <img className="sidepanel-logo" src={camillalogo} alt="graph" />
+          </div>
+        </div>
+        <div className="sidepanel-content">
+          {isCdspOnline(this.state.cdspStatus) && (
+            <VolumeBox
+              setMessage={(message) => this.setState({ msg: message })}
+              inputLabels={this.state.cdspStatus.labels.capture}
+              outputLabels={this.state.cdspStatus.labels.playback}
+              guiConfig={this.props.guiConfig}
+              meterSize={{ width: 290, channelHeight: 10 }}
+            />
+          )}
+          {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
+          <CdspStateBox status={this.state.cdspStatus} message={this.props.message} />
+          {this.configBox()}
+          <VersionLabels versions={this.state.cdspStatus} />
+        </div>
         <DiffPopup
           open={this.state.showDiffPopup}
           onClose={() => this.setState({ showDiffPopup: false })}
@@ -116,44 +121,7 @@ export class SidePanel extends React.Component<
           right_config={this.state.diffConfigGUI}
           right_name="GUI"
         />
-        <VersionLabels versions={this.state.cdspStatus} />
       </section>
-    )
-  }
-
-  private cdspStateBox() {
-    const status = this.state.cdspStatus
-    return (
-      <Box title="CamillaDSP">
-        <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto" }}>
-          <div className="alignRight">State:</div>
-          <div>{status.cdsp_status}</div>
-          <div className="alignRight">Capt. samplerate:</div>
-          <div>{status.capturerate}</div>
-          <div className="alignRight">Rate adjust:</div>
-          <div>{status.rateadjust ? status.rateadjust.toFixed(4) : ""}</div>
-          <div className="alignRight">Clipped samples:</div>
-          <div>{status.clippedsamples}</div>
-          <div className="alignRight">Buffer level:</div>
-          <div>{status.bufferlevel}</div>
-          <div className="alignRight">DSP load:</div>
-          <div>{status.processingload ? status.processingload.toFixed(1) + "%" : ""} </div>
-          <div className="alignRight">Resampler load:</div>
-          <div>{status.resamplerload ? status.resamplerload.toFixed(1) + "%" : ""} </div>
-          <div className="alignRight">Message:</div>
-          <div>{this.props.message}</div>
-        </div>
-        <Button
-          text="Show log file"
-          onClick={() => this.setState({ logFileViewerOpen: true })}
-          style={{ marginTop: "10px" }}
-          enabled={isBackendOnline(status)}
-        />
-        <LogFileViewerPopup
-          open={this.state.logFileViewerOpen}
-          onClose={() => this.setState({ logFileViewerOpen: false })}
-        />
-      </Box>
     )
   }
 

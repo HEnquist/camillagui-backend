@@ -2,17 +2,22 @@ import React from "react"
 import "../index.css"
 import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@mdi/js"
 import { throttle, DebouncedFuncLeading } from "lodash"
-import { VuMeterGroup } from "./vumeter"
+import { VuMeterGroup, VuMeterSize } from "./vumeter"
 import { VuMeterStatus } from "../camilladsp/status"
+import { useVuMeterLevels } from "../camilladsp/usevumeterstatus"
 import { GuiConfig } from "../guiconfig"
 import { Box, MdiButton } from "../utilities/ui-components"
 
-type Props = {
-  vuMeterStatus: VuMeterStatus
+type SharedProps = {
   setMessage: (message: string) => void
   inputLabels: null | (string | null)[]
   outputLabels: null | (string | null)[]
   guiConfig: GuiConfig
+  meterSize?: VuMeterSize
+}
+
+type Props = SharedProps & {
+  vuMeterStatus: VuMeterStatus
 }
 
 type State = Volume & {
@@ -25,21 +30,45 @@ export interface Volume {
   mute: boolean
 }
 
+let cachedVolume: Volume | null = null
+
+export function VolumeBox(props: SharedProps) {
+  const vuMeterStatus = useVuMeterLevels()
+  return <VolumeBoxInner {...props} vuMeterStatus={vuMeterStatus} />
+}
+
 export class VolumePoller {
-  private timerId: NodeJS.Timeout | undefined
+  private timerId: ReturnType<typeof setTimeout> | undefined
   private readonly onUpdate: (volume: Volume) => void
   private readonly update_interval: number
   private readonly holdoff_interval: number
+  private stopped = false
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) {
+      return
+    }
+    if (document.hidden) {
+      this.clearTimer()
+      return
+    }
+    this.schedule(this.update_interval)
+  }
 
   constructor(onUpdate: (volume: Volume) => void, update_interval: number, holdoff_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
     this.holdoff_interval = holdoff_interval
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) {
+      this.schedule(this.update_interval)
+    }
   }
 
   private async updateVolume() {
     this.timerId = undefined
+    if (this.stopped || document.hidden) {
+      return
+    }
     try {
       const volreq = await fetch("/api/getparam/volume")
       const mutereq = await fetch("/api/getparam/mute")
@@ -53,6 +82,7 @@ export class VolumePoller {
               volume: Number.NEGATIVE_INFINITY,
               mute: false,
             }
+      cachedVolume = volume
       // Only update if the timer hasn't been restarted
       // while we were reading the volume and mute settings.
       if (this.timerId === undefined) {
@@ -62,26 +92,37 @@ export class VolumePoller {
       console.log(err)
     }
     if (this.timerId === undefined) {
-      this.timerId = setTimeout(this.updateVolume.bind(this), this.update_interval)
+      this.schedule(this.update_interval)
     }
   }
 
-  stop() {
+  private clearTimer() {
     if (this.timerId !== undefined) {
       clearTimeout(this.timerId)
       this.timerId = undefined
     }
   }
 
-  restart_timer() {
-    if (this.timerId !== undefined) {
-      clearTimeout(this.timerId)
+  private schedule(delayMs: number) {
+    this.clearTimer()
+    if (this.stopped || document.hidden) {
+      return
     }
-    this.timerId = setTimeout(this.updateVolume.bind(this), this.holdoff_interval)
+    this.timerId = setTimeout(this.updateVolume.bind(this), delayMs)
+  }
+
+  stop() {
+    this.stopped = true
+    this.clearTimer()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  restart_timer() {
+    this.schedule(this.holdoff_interval)
   }
 }
 
-export class VolumeBox extends React.Component<Props, State> {
+class VolumeBoxInner extends React.Component<Props, State> {
   private volumePoller = new VolumePoller((cdspVolume) => this.setState({ ...cdspVolume }), 1000.0, 2000.0)
   private readonly setDspVolumeDebounced: DebouncedFuncLeading<(value: number) => Promise<void>>
 
@@ -91,9 +132,12 @@ export class VolumeBox extends React.Component<Props, State> {
     this.toggleDim = this.toggleDim.bind(this)
     this.adjustVolume = this.adjustVolume.bind(this)
     this.setDspVolumeDebounced = throttle(this.setDspVolume, 250)
-    this.state = {
+    const initialVolume = cachedVolume ?? {
       volume: Number.NEGATIVE_INFINITY,
       mute: false,
+    }
+    this.state = {
+      ...initialVolume,
       dim: false,
       send_to_dsp: false,
     }
@@ -184,21 +228,24 @@ export class VolumeBox extends React.Component<Props, State> {
 
   render() {
     const { volume, mute, dim } = this.state
-    if (volume === Number.NEGATIVE_INFINITY) return null
     const { capturesignalrms, capturesignalpeak, playbacksignalpeak, playbacksignalrms } = this.props.vuMeterStatus
     const maxVol = this.props.guiConfig.volume_max
     const minVol = maxVol - this.props.guiConfig.volume_range
+    const volumeAvailable = Number.isFinite(volume)
+    const volumeLabel = volumeAvailable ? `${volume.toFixed(1)}dB` : "---"
+    const sliderValue = volumeAvailable ? 10.0 * volume : 10.0 * minVol
     return (
       <Box
         title={
           <>
             Vol:
-            <div className={mute ? "db-label-muted" : "db-label"}>{volume.toFixed(1)}dB</div>
+            <div className={mute ? "db-label-muted" : "db-label"}>{volumeLabel}</div>
             <MdiButton
               icon={mdiVolumeOff}
               tooltip={mute ? "Un-Mute" : "Mute"}
               buttonSize="small"
               highlighted={mute}
+              enabled={volumeAvailable}
               onClick={this.toggleMute}
             />
             <MdiButton
@@ -206,32 +253,41 @@ export class VolumeBox extends React.Component<Props, State> {
               tooltip={dim ? "Un-Dim" : "Dim (-20dB)"}
               buttonSize="small"
               highlighted={dim}
-              enabled={(dim && volume <= maxVol - 20) || (!dim && volume >= minVol + 20)}
+              enabled={volumeAvailable && ((dim && volume <= maxVol - 20) || (!dim && volume >= minVol + 20))}
               onClick={this.toggleDim}
             />
             <MdiButton
               icon={mdiVolumeMinus}
               tooltip="Lower volume by 1 dB"
               buttonSize="small"
+              enabled={volumeAvailable}
               onClick={() => this.adjustVolume(-1)}
             />
             <MdiButton
               icon={mdiVolumePlus}
               tooltip="Raise volume by 1 dB"
               buttonSize="small"
+              enabled={volumeAvailable}
               onClick={() => this.adjustVolume(1)}
             />
           </>
         }
       >
-        <VuMeterGroup title="IN" levels={capturesignalrms} peaks={capturesignalpeak} labels={this.props.inputLabels} />
+        <VuMeterGroup
+          title="IN"
+          levels={capturesignalrms}
+          peaks={capturesignalpeak}
+          labels={this.props.inputLabels}
+          size={this.props.meterSize}
+        />
         <input
           style={{ width: "100%", margin: 0, padding: 0 }}
           type="range"
           min={10.0 * minVol}
           max={10.0 * maxVol}
-          value={10.0 * volume}
+          value={sliderValue}
           id="volume"
+          disabled={!volumeAvailable}
           onChange={(e) => this.changeVolume(e.target.valueAsNumber / 10.0)}
         />
         <VuMeterGroup
@@ -239,6 +295,7 @@ export class VolumeBox extends React.Component<Props, State> {
           levels={playbacksignalrms}
           peaks={playbacksignalpeak}
           labels={this.props.outputLabels}
+          size={this.props.meterSize}
         />
       </Box>
     )

@@ -1,11 +1,12 @@
 import React, { ChangeEvent, CSSProperties, ReactNode, useEffect, useRef, useState, KeyboardEvent } from "react"
 import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiSitemapOutline } from "@mdi/js"
-import Icon from "@mdi/react"
+import { Icon } from "@mdi/react"
+import { ColumnDef } from "@tanstack/react-table"
 import { Range } from "immutable"
 import { cloneDeep } from "lodash"
-import DataTable, { TableColumn } from "react-data-table-component"
 import ReactjsPopup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
+import { DataTable, sortByRows } from "./data-table"
 import { FileInfo, issueSeverity } from "./files"
 import { getLabelForChannel } from "../camilladsp/config"
 
@@ -184,7 +185,7 @@ export function UploadButton(
     style?: CSSProperties
     smallButton?: boolean
   },
-): JSX.Element {
+): React.JSX.Element {
   const style = Object.assign({ verticalAlign: "bottom" }, props.style)
   const upload = (e: ChangeEvent<HTMLInputElement>) => {
     props.upload(e.target.files!)
@@ -1213,28 +1214,31 @@ export function FileSelectPopup(props: {
     onClose()
   }
   const [filterText, setFilterText] = React.useState("")
-  const columns: TableColumn<FileInfo>[] = [
+  const columns: ColumnDef<FileInfo, unknown>[] = [
     {
-      name: "Filename",
-      selector: (row: FileInfo) => row.name,
-      sortFunction: fileNameSort,
-      sortable: true,
+      id: "filename",
+      header: "Filename",
+      accessorFn: (row: FileInfo) => row.name,
+      sortingFn: sortByRows(fileNameSort),
     },
     {
-      name: "Date",
-      selector: (row: FileInfo) => row.formattedDate,
-      sortFunction: fileDateSort,
-      sortable: true,
-      maxWidth: "200px",
+      id: "date",
+      header: "Date",
+      accessorFn: (row: FileInfo) => row.formattedDate,
+      sortingFn: sortByRows(fileDateSort),
+      meta: {
+        maxWidth: "200px",
+      },
     },
     {
-      name: "Size",
-      selector: (row: FileInfo) => row.size,
-      sortable: true,
-      maxWidth: "100px",
+      id: "size",
+      header: "Size",
+      accessorFn: (row: FileInfo) => row.size,
+      meta: {
+        maxWidth: "100px",
+      },
     },
   ]
-  const filteredFiles = files.filter((item) => item.name.toLowerCase().includes(filterText.toLowerCase()))
   return (
     <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
       <div style={{ margin: "5px" }}>
@@ -1251,19 +1255,21 @@ export function FileSelectPopup(props: {
           overflowY: "scroll",
         }}
       >
-        <input
-          type="search"
-          placeholder="Filter on name.."
-          value={filterText}
-          data-tooltip-html="Enter a search string to filter files on name"
-          data-tooltip-id="main-tooltip"
-          spellCheck="false"
-          onChange={(e) => setFilterText(e.target.value)}
-        />
         <DataTable
           columns={columns}
-          data={filteredFiles}
-          theme="camilla"
+          data={files}
+          globalFilter={filterText}
+          toolbar={
+            <input
+              type="search"
+              placeholder="Filter files"
+              value={filterText}
+              data-tooltip-html="Enter a search string to filter files"
+              data-tooltip-id="main-tooltip"
+              spellCheck="false"
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+          }
           onRowClicked={selectItem}
           highlightOnHover
           pointerOnHover
@@ -1283,25 +1289,24 @@ export function KeyValueSelectPopup(props: {
 }) {
   const { open, items, showItemKey, onSelect, onClose } = props
   const [filterText, setFilterText] = React.useState("")
-  const columns: TableColumn<[string, string]>[] = [
+  const columns: ColumnDef<[string, string], unknown>[] = [
     {
-      name: "Name",
-      selector: (row: [string, string]) => {
+      id: "name",
+      header: "Name",
+      accessorFn: (row: [string, string]) => {
         if (row[0] === row[1] || showItemKey !== true) {
           return row[1]
         } else {
           return row[0] + ": " + row[1]
         }
       },
-      sortFunction: caseInsensitiveRowSort,
-      sortable: true,
+      sortingFn: sortByRows(caseInsensitiveRowSort),
     },
   ]
   const selectItem = (item: [string, string]) => {
     onSelect(item[0])
     onClose()
   }
-  const filteredItems = items.filter((item) => item[1].toLowerCase().includes(filterText.toLowerCase()))
   return (
     <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
       <div style={{ margin: "5px" }}>
@@ -1318,19 +1323,21 @@ export function KeyValueSelectPopup(props: {
           overflowY: "scroll",
         }}
       >
-        <input
-          type="search"
-          placeholder="Filter on name.."
-          value={filterText}
-          data-tooltip-html="Enter a search string to filter files on name"
-          data-tooltip-id="main-tooltip"
-          spellCheck="false"
-          onChange={(e) => setFilterText(e.target.value)}
-        />
         <DataTable
           columns={columns}
-          data={filteredItems}
-          theme="camilla"
+          data={items}
+          globalFilter={filterText}
+          toolbar={
+            <input
+              type="search"
+              placeholder="Filter items"
+              value={filterText}
+              data-tooltip-html="Enter a search string to filter items"
+              data-tooltip-id="main-tooltip"
+              spellCheck="false"
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+          }
           onRowClicked={selectItem}
           highlightOnHover
           pointerOnHover
