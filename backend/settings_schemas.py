@@ -27,6 +27,14 @@ BACKEND_CONFIG_SCHEMA = {
             "type": ["array", "null"],
             "items": {"type": "string", "minLength": 1},
         },
+        "level_smoothing_ms": {
+            "type": "number",
+            "minValue": 0,
+        },
+        "level_max_update_hz": {
+            "type": "number",
+            "minValue": 0,
+        },
     },
     "required": [
         "camilla_host",

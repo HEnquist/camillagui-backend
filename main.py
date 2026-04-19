@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import logging
 import ssl
 
@@ -7,6 +8,7 @@ from aiohttp import web
 from camilladsp_plot import VERSION as plot_version
 from camilladsp_plot.validate_config import CamillaValidator
 
+from backend.levelstream import LevelEventStream
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import CONFIG_PATH, get_config
 from backend.version import VERSION
@@ -18,6 +20,18 @@ LOG_LEVELS = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 # logging.debug("debug")
 # logging.warning("warning")
 # logging.error("error")
+
+
+async def _start_background_services(app):
+    stream = app.get("LEVEL_STREAM")
+    if stream is not None:
+        stream.start(asyncio.get_running_loop())
+
+
+async def _stop_background_services(app):
+    stream = app.get("LEVEL_STREAM")
+    if stream is not None:
+        await stream.stop()
 
 
 def build_app(backend_config):
@@ -43,6 +57,10 @@ def build_app(backend_config):
         "backend_version": version_string(VERSION),
         "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
         "py_cdsp_plot_version": plot_version,
+        "capturesignalrms": [],
+        "capturesignalpeak": [],
+        "playbacksignalrms": [],
+        "playbacksignalpeak": [],
         "backends": [],
         "playback_devices": {},
         "capture_devices": {},
@@ -63,6 +81,16 @@ def build_app(backend_config):
             backend_config["supported_playback_types"]
         )
     app["VALIDATOR"] = camillavalidator
+    if backend_config.get("enable_level_stream", True):
+        app["LEVEL_STREAM"] = LevelEventStream(
+            host=backend_config["camilla_host"],
+            port=backend_config["camilla_port"],
+            status_cache=app["STATUSCACHE"],
+            smoothing_time_constant_ms=backend_config["level_smoothing_ms"],
+            max_update_hz=backend_config["level_max_update_hz"],
+        )
+    app.on_startup.append(_start_background_services)
+    app.on_cleanup.append(_stop_background_services)
     return app
 
 
@@ -103,7 +131,12 @@ def main():
     else:
         ssl_context = None
     web.run_app(
-        app, host=config["bind_address"], port=config["port"], ssl_context=ssl_context
+        app,
+        host=config["bind_address"],
+        port=config["port"],
+        ssl_context=ssl_context,
+        # Keep SIGINT shutdown responsive even with long-lived SSE connections.
+        shutdown_timeout=1.0,
     )
 
 

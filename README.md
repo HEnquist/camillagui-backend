@@ -91,6 +91,8 @@ on_set_active_config: null (*)
 on_get_active_config: null (*)
 supported_capture_types: null (*)
 supported_playback_types: null (*)
+level_smoothing_ms: 200 (*)
+level_max_update_hz: 30 (*)
 ```
 The options marked `(*)` are optional. If left out the default values listed above will be used.
 The included configuration has CamillaDSP running on the same machine as the backend,
@@ -124,6 +126,12 @@ The settings for config_dir and coeff_dir point to two folders where the backend
 This is provided to enable uploading of coefficients and config files from the gui.
 
 If you want to be able to view the log file in the GUI, configure CamillaDSP to log to `log_file`.
+
+The `level_smoothing_ms` and `level_max_update_hz` options control the VU meter event stream.
+`level_smoothing_ms` sets the release time constant in milliseconds, and also sets the attack
+time constant to one tenth of that value.
+`level_max_update_hz` sets the maximum event rate from CamillaDSP to the GUI.
+Lower values reduce CPU usage and network traffic, while higher values make the meters respond faster.
 
 ### Active config file
 The active config file path is memorized via the CamillaDSP state file.
@@ -269,8 +277,13 @@ Further instructions on how to do this, or switch back to the brighter black/whi
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.
 To enable it by default, in `camillagui_backend/config/gui-config.yml` set `apply_config_automatically` to `true`.
 
-The update rate of the level meters can be adjusted by changing the `status_update_interval` setting.
-The value is in milliseconds, and the default value is 100 ms.
+The `status_update_interval` setting controls how often the GUI updates general
+CamillaDSP status such as state, samplerate, load, and version information.
+The value is in milliseconds, and the default value is 500 ms.
+
+The VU meters are updated separately from the rest of the status display.
+Their update rate and smoothing are controlled by the backend settings `level_max_update_hz`
+and `level_smoothing_ms` in `camillagui_backend/config/camillagui.yml`.
 
 ### Gui config syntax check
 The gui config is checked when the backend starts, and any problems are logged.
