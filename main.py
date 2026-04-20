@@ -64,6 +64,8 @@ def build_app(backend_config):
         "backends": [],
         "playback_devices": {},
         "capture_devices": {},
+        "playback_device_capabilities": {},
+        "capture_device_capabilities": {},
         "labels": {"playback": None, "capture": None},
     }
     app["STORE"] = {

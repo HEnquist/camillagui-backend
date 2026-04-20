@@ -13,6 +13,7 @@ from .views import (
     get_active_config_name,
     get_backends,
     get_capture_devices,
+    get_capture_device_capabilities,
     get_config,
     get_config_file,
     get_default_config_file,
@@ -24,6 +25,7 @@ from .views import (
     get_param,
     get_param_json,
     get_playback_devices,
+    get_playback_device_capabilities,
     get_status,
     get_stored_coeffs,
     get_stored_configs,
@@ -89,6 +91,12 @@ def setup_routes(app):
     app.router.add_get("/api/logfile", get_log_file)
     app.router.add_get("/api/capturedevices/{backend}", get_capture_devices)
     app.router.add_get("/api/playbackdevices/{backend}", get_playback_devices)
+    app.router.add_get(
+        "/api/capturedevicecapabilities/{backend}", get_capture_device_capabilities
+    )
+    app.router.add_get(
+        "/api/playbackdevicecapabilities/{backend}", get_playback_device_capabilities
+    )
     app.router.add_get("/api/backends", get_backends)
 
     app.router.add_get("/", get_gui_index)

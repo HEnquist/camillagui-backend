@@ -61,6 +61,53 @@ OFFLINE_CACHE = {
 HEADERS = {"Cache-Control": "no-store"}
 
 
+def _get_cached_device_capabilities(cache, cache_key, backend, device_name):
+    return cache[cache_key].get(backend, {}).get(device_name)
+
+
+def _store_device_capabilities(cache, cache_key, backend, device_name, capabilities):
+    if backend not in cache[cache_key]:
+        cache[cache_key][backend] = {}
+    cache[cache_key][backend][device_name] = capabilities
+
+
+def _raise_capabilities_error(error):
+    if isinstance(error, CamillaError):
+        raise web.HTTPBadRequest(text=str(error), headers=HEADERS) from error
+    raise web.HTTPServiceUnavailable(text=str(error), headers=HEADERS) from error
+
+
+async def _get_device_capabilities_response(
+    request, cache_key, fetch_capabilities, direction
+):
+    backend = request.match_info["backend"]
+    device_name = request.query.get("device")
+    if not device_name:
+        raise web.HTTPBadRequest(
+            text="Missing required query parameter 'device'", headers=HEADERS
+        )
+
+    cache = request.app["STATUSCACHE"]
+    try:
+        capabilities = fetch_capabilities(backend, device_name)
+        _store_device_capabilities(
+            cache, cache_key, backend, device_name, capabilities
+        )
+    except (CamillaError, IOError) as error:
+        capabilities = _get_cached_device_capabilities(
+            cache, cache_key, backend, device_name
+        )
+        if capabilities is None:
+            _raise_capabilities_error(error)
+        logging.debug(
+            "Failed to fetch %s device capabilities for %s/%s, returning cached data",
+            direction,
+            backend,
+            device_name,
+        )
+    return web.json_response(capabilities, headers=HEADERS)
+
+
 async def get_gui_index(request):
     """
     Serve the static gui files.
@@ -898,6 +945,34 @@ async def get_playback_devices(request):
         logging.debug("CamillaDSP is offline, returning playback devices from cache")
         devs = request.app["STATUSCACHE"]["playback_devices"].get(backend, [])
     return web.json_response(devs, headers=HEADERS)
+
+
+async def get_capture_device_capabilities(request):
+    """
+    Get capabilities for a capture device.
+    Returns cached data if fetching fails after a successful earlier lookup.
+    """
+    cdsp = request.app["CAMILLA"]
+    return await _get_device_capabilities_response(
+        request,
+        cache_key="capture_device_capabilities",
+        fetch_capabilities=cdsp.general.capture_device_capabilities,
+        direction="capture",
+    )
+
+
+async def get_playback_device_capabilities(request):
+    """
+    Get capabilities for a playback device.
+    Returns cached data if fetching fails after a successful earlier lookup.
+    """
+    cdsp = request.app["CAMILLA"]
+    return await _get_device_capabilities_response(
+        request,
+        cache_key="playback_device_capabilities",
+        fetch_capabilities=cdsp.general.playback_device_capabilities,
+        direction="playback",
+    )
 
 
 async def get_backends(request):
