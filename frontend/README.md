@@ -30,6 +30,21 @@ use `npm run dev:demo` for local development or `npm run build:demo` for a produ
 That mode installs an in-browser mock backend only when the `demo` Vite mode is selected,
 so the normal backend integration remains unchanged.
 
+## Demo deployment
+The repository includes a manual GitHub Actions workflow for publishing the standalone demo to GitHub Pages.
+It builds the existing `build:demo` target and deploys the generated `build` folder without committing artifacts to a publish branch.
+
+Use the `Deploy demo to GitHub Pages` workflow from the Actions tab.
+Provide a `ref` value and choose a deployment `channel`:
+
+- Use a release tag such as `v4.1.0` with the `release` channel when you want the public demo to match a released version.
+- Use a branch such as `master` or a release-prep branch with the `preview` channel when you want to publish an upcoming version for review.
+
+Each deployment replaces the current GitHub Pages site for this repository.
+That makes it easy to switch between the latest released demo and an in-progress preview by rerunning the workflow with a different ref.
+
+Before the first deployment, configure the repository Pages settings to use GitHub Actions as the source.
+
 To make a production build, run `npm run build`.
 The build will be stored in the `build` folder.
 After building, the production build can be previewed with `npm run serve`.
