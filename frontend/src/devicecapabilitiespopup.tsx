@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import ReactjsPopup from "reactjs-popup"
 import { getFormatOptions } from "./camilladsp/config"
 import { CloseButton } from "./utilities/ui-components"
@@ -135,40 +135,34 @@ export function DeviceCapabilitiesPopup(props: {
   const supportedSamplerates = getSupportedSamplerates(props.capabilities)
   const rateSupported = props.samplerate !== null && rateCapabilities.length > 0
   const allFormats = normalizeCapabilityFormats(props.backend, getCompatibleFormats(rateCapabilities, null))
-  const allChannels = getCompatibleChannels(rateCapabilities, null)
-  const allFormatsKey = allFormats.join("|")
-  const allChannelsKey = allChannels.join("|")
-  const activeFormat = pendingFormat !== null && allFormats.includes(pendingFormat) ? pendingFormat : null
-  const activeChannels = pendingChannels !== null && allChannels.includes(pendingChannels) ? pendingChannels : null
-  const compatibleChannels = getCompatibleChannels(rateCapabilities, activeFormat)
+  const baseFormat =
+    pendingFormat !== null && allFormats.includes(pendingFormat)
+      ? pendingFormat
+      : props.format !== null && allFormats.includes(props.format)
+        ? props.format
+        : null
+  const compatibleChannels = getCompatibleChannels(rateCapabilities, baseFormat)
+  const activeChannels =
+    pendingChannels !== null && compatibleChannels.includes(pendingChannels)
+      ? pendingChannels
+      : compatibleChannels.includes(props.channels)
+        ? props.channels
+        : (compatibleChannels[0] ?? null)
   const compatibleFormats = normalizeCapabilityFormats(
     props.backend,
     getCompatibleFormats(rateCapabilities, activeChannels),
   )
   const optionalFormat = backendSupportsOptionalFormat(props.backend)
   const compatibleFormatOptions = getSupportedFormatOptions(props.backend, compatibleFormats, optionalFormat)
-  const displayedChannels = activeChannels ?? compatibleChannels[0] ?? null
+  const activeFormat =
+    baseFormat !== null && compatibleFormats.includes(baseFormat)
+      ? baseFormat
+      : props.format !== null && compatibleFormats.includes(props.format)
+        ? props.format
+        : optionalFormat
+          ? null
+          : (compatibleFormats[0] ?? null)
   const probeErrorMessage = getProbeErrorMessage(props.fetchError)
-
-  useEffect(() => {
-    if (!props.open) {
-      return
-    }
-    setPendingChannels(allChannels.includes(props.channels) ? props.channels : null)
-    setPendingFormat(props.format !== null && allFormats.includes(props.format) ? props.format : null)
-  }, [props.open, props.channels, props.format, allChannelsKey, allFormatsKey])
-
-  useEffect(() => {
-    if (pendingChannels !== null && !compatibleChannels.includes(pendingChannels)) {
-      setPendingChannels(compatibleChannels.length > 0 ? compatibleChannels[0] : null)
-    }
-  }, [pendingChannels, compatibleChannels])
-
-  useEffect(() => {
-    if (pendingFormat !== null && !compatibleFormats.includes(pendingFormat)) {
-      setPendingFormat(compatibleFormats.length > 0 ? compatibleFormats[0] : null)
-    }
-  }, [pendingFormat, compatibleFormats])
 
   const canApply = rateSupported && activeChannels !== null && (activeFormat !== null || optionalFormat)
 
@@ -217,7 +211,7 @@ export function DeviceCapabilitiesPopup(props: {
           <label className="device-capabilities-field">
             <span>channels</span>
             <select
-              value={displayedChannels !== null ? displayedChannels.toString() : ""}
+              value={activeChannels !== null ? activeChannels.toString() : ""}
               disabled={!rateSupported}
               onChange={(event) => {
                 const newChannels = parseInt(event.target.value)
@@ -228,8 +222,8 @@ export function DeviceCapabilitiesPopup(props: {
                 )
                 setPendingChannels(newChannels)
                 if (
-                  pendingFormat !== null &&
-                  !formatsForChannels.includes(pendingFormat) &&
+                  activeFormat !== null &&
+                  !formatsForChannels.includes(activeFormat) &&
                   formatsForChannels.length > 0
                 ) {
                   setPendingFormat(formatsForChannels[0])
