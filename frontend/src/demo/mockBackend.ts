@@ -41,20 +41,54 @@ const DEVICE_OPTIONS: Record<string, [string, string][]> = {
     ["hw:0", "Built-in Audio"],
     ["hw:1", "USB DAC"],
     ["hw:Loopback", "Loopback Interface"],
+    ["Busy Device", "Busy Device"],
   ],
   CoreAudio: [
     ["MacBook Pro Speakers", "MacBook Pro Speakers"],
     ["Scarlett 2i2 USB", "Scarlett 2i2 USB"],
     ["BlackHole 16ch", "BlackHole 16ch"],
+    ["Busy Device", "Busy Device"],
   ],
   Wasapi: [
     ["Primary Sound Driver", "Primary Sound Driver"],
     ["USB Audio Device", "USB Audio Device"],
+    ["Busy Device", "Busy Device"],
   ],
   Jack: [
     ["system", "system"],
     ["studio", "studio"],
+    ["Busy Device", "Busy Device"],
   ],
+}
+
+function demoFormatsForBackend(backend: string): string[] {
+  if (backend === "CoreAudio" || backend === "Wasapi") {
+    return ["S16", "S32", "F32"]
+  }
+  return ["S16_LE", "S32_LE", "F32_LE"]
+}
+
+function demoHighRateSamplerates(formats: string[]) {
+  return [88200, 96000, 176400, 192000].map((samplerate) => ({
+    samplerate,
+    formats: formats.slice(1),
+  }))
+}
+
+function isSixteenChannelDemoDevice(device: string) {
+  return device === "BlackHole 16ch" || device === "hw:Loopback"
+}
+
+function isBusyDemoDevice(device: string) {
+  return device === "Busy Device"
+}
+
+function demoDeviceOptionsForBackend(backend: string): [string, string][] {
+  return DEVICE_OPTIONS[backend] ?? [["default", `${backend} demo device`]]
+}
+
+function isKnownDemoDevice(backend: string, device: string) {
+  return demoDeviceOptionsForBackend(backend).some(([name]) => name === device)
 }
 
 let installed = false
@@ -695,12 +729,80 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname.startsWith("/api/capturedevices/") && method === "GET") {
     const backend = pathname.split("/").at(-1) ?? ""
-    return jsonResponse(DEVICE_OPTIONS[backend] ?? [["default", `${backend} demo device`]])
+    return jsonResponse(demoDeviceOptionsForBackend(backend))
   }
 
   if (pathname.startsWith("/api/playbackdevices/") && method === "GET") {
     const backend = pathname.split("/").at(-1) ?? ""
-    return jsonResponse(DEVICE_OPTIONS[backend] ?? [["default", `${backend} demo device`]])
+    return jsonResponse(demoDeviceOptionsForBackend(backend))
+  }
+
+  if (pathname.startsWith("/api/capturedevicecapabilities/") && method === "GET") {
+    const backend = pathname.split("/").at(-1) ?? ""
+    const device = url.searchParams.get("device") ?? "default"
+    if (!isKnownDemoDevice(backend, device)) {
+      return textResponse("device not found", 400)
+    }
+    if (isBusyDemoDevice(device)) {
+      return textResponse("device busy", 400)
+    }
+    const backendFormats = demoFormatsForBackend(backend)
+    const highRateCapabilities = demoHighRateSamplerates(backendFormats)
+    const capabilities = isSixteenChannelDemoDevice(device)
+      ? [
+          {
+            channels: 16,
+            samplerates: [
+              { samplerate: 48000, formats: [backend === "CoreAudio" || backend === "Wasapi" ? "F32" : "F32_LE"] },
+            ],
+          },
+        ]
+      : [
+          {
+            channels: 2,
+            samplerates: [{ samplerate: 44100, formats: backendFormats }, ...highRateCapabilities],
+          },
+          { channels: 4, samplerates: [{ samplerate: 48000, formats: backendFormats.slice(1) }] },
+        ]
+    return jsonResponse({
+      name: device,
+      description: `${backend} demo capture device`,
+      capabilities,
+    })
+  }
+
+  if (pathname.startsWith("/api/playbackdevicecapabilities/") && method === "GET") {
+    const backend = pathname.split("/").at(-1) ?? ""
+    const device = url.searchParams.get("device") ?? "default"
+    if (!isKnownDemoDevice(backend, device)) {
+      return textResponse("device not found", 400)
+    }
+    if (isBusyDemoDevice(device)) {
+      return textResponse("device busy", 400)
+    }
+    const backendFormats = demoFormatsForBackend(backend)
+    const highRateCapabilities = demoHighRateSamplerates(backendFormats)
+    const capabilities = isSixteenChannelDemoDevice(device)
+      ? [
+          {
+            channels: 16,
+            samplerates: [
+              { samplerate: 48000, formats: [backend === "CoreAudio" || backend === "Wasapi" ? "F32" : "F32_LE"] },
+            ],
+          },
+        ]
+      : [
+          {
+            channels: 2,
+            samplerates: [{ samplerate: 48000, formats: backendFormats }, ...highRateCapabilities],
+          },
+          { channels: 6, samplerates: [{ samplerate: 96000, formats: backendFormats.slice(1) }] },
+        ]
+    return jsonResponse({
+      name: device,
+      description: `${backend} demo playback device`,
+      capabilities,
+    })
   }
 
   if (pathname === "/api/ymltojson" && method === "POST") {

@@ -389,6 +389,22 @@ textarea.logfileviewer {
   vertical-align: middle;
 }
 
+.device-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.device-option-input {
+  flex: 1;
+}
+
+.device-option-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .textbox {
   display: table-cell;
   width: 100%;
@@ -435,6 +451,86 @@ div .popup-content {
   background-color: var(--background-color);
   border: var(--box-border);
   border-radius: var(--border-radius);
+}
+
+.device-capabilities-popup {
+  min-width: 320px;
+  max-width: 520px;
+  padding: 12px;
+}
+
+.device-capabilities-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.device-capabilities-title {
+  font-weight: 600;
+}
+
+.device-capabilities-subtitle {
+  opacity: 0.8;
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.device-capabilities-warning {
+  color: var(--error-text-color);
+  margin-bottom: 12px;
+}
+
+.device-capabilities-supported-rates {
+  margin-bottom: 12px;
+}
+
+.device-capabilities-supported-rates-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.device-capabilities-supported-rates-list {
+  max-height: 6.25rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 0 0 18px;
+  opacity: 0.9;
+  background-color: color-mix(in srgb, var(--active-button-background-color) 18%, var(--background-color));
+  border-radius: var(--border-radius);
+}
+
+.device-capabilities-supported-rates-item {
+  padding: 2px 0;
+}
+
+.device-capabilities-config-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.device-capabilities-config-subtitle {
+  opacity: 0.8;
+  margin-bottom: 10px;
+}
+
+.device-capabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.device-capabilities-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.device-capabilities-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .dropdown {
