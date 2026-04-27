@@ -83,7 +83,7 @@ class CamillaConfig extends React.Component<
         },
       )
       .then(
-        (json) => this.setState({ guiConfig: json }),
+        (json) => this.setState({ guiConfig: { ...defaultGuiConfig(), ...json } }),
         (err) => {
           console.log("Failed to parse guiconfig as json", err)
         },

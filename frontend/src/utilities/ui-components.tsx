@@ -3,7 +3,6 @@ import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiS
 import { Icon } from "@mdi/react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Range } from "immutable"
-import { cloneDeep } from "lodash"
 import ReactjsPopup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
 import { DataTable, sortByRows } from "./data-table"
@@ -1366,29 +1365,16 @@ export function ChannelSelection(props: {
 
   const rowSize = 8
 
-  let _channels = cloneDeep(channels)
   const toggleAllChannels = () => {
-    if (_channels === null) {
-      _channels = []
-    } else {
-      _channels = null
-    }
-    setChannels(_channels)
+    setChannels(channels === null ? [] : null)
   }
   const toggleChannel = (idx: number) => {
     if (multiSelect) {
-      if (_channels === null) {
-        _channels = []
-      }
-      if (!_channels.includes(idx)) {
-        _channels.push(idx)
-      } else {
-        _channels = _channels.filter((n: number) => n !== idx)
-      }
-      setChannels(_channels)
+      const base = channels === null ? [] : channels
+      const newChannels = base.includes(idx) ? base.filter((n: number) => n !== idx) : [...base, idx]
+      setChannels(newChannels)
     } else {
-      _channels = [idx]
-      setChannels(_channels)
+      setChannels([idx])
     }
   }
   const toggleExpanded = () => {

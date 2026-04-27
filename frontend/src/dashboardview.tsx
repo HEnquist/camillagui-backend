@@ -9,6 +9,7 @@ import { AuxFadersBox } from "./sidepanel/auxfaderbox"
 import camillalogo from "./sidepanel/camilladsp.svg"
 import { CdspStateBox } from "./sidepanel/cdspstatebox"
 import { VolumeBox } from "./sidepanel/volumebox"
+import { SpectrumBox } from "./spectrumbox"
 import { MdiButton } from "./utilities/ui-components"
 
 export function DashboardView(props: {
@@ -24,10 +25,7 @@ export function DashboardView(props: {
   const cdspOnline = isCdspOnline(cdspStatus)
 
   React.useEffect(() => {
-    if (!cdspOnline) {
-      setDspConfigFileName(null)
-      return
-    }
+    if (!cdspOnline) return
     let cancelled = false
     fetch("/api/getactiveconfigfilename")
       .then(async (response) => {
@@ -48,6 +46,7 @@ export function DashboardView(props: {
 
     return () => {
       cancelled = true
+      setDspConfigFileName(null)
     }
   }, [cdspOnline])
 
@@ -94,6 +93,7 @@ export function DashboardView(props: {
             meterSize={meterSize}
           />
         )}
+        {cdspOnline && <SpectrumBox guiConfig={guiConfig} labels={cdspStatus.labels} width={meterSize.width} />}
         {cdspOnline && <AuxFadersBox guiConfig={guiConfig} dashboardExpanded={true} />}
         <CdspStateBox status={cdspStatus} message={message} />
         <VersionLabels versions={cdspStatus} />

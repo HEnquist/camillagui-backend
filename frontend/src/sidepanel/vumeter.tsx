@@ -213,7 +213,7 @@ function makeMeterLayout(size: Partial<VuMeterSize> | undefined, channelCount: n
 }
 
 function formatDisplayedValue(value: number, decimals: number): string {
-  if (value < -99) return "---"
+  if (value == null || value < -99) return "---"
   return decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString()
 }
 

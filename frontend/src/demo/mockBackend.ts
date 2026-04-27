@@ -1,5 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Config, defaultConfig, WavInfo } from "../camilladsp/config"
+import { SpectrumSubscriptionParams } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { FileInfo } from "../utilities/files"
 
@@ -28,6 +29,9 @@ type LevelsPayload = {
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
 const STORAGE_KEY = "camillagui.demo.state.v1"
 const LEVEL_INTERVAL_MS = 140
+
+let activeSpectrumParams: SpectrumSubscriptionParams | null = null
+let spectrumShape = { offset: -38, slope: -3 }
 const MAIN_CONFIG_NAME = "living-room-demo.yml"
 const CURRENT_CONFIG_VERSION = 4
 
@@ -124,6 +128,8 @@ function createGuiConfig(): GuiConfig {
     page_title: "CamillaGUI Demo",
     supported_capture_types: [...BACKENDS.capture],
     supported_playback_types: [...BACKENDS.playback],
+    spectrum_n_bins: 60,
+    spectrum_max_rate: 10,
   }
 }
 
@@ -183,7 +189,7 @@ function loadState(): DemoState {
       storedConfigs: parsed.storedConfigs ?? defaultState().storedConfigs,
       storedConfigMeta: parsed.storedConfigMeta ?? defaultState().storedConfigMeta,
       storedCoeffs: parsed.storedCoeffs ?? defaultState().storedCoeffs,
-      guiConfig: parsed.guiConfig ?? defaultState().guiConfig,
+      guiConfig: createGuiConfig(),
       logLines: parsed.logLines ?? defaultState().logLines,
       faders: parsed.faders ?? defaultState().faders,
     }
@@ -444,6 +450,20 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname === "/api/guiconfig" && method === "GET") {
     return jsonResponse(state.guiConfig)
+  }
+
+  if (pathname === "/api/spectrum/subscribe" && method === "POST") {
+    if (state.processingStopped) {
+      return jsonResponse({ result: "ProcessingNotRunningError" }, 503)
+    }
+    activeSpectrumParams = await requestJson<SpectrumSubscriptionParams>(input, init)
+    spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
+    return jsonResponse({})
+  }
+
+  if (pathname === "/api/spectrum/unsubscribe" && method === "POST") {
+    activeSpectrumParams = null
+    return jsonResponse({})
   }
 
   if (pathname === "/api/getstartconfig" && method === "GET") {
@@ -905,6 +925,24 @@ function generateLevels(): LevelsPayload {
   }
 }
 
+function generateSpectrum(params: SpectrumSubscriptionParams): { frequencies: number[]; magnitudes: number[] } {
+  const { min_freq, max_freq, n_bins } = params
+  const logMin = Math.log10(min_freq)
+  const logMax = Math.log10(max_freq)
+  const frequencies: number[] = []
+  const magnitudes: number[] = []
+  for (let i = 0; i < n_bins; i++) {
+    const t = i / Math.max(1, n_bins - 1)
+    const freq = Math.pow(10, logMin + t * (logMax - logMin))
+    frequencies.push(freq)
+    const octaves = Math.log2(freq / min_freq)
+    const pinkBase = spectrumShape.offset + spectrumShape.slope * octaves
+    const noise = (Math.random() - 0.5) * 8
+    magnitudes.push(Math.max(-120, Math.min(0, pinkBase + noise)))
+  }
+  return { frequencies, magnitudes }
+}
+
 function adjustedPlaybackLevel(level: number, gainDb: number) {
   if (state.mute) {
     return -120
@@ -940,8 +978,18 @@ class DemoEventSource extends EventTarget {
     })
     this.timerId = setInterval(() => {
       if (this.readyState !== DemoEventSource.OPEN) return
-      const message = new MessageEvent("levels", { data: JSON.stringify(generateLevels()) })
-      this.dispatchEvent(message)
+      const levelsMsg = new MessageEvent("levels", { data: JSON.stringify(generateLevels()) })
+      this.dispatchEvent(levelsMsg)
+      if (activeSpectrumParams !== null) {
+        if (state.processingStopped) {
+          this.dispatchEvent(new MessageEvent("spectrum", { data: JSON.stringify({ result: "ProcessingStopped" }) }))
+          activeSpectrumParams = null
+        } else {
+          this.dispatchEvent(
+            new MessageEvent("spectrum", { data: JSON.stringify(generateSpectrum(activeSpectrumParams)) }),
+          )
+        }
+      }
     }, LEVEL_INTERVAL_MS)
   }
 

@@ -4,6 +4,9 @@ import {
   defaultVuMeterStatus,
   LevelsEvent,
   LevelsEventStream,
+  SpectrumEvent,
+  SpectrumEventStream,
+  SpectrumSubscriptionParams,
   Status,
   StatusPoller,
   VuMeterStatus,
@@ -47,4 +50,20 @@ export function useVuMeterLevels() {
   }, [])
 
   return levels
+}
+
+export function useSpectrumData(enabled: boolean, params: SpectrumSubscriptionParams): SpectrumEvent {
+  const [data, setData] = React.useState<SpectrumEvent>({ frequencies: [], magnitudes: [] })
+  const { side, channel, min_freq, max_freq, n_bins, max_rate } = params
+
+  React.useEffect(() => {
+    if (!enabled) return
+    const stream = new SpectrumEventStream({ side, channel, min_freq, max_freq, n_bins, max_rate }, setData)
+    return () => {
+      stream.stop()
+      setData({ frequencies: [], magnitudes: [] })
+    }
+  }, [enabled, side, channel, min_freq, max_freq, n_bins, max_rate])
+
+  return data
 }

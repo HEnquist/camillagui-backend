@@ -35,6 +35,20 @@ export interface LevelsEvent {
   ts: number
 }
 
+export interface SpectrumEvent {
+  frequencies: number[]
+  magnitudes: number[]
+}
+
+export interface SpectrumSubscriptionParams {
+  side: "capture" | "playback"
+  channel: number | null
+  min_freq: number
+  max_freq: number
+  n_bins: number
+  max_rate: number
+}
+
 const CACHE_MAX_AGE_MS = 5000
 const VISIBILITY_RESUME_DELAY_MS = 100
 
@@ -283,5 +297,117 @@ export class LevelsEventStream {
     this.source?.close()
     this.source = undefined
     document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+}
+
+export class SpectrumEventStream {
+  private static readonly reconnectDelayMs = 1000
+  private static readonly staleEventThresholdMs = 5000
+  private source?: EventSource
+  private reconnectTimer?: ReturnType<typeof setTimeout>
+  private stopped = false
+  private readonly params: SpectrumSubscriptionParams
+  private readonly onUpdate: (event: SpectrumEvent) => void
+  private readonly handleVisibilityChange = () => {
+    if (this.stopped) return
+    if (document.hidden) {
+      this.clearReconnectTimer()
+      this.source?.close()
+      this.source = undefined
+      return
+    }
+    if (!this.source) this.connect()
+  }
+
+  constructor(params: SpectrumSubscriptionParams, onUpdate: (event: SpectrumEvent) => void) {
+    this.params = params
+    this.onUpdate = onUpdate
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    if (!document.hidden) this.connect()
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimer !== undefined) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = undefined
+    }
+  }
+
+  private scheduleReconnect(source: EventSource, delayMs: number) {
+    this.clearReconnectTimer()
+    if (this.stopped || document.hidden) return
+    this.reconnectTimer = setTimeout(() => {
+      if (this.stopped || document.hidden || this.source !== source) return
+      source.close()
+      this.source = undefined
+      this.connect()
+    }, delayMs)
+  }
+
+  private markActivity(source: EventSource) {
+    this.scheduleReconnect(source, SpectrumEventStream.staleEventThresholdMs)
+  }
+
+  private async connect() {
+    if (this.stopped || document.hidden) return
+    try {
+      const response = await fetch("/api/spectrum/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(this.params),
+      })
+      if (!response.ok) {
+        // Processing not running or other server error — retry after a delay
+        this.clearReconnectTimer()
+        if (!this.stopped && !document.hidden) {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = undefined
+            this.connect()
+          }, SpectrumEventStream.reconnectDelayMs)
+        }
+        return
+      }
+    } catch {
+      // Network error — proceed to EventSource; stale timer will reconnect
+    }
+    if (this.stopped) return
+    const source = new EventSource("/api/events")
+    this.source = source
+    this.markActivity(source)
+    source.addEventListener("spectrum", (rawEvent: Event) => {
+      if (this.source !== source) return
+      const message = rawEvent as MessageEvent
+      try {
+        const parsed = JSON.parse(message.data)
+        if (Array.isArray(parsed.frequencies) && Array.isArray(parsed.magnitudes)) {
+          this.markActivity(source)
+          this.onUpdate(parsed as SpectrumEvent)
+        } else {
+          // Subscription was cancelled (e.g. ProcessingStopped) — reconnect
+          this.scheduleReconnect(source, SpectrumEventStream.reconnectDelayMs)
+        }
+      } catch {
+        // Ignore malformed events
+      }
+    })
+    source.onerror = () => {
+      if (this.source !== source) return
+      if (this.stopped) {
+        source.close()
+        this.source = undefined
+        this.clearReconnectTimer()
+        return
+      }
+      this.scheduleReconnect(source, SpectrumEventStream.reconnectDelayMs)
+    }
+  }
+
+  stop() {
+    this.stopped = true
+    this.clearReconnectTimer()
+    this.source?.close()
+    this.source = undefined
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+    fetch("/api/spectrum/unsubscribe", { method: "POST" }).catch(() => {})
   }
 }
