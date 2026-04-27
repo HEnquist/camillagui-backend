@@ -44,6 +44,7 @@ from .legacy_config_import import (
     identify_version,
     migrate_legacy_config,
 )
+from .eventstream import ProcessingNotRunning
 from .settings import GUI_CONFIG_PATH, get_gui_config_or_defaults
 
 OFFLINE_CACHE = {
@@ -983,3 +984,35 @@ async def get_backends(request):
     """
     backends = request.app["STATUSCACHE"]["backends"]
     return web.json_response(backends, headers=HEADERS)
+
+
+async def subscribe_spectrum(request):
+    """
+    Start a spectrum subscription with the given parameters.
+
+    Returns 503 if processing is not running or the spectrum stream is disabled.
+    """
+    stream = request.app.get("SPECTRUM_STREAM")
+    if stream is None:
+        raise web.HTTPServiceUnavailable(text="Spectrum stream is disabled", headers=HEADERS)
+    try:
+        params = await request.json()
+    except Exception as exc:
+        raise web.HTTPBadRequest(text=f"Invalid request body: {exc}", headers=HEADERS)
+    try:
+        await stream.subscribe(params)
+    except ProcessingNotRunning:
+        return web.json_response({"result": "ProcessingNotRunningError"}, status=503, headers=HEADERS)
+    except IOError as exc:
+        raise web.HTTPServiceUnavailable(text=str(exc), headers=HEADERS)
+    return web.json_response({}, headers=HEADERS)
+
+
+async def unsubscribe_spectrum(request):
+    """
+    Stop the active spectrum subscription, if any.
+    """
+    stream = request.app.get("SPECTRUM_STREAM")
+    if stream is not None:
+        await stream.unsubscribe()
+    return web.json_response({}, headers=HEADERS)

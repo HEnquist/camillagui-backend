@@ -8,7 +8,7 @@ from aiohttp import web
 from camilladsp_plot import VERSION as plot_version
 from camilladsp_plot.validate_config import CamillaValidator
 
-from backend.levelstream import LevelEventStream
+from backend.eventstream import LevelEventStream, SpectrumEventStream
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import CONFIG_PATH, get_config
 from backend.version import VERSION
@@ -84,12 +84,18 @@ def build_app(backend_config):
         )
     app["VALIDATOR"] = camillavalidator
     if backend_config.get("enable_level_stream", True):
-        app["LEVEL_STREAM"] = LevelEventStream(
+        level_stream = LevelEventStream(
             host=backend_config["camilla_host"],
             port=backend_config["camilla_port"],
             status_cache=app["STATUSCACHE"],
             smoothing_time_constant_ms=backend_config["level_smoothing_ms"],
             max_update_hz=backend_config["level_max_update_hz"],
+        )
+        app["LEVEL_STREAM"] = level_stream
+        app["SPECTRUM_STREAM"] = SpectrumEventStream(
+            host=backend_config["camilla_host"],
+            port=backend_config["camilla_port"],
+            publish_json=level_stream._publish_json,
         )
     app.on_startup.append(_start_background_services)
     app.on_cleanup.append(_stop_background_services)

@@ -41,8 +41,10 @@ from .views import (
     stop_processing,
     store_coeffs,
     store_configs,
+    subscribe_spectrum,
     translate_convolver_to_json,
     translate_eqapo_to_json,
+    unsubscribe_spectrum,
     validate_config,
     yaml_to_json,
 )
@@ -61,6 +63,8 @@ def setup_routes(app):
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_post("/api/stop", stop_processing)
+    app.router.add_post("/api/spectrum/subscribe", subscribe_spectrum)
+    app.router.add_post("/api/spectrum/unsubscribe", unsubscribe_spectrum)
     app.router.add_get("/api/getstartconfig", get_config_at_gui_start)
     app.router.add_get("/api/getactiveconfigfilename", get_active_config_name)
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)

@@ -3,7 +3,7 @@ from contextlib import suppress
 import json
 import logging
 import time
-from typing import Dict, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Set, Tuple, Union
 
 import aiohttp
 
@@ -224,3 +224,179 @@ class LevelEventStream:
             self._websocket = None
             self._session = None
             await session.close()
+
+
+class ProcessingNotRunning(Exception):
+    """Raised when SubscribeSpectrum is rejected because processing is not running."""
+
+
+class SpectrumEventStream:
+    """
+    On-demand spectrum subscription over a dedicated WebSocket to CamillaDSP.
+
+    Call ``subscribe(params)`` to start — it blocks until CamillaDSP confirms
+    the subscription (or rejects it), then returns.  Spectrum events are pushed
+    to SSE clients via the injected ``publish_json`` callable, which should be
+    ``LevelEventStream._publish_json``.
+
+    Call ``unsubscribe()`` to stop.
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        publish_json: Callable[[str, Any], None],
+    ):
+        self._websocket_url = f"ws://{host}:{port}"
+        self._publish_json = publish_json
+        self._task: Optional[asyncio.Task[None]] = None
+        self._websocket: Optional[aiohttp.ClientWebSocketResponse] = None
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    async def subscribe(self, params: Dict[str, Any]) -> None:
+        """
+        Start a spectrum subscription with the given parameters.
+
+        Connects to CamillaDSP, sends ``SubscribeSpectrum``, and waits for
+        confirmation before returning.  Any previous subscription is stopped
+        first.
+
+        Raises:
+            ProcessingNotRunning: CamillaDSP rejected the subscription because
+                processing is not running.
+            IOError: Connection or protocol error.
+        """
+        await self._stop_task()
+        loop = asyncio.get_running_loop()
+        subscribed: asyncio.Future[None] = loop.create_future()
+        self._task = asyncio.create_task(self._run(params, subscribed))
+        try:
+            await subscribed
+        except Exception:
+            await self._stop_task()
+            raise
+
+    async def unsubscribe(self) -> None:
+        """Cancel the active spectrum subscription, if any."""
+        await self._stop_task()
+
+    async def _stop_task(self) -> None:
+        task = self._task
+        self._task = None
+        if task is not None and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        ws = self._websocket
+        self._websocket = None
+        if ws is not None and not ws.closed:
+            with suppress(Exception):
+                await ws.close()
+        session = self._session
+        self._session = None
+        if session is not None and not session.closed:
+            with suppress(Exception):
+                await session.close()
+
+    async def _run(
+        self,
+        params: Dict[str, Any],
+        subscribed: asyncio.Future[None],
+    ) -> None:
+        session = aiohttp.ClientSession()
+        self._session = session
+        ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        subscribed_ok = False
+        try:
+            ws = await session.ws_connect(self._websocket_url)
+            self._websocket = ws
+
+            # Send SubscribeSpectrum and wait for CamillaDSP's reply.
+            await ws.send_str(self._format_command("SubscribeSpectrum", params))
+            raw = self._message_payload(await ws.receive())
+            reply = json.loads(raw)
+
+            if "SubscribeSpectrum" not in reply:
+                raise IOError(f"Unexpected response: {raw!r}")
+
+            state, _ = self._handle_result(reply["SubscribeSpectrum"]["result"])
+            if state == "ProcessingNotRunningError":
+                if not subscribed.done():
+                    subscribed.set_exception(ProcessingNotRunning())
+                return
+            if state != "Ok":
+                raise IOError(f"SubscribeSpectrum failed: {state}")
+
+            subscribed_ok = True
+            if not subscribed.done():
+                subscribed.set_result(None)
+
+            # Receive pushed SpectrumEvent messages.
+            async for message in ws:
+                try:
+                    reply = json.loads(self._message_payload(message))
+                except (IOError, json.JSONDecodeError):
+                    break
+                if "SpectrumEvent" not in reply:
+                    continue
+                event = reply["SpectrumEvent"]
+                state, _ = self._handle_result(event.get("result", "Ok"))
+                if state == "Ok":
+                    value = event.get("value")
+                    if value is not None:
+                        self._publish_json("spectrum", value)
+                elif state == "ProcessingStopped":
+                    # Forward the cancellation signal, then stop cleanly.
+                    self._publish_json("spectrum", {"result": "ProcessingStopped"})
+                    subscribed_ok = False  # CamillaDSP already cancelled
+                    break
+                else:
+                    logging.debug("SpectrumEvent unexpected result: %s", state)
+                    break
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logging.debug("Spectrum event stream error: %s", exc)
+            if not subscribed.done():
+                subscribed.set_exception(IOError(str(exc)))
+        finally:
+            # Best-effort StopSubscription (skipped when CamillaDSP already cancelled).
+            if subscribed_ok and ws is not None and not ws.closed:
+                with suppress(Exception):
+                    await ws.send_str(self._format_command("StopSubscription"))
+                    await ws.receive()
+            self._websocket = None
+            if ws is not None and not ws.closed:
+                with suppress(Exception):
+                    await ws.close()
+            self._session = None
+            with suppress(Exception):
+                await session.close()
+
+    @staticmethod
+    def _format_command(command: str, arg: Any = None) -> str:
+        if arg is None:
+            return json.dumps(command)
+        return json.dumps({command: arg})
+
+    @staticmethod
+    def _handle_result(result: Union[str, Dict[str, str]]) -> Tuple[str, Optional[str]]:
+        if isinstance(result, str):
+            return result, None
+        return next(iter(result.items()))
+
+    @staticmethod
+    def _message_payload(message: aiohttp.WSMessage) -> Union[str, bytes]:
+        if message.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
+            return message.data
+        if message.type in (
+            aiohttp.WSMsgType.CLOSE,
+            aiohttp.WSMsgType.CLOSING,
+            aiohttp.WSMsgType.CLOSED,
+        ):
+            raise IOError("WebSocket closed")
+        if message.type == aiohttp.WSMsgType.ERROR:
+            raise IOError("WebSocket error") from message.data
+        raise IOError(f"Unexpected WebSocket message type: {message.type}")

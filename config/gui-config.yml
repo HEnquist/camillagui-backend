@@ -8,6 +8,12 @@ hide_rate_monitoring: false
 hide_multithreading: false
 apply_config_automatically: false
 status_update_interval: 500
+spectrum_n_bins: 60
+spectrum_max_rate: 10
+spectrum_min_freq: 20
+spectrum_max_freq: 20000
+spectrum_min_db: -100
+spectrum_max_db: 0
 volume_range: 50
 volume_max: 0
 custom_shortcuts:
