@@ -22,10 +22,12 @@ from .filemanagement import (
     make_absolute,
     make_config_filter_paths_absolute,
     make_config_filter_paths_relative,
+    make_capture_file_path_absolute,
     path_of_config_file,
     read_yaml_from_path_to_object,
     rename_coeff_or_return_error,
     rename_config_or_return_error,
+    rename_audiofile_or_return_error,
     replace_relative_filter_path_with_absolute_paths,
     replace_tokens_in_filter_config,
     save_config_to_yaml_file,
@@ -417,18 +419,22 @@ async def set_config(request):
     json = await request.json()
     config_object = json["config"]
     config_dir = request.app["config_dir"]
+    audiofiles_dir = request.app["audiofiles_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
-    config_object_with_absolute_filter_paths = make_config_filter_paths_absolute(
+    config_with_absolute_paths = make_config_filter_paths_absolute(
         config_object, config_dir
+    )
+    config_with_absolute_paths = make_capture_file_path_absolute(
+        config_with_absolute_paths, audiofiles_dir
     )
     if cdsp.is_connected():
         try:
-            cdsp.config.set_active(config_object_with_absolute_filter_paths)
+            cdsp.config.set_active(config_with_absolute_paths)
         except CamillaError as e:
             raise web.HTTPUnprocessableEntity(text=str(e))
     else:
-        validator.validate_config(config_object_with_absolute_filter_paths)
+        validator.validate_config(config_with_absolute_paths)
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors, headers=HEADERS)
@@ -709,6 +715,24 @@ async def rename_coeff_file(request):
     return web.Response(text="OK", headers=HEADERS)
 
 
+def _require_audiofiles_dir(request):
+    if not request.app["audiofiles_dir"]:
+        raise web.HTTPNotFound(
+            text="audiofiles_dir is not configured", headers=HEADERS
+        )
+    return request.app["audiofiles_dir"]
+
+
+async def rename_audio_file(request):
+    _require_audiofiles_dir(request)
+    source = request.query["source"]
+    target = request.query["target"]
+    error = rename_audiofile_or_return_error(request, source, target)
+    if error:
+        raise web.HTTPBadRequest(text=error, headers=HEADERS)
+    return web.Response(text="OK", headers=HEADERS)
+
+
 async def config_to_yml(request):
     """
     Convert a json config to yaml string (for saving to disk etc).
@@ -874,6 +898,43 @@ async def download_configs_zip(request):
     return await zip_response(request, zip_file, "configs.zip")
 
 
+async def get_stored_audiofiles(request):
+    """
+    Fetch a list of wav files in audiofiles_dir with header info.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    wavs = list_of_files_in_directory(audiofiles_dir, wav_info=True)
+    return web.json_response(wavs, headers=HEADERS)
+
+
+async def store_audiofiles(request):
+    """
+    Store files in audiofiles_dir.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    return await store_files(audiofiles_dir, request)
+
+
+async def delete_audiofiles(request):
+    """
+    Delete one or several wav files from audiofiles_dir.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    files = await request.json()
+    delete_files(audiofiles_dir, files)
+    return web.Response(text="ok", headers=HEADERS)
+
+
+async def download_audiofiles_zip(request):
+    """
+    Fetch one or several wav files in a zip file.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    files = await request.json()
+    zip_file = zip_of_files(audiofiles_dir, files)
+    return await zip_response(request, zip_file, "audiofiles.zip")
+
+
 async def get_gui_config(request):
     """
     Get the gui configuration.
@@ -886,6 +947,7 @@ async def get_gui_config(request):
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     gui_config["can_update_active_config"] = request.app["can_update_active_config"]
+    gui_config["audiofiles_supported"] = bool(request.app["audiofiles_dir"])
     logging.debug("GUI config: %s", gui_config)
     return web.json_response(gui_config, headers=HEADERS)
 

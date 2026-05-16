@@ -42,6 +42,7 @@ server_config = {
     "port": 5005,
     "config_dir": TESTFILE_DIR,
     "coeff_dir": TESTFILE_DIR,
+    "audiofiles_dir": None,
     "default_config": SAMPLE_CONFIG_PATH,
     "statefile_path": STATEFILE_PATH,
     "log_file": LOGFILE_PATH,

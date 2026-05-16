@@ -38,6 +38,7 @@ def build_app(backend_config):
     app = web.Application(client_max_size=1024**3)  # set max upload file size to 1GB
     app["config_dir"] = backend_config["config_dir"]
     app["coeff_dir"] = backend_config["coeff_dir"]
+    app["audiofiles_dir"] = backend_config["audiofiles_dir"]
     app["default_config"] = backend_config["default_config"]
     app["statefile_path"] = backend_config["statefile_path"]
     app["log_file"] = backend_config["log_file"]

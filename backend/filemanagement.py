@@ -22,6 +22,7 @@ from typing import Optional
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
+from camilladsp_plot.audiofileread import read_wav_header
 from yaml.scanner import ScannerError
 
 from .legacy_config_import import identify_version, CURRENT_VERSION
@@ -52,27 +53,45 @@ def path_of_coeff_file(request, coeff_name):
     return file_in_folder(coeff_folder, coeff_name)
 
 
-async def store_files(folder, request):
+def path_of_audiofile(request, wav_name):
+    wav_folder = request.app["audiofiles_dir"]
+    return file_in_folder(wav_folder, wav_name)
+
+
+async def store_files(folder, request, allowed_extensions=None):
     """
     Write a set of files (raw data) to disk.
+    If allowed_extensions is given (e.g. {".wav"}), files with other
+    extensions are skipped.
     """
     data = await request.post()
     i = 0
+    skipped = 0
     while True:
         filename = f"file{i}"
         if filename not in data:
             break
         file = data[filename]
         filename = file.filename
+        if allowed_extensions is not None:
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in allowed_extensions:
+                skipped += 1
+                i += 1
+                continue
         content = file.file.read()
         with open(file_in_folder(folder, filename), "wb") as f:
             f.write(content)
         i += 1
-    return web.Response(text=f"Saved {i} file(s)")
+    saved = i - skipped
+    msg = f"Saved {saved} file(s)"
+    if skipped:
+        msg += f", skipped {skipped} (unsupported extension)"
+    return web.Response(text=msg)
 
 
 def list_of_files_in_directory(
-    folder, file_stats=True, title_and_desc=False, validator=None
+    folder, file_stats=True, title_and_desc=False, wav_info=False, validator=None
 ):
     """
     Return a list of files (name and modification date) in a folder.
@@ -85,6 +104,7 @@ def list_of_files_in_directory(
             file,
             file_stats=file_stats,
             title_and_desc=title_and_desc,
+            wav_info=wav_info,
             validator=validator,
         )
         if file_data is not None:
@@ -158,7 +178,9 @@ def _get_title_and_desc(filepath, file_data, folder, validator=None):
             file_data["errors"] = [([], f"Error: {e}", "error")]
 
 
-def _get_file_data(folder, file, file_stats=True, title_and_desc=False, validator=None):
+def _get_file_data(
+    folder, file, file_stats=True, title_and_desc=False, wav_info=False, validator=None
+):
     filepath = file_in_folder(folder, file)
     if not isfile(filepath) or file.startswith("."):
         # skip directories and hidden files
@@ -174,7 +196,32 @@ def _get_file_data(folder, file, file_stats=True, title_and_desc=False, validato
     if title_and_desc:
         _get_title_and_desc(filepath, file_data, folder, validator=validator)
 
+    if wav_info and file.lower().endswith(".wav"):
+        _get_wav_info(filepath, file_data)
+
     return file_data
+
+
+def _get_wav_info(filepath, file_data):
+    file_data["samplerate"] = None
+    file_data["channels"] = None
+    file_data["sampleformat"] = None
+    file_data["duration"] = None
+    file_data["valid"] = False
+    try:
+        info = read_wav_header(filepath)
+    except Exception:
+        info = None
+    if info is None:
+        return
+    file_data["samplerate"] = info.get("samplerate")
+    file_data["channels"] = info.get("channels")
+    file_data["sampleformat"] = info.get("sampleformat")
+    byterate = info.get("byterate")
+    datalength = info.get("datalength")
+    if byterate and datalength is not None:
+        file_data["duration"] = datalength / byterate
+    file_data["valid"] = True
 
 
 def list_of_filenames_in_directory(folder):
@@ -407,6 +454,23 @@ def make_config_filter_paths_absolute(config_object, config_dir):
     return convert_config_filter_paths(config_object, conversion)
 
 
+def make_capture_file_path_absolute(config_object, audiofiles_dir):
+    """
+    If the capture device is WavFile or RawFile and its filename is relative,
+    resolve it against audiofiles_dir.
+    """
+    if not audiofiles_dir:
+        return config_object
+    config = deepcopy(config_object)
+    capture = config.get("devices", {}).get("capture")
+    if not isinstance(capture, dict) or capture.get("type") not in ("WavFile", "RawFile"):
+        return config
+    filename = capture.get("filename")
+    if filename:
+        capture["filename"] = make_absolute(filename, audiofiles_dir)
+    return config
+
+
 def make_config_filter_paths_relative(config_object, config_dir):
     """
     Convert paths to coefficient files in a config from absolute to relative.
@@ -502,6 +566,17 @@ def rename_config_or_return_error(request, source, target) -> Optional[str]:
 def rename_coeff_or_return_error(request, source, target) -> Optional[str]:
     source_file = path_of_coeff_file(request, source)
     target_file = path_of_coeff_file(request, target)
+    if os.path.isfile(target_file):
+        return "File " + target + " already exists"
+    rename(source_file, target_file)
+    return None
+
+
+def rename_audiofile_or_return_error(request, source, target) -> Optional[str]:
+    if os.path.splitext(target)[1].lower() != ".wav":
+        return "Target filename must end in .wav"
+    source_file = path_of_audiofile(request, source)
+    target_file = path_of_audiofile(request, target)
     if os.path.isfile(target_file):
         return "File " + target + " already exists"
     rename(source_file, target_file)

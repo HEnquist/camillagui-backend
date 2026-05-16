@@ -8,6 +8,9 @@ ssl_private_key: null
 gui_config_file: null
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
+# Optional: directory for uploadable .wav playback files (e.g. REW sweeps).
+# Leave unset/null to hide the WAV files tab.
+audiofiles_dir: null
 default_config: "~/camilladsp/default_config.yml"
 statefile_path: "~/camilladsp/statefile.yml"
 log_file: "~/camilladsp/camilladsp.log"
