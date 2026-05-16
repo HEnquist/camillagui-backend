@@ -48,6 +48,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
   onRowClicked?: (row: RowData) => void
   highlightOnHover?: boolean
   pointerOnHover?: boolean
+  fixedLayout?: boolean
 }) {
   const {
     columns,
@@ -59,6 +60,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
     onRowClicked,
     highlightOnHover,
     pointerOnHover,
+    fixedLayout,
   } = props
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
@@ -139,7 +141,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
   return (
     <div className="data-table-shell">
       {toolbar ? <div className="data-table-toolbar">{toolbar}</div> : null}
-      <table className="data-table">
+      <table className="data-table" style={fixedLayout ? { tableLayout: "fixed" } : undefined}>
         <thead>
           {table.getHeaderGroups().map((headerGroup: HeaderGroup<RowData>) => (
             <tr key={headerGroup.id}>

@@ -4,6 +4,15 @@ import { SpectrumSubscriptionParams } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { FileInfo } from "../utilities/files"
 
+type DemoAudioFile = {
+  lastModified: number
+  size: number
+  samplerate?: number
+  channels?: number
+  sampleformat?: string
+  duration?: number
+}
+
 type DemoState = {
   volume: number
   mute: boolean
@@ -13,6 +22,7 @@ type DemoState = {
   storedConfigs: Record<string, Config>
   storedConfigMeta: Record<string, { lastModified: number }>
   storedCoeffs: Record<string, { lastModified: number; size: number; content: string }>
+  storedAudioFiles: Record<string, DemoAudioFile>
   guiConfig: GuiConfig
   processingStopped: boolean
   logLines: string[]
@@ -37,7 +47,7 @@ const CURRENT_CONFIG_VERSION = 4
 
 const BACKENDS = {
   playback: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "File", "Stdout"],
-  capture: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "WavFile", "SignalGenerator"],
+  capture: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "Stdin", "RawFile", "WavFile", "SignalGenerator"],
 } as const
 
 const DEVICE_OPTIONS: Record<string, [string, string][]> = {
@@ -130,6 +140,59 @@ function createGuiConfig(): GuiConfig {
     supported_playback_types: [...BACKENDS.playback],
     spectrum_n_bins: 60,
     spectrum_max_rate: 10,
+    audiofiles_supported: true,
+  }
+}
+
+function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
+  const now = Math.floor(Date.now() / 1000)
+  const sizeForWav = (samplerate: number, channels: number, bytesPerSample: number, seconds: number) =>
+    Math.round(samplerate * channels * bytesPerSample * seconds) + 44
+  return {
+    "REW_sweep_48k_20s.wav": {
+      lastModified: now - 3600,
+      duration: 20.0,
+      samplerate: 48000,
+      channels: 2,
+      sampleformat: "F32_LE",
+      size: sizeForWav(48000, 2, 4, 20.0),
+    },
+    "REW_sweep_96k_30s.wav": {
+      lastModified: now - 7200,
+      duration: 30.0,
+      samplerate: 96000,
+      channels: 2,
+      sampleformat: "S24_3_LE",
+      size: sizeForWav(96000, 2, 3, 30.0),
+    },
+    "REW_sweep_mono_48k_10s.wav": {
+      lastModified: now - 18000,
+      duration: 10.0,
+      samplerate: 48000,
+      channels: 1,
+      sampleformat: "S16_LE",
+      size: sizeForWav(48000, 1, 2, 10.0),
+    },
+    "pink_noise_60s.wav": {
+      lastModified: now - 86400,
+      duration: 60.0,
+      samplerate: 48000,
+      channels: 2,
+      sampleformat: "S24_3_LE",
+      size: sizeForWav(48000, 2, 3, 60.0),
+    },
+    "white_noise_44k1_120s.wav": {
+      lastModified: now - 172800,
+      duration: 120.0,
+      samplerate: 44100,
+      channels: 2,
+      sampleformat: "S16_LE",
+      size: sizeForWav(44100, 2, 2, 120.0),
+    },
+    "raw_capture_48k_stereo.raw": {
+      lastModified: now - 259200,
+      size: 48000 * 2 * 4 * 10,
+    },
   }
 }
 
@@ -171,6 +234,7 @@ function defaultState(): DemoState {
         content: "demo raw coeff content",
       },
     },
+    storedAudioFiles: defaultStoredAudioFiles(),
     guiConfig: createGuiConfig(),
     processingStopped: false,
     logLines: ["[demo] CamillaGUI mock backend initialized", "[demo] Static mode enabled for GitHub Pages deployment"],
@@ -189,6 +253,7 @@ function loadState(): DemoState {
       storedConfigs: parsed.storedConfigs ?? defaultState().storedConfigs,
       storedConfigMeta: parsed.storedConfigMeta ?? defaultState().storedConfigMeta,
       storedCoeffs: parsed.storedCoeffs ?? defaultState().storedCoeffs,
+      storedAudioFiles: { ...defaultStoredAudioFiles(), ...(parsed.storedAudioFiles ?? {}) },
       guiConfig: createGuiConfig(),
       logLines: parsed.logLines ?? defaultState().logLines,
       faders: parsed.faders ?? defaultState().faders,
@@ -378,6 +443,26 @@ function makeCoeffFileInfo(name: string): FileInfo {
     version: null,
     valid: undefined,
     errors: undefined,
+  }
+}
+
+function makeAudioFileInfo(name: string): FileInfo {
+  const f = state.storedAudioFiles[name]
+  const isWav = name.toLowerCase().endsWith(".wav")
+  return {
+    name,
+    lastModified: f.lastModified,
+    formattedDate: new Date(f.lastModified * 1000).toDateString(),
+    size: f.size,
+    title: null,
+    description: null,
+    version: null,
+    valid: isWav ? true : undefined,
+    errors: undefined,
+    samplerate: f.samplerate ?? null,
+    channels: f.channels ?? null,
+    sampleformat: f.sampleformat ?? null,
+    duration: f.duration ?? null,
   }
 }
 
@@ -622,6 +707,10 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     return jsonResponse(Object.keys(state.storedCoeffs).map((name) => makeCoeffFileInfo(name)))
   }
 
+  if (pathname === "/api/storedaudiofiles" && method === "GET") {
+    return jsonResponse(Object.keys(state.storedAudioFiles).map((name) => makeAudioFileInfo(name)))
+  }
+
   if (pathname === "/api/uploadconfigs" && method === "POST") {
     const formData = await requestFormData(input, init)
     for (const [, value] of formData.entries()) {
@@ -702,6 +791,64 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     appendLog(`renamed coeff ${source} to ${target}`)
     persistState()
     return textResponse("OK")
+  }
+
+  if (pathname === "/api/uploadaudiofiles" && method === "POST") {
+    const formData = await requestFormData(input, init)
+    let saved = 0
+    for (const [, value] of formData.entries()) {
+      if (!(value instanceof File)) continue
+      const isWav = value.name.toLowerCase().endsWith(".wav")
+      state.storedAudioFiles[value.name] = isWav
+        ? {
+            lastModified: Math.floor(Date.now() / 1000),
+            size: value.size,
+            samplerate: 48000,
+            channels: 2,
+            sampleformat: "F32_LE",
+            duration: 0,
+          }
+        : {
+            lastModified: Math.floor(Date.now() / 1000),
+            size: value.size,
+          }
+      saved += 1
+    }
+    appendLog(`uploaded ${saved} audio file(s)`)
+    persistState()
+    return textResponse(`Saved ${saved} file(s)`)
+  }
+
+  if (pathname === "/api/deleteaudiofiles" && method === "POST") {
+    const files = await requestJson<string[]>(input, init)
+    files.forEach((name) => delete state.storedAudioFiles[name])
+    appendLog(`deleted ${files.length} audio file(s)`)
+    persistState()
+    return textResponse("OK")
+  }
+
+  if (pathname === "/api/renameaudiofile" && method === "POST") {
+    const source = url.searchParams.get("source")
+    const target = url.searchParams.get("target")
+    if (!source || !target || !state.storedAudioFiles[source]) return textResponse("Audio file not found", 404)
+    if (state.storedAudioFiles[target]) return textResponse(`File ${target} already exists`, 400)
+    state.storedAudioFiles[target] = state.storedAudioFiles[source]
+    delete state.storedAudioFiles[source]
+    appendLog(`renamed wav ${source} to ${target}`)
+    persistState()
+    return textResponse("OK")
+  }
+
+  if (pathname === "/api/downloadaudiofileszip" && method === "POST") {
+    const files = await requestJson<string[]>(input, init)
+    const content = files
+      .filter((name) => state.storedAudioFiles[name])
+      .map((name) => `${name} (${state.storedAudioFiles[name].size} bytes — demo placeholder)`)
+      .join("\n")
+    return blobResponse(new Blob([content], { type: "application/zip" }), {
+      "Content-Type": "application/zip",
+      "Content-Disposition": 'attachment; filename="audiofiles.zip"',
+    })
   }
 
   if (pathname === "/api/downloadconfigszip" && method === "POST") {

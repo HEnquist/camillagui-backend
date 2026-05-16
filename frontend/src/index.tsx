@@ -22,6 +22,7 @@ import { defaultGuiConfig, GuiConfig } from "./guiconfig"
 import { UndoRedo } from "./main/UndoRedo"
 import { MixersTab } from "./mixerstab"
 import { PipelineTab } from "./pipeline/pipelinetab"
+import { FilePlayback } from "./playbacktab"
 import { ProcessorsTab } from "./processorstab"
 import { Shortcuts } from "./shortcuts"
 import { SidePanel } from "./sidepanel/sidepanel"
@@ -335,6 +336,7 @@ class CamillaConfig extends React.Component<
             <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
             <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
             <Tab>Files</Tab>
+            {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
             <Tab>Shortcuts</Tab>
           </TabList>
           <TabPanel />
@@ -379,6 +381,11 @@ class CamillaConfig extends React.Component<
               guiConfig={this.state.guiConfig}
             />
           </TabPanel>
+          {this.state.guiConfig.audiofiles_supported && (
+            <TabPanel>
+              <FilePlayback loadConfig={(config) => this.setCurrentConfig(undefined, config)} />
+            </TabPanel>
+          )}
           <TabPanel>
             <Shortcuts
               currentConfigName={currentConfigFile}

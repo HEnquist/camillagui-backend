@@ -3,26 +3,32 @@ import {
   mdiAlertCircle,
   mdiCheck,
   mdiContentSave,
-  mdiDelete,
-  mdiDownload,
   mdiMenu,
   mdiOpenInApp,
-  mdiPencil,
   mdiRefresh,
   mdiScaleUnbalanced,
   mdiStar,
   mdiStarOutline,
-  mdiUpload,
 } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
-import { Config, defaultConfig } from "./camilladsp/config"
+import { Config, CURRENT_CONFIG_VERSION, defaultConfig } from "./camilladsp/config"
 import { GuiConfig } from "./guiconfig"
 import { ImportPopup, ImportPopupProps } from "./import/importpopup"
 import { PipelinePopup } from "./pipeline/pipelineplotter"
 import { Update } from "./utilities/common"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import { DiffPopup } from "./utilities/diffpopup"
+import {
+  DeleteFilesButton,
+  DownloadFilesAsZipButton,
+  EMPTY_FILENAME,
+  FileAction,
+  FileStatus,
+  FileStatusMessage,
+  RenameButton,
+  UploadFilesButton,
+} from "./utilities/file-actions"
 import {
   doUpload,
   download,
@@ -36,6 +42,7 @@ import {
   loadDefaultConfigJson,
   loadFiles,
   loadMigratedConfigJson,
+  StoredFileType,
 } from "./utilities/files"
 import {
   Box,
@@ -48,10 +55,7 @@ import {
   fileValidSort,
   MdiButton,
   PlotButton,
-  UploadButton,
 } from "./utilities/ui-components"
-
-const CURRENT_VERSION = 4
 
 export function Files(props: {
   guiConfig: GuiConfig
@@ -89,7 +93,7 @@ export function Files(props: {
   )
 }
 
-type FileType = "config" | "coeff"
+type FileType = StoredFileType
 
 interface FileTableProps {
   title: string
@@ -101,21 +105,6 @@ interface FileTableProps {
   setCurrentConfigFileName?: (filename: string | undefined) => void
   saveNotify?: () => void
 }
-
-type FileAction = "load" | "save" | "upload" | "rename"
-const EMPTY_FILENAME = "" // used only for FileAction 'upload'
-type FileStatus =
-  | {
-      filename: string
-      action: FileAction
-      success: true
-    }
-  | {
-      filename: string
-      action: FileAction
-      success: false
-      statusText: string
-    }
 
 class FileTable extends Component<
   FileTableProps,
@@ -395,7 +384,8 @@ class FileTable extends Component<
   }
 
   private async rename(filename: string, type: "coeff" | "config") {
-    const newName = window.prompt(`Enter a new name for ${filename}`)
+    const newName = window.prompt(`Enter a new name for ${filename}`, filename)
+    if (newName === filename) return
     if (!newName) return
     try {
       const response = await fetch(
@@ -732,61 +722,6 @@ class FileTable extends Component<
   }
 }
 
-function DownloadFilesAsZipButton(props: { selectedFiles: string[]; downloadAsZip: () => void }) {
-  const { selectedFiles, downloadAsZip } = props
-  const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
-  return (
-    <MdiButton
-      icon={mdiDownload}
-      tooltip={
-        selectedFiles.length === 0
-          ? "Download selected files<br>Select at least one file first!"
-          : `Download ${selectedFiles.length} ${fileOrFiles} as zip file`
-      }
-      enabled={selectedFiles.length > 0}
-      onClick={downloadAsZip}
-    />
-  )
-}
-
-function DeleteFilesButton(props: { selectedFiles: string[]; delete: () => void }) {
-  const selectedFiles = props.selectedFiles
-  const fileOrFiles = selectedFiles.length > 1 ? "files" : "file"
-  return (
-    <MdiButton
-      icon={mdiDelete}
-      tooltip={
-        selectedFiles.length === 0
-          ? "Delete selected files<br>Select at least one file first!"
-          : `Delete ${selectedFiles.length} ${fileOrFiles}`
-      }
-      enabled={selectedFiles.length > 0}
-      onClick={props.delete}
-    />
-  )
-}
-
-function UploadFilesButton(props: { fileStatus: FileStatus | null; upload: (files: FileList) => void }) {
-  const fileStatus = props.fileStatus
-  let uploadIcon: { icon: string; className?: string } = { icon: mdiUpload }
-  if (
-    fileStatus !== null &&
-    fileStatus.action === "upload" &&
-    fileStatus.filename === EMPTY_FILENAME &&
-    !fileStatus.success
-  )
-    uploadIcon = { icon: mdiAlertCircle, className: "error-text" }
-  return (
-    <UploadButton
-      icon={uploadIcon.icon}
-      tooltip={"Upload files"}
-      upload={props.upload}
-      className={uploadIcon.className}
-      multiple={true}
-    />
-  )
-}
-
 function SetActiveButton(props: { active: boolean; onClick: () => void; enabled?: boolean; valid?: boolean }) {
   const { active, onClick, enabled, valid } = props
   let tooltip
@@ -842,24 +777,6 @@ function SaveButton(props: {
   )
 }
 
-function RenameButton(props: { filename: string; fileStatus: FileStatus | null; rename: () => void }) {
-  const { filename, fileStatus, rename } = props
-  let renameIcon: { icon: string; className?: string } = { icon: mdiPencil }
-  if (fileStatus !== null && fileStatus.action === "rename" && fileStatus.filename === filename) {
-    renameIcon = fileStatus.success
-      ? { icon: mdiCheck, className: "success-text" }
-      : { icon: mdiAlertCircle, className: "error-text" }
-  }
-  return (
-    <MdiButton
-      icon={renameIcon.icon}
-      className={renameIcon.className}
-      tooltip={`Rename ${filename}`}
-      onClick={rename}
-    />
-  )
-}
-
 function LoadButton(props: {
   filename: string
   fileStatus: FileStatus | null
@@ -868,9 +785,9 @@ function LoadButton(props: {
   for_version: number | null | undefined
 }) {
   const { filename, fileStatus, loadConfig, valid, for_version } = props
-  const isLatestVersion = for_version === CURRENT_VERSION
-  const isOlderVersion = for_version !== null && for_version !== undefined && for_version < CURRENT_VERSION
-  const isFutureVersion = for_version !== null && for_version !== undefined && for_version > CURRENT_VERSION
+  const isLatestVersion = for_version === CURRENT_CONFIG_VERSION
+  const isOlderVersion = for_version !== null && for_version !== undefined && for_version < CURRENT_CONFIG_VERSION
+  const isFutureVersion = for_version !== null && for_version !== undefined && for_version > CURRENT_CONFIG_VERSION
   const shouldMigrate = isOlderVersion
 
   let loadIcon: { icon: string; className?: string } = {
@@ -977,18 +894,6 @@ function FileDownloadLink(props: { type: string; filename: string; isCurrentConf
       {filename}
     </button>
   )
-}
-
-function FileStatusMessage(props: { filename: string; fileStatus: FileStatus | null; type: FileType }) {
-  const { fileStatus, filename, type } = props
-  if (fileStatus && !fileStatus.success && fileStatus.filename === filename)
-    return (
-      <div className={fileStatus.success ? "success-text" : "error-text"}>
-        Could not {fileStatus.action} {type}:<br />
-        {fileStatus.statusText}
-      </div>
-    )
-  else return null
 }
 
 function reasonToDisableSaveNewFileButton(newFileName: string, files: FileInfo[]): string | undefined {

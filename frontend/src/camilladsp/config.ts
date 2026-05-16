@@ -763,6 +763,8 @@ export function defaultProcessorStep(config: Config): ProcessorStep {
   }
 }
 
+export const CURRENT_CONFIG_VERSION = 4
+
 export interface Config {
   devices: Devices
   filters: Filters | null
