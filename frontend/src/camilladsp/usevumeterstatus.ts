@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   defaultStatus,
   defaultVuMeterStatus,
+  emptyVuMeterStatus,
   LevelsEvent,
   LevelsEventStream,
   SpectrumEvent,
@@ -29,7 +30,7 @@ export function useCdspStatus(guiConfig: GuiConfig) {
   return status
 }
 
-export function useVuMeterLevels() {
+export function useVuMeterLevels(active = true) {
   const [levels, setLevels] = React.useState<VuMeterStatus>(defaultVuMeterStatus())
 
   React.useEffect(() => {
@@ -49,7 +50,7 @@ export function useVuMeterLevels() {
     }
   }, [])
 
-  return levels
+  return active ? levels : emptyVuMeterStatus()
 }
 
 export function useSpectrumData(enabled: boolean, params: SpectrumSubscriptionParams): SpectrumEvent {

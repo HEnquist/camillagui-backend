@@ -32,9 +32,10 @@ export interface Volume {
 
 let cachedVolume: Volume | null = null
 
-export function VolumeBox(props: SharedProps) {
-  const vuMeterStatus = useVuMeterLevels()
-  return <VolumeBoxInner {...props} vuMeterStatus={vuMeterStatus} />
+export function VolumeBox(props: SharedProps & { isRunning: boolean }) {
+  const { isRunning, ...innerProps } = props
+  const vuMeterStatus = useVuMeterLevels(isRunning)
+  return <VolumeBoxInner {...innerProps} vuMeterStatus={vuMeterStatus} />
 }
 
 export class VolumePoller {

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { mdiHome, mdiPoll } from "@mdi/js"
 import { Config } from "./camilladsp/config"
-import { isCdspOnline } from "./camilladsp/status"
+import { isCdspOnline, isCdspRunning } from "./camilladsp/status"
 import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
 import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
@@ -67,6 +67,7 @@ export function CompactView(props: {
             inputLabels={cdspStatus.labels.capture}
             outputLabels={cdspStatus.labels.playback}
             guiConfig={guiConfig}
+            isRunning={isCdspRunning(cdspStatus)}
           />
         )}
         <ShortcutSections sections={guiConfig.custom_shortcuts} config={config} updateConfig={updateConfig} />

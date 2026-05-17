@@ -8,8 +8,8 @@ import { GuiConfig } from "./guiconfig"
 import { SpectrumDisplay } from "./spectrum"
 import { Box, MdiButton } from "./utilities/ui-components"
 
-export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width?: number }) {
-  const { guiConfig, labels, width } = props
+export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width?: number; isRunning?: boolean }) {
+  const { guiConfig, labels, width, isRunning = true } = props
   const [enabled, setEnabled] = useState(false)
   const [side, setSide] = useState<"capture" | "playback">("playback")
   const [channel, setChannel] = useState<number | null>(null)
@@ -28,7 +28,7 @@ export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width
     max_rate: guiConfig.spectrum_max_rate,
   }
 
-  const spectrumData = useSpectrumData(enabled, params)
+  const spectrumData = useSpectrumData(enabled && isRunning, params)
 
   return (
     <Box

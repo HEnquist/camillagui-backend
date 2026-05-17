@@ -56,7 +56,7 @@ let cachedStatus: Status | null = null
 let cachedLevels: VuMeterStatus | null = null
 let lastCacheUpdate = 0
 
-function emptyVuMeterStatus(): VuMeterStatus {
+export function emptyVuMeterStatus(): VuMeterStatus {
   return {
     capturesignalrms: [],
     capturesignalpeak: [],
@@ -130,6 +130,10 @@ export function isCdspOnline(status: Status): boolean {
 
 export function isBackendOnline(status: Status): boolean {
   return status.cdsp_status !== BACKEND_OFFLINE
+}
+
+export function isCdspRunning(status: Status): boolean {
+  return status.cdsp_status.toLowerCase() === "running"
 }
 
 export class StatusPoller {

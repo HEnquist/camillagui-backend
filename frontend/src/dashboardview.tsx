@@ -1,7 +1,7 @@
 import * as React from "react"
 import { mdiHome, mdiImageSizeSelectSmall } from "@mdi/js"
 import "./index.css"
-import { isCdspOnline } from "./camilladsp/status"
+import { isCdspOnline, isCdspRunning } from "./camilladsp/status"
 import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { VersionLabels } from "./camilladsp/versions"
 import { GuiConfig } from "./guiconfig"
@@ -91,9 +91,17 @@ export function DashboardView(props: {
             outputLabels={cdspStatus.labels.playback}
             guiConfig={guiConfig}
             meterSize={meterSize}
+            isRunning={isCdspRunning(cdspStatus)}
           />
         )}
-        {cdspOnline && <SpectrumBox guiConfig={guiConfig} labels={cdspStatus.labels} width={meterSize.width} />}
+        {cdspOnline && (
+          <SpectrumBox
+            guiConfig={guiConfig}
+            labels={cdspStatus.labels}
+            width={meterSize.width}
+            isRunning={isCdspRunning(cdspStatus)}
+          />
+        )}
         {cdspOnline && <AuxFadersBox guiConfig={guiConfig} dashboardExpanded={true} />}
         <CdspStateBox status={cdspStatus} message={message} />
         <VersionLabels versions={cdspStatus} />

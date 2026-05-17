@@ -8,7 +8,7 @@ import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
 import { VolumeBox } from "./volumebox"
 import { Config } from "../camilladsp/config"
-import { defaultStatus, isBackendOnline, isCdspOnline, Status, StatusPoller } from "../camilladsp/status"
+import { defaultStatus, isBackendOnline, isCdspOnline, isCdspRunning, Status, StatusPoller } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
@@ -106,6 +106,7 @@ export class SidePanel extends React.Component<
               outputLabels={this.state.cdspStatus.labels.playback}
               guiConfig={this.props.guiConfig}
               meterSize={{ width: 290, channelHeight: 10 }}
+              isRunning={isCdspRunning(this.state.cdspStatus)}
             />
           )}
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
