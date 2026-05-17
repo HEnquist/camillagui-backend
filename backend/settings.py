@@ -40,6 +40,7 @@ BACKEND_CONFIG_DEFAULTS = {
     "audiofiles_dir": None,
     "level_smoothing_ms": 200,
     "level_max_update_hz": 30,
+    "allow_absolute_paths": False,
 }
 
 

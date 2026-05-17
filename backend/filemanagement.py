@@ -1,11 +1,13 @@
 import io
 import logging
+import ntpath
 import os
 import traceback
 import zipfile
 from copy import deepcopy
 from os import rename
 from os.path import (
+    basename,
     commonpath,
     getmtime,
     getsize,
@@ -443,15 +445,17 @@ def coeff_dir_relative_to_config_dir(request):
     return coeff_dir_with_folder_separator_at_end
 
 
-def make_config_filter_paths_absolute(config_object, config_dir):
+def make_config_filter_paths_absolute(config_object, config_dir, coeff_dir=None):
     """
-    Convert paths to coefficient files in a config from relative to absolute.
+    Convert paths to coefficient files in a config to absolute paths.
+    Bare filenames (no separators) resolve against coeff_dir when provided;
+    relative paths with separators resolve against config_dir.
     """
 
-    def conversion(path, config_dir=config_dir):
-        return make_absolute(path, config_dir)
-
-    return convert_config_filter_paths(config_object, conversion)
+    return convert_config_filter_paths(
+        config_object,
+        lambda path: coeff_path_to_absolute(path, config_dir, coeff_dir),
+    )
 
 
 def make_capture_file_path_absolute(config_object, audiofiles_dir):
@@ -471,15 +475,153 @@ def make_capture_file_path_absolute(config_object, audiofiles_dir):
     return config
 
 
-def make_config_filter_paths_relative(config_object, config_dir):
+def make_playback_file_path_absolute(config_object, audiofiles_dir):
     """
-    Convert paths to coefficient files in a config from absolute to relative.
+    If the playback device is File and its filename is relative,
+    resolve it against audiofiles_dir.
     """
+    if not audiofiles_dir:
+        return config_object
+    config = deepcopy(config_object)
+    playback = config.get("devices", {}).get("playback")
+    if not isinstance(playback, dict) or playback.get("type") != "File":
+        return config
+    filename = playback.get("filename")
+    if filename:
+        playback["filename"] = make_absolute(filename, audiofiles_dir)
+    return config
 
-    def conversion(path, config_dir=config_dir):
-        return make_relative(path, config_dir)
 
-    return convert_config_filter_paths(config_object, conversion)
+def make_audio_file_paths_bare(config_object, audiofiles_dir):
+    """
+    Strip audiofiles_dir prefix from capture (WavFile/RawFile) and playback (File)
+    filenames, leaving bare filenames for GUI display.
+    Paths outside audiofiles_dir are returned unchanged.
+    """
+    if not audiofiles_dir:
+        return config_object
+    config = deepcopy(config_object)
+    capture = config.get("devices", {}).get("capture")
+    if isinstance(capture, dict) and capture.get("type") in ("WavFile", "RawFile"):
+        filename = capture.get("filename")
+        if filename:
+            capture["filename"] = _to_bare_filename(filename, audiofiles_dir)
+    playback = config.get("devices", {}).get("playback")
+    if isinstance(playback, dict) and playback.get("type") == "File":
+        filename = playback.get("filename")
+        if filename:
+            playback["filename"] = _to_bare_filename(filename, audiofiles_dir)
+    return config
+
+
+def strip_config_paths_to_bare_filenames(config_object):
+    """
+    Reduce all coeff and audio device paths in a config to bare filenames.
+    Used when importing configs from external sources where the original
+    directory structure is unknown. Never raises — partial or malformed
+    configs are returned as-is.
+    ntpath.basename is used instead of os.path.basename because uploaded configs
+    may come from Windows systems, and ntpath handles both / and \\ as separators
+    on all platforms.
+    """
+    if not isinstance(config_object, dict):
+        return config_object
+    try:
+        config = deepcopy(config_object)
+        for filt in config.get("filters", {}).values() if isinstance(config.get("filters"), dict) else []:
+            if not isinstance(filt, dict):
+                continue
+            params = filt.get("parameters")
+            if not isinstance(params, dict):
+                continue
+            if filt.get("type") == "Conv" and params.get("type") in ("Raw", "Wav"):
+                filename = params.get("filename")
+                if filename:
+                    params["filename"] = ntpath.basename(filename)
+        devices = config.get("devices")
+        if isinstance(devices, dict):
+            capture = devices.get("capture")
+            if isinstance(capture, dict) and capture.get("type") in ("WavFile", "RawFile"):
+                filename = capture.get("filename")
+                if filename:
+                    capture["filename"] = ntpath.basename(filename)
+            playback = devices.get("playback")
+            if isinstance(playback, dict) and playback.get("type") == "File":
+                filename = playback.get("filename")
+                if filename:
+                    playback["filename"] = ntpath.basename(filename)
+        return config
+    except Exception:
+        return config_object
+
+
+def _to_bare_filename(path, directory):
+    """
+    If path is within directory, return just the basename.
+    Otherwise return path unchanged.
+    """
+    if not isabs(path):
+        return os.path.basename(path)
+    canonical = realpath(path)
+    if is_path_in_folder(canonical, directory):
+        return os.path.basename(canonical)
+    return path
+
+
+def validate_config_paths(config_object, coeff_dir, audiofiles_dir):
+    """
+    Check that all file paths in the config are within their configured directories.
+    Returns a list of offending paths that escape the configured dirs.
+    """
+    offenders = []
+    filters = config_object.get("filters") or {}
+    for filt in filters.values():
+        if filt.get("type") == "Conv" and filt.get("parameters", {}).get("type") in ("Raw", "Wav"):
+            filename = filt["parameters"].get("filename")
+            if filename and not _path_is_safe(filename, coeff_dir):
+                offenders.append(filename)
+    capture = config_object.get("devices", {}).get("capture") or {}
+    if capture.get("type") in ("WavFile", "RawFile"):
+        filename = capture.get("filename")
+        if filename and not _path_is_safe(filename, audiofiles_dir):
+            offenders.append(filename)
+    playback = config_object.get("devices", {}).get("playback") or {}
+    if playback.get("type") == "File":
+        filename = playback.get("filename")
+        if filename and not _path_is_safe(filename, audiofiles_dir):
+            offenders.append(filename)
+    return offenders
+
+
+def _path_is_safe(path, configured_dir):
+    """
+    A path is safe if it contains no directory separators (bare filename),
+    or if it is an absolute path resolving within configured_dir.
+    """
+    if not isabs(path):
+        return ntpath.basename(path) == path
+    if not configured_dir:
+        return False
+    return is_path_in_folder(realpath(path), configured_dir)
+
+
+def make_config_filter_paths_relative(config_object, config_dir, coeff_dir=None):
+    """
+    Convert absolute coefficient paths in a config to GUI-friendly form.
+    Paths inside coeff_dir become bare filenames; others become relative to config_dir.
+    """
+    return convert_config_filter_paths(
+        config_object,
+        lambda path: _coeff_path_to_relative(path, config_dir, coeff_dir),
+    )
+
+
+def _coeff_path_to_relative(path, config_dir, coeff_dir):
+    if not isabs(path):
+        return path
+    if coeff_dir and is_path_in_folder(path, coeff_dir):
+        return basename(path)
+    return make_relative(path, config_dir)
 
 
 def convert_config_filter_paths(config_object, conversion):
@@ -508,15 +650,17 @@ def convert_filter_path(filter_as_dict, conversion):
         parameters["filename"] = filename
 
 
-def replace_relative_filter_path_with_absolute_paths(filter_as_dict, config_dir):
-    """
-    Convert paths to coefficient files in a config from absolute to relative.
-    """
 
-    def conversion(path, config_dir=config_dir):
-        return make_absolute(path, config_dir)
-
-    convert_filter_path(filter_as_dict, conversion)
+def coeff_path_to_absolute(path, config_dir, coeff_dir=None):
+    """
+    Resolve a single coeff path to absolute.
+    Bare filenames resolve against coeff_dir; relative paths against config_dir.
+    """
+    if isabs(path):
+        return path
+    if coeff_dir and ntpath.basename(path) == path:
+        return normpath(join(coeff_dir, path))
+    return normpath(join(config_dir, path))
 
 
 def make_absolute(path, base_dir):
@@ -573,8 +717,6 @@ def rename_coeff_or_return_error(request, source, target) -> Optional[str]:
 
 
 def rename_audiofile_or_return_error(request, source, target) -> Optional[str]:
-    if os.path.splitext(target)[1].lower() != ".wav":
-        return "Target filename must end in .wav"
     source_file = path_of_audiofile(request, source)
     target_file = path_of_audiofile(request, target)
     if os.path.isfile(target_file):

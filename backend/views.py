@@ -15,24 +15,30 @@ from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
 from .filemanagement import (
     coeff_dir_relative_to_config_dir,
+    coeff_path_to_absolute,
+    convert_filter_path,
     delete_files,
+    file_in_folder,
     get_active_config_path,
     list_of_filenames_in_directory,
     list_of_files_in_directory,
     make_absolute,
+    make_audio_file_paths_bare,
     make_config_filter_paths_absolute,
     make_config_filter_paths_relative,
     make_capture_file_path_absolute,
+    make_playback_file_path_absolute,
     path_of_config_file,
     read_yaml_from_path_to_object,
     rename_coeff_or_return_error,
     rename_config_or_return_error,
     rename_audiofile_or_return_error,
-    replace_relative_filter_path_with_absolute_paths,
     replace_tokens_in_filter_config,
     save_config_to_yaml_file,
     set_path_as_active_config,
     store_files,
+    strip_config_paths_to_bare_filenames,
+    validate_config_paths,
     zip_of_files,
     zip_response,
 )
@@ -342,7 +348,19 @@ async def eval_filter_values(request):
     content = await request.json()
     config_dir = request.app["config_dir"]
     config = content["config"]
-    replace_relative_filter_path_with_absolute_paths(config, config_dir)
+    if not request.app["allow_absolute_paths"]:
+        filename = config.get("parameters", {}).get("filename")
+        if filename:
+            from .filemanagement import _path_is_safe
+            if not _path_is_safe(filename, request.app["coeff_dir"]):
+                raise web.HTTPForbidden(
+                    text=(
+                        f"Coeff path '{filename}' is outside the configured coeff_dir. "
+                        "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                    ),
+                    headers=HEADERS,
+                )
+    convert_filter_path(config, lambda path: coeff_path_to_absolute(path, config_dir, request.app["coeff_dir"]))
     channels = content["channels"]
     samplerate = content["samplerate"]
     volume = content.get("volume", 0.0)
@@ -378,11 +396,13 @@ async def eval_filterstep_values(request):
     config = content["config"]
     step_index = content["index"]
     config_dir = request.app["config_dir"]
+    if not request.app["allow_absolute_paths"]:
+        _check_config_paths(request, config)
     samplerate = content["samplerate"]
     channels = content["channels"]
     config["devices"]["samplerate"] = samplerate
     config["devices"]["capture"]["channels"] = channels
-    plot_config = make_config_filter_paths_absolute(config, config_dir)
+    plot_config = make_config_filter_paths_absolute(config, config_dir, request.app["coeff_dir"])
     filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     options = pipeline_step_plot_options(filter_file_names, config, step_index)
     for _, filt in plot_config.get("filters", {}).items():
@@ -422,10 +442,14 @@ async def set_config(request):
     audiofiles_dir = request.app["audiofiles_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
+    _check_config_paths(request, config_object)
     config_with_absolute_paths = make_config_filter_paths_absolute(
-        config_object, config_dir
+        config_object, config_dir, request.app["coeff_dir"]
     )
     config_with_absolute_paths = make_capture_file_path_absolute(
+        config_with_absolute_paths, audiofiles_dir
+    )
+    config_with_absolute_paths = make_playback_file_path_absolute(
         config_with_absolute_paths, audiofiles_dir
     )
     if cdsp.is_connected():
@@ -465,7 +489,10 @@ async def get_default_config_file(request):
         raise web.HTTPNotFound(text="No default config")
     try:
         config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config), config_dir
+            read_yaml_from_path_to_object(request, config), config_dir, request.app["coeff_dir"]
+        )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
         )
     except CamillaError as e:
         logging.error("Failed to get default config file, error: %s", e)
@@ -480,7 +507,10 @@ async def get_default_config_file(request):
 def _read_config_file_for_startup(request, config_path, config_dir):
     try:
         config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config_path), config_dir
+            read_yaml_from_path_to_object(request, config_path), config_dir, request.app["coeff_dir"]
+        )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
         )
     except CamillaError as e:
         logging.error(
@@ -651,10 +681,10 @@ async def get_config_file(request):
                     headers=HEADERS,
                 )
             migrate_legacy_config(config_object)
-            config_object = make_config_filter_paths_relative(config_object, config_dir)
+            config_object = make_config_filter_paths_relative(config_object, config_dir, request.app["coeff_dir"])
 
             validator = request.app["VALIDATOR"]
-            config_abs = make_config_filter_paths_absolute(config_object, config_dir)
+            config_abs = make_config_filter_paths_absolute(config_object, config_dir, request.app["coeff_dir"])
             validator.validate_config(config_abs)
             issues = validator.get_errors()
             blocking_errors = [issue for issue in issues if issue[2] == "error"]
@@ -669,8 +699,11 @@ async def get_config_file(request):
                 )
         else:
             config_object = make_config_filter_paths_relative(
-                read_yaml_from_path_to_object(request, config_file), config_dir
+                read_yaml_from_path_to_object(request, config_file), config_dir, request.app["coeff_dir"]
             )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
+        )
     except CamillaError as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     except FileNotFoundError as e:
@@ -691,9 +724,19 @@ async def get_config_file(request):
 async def save_config_file(request):
     """
     Save a config to a given filename.
+    Resolves bare audio filenames to absolute paths so the DSP can use the
+    config at startup without GUI intervention.
     """
     content = await request.json()
-    save_config_to_yaml_file(content["filename"], content["config"], request)
+    config_object = content["config"]
+    _check_config_paths(request, config_object)
+    config_object = make_config_filter_paths_absolute(
+        config_object, request.app["config_dir"], request.app["coeff_dir"]
+    )
+    audiofiles_dir = request.app["audiofiles_dir"]
+    config_object = make_capture_file_path_absolute(config_object, audiofiles_dir)
+    config_object = make_playback_file_path_absolute(config_object, audiofiles_dir)
+    save_config_to_yaml_file(content["filename"], config_object, request)
     return web.Response(text="OK", headers=HEADERS)
 
 
@@ -713,6 +756,29 @@ async def rename_coeff_file(request):
     if error:
         raise web.HTTPBadRequest(text=error, headers=HEADERS)
     return web.Response(text="OK", headers=HEADERS)
+
+
+def _check_config_paths(request, config_object):
+    """
+    Raise HTTP 403 if the config contains file paths outside configured dirs
+    and allow_absolute_paths is false.
+    """
+    if request.app["allow_absolute_paths"]:
+        return
+    offenders = validate_config_paths(
+        config_object,
+        request.app["coeff_dir"],
+        request.app.get("audiofiles_dir"),
+    )
+    if offenders:
+        paths = ", ".join(f"'{p}'" for p in offenders)
+        raise web.HTTPForbidden(
+            text=(
+                f"The config contains paths outside the configured directories: {paths}. "
+                "Set allow_absolute_paths: true in camillagui.yml to allow this."
+            ),
+            headers=HEADERS,
+        )
 
 
 def _require_audiofiles_dir(request):
@@ -798,7 +864,7 @@ async def validate_config(request):
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = make_config_filter_paths_absolute(
-        config, config_dir
+        config, config_dir, request.app["coeff_dir"]
     )
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
@@ -817,6 +883,16 @@ async def get_wav_info(request):
     Read the header of a wav file and return the info.
     """
     filename = request.query["filename"]
+    if not request.app["allow_absolute_paths"]:
+        from .filemanagement import _path_is_safe
+        if not _path_is_safe(filename, request.app.get("audiofiles_dir")):
+            raise web.HTTPForbidden(
+                text=(
+                    f"Audio path '{filename}' is outside the configured audiofiles_dir. "
+                    "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                ),
+                headers=HEADERS,
+            )
     wav_info = read_wav_header(filename)
     return web.json_response(wav_info, headers=HEADERS)
 
@@ -831,10 +907,30 @@ async def store_coeffs(request):
 
 async def store_configs(request):
     """
-    Store a config file to config_dir.
+    Store config files to config_dir, stripping all coeff and audio device
+    paths to bare filenames so uploaded configs from other systems work safely.
     """
     folder = request.app["config_dir"]
-    return await store_files(folder, request)
+    data = await request.post()
+    saved = 0
+    i = 0
+    while True:
+        field_name = f"file{i}"
+        if field_name not in data:
+            break
+        file = data[field_name]
+        i += 1
+        try:
+            content = file.file.read()
+            parsed = yaml.safe_load(content)
+            sanitized = strip_config_paths_to_bare_filenames(parsed)
+            output = yaml.dump(sanitized).encode("utf-8")
+        except Exception:
+            output = content
+        with open(file_in_folder(folder, file.filename), "wb") as f:
+            f.write(output)
+        saved += 1
+    return web.Response(text=f"Saved {saved} file(s)")
 
 
 async def get_stored_coeffs(request):
@@ -948,6 +1044,7 @@ async def get_gui_config(request):
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     gui_config["can_update_active_config"] = request.app["can_update_active_config"]
     gui_config["audiofiles_supported"] = bool(request.app["audiofiles_dir"])
+    gui_config["allow_absolute_paths"] = request.app["allow_absolute_paths"]
     logging.debug("GUI config: %s", gui_config)
     return web.json_response(gui_config, headers=HEADERS)
 

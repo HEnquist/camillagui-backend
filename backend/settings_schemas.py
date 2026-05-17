@@ -36,6 +36,7 @@ BACKEND_CONFIG_SCHEMA = {
             "type": "number",
             "minValue": 0,
         },
+        "allow_absolute_paths": {"type": "boolean"},
     },
     "required": [
         "camilla_host",

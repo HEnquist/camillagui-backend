@@ -93,6 +93,7 @@ supported_capture_types: null (*)
 supported_playback_types: null (*)
 level_smoothing_ms: 200 (*)
 level_max_update_hz: 30 (*)
+allow_absolute_paths: false (*)
 ```
 The options marked `(*)` are optional. If left out the default values listed above will be used.
 The included configuration has CamillaDSP running on the same machine as the backend,
@@ -124,6 +125,27 @@ openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout my_private_k
 
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files.
 This is provided to enable uploading of coefficients and config files from the gui.
+
+### File path security
+
+By default (`allow_absolute_paths: false`), the GUI only accepts bare filenames for coefficient files and audio files.
+Bare filenames are resolved against `coeff_dir` and `audiofiles_dir` respectively.
+Config files on disk always store absolute paths so that CamillaDSP can use them at startup without the GUI.
+
+This prevents anyone with GUI access from reading arbitrary files from the filesystem via the coefficient
+or audio file fields. With absolute paths allowed, anyone with GUI access can read any file on the system
+and write to any location the DSP process has write access to.
+The risk is especially serious if the CamillaDSP process runs with elevated privileges — running it as root
+is strongly discouraged and should be avoided. A dedicated low-privilege user account is the right approach.
+
+**Upgrading from an older version:** if your configs reference coefficient or audio files using absolute paths,
+the GUI will reject them until you either:
+- Move the files into `coeff_dir` / `audiofiles_dir` and use bare filenames (recommended), or
+- Set `allow_absolute_paths: true` in `camillagui.yml` to restore the previous behaviour
+
+Setting `allow_absolute_paths: true` disables all path validation and is not recommended.
+Only use it as a last resort if migrating to bare filenames is not practical,
+and only if you fully trust everyone who can reach the GUI.
 
 If you want to be able to view the log file in the GUI, configure CamillaDSP to log to `log_file`.
 

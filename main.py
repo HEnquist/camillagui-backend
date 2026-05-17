@@ -48,6 +48,7 @@ def build_app(backend_config):
     app["supported_playback_types"] = backend_config["supported_playback_types"]
     app["can_update_active_config"] = backend_config["can_update_active_config"]
     app["gui_config_file"] = backend_config["gui_config_file"]
+    app["allow_absolute_paths"] = backend_config["allow_absolute_paths"]
     setup_routes(app)
     setup_static_routes(app)
 
