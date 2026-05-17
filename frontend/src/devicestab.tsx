@@ -150,6 +150,7 @@ export function DevicesTab(props: {
             errors={errors.forSubpath("capture")}
             onChange={updateDevices}
             audiofilesSupported={guiConfig.audiofiles_supported}
+            allowAbsolutePaths={guiConfig.allow_absolute_paths}
           />
           <PlaybackOptions
             hide_playback_device={guiConfig.hide_playback_device}
@@ -158,6 +159,8 @@ export function DevicesTab(props: {
             playback={devices.playback}
             errors={errors.forSubpath("playback")}
             onChange={updateDevices}
+            audiofilesSupported={guiConfig.audiofiles_supported}
+            allowAbsolutePaths={guiConfig.allow_absolute_paths}
           />
         </div>
         <div className="tabspacer" />
@@ -611,6 +614,7 @@ function CaptureOptions(props: {
   errors: Errors
   onChange: (update: Update<Devices>) => void
   audiofilesSupported?: boolean
+  allowAbsolutePaths?: boolean
 }) {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
@@ -685,7 +689,7 @@ function CaptureOptions(props: {
       type: "RawFile",
       channels: 2,
       format: "S32_LE",
-      filename: "/path/to/file",
+      filename: "capture.raw",
       extra_samples: null,
       skip_bytes: null,
       read_bytes: null,
@@ -693,7 +697,7 @@ function CaptureOptions(props: {
     },
     WavFile: {
       type: "WavFile",
-      filename: "/path/to/file",
+      filename: "capture.wav",
       extra_samples: null,
       labels: null,
     },
@@ -733,7 +737,9 @@ function CaptureOptions(props: {
 
   useEffect(() => {
     if ((capture.type === "WavFile" || capture.type === "RawFile") && props.audiofilesSupported) {
-      loadFiles("audiofile").then(setAvailableCaptureFiles).catch(() => {})
+      loadFiles("audiofile")
+        .then(setAvailableCaptureFiles)
+        .catch(() => {})
     }
   }, [capture.type, props.audiofilesSupported])
 
@@ -1105,11 +1111,7 @@ function CaptureOptions(props: {
       )}
       {(capture.type === "RawFile" || capture.type === "WavFile") && (
         <>
-          <div
-            className="setting"
-            data-tooltip-html="Filename including path"
-            data-tooltip-id="main-tooltip"
-          >
+          <div className="setting" data-tooltip-html="Filename including path" data-tooltip-id="main-tooltip">
             <label htmlFor="filename" className="setting-label">
               filename
             </label>
@@ -1119,12 +1121,13 @@ function CaptureOptions(props: {
                 tooltip="Filename including path"
                 className="setting-input device-option-input"
                 style={errors.messageFor("filename") ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={(filename) =>
+                onChange={(filename) => {
+                  if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
                   onChange((devices) => {
                     if (devices.capture.type === "RawFile" || devices.capture.type === "WavFile")
                       devices.capture.filename = filename
                   })
-                }
+                }}
               />
               {props.audiofilesSupported && (
                 <div className="device-option-buttons">
@@ -1147,7 +1150,7 @@ function CaptureOptions(props: {
               files={availableCaptureFiles.filter((f) =>
                 capture.type === "WavFile"
                   ? f.name.toLowerCase().endsWith(".wav")
-                  : !f.name.toLowerCase().endsWith(".wav")
+                  : !f.name.toLowerCase().endsWith(".wav"),
               )}
               onClose={() => setCaptureFilePickerOpen(false)}
               onSelect={(filename) =>
@@ -1363,12 +1366,22 @@ function PlaybackOptions(props: {
   playback: PlaybackDevice
   errors: Errors
   onChange: (update: Update<Devices>) => void
+  audiofilesSupported?: boolean
+  allowAbsolutePaths?: boolean
 }) {
   const [popupState, setPopupState] = useState(false)
   const [availableDevices, setAvailableDevices] = useState([])
   const [capabilitiesPopupState, setCapabilitiesPopupState] = useState(false)
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null)
   const [deviceCapabilitiesError, setDeviceCapabilitiesError] = useState<string | null>(null)
+  const [availableAudioFiles, setAvailableAudioFiles] = useState<FileInfo[]>([])
+  useEffect(() => {
+    if (props.playback.type === "File" && props.audiofilesSupported) {
+      loadFiles("audiofile")
+        .then(setAvailableAudioFiles)
+        .catch(() => {})
+    }
+  }, [props.playback.type, props.audiofilesSupported])
   if (props.hide_playback_device) return null
   const defaults: { [type: string]: PlaybackDevice } = {
     Alsa: { type: "Alsa", channels: 2, format: "S32_LE", device: "hw:0" },
@@ -1408,7 +1421,7 @@ function PlaybackOptions(props: {
       type: "File",
       channels: 2,
       format: "S32_LE",
-      filename: "/path/to/file",
+      filename: "output.raw",
       wav_header: false,
     },
   }
@@ -1682,15 +1695,21 @@ function PlaybackOptions(props: {
           <TextOption
             value={playback.filename}
             error={errors.messageFor("filename")}
+            warning={
+              availableAudioFiles.some((f) => f.name === playback.filename)
+                ? "This file already exists and will be overwritten"
+                : undefined
+            }
             desc="filename"
             tooltip="Filename including path"
-            onChange={(filename) =>
+            onChange={(filename) => {
+              if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
               onChange((devices) => {
                 if (devices.playback.type === "File") {
                   devices.playback.filename = filename
                 }
               })
-            }
+            }}
           />
           <OptionalBoolOption
             value={playback.wav_header}

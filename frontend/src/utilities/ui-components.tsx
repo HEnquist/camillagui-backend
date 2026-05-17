@@ -757,6 +757,12 @@ export function ErrorMessage(props: { message?: string }) {
   ) : null
 }
 
+export function WarningMessage(props: { message?: string }) {
+  return props.message ? (
+    <div style={{ color: "var(--warning-text-color)", whiteSpace: "pre-wrap" }}>{props.message}</div>
+  ) : null
+}
+
 export interface ErrorBoundaryProps {
   errorMessage?: string
   children: ReactNode
@@ -990,6 +996,7 @@ export function OptionalBoolInput(props: {
 export function TextOption(props: {
   value: string
   error?: string
+  warning?: string
   desc: string
   tooltip: string
   onChange: (value: string) => void
@@ -1006,6 +1013,7 @@ export function TextOption(props: {
         />
       </OptionLine>
       <ErrorMessage message={props.error} />
+      <WarningMessage message={props.warning} />
     </>
   )
 }

@@ -23,6 +23,7 @@ export interface GuiConfig {
   spectrum_max_db: number
   spectrum_max_rate: number
   audiofiles_supported: boolean
+  allow_absolute_paths: boolean
 }
 
 export type CaptureType =
@@ -86,5 +87,6 @@ export function defaultGuiConfig(): GuiConfig {
     spectrum_max_db: 0,
     spectrum_max_rate: 30,
     audiofiles_supported: false,
+    allow_absolute_paths: false,
   }
 }

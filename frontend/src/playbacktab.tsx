@@ -265,35 +265,35 @@ class WavFileTable extends Component<
         cell: ({ row }) => {
           const isWav = row.original.name.toLowerCase().endsWith(".wav")
           const isValidWav = isWav && row.original.samplerate != null
-          const wavDisabledReason = baseConfigName === ""
-            ? "Select a base config first"
-            : !isWav
-              ? "Only WAV files support playback"
-              : !isValidWav
-                ? "WAV file is invalid or unreadable"
-                : undefined
+          const wavDisabledReason =
+            baseConfigName === ""
+              ? "Select a base config first"
+              : !isWav
+                ? "Only WAV files support playback"
+                : !isValidWav
+                  ? "WAV file is invalid or unreadable"
+                  : undefined
           return (
-          <div style={{ display: "flex", flexDirection: "row" }}>
-            <PlayButton
-              filename={row.original.name}
-              fileStatus={fileStatus}
-              enabled={baseConfigName !== "" && isValidWav}
-              disabledReason={wavDisabledReason}
-              onClick={() => this.play(row.original)}
-            />
-            <LoadIntoGuiButton
-              filename={row.original.name}
-              fileStatus={fileStatus}
-              enabled={baseConfigName !== "" && isValidWav && this.props.loadConfig != null}
-              disabledReason={wavDisabledReason}
-              onClick={() => this.loadIntoGui(row.original)}
-            />
-            <RenameButton
-              filename={row.original.name}
-              fileStatus={fileStatus}
-              rename={() => this.rename(row.original.name)}
-            />
-          </div>
+            <div style={{ display: "flex", flexDirection: "row" }}>
+              <PlayButton
+                filename={row.original.name}
+                enabled={baseConfigName !== "" && isValidWav}
+                disabledReason={wavDisabledReason}
+                onClick={() => this.play(row.original)}
+              />
+              <LoadIntoGuiButton
+                filename={row.original.name}
+                fileStatus={fileStatus}
+                enabled={baseConfigName !== "" && isValidWav && this.props.loadConfig != null}
+                disabledReason={wavDisabledReason}
+                onClick={() => this.loadIntoGui(row.original)}
+              />
+              <RenameButton
+                filename={row.original.name}
+                fileStatus={fileStatus}
+                rename={() => this.rename(row.original.name)}
+              />
+            </div>
           )
         },
         enableSorting: false,
@@ -304,7 +304,7 @@ class WavFileTable extends Component<
         header: "Filename",
         accessorFn: (row) => row.name,
         cell: ({ row }) => (
-          <div>
+          <div style={{ overflow: "hidden" }}>
             <button
               type="button"
               className="file-link"
@@ -313,6 +313,7 @@ class WavFileTable extends Component<
               onClick={() => {
                 void downloadFromUrl(row.original.name, `/audiofiles/${encodeURIComponent(row.original.name)}`)
               }}
+              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}
             >
               {row.original.name}
             </button>
@@ -332,11 +333,11 @@ class WavFileTable extends Component<
       },
       {
         id: "samplerate",
-        header: "Sample rate",
+        header: "Rate",
         accessorFn: (row) => row.samplerate ?? null,
         cell: ({ row }) => row.original.samplerate ?? "",
         sortingFn: sortByRows((a, b) => (a.samplerate ?? -1) - (b.samplerate ?? -1)),
-        meta: { width: "90px", compact: true, right: true },
+        meta: { width: "80px", compact: true, right: true },
       },
       {
         id: "sampleformat",
@@ -346,11 +347,11 @@ class WavFileTable extends Component<
       },
       {
         id: "channels",
-        header: "Channels",
+        header: "Ch",
         accessorFn: (row) => row.channels ?? null,
         cell: ({ row }) => row.original.channels ?? "",
         sortingFn: sortByRows((a, b) => (a.channels ?? -1) - (b.channels ?? -1)),
-        meta: { width: "70px", compact: true, right: true },
+        meta: { width: "40px", compact: true, right: true },
       },
       {
         id: "date",
@@ -358,12 +359,6 @@ class WavFileTable extends Component<
         accessorFn: (row) => row.formattedDate,
         sortingFn: sortByRows(fileDateSort),
         meta: { width: "110px", compact: true },
-      },
-      {
-        id: "size",
-        header: "Size",
-        accessorFn: (row) => row.size,
-        meta: { width: "70px", compact: true, right: true },
       },
     ]
 
@@ -422,24 +417,11 @@ class WavFileTable extends Component<
   }
 }
 
-function PlayButton(props: {
-  filename: string
-  fileStatus: FileStatus | null
-  enabled: boolean
-  disabledReason?: string
-  onClick: () => void
-}) {
-  const { filename, fileStatus, enabled, disabledReason, onClick } = props
-  let playIcon: { icon: string; className?: string } = { icon: mdiPlay }
-  if (fileStatus !== null && fileStatus.action === "play" && fileStatus.filename === filename) {
-    playIcon = fileStatus.success
-      ? { icon: mdiCheck, className: "success-text" }
-      : { icon: mdiAlertCircle, className: "error-text" }
-  }
+function PlayButton(props: { filename: string; enabled: boolean; disabledReason?: string; onClick: () => void }) {
+  const { filename, enabled, disabledReason, onClick } = props
   return (
     <MdiButton
-      icon={playIcon.icon}
-      className={playIcon.className}
+      icon={mdiPlay}
       enabled={enabled}
       tooltip={disabledReason ?? `Play ${filename} through the selected base config`}
       onClick={onClick}
@@ -541,6 +523,8 @@ export function buildPlaybackConfig(
   wav: { filename: string; samplerate: number; channels: number },
 ): Config {
   const config = cloneDeep(base)
+
+  config.title = config.title ? `${config.title} — ${wav.filename}` : wav.filename
 
   // Capture device -> WavFile (bare filename; backend resolves against audiofiles_dir)
   config.devices.capture = {

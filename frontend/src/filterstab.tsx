@@ -69,6 +69,7 @@ interface FiltersTabProps {
   samplerate: number
   channels: Promise<number>
   coeffDir: string
+  allowAbsolutePaths: boolean
   updateConfig: (update: Update<Config>) => void
   errors: Errors
 }
@@ -218,6 +219,7 @@ export class FiltersTab extends React.Component<
                   remove={() => this.removeFilter(name)}
                   updateAvailableCoeffFiles={this.updateAvailableCoeffFiles}
                   coeffDir={this.props.coeffDir}
+                  allowAbsolutePaths={this.props.allowAbsolutePaths}
                   samplerate={this.props.samplerate}
                   channels={this.props.channels}
                   inPipeline={usedFilters.has(name)}
@@ -260,6 +262,7 @@ interface FilterViewProps {
   remove: () => void
   updateAvailableCoeffFiles: () => void
   coeffDir: string
+  allowAbsolutePaths: boolean
   samplerate: number
   channels: Promise<number>
   inPipeline: boolean
@@ -507,6 +510,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             updateFilter={this.props.updateFilter}
             availableCoeffFiles={this.props.availableCoeffFiles}
             coeffDir={this.props.coeffDir}
+            allowAbsolutePaths={this.props.allowAbsolutePaths}
             filterDefaults={this.state.filterDefaults}
             showDefaults={this.state.showDefaults}
             setShowDefaults={() => this.setState({ showDefaults: true })}
@@ -606,6 +610,7 @@ interface FilterParamsProps {
   updateFilter: (update: Update<Filter>) => void
   availableCoeffFiles: FileInfo[]
   coeffDir: string
+  allowAbsolutePaths: boolean
   filterDefaults: FilterDefaults
   setShowDefaults: () => void
   showDefaults: boolean
@@ -906,12 +911,22 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
     },
   ) {
     const coeffDir = this.props.coeffDir
+    const allowAbsolutePaths = this.props.allowAbsolutePaths
     const selectedFile = coeffFileNameFromPath(coeffDir, filename)
+    const containsPathSeparator = (v: string) => v.includes("/") || v.includes("\\")
+    const error =
+      !allowAbsolutePaths && containsPathSeparator(selectedFile)
+        ? "Only bare filenames allowed. Enable allow_absolute_paths in the backend config to use paths."
+        : undefined
     return (
       <TextOption
         {...props}
         value={selectedFile}
-        onChange={(value) => this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))}
+        error={error}
+        onChange={(value) => {
+          if (!allowAbsolutePaths && containsPathSeparator(value)) return
+          this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))
+        }}
       />
     )
   }

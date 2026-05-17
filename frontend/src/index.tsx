@@ -357,6 +357,7 @@ class CamillaConfig extends React.Component<
               samplerate={config.devices.samplerate}
               channels={getCaptureDeviceChannelCount(config.devices.capture)}
               coeffDir={this.state.guiConfig.coeff_dir}
+              allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}
               updateConfig={this.updateConfig}
               errors={errors.forSubpath("filters")}
             />

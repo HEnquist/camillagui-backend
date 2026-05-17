@@ -44,10 +44,84 @@ let activeSpectrumParams: SpectrumSubscriptionParams | null = null
 let spectrumShape = { offset: -38, slope: -3 }
 const MAIN_CONFIG_NAME = "living-room-demo.yml"
 const CURRENT_CONFIG_VERSION = 4
+const DEMO_AUDIOFILES_PREFIX = "/demo/audiofiles/"
+const DEMO_COEFF_PREFIX = "/demo/coeffs/"
+
+function demoStripAudioPaths(config: Config): Config {
+  const c = structuredClone(config)
+  const cap = c.devices?.capture as { type?: string; filename?: string }
+  if (cap?.type === "WavFile" || cap?.type === "RawFile") {
+    cap.filename = demoBareName(cap.filename ?? "", DEMO_AUDIOFILES_PREFIX)
+  }
+  const pb = c.devices?.playback as { type?: string; filename?: string }
+  if (pb?.type === "File") {
+    pb.filename = demoBareName(pb.filename ?? "", DEMO_AUDIOFILES_PREFIX)
+  }
+  return c
+}
+
+function demoResolveAudioPaths(config: Config): Config {
+  const c = structuredClone(config)
+  const cap = c.devices?.capture as { type?: string; filename?: string }
+  if (cap?.type === "WavFile" || cap?.type === "RawFile") {
+    cap.filename = demoAbsoluteName(cap.filename ?? "", DEMO_AUDIOFILES_PREFIX)
+  }
+  const pb = c.devices?.playback as { type?: string; filename?: string }
+  if (pb?.type === "File") {
+    pb.filename = demoAbsoluteName(pb.filename ?? "", DEMO_AUDIOFILES_PREFIX)
+  }
+  return c
+}
+
+function demoBareName(path: string, prefix: string): string {
+  if (path.startsWith(prefix)) return path.slice(prefix.length)
+  const slash = path.lastIndexOf("/")
+  return slash >= 0 ? path.slice(slash + 1) : path
+}
+
+function demoAbsoluteName(filename: string, prefix: string): string {
+  if (filename.startsWith("/")) return filename
+  return prefix + filename
+}
+
+function demoPathsAreValid(config: Config): string[] {
+  if (state.guiConfig.allow_absolute_paths) return []
+  const offenders: string[] = []
+  const check = (path: string | undefined, prefix: string) => {
+    if (path && path.startsWith("/") && !path.startsWith(prefix)) offenders.push(path)
+  }
+  const cap = config.devices?.capture as { type?: string; filename?: string }
+  if (cap?.type === "WavFile" || cap?.type === "RawFile") check(cap.filename, DEMO_AUDIOFILES_PREFIX)
+  const pb = config.devices?.playback as { type?: string; filename?: string }
+  if (pb?.type === "File") check(pb.filename, DEMO_AUDIOFILES_PREFIX)
+  const filters =
+    (
+      config as unknown as {
+        filters?: Record<string, { type?: string; parameters?: { type?: string; filename?: string } }>
+      }
+    ).filters ?? {}
+  for (const f of Object.values(filters)) {
+    if (f.type === "Conv" && (f.parameters?.type === "Raw" || f.parameters?.type === "Wav")) {
+      check(f.parameters?.filename, DEMO_COEFF_PREFIX)
+    }
+  }
+  return offenders
+}
 
 const BACKENDS = {
   playback: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "File", "Stdout"],
-  capture: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "Stdin", "RawFile", "WavFile", "SignalGenerator"],
+  capture: [
+    "Alsa",
+    "CoreAudio",
+    "Wasapi",
+    "Jack",
+    "Pulse",
+    "PipeWire",
+    "Stdin",
+    "RawFile",
+    "WavFile",
+    "SignalGenerator",
+  ],
 } as const
 
 const DEVICE_OPTIONS: Record<string, [string, string][]> = {
@@ -141,6 +215,7 @@ function createGuiConfig(): GuiConfig {
     spectrum_n_bins: 60,
     spectrum_max_rate: 10,
     audiofiles_supported: true,
+    allow_absolute_paths: false,
   }
 }
 
@@ -558,7 +633,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     persistState()
     return jsonResponse({
       configFileName: activeName,
-      config: cloneConfig(config),
+      config: demoStripAudioPaths(cloneConfig(config)),
       source: activeName ? "active" : "dsp",
     })
   }
@@ -573,6 +648,13 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname === "/api/setconfig" && method === "POST") {
     const payload = await requestJson<{ filename?: string; config: Config }>(input, init)
+    const offenders = demoPathsAreValid(payload.config)
+    if (offenders.length > 0) {
+      return textResponse(
+        `Paths outside configured directories: ${offenders.join(", ")}. Set allow_absolute_paths: true to allow this.`,
+        403,
+      )
+    }
     state.currentConfig = cloneConfig(payload.config)
     state.processingStopped = false
     if (payload.filename) {
@@ -585,8 +667,16 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname === "/api/saveconfigfile" && method === "POST") {
     const payload = await requestJson<{ filename: string; config: Config }>(input, init)
+    const offenders = demoPathsAreValid(payload.config)
+    if (offenders.length > 0) {
+      return textResponse(
+        `Paths outside configured directories: ${offenders.join(", ")}. Set allow_absolute_paths: true to allow this.`,
+        403,
+      )
+    }
+    const configToStore = demoResolveAudioPaths(cloneConfig(payload.config))
     state.currentConfig = cloneConfig(payload.config)
-    state.storedConfigs[payload.filename] = cloneConfig(payload.config)
+    state.storedConfigs[payload.filename] = configToStore
     state.activeConfigFileName = payload.filename
     touchConfigFile(payload.filename)
     appendLog(`saved config ${payload.filename}`)
@@ -597,7 +687,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/getconfigfile" && method === "GET") {
     const name = url.searchParams.get("name")
     if (!name || !state.storedConfigs[name]) return textResponse("Config file not found", 404)
-    return jsonResponse(cloneConfig(state.storedConfigs[name]))
+    return jsonResponse(demoStripAudioPaths(cloneConfig(state.storedConfigs[name])))
   }
 
   if (pathname === "/api/getdefaultconfigfile" && method === "GET") {
