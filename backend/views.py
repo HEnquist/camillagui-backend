@@ -4,6 +4,7 @@ import time
 import traceback
 from os.path import basename, expanduser, isfile, join
 
+import numpy as np
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
@@ -887,3 +888,96 @@ async def get_backends(request):
     """
     backends = request.app["STATUSCACHE"]["backends"]
     return web.json_response(backends, headers=HEADERS)
+
+
+async def eval_channels_values(request):
+    """
+    Evaluate the sum of filters for multiple channels.
+    """
+    try:
+        content = await request.json()
+        full_config = content["config"]
+        samplerate = content["samplerate"]
+        channels_to_plot = content["channels_to_plot"]
+
+        config_dir = request.app["config_dir"]
+        plot_config = make_config_filter_paths_absolute(full_config, config_dir)
+
+        all_traces = []
+        num_points = 1000
+        freqs = None
+
+        for channel_request in channels_to_plot:
+            channel_name = channel_request["name"]
+            filter_names = channel_request["filters"]
+
+            peq_points = []
+
+            if not filter_names:
+                freqs_for_empty = np.logspace(np.log10(20), np.log10(20000), num_points).tolist()
+                if freqs is None:
+                    freqs = freqs_for_empty
+                all_traces.append({
+                    "name": channel_name,
+                    "magnitude": [0.0] * num_points,
+                    "phase": [0.0] * num_points,
+                    "peq_points": [],
+                })
+                continue
+
+            total_magnitude_db = np.zeros(num_points)
+            total_phase_deg = np.zeros(num_points)
+
+            for filter_name in filter_names:
+                filter_def = plot_config.get("filters", {}).get(filter_name)
+                if not filter_def:
+                    continue
+
+                # Check if the filter is a Biquad of type Peaking
+                if filter_def.get("type") == "Biquad" and filter_def.get("parameters", {}).get("type") == "Peaking":
+                    params = filter_def.get("parameters", {})
+                    freq = params.get("freq")
+                    gain = params.get("gain")
+                    if freq is not None and gain is not None:
+                        peq_points.append({"x": freq, "y": gain})
+
+                replace_tokens_in_filter_config(filter_def, samplerate, 1)
+
+                try:
+                    filter_data = eval_filter(filter_def, name=filter_name, samplerate=samplerate, npoints=num_points)
+
+                    if freqs is None:
+                        freqs = filter_data["f"]
+
+                    if len(filter_data["magnitude"]) == num_points:
+                        total_magnitude_db += np.array(filter_data["magnitude"])
+                    if len(filter_data["phase"]) == num_points:
+                        total_phase_deg += np.array(filter_data["phase"])
+
+                except KeyError as e:
+                    logging.warning(f"Skipping filter {filter_name} due to missing parameter: {e}")
+                    continue
+                except Exception as e:
+                    logging.warning(f"Skipping filter {filter_name} because it could not be evaluated: {e}")
+                    continue
+
+            total_phase_deg = (total_phase_deg + 180) % 360 - 180
+
+            if freqs is None:
+                freqs = np.logspace(np.log10(20), np.log10(20000), num_points).tolist()
+
+            all_traces.append({
+                "name": channel_name,
+                "magnitude": total_magnitude_db.tolist(),
+                "phase": total_phase_deg.tolist(),
+                "peq_points": peq_points,
+            })
+
+        response_data = {"name": "Multi-channel chart", "f": freqs, "traces": all_traces}
+
+        return web.json_response(response_data, headers=HEADERS)
+
+    except Exception as e:
+        logging.error(f"Error in eval_channels_values: {e}")
+        traceback.print_exc()
+        raise web.HTTPInternalServerError(text=f"Failed to evaluate channels: {e}")

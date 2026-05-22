@@ -6,6 +6,7 @@ from .views import (
     delete_configs,
     download_coeffs_zip,
     download_configs_zip,
+    eval_channels_values,
     eval_filter_values,
     eval_filterstep_values,
     get_config_at_gui_start,
@@ -88,6 +89,7 @@ def setup_routes(app):
     app.router.add_get("/api/capturedevices/{backend}", get_capture_devices)
     app.router.add_get("/api/playbackdevices/{backend}", get_playback_devices)
     app.router.add_get("/api/backends", get_backends)
+    app.router.add_post("/api/evalchannels", eval_channels_values)
 
     app.router.add_get("/", get_gui_index)
 
