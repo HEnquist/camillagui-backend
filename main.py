@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import logging
 import ssl
 
@@ -7,6 +8,7 @@ from aiohttp import web
 from camilladsp_plot import VERSION as plot_version
 from camilladsp_plot.validate_config import CamillaValidator
 
+from backend.eventstream import LevelEventStream, SpectrumEventStream
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import CONFIG_PATH, get_config
 from backend.version import VERSION
@@ -20,10 +22,23 @@ LOG_LEVELS = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 # logging.error("error")
 
 
+async def _start_background_services(app):
+    stream = app.get("LEVEL_STREAM")
+    if stream is not None:
+        stream.start(asyncio.get_running_loop())
+
+
+async def _stop_background_services(app):
+    stream = app.get("LEVEL_STREAM")
+    if stream is not None:
+        await stream.stop()
+
+
 def build_app(backend_config):
     app = web.Application(client_max_size=1024**3)  # set max upload file size to 1GB
     app["config_dir"] = backend_config["config_dir"]
     app["coeff_dir"] = backend_config["coeff_dir"]
+    app["audiofiles_dir"] = backend_config["audiofiles_dir"]
     app["default_config"] = backend_config["default_config"]
     app["statefile_path"] = backend_config["statefile_path"]
     app["log_file"] = backend_config["log_file"]
@@ -33,6 +48,7 @@ def build_app(backend_config):
     app["supported_playback_types"] = backend_config["supported_playback_types"]
     app["can_update_active_config"] = backend_config["can_update_active_config"]
     app["gui_config_file"] = backend_config["gui_config_file"]
+    app["allow_absolute_paths"] = backend_config["allow_absolute_paths"]
     setup_routes(app)
     setup_static_routes(app)
 
@@ -43,9 +59,15 @@ def build_app(backend_config):
         "backend_version": version_string(VERSION),
         "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
         "py_cdsp_plot_version": plot_version,
+        "capturesignalrms": [],
+        "capturesignalpeak": [],
+        "playbacksignalrms": [],
+        "playbacksignalpeak": [],
         "backends": [],
         "playback_devices": {},
         "capture_devices": {},
+        "playback_device_capabilities": {},
+        "capture_device_capabilities": {},
         "labels": {"playback": None, "capture": None},
     }
     app["STORE"] = {
@@ -63,6 +85,22 @@ def build_app(backend_config):
             backend_config["supported_playback_types"]
         )
     app["VALIDATOR"] = camillavalidator
+    if backend_config.get("enable_level_stream", True):
+        level_stream = LevelEventStream(
+            host=backend_config["camilla_host"],
+            port=backend_config["camilla_port"],
+            status_cache=app["STATUSCACHE"],
+            smoothing_time_constant_ms=backend_config["level_smoothing_ms"],
+            max_update_hz=backend_config["level_max_update_hz"],
+        )
+        app["LEVEL_STREAM"] = level_stream
+        app["SPECTRUM_STREAM"] = SpectrumEventStream(
+            host=backend_config["camilla_host"],
+            port=backend_config["camilla_port"],
+            publish_json=level_stream._publish_json,
+        )
+    app.on_startup.append(_start_background_services)
+    app.on_cleanup.append(_stop_background_services)
     return app
 
 
@@ -103,7 +141,12 @@ def main():
     else:
         ssl_context = None
     web.run_app(
-        app, host=config["bind_address"], port=config["port"], ssl_context=ssl_context
+        app,
+        host=config["bind_address"],
+        port=config["port"],
+        ssl_context=ssl_context,
+        # Keep SIGINT shutdown responsive even with long-lived SSE connections.
+        shutdown_timeout=1.0,
     )
 
 

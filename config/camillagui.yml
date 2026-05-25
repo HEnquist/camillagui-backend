@@ -8,6 +8,9 @@ ssl_private_key: null
 gui_config_file: null
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
+# Optional: directory for uploadable .wav playback files (e.g. REW sweeps).
+# Leave unset/null to hide the WAV files tab.
+audiofiles_dir: "~/camilladsp/audiofiles"
 default_config: "~/camilladsp/default_config.yml"
 statefile_path: "~/camilladsp/statefile.yml"
 log_file: "~/camilladsp/camilladsp.log"
@@ -15,3 +18,9 @@ on_set_active_config: null
 on_get_active_config: null
 supported_capture_types: null
 supported_playback_types: null
+level_smoothing_ms: 200
+level_max_update_hz: 30
+# Set to true to allow absolute filesystem paths for coeff and audio files.
+# By default only bare filenames (resolved against coeff_dir / audiofiles_dir) are accepted.
+# Only enable if you understand the security implications.
+allow_absolute_paths: false

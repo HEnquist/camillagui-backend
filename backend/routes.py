@@ -4,14 +4,18 @@ from .views import (
     config_to_yml,
     delete_coeffs,
     delete_configs,
+    delete_audiofiles,
     download_coeffs_zip,
     download_configs_zip,
+    download_audiofiles_zip,
     eval_filter_values,
     eval_filterstep_values,
+    get_events,
     get_config_at_gui_start,
     get_active_config_name,
     get_backends,
     get_capture_devices,
+    get_capture_device_capabilities,
     get_config,
     get_config_file,
     get_default_config_file,
@@ -23,13 +27,16 @@ from .views import (
     get_param,
     get_param_json,
     get_playback_devices,
+    get_playback_device_capabilities,
     get_status,
     get_stored_coeffs,
     get_stored_configs,
+    get_stored_audiofiles,
     get_wav_info,
     parse_and_validate_yml_config_to_json,
     rename_coeff_file,
     rename_config_file,
+    rename_audio_file,
     save_config_file,
     set_active_config_name,
     set_config,
@@ -38,14 +45,18 @@ from .views import (
     stop_processing,
     store_coeffs,
     store_configs,
+    store_audiofiles,
+    subscribe_spectrum,
     translate_convolver_to_json,
     translate_eqapo_to_json,
+    unsubscribe_spectrum,
     validate_config,
     yaml_to_json,
 )
 
 
 def setup_routes(app):
+    app.router.add_get("/api/events", get_events)
     app.router.add_get("/api/status", get_status)
     app.router.add_get("/api/getparam/{name}", get_param)
     app.router.add_get("/api/getparamjson/{name}", get_param_json)
@@ -57,6 +68,8 @@ def setup_routes(app):
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_post("/api/stop", stop_processing)
+    app.router.add_post("/api/spectrum/subscribe", subscribe_spectrum)
+    app.router.add_post("/api/spectrum/unsubscribe", unsubscribe_spectrum)
     app.router.add_get("/api/getstartconfig", get_config_at_gui_start)
     app.router.add_get("/api/getactiveconfigfilename", get_active_config_name)
     app.router.add_get("/api/getdefaultconfigfile", get_default_config_file)
@@ -72,21 +85,32 @@ def setup_routes(app):
     app.router.add_get("/api/wavinfo", get_wav_info)
     app.router.add_get("/api/storedconfigs", get_stored_configs)
     app.router.add_get("/api/storedcoeffs", get_stored_coeffs)
+    app.router.add_get("/api/storedaudiofiles", get_stored_audiofiles)
     app.router.add_get("/api/defaultsforcoeffs", get_defaults_for_coeffs)
     app.router.add_post("/api/uploadconfigs", store_configs)
     app.router.add_post("/api/uploadcoeffs", store_coeffs)
+    app.router.add_post("/api/uploadaudiofiles", store_audiofiles)
     app.router.add_post("/api/deleteconfigs", delete_configs)
     app.router.add_post("/api/deletecoeffs", delete_coeffs)
+    app.router.add_post("/api/deleteaudiofiles", delete_audiofiles)
     app.router.add_post("/api/renameconfig", rename_config_file)
     app.router.add_post("/api/renamecoeff", rename_coeff_file)
+    app.router.add_post("/api/renamewav", rename_audio_file)
     app.router.add_post("/api/downloadconfigszip", download_configs_zip)
     app.router.add_post("/api/downloadcoeffszip", download_coeffs_zip)
+    app.router.add_post("/api/downloadaudiofileszip", download_audiofiles_zip)
     app.router.add_get("/api/guiconfig", get_gui_config)
     app.router.add_get("/api/getconfigfile", get_config_file)
     app.router.add_post("/api/saveconfigfile", save_config_file)
     app.router.add_get("/api/logfile", get_log_file)
     app.router.add_get("/api/capturedevices/{backend}", get_capture_devices)
     app.router.add_get("/api/playbackdevices/{backend}", get_playback_devices)
+    app.router.add_get(
+        "/api/capturedevicecapabilities/{backend}", get_capture_device_capabilities
+    )
+    app.router.add_get(
+        "/api/playbackdevicecapabilities/{backend}", get_playback_device_capabilities
+    )
     app.router.add_get("/api/backends", get_backends)
 
     app.router.add_get("/", get_gui_index)
@@ -103,3 +127,5 @@ def setup_static_routes(app):
     )
     app.router.add_static("/config/", path=app["config_dir"])
     app.router.add_static("/coeff/", path=app["coeff_dir"])
+    if app["audiofiles_dir"]:
+        app.router.add_static("/audiofiles/", path=app["audiofiles_dir"])

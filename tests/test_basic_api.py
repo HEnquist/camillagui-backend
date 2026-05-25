@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import random
@@ -41,6 +42,7 @@ server_config = {
     "port": 5005,
     "config_dir": TESTFILE_DIR,
     "coeff_dir": TESTFILE_DIR,
+    "audiofiles_dir": None,
     "default_config": SAMPLE_CONFIG_PATH,
     "statefile_path": STATEFILE_PATH,
     "log_file": LOGFILE_PATH,
@@ -50,6 +52,9 @@ server_config = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "can_update_active_config": True,
+    "enable_level_stream": False,
+    "level_smoothing_ms": 100,
+    "level_max_update_hz": 30,
 }
 
 
@@ -92,6 +97,34 @@ def mock_camillaclient(statefile):
     client.general.list_playback_devices = MagicMock(
         return_value=[["hw:Cccc,0,0", "Dev C"], ["hw:Dddd,0,0", "Dev D"]]
     )
+    client.general.capture_device_capabilities = MagicMock(
+        return_value={
+            "name": "hw:Aaaa,0,0",
+            "description": "Dev A",
+            "capabilities": [
+                {
+                    "channels": 2,
+                    "samplerates": [
+                        {"samplerate": 44100, "formats": ["S16_LE", "S32_LE"]}
+                    ],
+                }
+            ],
+        }
+    )
+    client.general.playback_device_capabilities = MagicMock(
+        return_value={
+            "name": "hw:Cccc,0,0",
+            "description": "Dev C",
+            "capabilities": [
+                {
+                    "channels": 2,
+                    "samplerates": [
+                        {"samplerate": 48000, "formats": ["FLOAT32LE"]}
+                    ],
+                }
+            ],
+        }
+    )
     client.general.supported_device_types = MagicMock(return_value=["Alsa", "Wasapi"])
     client.status = MagicMock()
     client.status.rate_adjust = MagicMock(return_value=1.01)
@@ -102,6 +135,8 @@ def mock_camillaclient(statefile):
     client.config = MagicMock()
     client.config.active = MagicMock(return_value=SAMPLE_CONFIG)
     client.config.file_path = MagicMock(return_value=SAMPLE_CONFIG_PATH)
+    client.config.title = MagicMock(return_value="Test config")
+    client.config.description = MagicMock(return_value="Test description")
     client.versions = MagicMock()
     client.versions.library = MagicMock(return_value="1.2.3")
     yield client_constructor
@@ -170,6 +205,47 @@ async def test_read_status(server):
     assert response["resamplerload"] == 0.2
 
 
+async def test_get_events_writes_queued_bytes(mock_app):
+    queue: asyncio.Queue[bytes] = asyncio.Queue()
+    queued_frame = b"event: levels\ndata: {\"side\": \"capture\"}\n\n"
+    await queue.put(queued_frame)
+
+    class FakeLevelStream:
+        def __init__(self):
+            self.removed_queue = None
+
+        def add_client(self):
+            return queue
+
+        def remove_client(self, client_queue):
+            self.removed_queue = client_queue
+
+    class FakeStreamResponse:
+        def __init__(self, *args, **kwargs):
+            self.writes = []
+
+        async def prepare(self, request):
+            return self
+
+        async def write(self, data):
+            self.writes.append(data)
+            if data == queued_frame:
+                raise ConnectionResetError()
+
+    stream = FakeLevelStream()
+    mock_app["LEVEL_STREAM"] = stream
+    request = MagicMock()
+    request.app = mock_app
+    request.remote = "127.0.0.1"
+
+    with patch("backend.views.web.StreamResponse", FakeStreamResponse):
+        response = await views.get_events(request)
+
+    assert response.writes[0] == b"retry: 1000\n: connected\n\n"
+    assert response.writes[1] == queued_frame
+    assert stream.removed_queue is queue
+
+
 async def test_read_resampler_load(mock_request):
     mock_request.match_info = {"name": "resamplerload"}
     reply = await views.get_param(mock_request)
@@ -199,6 +275,8 @@ async def test_stop_processing(server):
         ("/api/logfile", None),
         ("/api/capturedevices/alsa", None),
         ("/api/playbackdevices/alsa", None),
+        ("/api/capturedevicecapabilities/alsa", {"device": "hw:Aaaa,0,0"}),
+        ("/api/playbackdevicecapabilities/alsa", {"device": "hw:Cccc,0,0"}),
         ("/api/backends", None),
     ],
 )
@@ -208,6 +286,56 @@ async def test_all_get_endpoints_ok(server, endpoint, parameters):
     else:
         resp = await server.get(endpoint)
     assert resp.status == 200
+
+
+async def test_get_capture_device_capabilities_updates_cache(server):
+    resp = await server.get(
+        "/api/capturedevicecapabilities/alsa", params={"device": "hw:Aaaa,0,0"}
+    )
+
+    assert resp.status == 200
+    content = await resp.json()
+    assert content["name"] == "hw:Aaaa,0,0"
+    assert (
+        server.app["STATUSCACHE"]["capture_device_capabilities"]["alsa"][
+            "hw:Aaaa,0,0"
+        ]
+        == content
+    )
+
+
+async def test_get_playback_device_capabilities_returns_cached_on_error(server):
+    cached = {
+        "name": "hw:Cccc,0,0",
+        "description": "Cached Dev C",
+        "capabilities": [{"channels": 4, "samplerates": []}],
+    }
+    server.app["STATUSCACHE"]["playback_device_capabilities"] = {
+        "alsa": {"hw:Cccc,0,0": cached}
+    }
+    server.app["CAMILLA"].general.playback_device_capabilities = MagicMock(
+        side_effect=camilladsp.DeviceBusyError("device busy")
+    )
+
+    resp = await server.get(
+        "/api/playbackdevicecapabilities/alsa", params={"device": "hw:Cccc,0,0"}
+    )
+
+    assert resp.status == 200
+    assert await resp.json() == cached
+
+
+async def test_get_capture_device_capabilities_forwards_error_without_cache(server):
+    server.app["CAMILLA"].general.capture_device_capabilities = MagicMock(
+        side_effect=camilladsp.DeviceNotFoundError("device not found")
+    )
+
+    resp = await server.get(
+        "/api/capturedevicecapabilities/alsa", params={"device": "missing"}
+    )
+
+    assert resp.status == 400
+    assert await resp.text() == "device not found"
 
 
 @pytest.mark.parametrize(

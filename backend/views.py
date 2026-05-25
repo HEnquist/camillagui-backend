@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import threading
 import time
 import traceback
@@ -14,22 +15,30 @@ from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
 from .filemanagement import (
     coeff_dir_relative_to_config_dir,
+    coeff_path_to_absolute,
+    convert_filter_path,
     delete_files,
+    file_in_folder,
     get_active_config_path,
     list_of_filenames_in_directory,
     list_of_files_in_directory,
     make_absolute,
+    make_audio_file_paths_bare,
     make_config_filter_paths_absolute,
     make_config_filter_paths_relative,
+    make_capture_file_path_absolute,
+    make_playback_file_path_absolute,
     path_of_config_file,
     read_yaml_from_path_to_object,
     rename_coeff_or_return_error,
     rename_config_or_return_error,
-    replace_relative_filter_path_with_absolute_paths,
+    rename_audiofile_or_return_error,
     replace_tokens_in_filter_config,
     save_config_to_yaml_file,
     set_path_as_active_config,
     store_files,
+    strip_config_paths_to_bare_filenames,
+    validate_config_paths,
     zip_of_files,
     zip_response,
 )
@@ -43,23 +52,69 @@ from .legacy_config_import import (
     identify_version,
     migrate_legacy_config,
 )
+from .eventstream import ProcessingNotRunning
 from .settings import GUI_CONFIG_PATH, get_gui_config_or_defaults
 
 OFFLINE_CACHE = {
     "cdsp_status": "Offline",
     "cdsp_version": "(offline)",
-    "capturesignalrms": [],
-    "capturesignalpeak": [],
-    "playbacksignalrms": [],
-    "playbacksignalpeak": [],
     "capturerate": None,
     "rateadjust": None,
     "bufferlevel": None,
     "clippedsamples": None,
     "processingload": None,
     "resamplerload": None,
+    "title": None,
+    "description": None,
 }
 HEADERS = {"Cache-Control": "no-store"}
+
+
+def _get_cached_device_capabilities(cache, cache_key, backend, device_name):
+    return cache[cache_key].get(backend, {}).get(device_name)
+
+
+def _store_device_capabilities(cache, cache_key, backend, device_name, capabilities):
+    if backend not in cache[cache_key]:
+        cache[cache_key][backend] = {}
+    cache[cache_key][backend][device_name] = capabilities
+
+
+def _raise_capabilities_error(error):
+    if isinstance(error, CamillaError):
+        raise web.HTTPBadRequest(text=str(error), headers=HEADERS) from error
+    raise web.HTTPServiceUnavailable(text=str(error), headers=HEADERS) from error
+
+
+async def _get_device_capabilities_response(
+    request, cache_key, fetch_capabilities, direction
+):
+    backend = request.match_info["backend"]
+    device_name = request.query.get("device")
+    if not device_name:
+        raise web.HTTPBadRequest(
+            text="Missing required query parameter 'device'", headers=HEADERS
+        )
+
+    cache = request.app["STATUSCACHE"]
+    try:
+        capabilities = fetch_capabilities(backend, device_name)
+        _store_device_capabilities(
+            cache, cache_key, backend, device_name, capabilities
+        )
+    except (CamillaError, IOError) as error:
+        capabilities = _get_cached_device_capabilities(
+            cache, cache_key, backend, device_name
+        )
+        if capabilities is None:
+            _raise_capabilities_error(error)
+        logging.debug(
+            "Failed to fetch %s device capabilities for %s/%s, returning cached data",
+            direction,
+            backend,
+            device_name,
+        )
+    return web.json_response(capabilities, headers=HEADERS)
 
 
 async def get_gui_index(request):
@@ -108,25 +163,9 @@ async def get_status(request):
     cachetime = request.app["STORE"]["cache_time"]
     validator = request.app["VALIDATOR"]
     try:
-        levels_since = float(request.query.get("since"))
-    except Exception:
-        levels_since = None
-    try:
         state = cdsp.general.state()
         state_str = state.name
         cache["cdsp_status"] = state_str
-        if levels_since is not None:
-            levels = cdsp.levels.levels_since(levels_since)
-        else:
-            levels = cdsp.levels.levels()
-        cache.update(
-            {
-                "capturesignalrms": levels["capture_rms"],
-                "capturesignalpeak": levels["capture_peak"],
-                "playbacksignalrms": levels["playback_rms"],
-                "playbacksignalpeak": levels["playback_peak"],
-            }
-        )
         now = time.time()
         # These values don't change that fast, let's update them only once per second.
         if now - cachetime > 1.0:
@@ -140,6 +179,8 @@ async def get_status(request):
                     "processingload": cdsp.status.processing_load(),
                     "resamplerload": cdsp.status.resampler_load(),
                     "labels": cdsp.levels.labels(),
+                    "title": cdsp.config.title(),
+                    "description": cdsp.config.description(),
                 }
             )
     except IOError:
@@ -151,6 +192,42 @@ async def get_status(request):
             reconnect_thread.start()
             request.app["STORE"]["reconnect_thread"] = reconnect_thread
     return web.json_response(cache, headers=HEADERS)
+
+
+async def get_events(request):
+    """
+    Stream one-way server-sent events.
+    """
+    stream = request.app.get("LEVEL_STREAM")
+    if stream is None:
+        raise web.HTTPServiceUnavailable(text="Event stream is disabled", headers=HEADERS)
+
+    response = web.StreamResponse(
+        status=200,
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+    await response.prepare(request)
+    logging.debug("SSE /api/events connected from %s", request.remote)
+
+    queue = stream.add_client()
+    try:
+        await response.write(b"retry: 1000\n: connected\n\n")
+        while True:
+            try:
+                frame = await asyncio.wait_for(queue.get(), timeout=15.0)
+                await response.write(frame)
+            except asyncio.TimeoutError:
+                await response.write(b": keepalive\n\n")
+    except (ConnectionResetError, asyncio.CancelledError) as exc:
+        logging.debug("SSE /api/events disconnected from %s: %s", request.remote, exc)
+    finally:
+        stream.remove_client(queue)
+    return response
 
 
 def version_string(version_array):
@@ -271,7 +348,19 @@ async def eval_filter_values(request):
     content = await request.json()
     config_dir = request.app["config_dir"]
     config = content["config"]
-    replace_relative_filter_path_with_absolute_paths(config, config_dir)
+    if not request.app["allow_absolute_paths"]:
+        filename = config.get("parameters", {}).get("filename")
+        if filename:
+            from .filemanagement import _path_is_safe
+            if not _path_is_safe(filename, request.app["coeff_dir"]):
+                raise web.HTTPForbidden(
+                    text=(
+                        f"Coeff path '{filename}' is outside the configured coeff_dir. "
+                        "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                    ),
+                    headers=HEADERS,
+                )
+    convert_filter_path(config, lambda path: coeff_path_to_absolute(path, config_dir, request.app["coeff_dir"]))
     channels = content["channels"]
     samplerate = content["samplerate"]
     volume = content.get("volume", 0.0)
@@ -307,11 +396,13 @@ async def eval_filterstep_values(request):
     config = content["config"]
     step_index = content["index"]
     config_dir = request.app["config_dir"]
+    if not request.app["allow_absolute_paths"]:
+        _check_config_paths(request, config)
     samplerate = content["samplerate"]
     channels = content["channels"]
     config["devices"]["samplerate"] = samplerate
     config["devices"]["capture"]["channels"] = channels
-    plot_config = make_config_filter_paths_absolute(config, config_dir)
+    plot_config = make_config_filter_paths_absolute(config, config_dir, request.app["coeff_dir"])
     filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
     options = pipeline_step_plot_options(filter_file_names, config, step_index)
     for _, filt in plot_config.get("filters", {}).items():
@@ -348,18 +439,26 @@ async def set_config(request):
     json = await request.json()
     config_object = json["config"]
     config_dir = request.app["config_dir"]
+    audiofiles_dir = request.app["audiofiles_dir"]
     cdsp = request.app["CAMILLA"]
     validator = request.app["VALIDATOR"]
-    config_object_with_absolute_filter_paths = make_config_filter_paths_absolute(
-        config_object, config_dir
+    _check_config_paths(request, config_object)
+    config_with_absolute_paths = make_config_filter_paths_absolute(
+        config_object, config_dir, request.app["coeff_dir"]
+    )
+    config_with_absolute_paths = make_capture_file_path_absolute(
+        config_with_absolute_paths, audiofiles_dir
+    )
+    config_with_absolute_paths = make_playback_file_path_absolute(
+        config_with_absolute_paths, audiofiles_dir
     )
     if cdsp.is_connected():
         try:
-            cdsp.config.set_active(config_object_with_absolute_filter_paths)
+            cdsp.config.set_active(config_with_absolute_paths)
         except CamillaError as e:
             raise web.HTTPUnprocessableEntity(text=str(e))
     else:
-        validator.validate_config(config_object_with_absolute_filter_paths)
+        validator.validate_config(config_with_absolute_paths)
         errors = validator.get_errors()
         if len(errors) > 0:
             return web.json_response(data=errors, headers=HEADERS)
@@ -390,7 +489,10 @@ async def get_default_config_file(request):
         raise web.HTTPNotFound(text="No default config")
     try:
         config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config), config_dir
+            read_yaml_from_path_to_object(request, config), config_dir, request.app["coeff_dir"]
+        )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
         )
     except CamillaError as e:
         logging.error("Failed to get default config file, error: %s", e)
@@ -405,7 +507,10 @@ async def get_default_config_file(request):
 def _read_config_file_for_startup(request, config_path, config_dir):
     try:
         config_object = make_config_filter_paths_relative(
-            read_yaml_from_path_to_object(request, config_path), config_dir
+            read_yaml_from_path_to_object(request, config_path), config_dir, request.app["coeff_dir"]
+        )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
         )
     except CamillaError as e:
         logging.error(
@@ -576,10 +681,10 @@ async def get_config_file(request):
                     headers=HEADERS,
                 )
             migrate_legacy_config(config_object)
-            config_object = make_config_filter_paths_relative(config_object, config_dir)
+            config_object = make_config_filter_paths_relative(config_object, config_dir, request.app["coeff_dir"])
 
             validator = request.app["VALIDATOR"]
-            config_abs = make_config_filter_paths_absolute(config_object, config_dir)
+            config_abs = make_config_filter_paths_absolute(config_object, config_dir, request.app["coeff_dir"])
             validator.validate_config(config_abs)
             issues = validator.get_errors()
             blocking_errors = [issue for issue in issues if issue[2] == "error"]
@@ -594,8 +699,11 @@ async def get_config_file(request):
                 )
         else:
             config_object = make_config_filter_paths_relative(
-                read_yaml_from_path_to_object(request, config_file), config_dir
+                read_yaml_from_path_to_object(request, config_file), config_dir, request.app["coeff_dir"]
             )
+        config_object = make_audio_file_paths_bare(
+            config_object, request.app["audiofiles_dir"]
+        )
     except CamillaError as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     except FileNotFoundError as e:
@@ -616,9 +724,19 @@ async def get_config_file(request):
 async def save_config_file(request):
     """
     Save a config to a given filename.
+    Resolves bare audio filenames to absolute paths so the DSP can use the
+    config at startup without GUI intervention.
     """
     content = await request.json()
-    save_config_to_yaml_file(content["filename"], content["config"], request)
+    config_object = content["config"]
+    _check_config_paths(request, config_object)
+    config_object = make_config_filter_paths_absolute(
+        config_object, request.app["config_dir"], request.app["coeff_dir"]
+    )
+    audiofiles_dir = request.app["audiofiles_dir"]
+    config_object = make_capture_file_path_absolute(config_object, audiofiles_dir)
+    config_object = make_playback_file_path_absolute(config_object, audiofiles_dir)
+    save_config_to_yaml_file(content["filename"], config_object, request)
     return web.Response(text="OK", headers=HEADERS)
 
 
@@ -635,6 +753,47 @@ async def rename_coeff_file(request):
     source = request.query["source"]
     target = request.query["target"]
     error = rename_coeff_or_return_error(request, source, target)
+    if error:
+        raise web.HTTPBadRequest(text=error, headers=HEADERS)
+    return web.Response(text="OK", headers=HEADERS)
+
+
+def _check_config_paths(request, config_object):
+    """
+    Raise HTTP 403 if the config contains file paths outside configured dirs
+    and allow_absolute_paths is false.
+    """
+    if request.app["allow_absolute_paths"]:
+        return
+    offenders = validate_config_paths(
+        config_object,
+        request.app["coeff_dir"],
+        request.app.get("audiofiles_dir"),
+    )
+    if offenders:
+        paths = ", ".join(f"'{p}'" for p in offenders)
+        raise web.HTTPForbidden(
+            text=(
+                f"The config contains paths outside the configured directories: {paths}. "
+                "Set allow_absolute_paths: true in camillagui.yml to allow this."
+            ),
+            headers=HEADERS,
+        )
+
+
+def _require_audiofiles_dir(request):
+    if not request.app["audiofiles_dir"]:
+        raise web.HTTPNotFound(
+            text="audiofiles_dir is not configured", headers=HEADERS
+        )
+    return request.app["audiofiles_dir"]
+
+
+async def rename_audio_file(request):
+    _require_audiofiles_dir(request)
+    source = request.query["source"]
+    target = request.query["target"]
+    error = rename_audiofile_or_return_error(request, source, target)
     if error:
         raise web.HTTPBadRequest(text=error, headers=HEADERS)
     return web.Response(text="OK", headers=HEADERS)
@@ -705,7 +864,7 @@ async def validate_config(request):
     config_dir = request.app["config_dir"]
     config = await request.json()
     config_with_absolute_filter_paths = make_config_filter_paths_absolute(
-        config, config_dir
+        config, config_dir, request.app["coeff_dir"]
     )
     validator = request.app["VALIDATOR"]
     validator.validate_config(config_with_absolute_filter_paths)
@@ -724,6 +883,16 @@ async def get_wav_info(request):
     Read the header of a wav file and return the info.
     """
     filename = request.query["filename"]
+    if not request.app["allow_absolute_paths"]:
+        from .filemanagement import _path_is_safe
+        if not _path_is_safe(filename, request.app.get("audiofiles_dir")):
+            raise web.HTTPForbidden(
+                text=(
+                    f"Audio path '{filename}' is outside the configured audiofiles_dir. "
+                    "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                ),
+                headers=HEADERS,
+            )
     wav_info = read_wav_header(filename)
     return web.json_response(wav_info, headers=HEADERS)
 
@@ -738,10 +907,30 @@ async def store_coeffs(request):
 
 async def store_configs(request):
     """
-    Store a config file to config_dir.
+    Store config files to config_dir, stripping all coeff and audio device
+    paths to bare filenames so uploaded configs from other systems work safely.
     """
     folder = request.app["config_dir"]
-    return await store_files(folder, request)
+    data = await request.post()
+    saved = 0
+    i = 0
+    while True:
+        field_name = f"file{i}"
+        if field_name not in data:
+            break
+        file = data[field_name]
+        i += 1
+        try:
+            content = file.file.read()
+            parsed = yaml.safe_load(content)
+            sanitized = strip_config_paths_to_bare_filenames(parsed)
+            output = yaml.dump(sanitized).encode("utf-8")
+        except Exception:
+            output = content
+        with open(file_in_folder(folder, file.filename), "wb") as f:
+            f.write(output)
+        saved += 1
+    return web.Response(text=f"Saved {saved} file(s)")
 
 
 async def get_stored_coeffs(request):
@@ -805,6 +994,43 @@ async def download_configs_zip(request):
     return await zip_response(request, zip_file, "configs.zip")
 
 
+async def get_stored_audiofiles(request):
+    """
+    Fetch a list of wav files in audiofiles_dir with header info.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    wavs = list_of_files_in_directory(audiofiles_dir, wav_info=True)
+    return web.json_response(wavs, headers=HEADERS)
+
+
+async def store_audiofiles(request):
+    """
+    Store files in audiofiles_dir.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    return await store_files(audiofiles_dir, request)
+
+
+async def delete_audiofiles(request):
+    """
+    Delete one or several wav files from audiofiles_dir.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    files = await request.json()
+    delete_files(audiofiles_dir, files)
+    return web.Response(text="ok", headers=HEADERS)
+
+
+async def download_audiofiles_zip(request):
+    """
+    Fetch one or several wav files in a zip file.
+    """
+    audiofiles_dir = _require_audiofiles_dir(request)
+    files = await request.json()
+    zip_file = zip_of_files(audiofiles_dir, files)
+    return await zip_response(request, zip_file, "audiofiles.zip")
+
+
 async def get_gui_config(request):
     """
     Get the gui configuration.
@@ -817,6 +1043,8 @@ async def get_gui_config(request):
     gui_config["supported_capture_types"] = request.app["supported_capture_types"]
     gui_config["supported_playback_types"] = request.app["supported_playback_types"]
     gui_config["can_update_active_config"] = request.app["can_update_active_config"]
+    gui_config["audiofiles_supported"] = bool(request.app["audiofiles_dir"])
+    gui_config["allow_absolute_paths"] = request.app["allow_absolute_paths"]
     logging.debug("GUI config: %s", gui_config)
     return web.json_response(gui_config, headers=HEADERS)
 
@@ -879,6 +1107,34 @@ async def get_playback_devices(request):
     return web.json_response(devs, headers=HEADERS)
 
 
+async def get_capture_device_capabilities(request):
+    """
+    Get capabilities for a capture device.
+    Returns cached data if fetching fails after a successful earlier lookup.
+    """
+    cdsp = request.app["CAMILLA"]
+    return await _get_device_capabilities_response(
+        request,
+        cache_key="capture_device_capabilities",
+        fetch_capabilities=cdsp.general.capture_device_capabilities,
+        direction="capture",
+    )
+
+
+async def get_playback_device_capabilities(request):
+    """
+    Get capabilities for a playback device.
+    Returns cached data if fetching fails after a successful earlier lookup.
+    """
+    cdsp = request.app["CAMILLA"]
+    return await _get_device_capabilities_response(
+        request,
+        cache_key="playback_device_capabilities",
+        fetch_capabilities=cdsp.general.playback_device_capabilities,
+        direction="playback",
+    )
+
+
 async def get_backends(request):
     """
     Get lists of available playback and capture backends.
@@ -887,3 +1143,35 @@ async def get_backends(request):
     """
     backends = request.app["STATUSCACHE"]["backends"]
     return web.json_response(backends, headers=HEADERS)
+
+
+async def subscribe_spectrum(request):
+    """
+    Start a spectrum subscription with the given parameters.
+
+    Returns 503 if processing is not running or the spectrum stream is disabled.
+    """
+    stream = request.app.get("SPECTRUM_STREAM")
+    if stream is None:
+        raise web.HTTPServiceUnavailable(text="Spectrum stream is disabled", headers=HEADERS)
+    try:
+        params = await request.json()
+    except Exception as exc:
+        raise web.HTTPBadRequest(text=f"Invalid request body: {exc}", headers=HEADERS)
+    try:
+        await stream.subscribe(params)
+    except ProcessingNotRunning:
+        return web.json_response({"result": "ProcessingNotRunningError"}, status=503, headers=HEADERS)
+    except IOError as exc:
+        raise web.HTTPServiceUnavailable(text=str(exc), headers=HEADERS)
+    return web.json_response({}, headers=HEADERS)
+
+
+async def unsubscribe_spectrum(request):
+    """
+    Stop the active spectrum subscription, if any.
+    """
+    stream = request.app.get("SPECTRUM_STREAM")
+    if stream is not None:
+        await stream.unsubscribe()
+    return web.json_response({}, headers=HEADERS)

@@ -14,6 +14,7 @@ BACKEND_CONFIG_SCHEMA = {
         "gui_config_file": {"type": ["string", "null"], "minLength": 1},
         "config_dir": {"type": "string", "minLength": 1},
         "coeff_dir": {"type": "string", "minLength": 1},
+        "audiofiles_dir": {"type": ["string", "null"], "minLength": 1},
         "default_config": {"type": ["string", "null"], "minLength": 1},
         "statefile_path": {"type": ["string", "null"], "minLength": 1},
         "log_file": {"type": ["string", "null"], "minLength": 1},
@@ -27,6 +28,15 @@ BACKEND_CONFIG_SCHEMA = {
             "type": ["array", "null"],
             "items": {"type": "string", "minLength": 1},
         },
+        "level_smoothing_ms": {
+            "type": "number",
+            "minValue": 0,
+        },
+        "level_max_update_hz": {
+            "type": "number",
+            "minValue": 0,
+        },
+        "allow_absolute_paths": {"type": "boolean"},
     },
     "required": [
         "camilla_host",

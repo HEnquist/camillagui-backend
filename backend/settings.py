@@ -23,7 +23,7 @@ GUI_CONFIG_DEFAULTS = {
     "hide_multithreading": False,
     "apply_config_automatically": False,
     "save_config_automatically": False,
-    "status_update_interval": 100,
+    "status_update_interval": 500,
     "volume_range": 50,
     "volume_max": 0,
 }
@@ -37,6 +37,10 @@ BACKEND_CONFIG_DEFAULTS = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "log_file": None,
+    "audiofiles_dir": None,
+    "level_smoothing_ms": 200,
+    "level_max_update_hz": 30,
+    "allow_absolute_paths": False,
 }
 
 
@@ -84,6 +88,9 @@ def get_config(path):
         sys.exit()
     config["config_dir"] = os.path.abspath(os.path.expanduser(config["config_dir"]))
     config["coeff_dir"] = os.path.abspath(os.path.expanduser(config["coeff_dir"]))
+    config["audiofiles_dir"] = absolute_path_or_none_if_empty(
+        config.get("audiofiles_dir")
+    )
     config["default_config"] = absolute_path_or_none_if_empty(config["default_config"])
     config["statefile_path"] = absolute_path_or_none_if_empty(config["statefile_path"])
     config["gui_config_file"] = absolute_path_or_none_if_empty(
