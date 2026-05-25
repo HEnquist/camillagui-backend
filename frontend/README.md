@@ -53,3 +53,10 @@ when source files change, it must be manually update with `npm run build`.
 
 Tests are executed by running `npm test`.
 
+## Custom pages
+
+You can add new tabs to the GUI without modifying the core code. Create a `.tsx` file in
+`src/custom-pages/`, then rebuild. The new tab appears automatically after the built-in tabs.
+
+See [`src/custom-pages/README.md`](src/custom-pages/README.md) for the full reference.
+

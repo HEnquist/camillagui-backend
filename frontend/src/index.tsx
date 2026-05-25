@@ -30,7 +30,16 @@ import { TitleTab } from "./titletab"
 import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
-import { delayedExecutor, MdiButton, MdiIcon } from "./utilities/ui-components"
+import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
+import type { CustomPageComponent } from "./custom-pages/types"
+
+const customPageModules = import.meta.glob<{ default: CustomPageComponent }>(
+  "./custom-pages/*.tsx",
+  { eager: true },
+)
+const customPages = Object.values(customPageModules)
+  .map((m) => m.default)
+  .filter((page) => page.enabled !== false)
 
 class CamillaConfig extends React.Component<
   unknown,
@@ -338,6 +347,9 @@ class CamillaConfig extends React.Component<
             <Tab>Files</Tab>
             {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
             <Tab>Shortcuts</Tab>
+            {customPages.map((customPage) => (
+              <Tab key={customPage.tabLabel}>{customPage.tabLabel}</Tab>
+            ))}
           </TabList>
           <TabPanel />
           <TabPanel>
@@ -399,6 +411,21 @@ class CamillaConfig extends React.Component<
               shortcutSections={this.state.guiConfig.custom_shortcuts}
             />
           </TabPanel>
+          {customPages.map((customPage) => {
+            const CustomPage = customPage
+            return (
+              <TabPanel key={CustomPage.tabLabel}>
+                <ErrorBoundary>
+                  <CustomPage
+                    config={config}
+                    updateConfig={this.updateConfig}
+                    guiConfig={this.state.guiConfig}
+                    errors={errors}
+                  />
+                </ErrorBoundary>
+              </TabPanel>
+            )
+          })}
         </Tabs>
       </>
     )
