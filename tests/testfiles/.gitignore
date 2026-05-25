@@ -1,0 +1,7 @@
+*
+!.gitignore
+!config.yml
+!config2.yml
+!gui_config.yml
+!log.txt
+!statefile_template.yml

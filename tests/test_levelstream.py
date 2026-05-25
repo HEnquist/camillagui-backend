@@ -3,7 +3,7 @@ import json
 
 import aiohttp
 
-from backend.levelstream import LevelEventStream
+from backend.eventstream import LevelEventStream
 
 
 def test_vu_subscription_config_preserves_backend_tuning():
@@ -103,7 +103,7 @@ async def test_level_stream_reads_events_via_aiohttp_websocket(monkeypatch):
             self.closed = True
 
     fake_session = FakeSession()
-    monkeypatch.setattr("backend.levelstream.aiohttp.ClientSession", lambda: fake_session)
+    monkeypatch.setattr("backend.eventstream.aiohttp.ClientSession", lambda: fake_session)
 
     queue = stream.add_client()
     stream.start(asyncio.get_running_loop())
