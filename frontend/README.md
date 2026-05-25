@@ -60,3 +60,7 @@ You can add new tabs to the GUI without modifying the core code. Create a `.tsx`
 
 See [`src/custom-pages/README.md`](src/custom-pages/README.md) for the full reference.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
