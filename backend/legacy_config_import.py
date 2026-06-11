@@ -146,9 +146,11 @@ def _modify_conv_filters(config):
     if "filters" in config:
         for _name, filt in config["filters"].items():
             if filt["type"] == "Conv":
-                filt["parameters"]["format"] = _map_format(
-                    None, filt["parameters"]["format"]
-                )
+                # Only Raw (and legacy File) convolvers have a format parameter,
+                # Wav and Values convolvers do not.
+                fmt = filt["parameters"].get("format")
+                if fmt is not None:
+                    filt["parameters"]["format"] = _map_format(None, fmt)
 
 
 def _modify_device_sample_format(dev):
