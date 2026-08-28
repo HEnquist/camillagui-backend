@@ -2,6 +2,8 @@ import struct
 import csv
 import itertools
 
+import numpy as np
+
 NUMBERFORMATS = {
     1: "int",
     3: "float",
@@ -12,16 +14,18 @@ SUBFORMAT_FLOAT = (3, 0, 16, 128, 0, 0, 170, 0, 56, 155, 113)
 SUBFORMAT_INT = (1, 0, 16, 128, 0, 0, 170, 0, 56, 155, 113)
 
 TYPES_DIRECT = {
-    "F64_LE": "<d",
-    "F32_LE": "<f",
-    "S16_LE": "<h",
-    "S32_LE": "<i",
+    "F64_LE": "<f8",
+    "F32_LE": "<f4",
+    "S16_LE": "<i2",
+    "S32_LE": "<i4",
 }
 
+# Formats numpy has no dtype for. "first" is the offset of the first of the
+# three sample bytes within each frame.
 TYPES_INDIRECT = {
-    "S24_4_RJ_LE": {"pattern": "sssx", "endian": "little"},
-    "S24_4_LJ_LE": {"pattern": "xsss", "endian": "little"},
-    "S24_3_LE": {"pattern": "sss", "endian": "little"},
+    "S24_4_RJ_LE": {"first": 0},
+    "S24_4_LJ_LE": {"first": 1},
+    "S24_3_LE": {"first": 0},
 }
 
 SCALEFACTOR = {
@@ -93,39 +97,32 @@ def read_text_coeffs(fname, skip_lines, read_lines):
 
 
 def read_binary_direct_coeffs(fname, sampleformat, skip_bytes, read_bytes):
-
-    if read_bytes is None:
-        count = -1
-    else:
-        count = read_bytes
-
-    datatype = TYPES_DIRECT[sampleformat]
+    """Read samples in a format numpy has a dtype for."""
+    dtype = np.dtype(TYPES_DIRECT[sampleformat])
     factor = SCALEFACTOR[sampleformat]
-    with open(fname, "rb") as f:
-        f.seek(skip_bytes)
-        data = f.read(count)
-    values = [float(val[0]) / factor for val in struct.iter_unpack(datatype, data)]
-    return values
+    count = -1 if read_bytes is None else read_bytes // dtype.itemsize
+    values = np.fromfile(fname, dtype=dtype, count=count, offset=skip_bytes)
+    return values.astype(np.float64) / factor
 
 
 def read_binary_indirect_coeffs(fname, sampleformat, skip_bytes, read_bytes):
+    """
+    Read 24-bit samples, which numpy has no dtype for.
 
-    if read_bytes is None:
-        count = -1
-    else:
-        count = read_bytes
-
-    pattern = TYPES_INDIRECT[sampleformat]["pattern"]
+    The three bytes of each sample are copied into the top three bytes of a
+    little endian int32 and shifted back down, which sign extends them. The
+    low byte is zero, so the shift is exact.
+    """
+    first = TYPES_INDIRECT[sampleformat]["first"]
+    width = BYTESPERSAMPLE[sampleformat]
     factor = SCALEFACTOR[sampleformat]
-    endian = TYPES_INDIRECT[sampleformat]["endian"]
-    with open(fname, "rb") as f:
-        f.seek(skip_bytes)
-        data = f.read(count)
-    values = [
-        int.from_bytes(b"".join(val), endian, signed=True) / factor
-        for val in struct.iter_unpack(pattern, data)
-    ]
-    return values
+    count = -1 if read_bytes is None else read_bytes
+    raw = np.fromfile(fname, dtype=np.uint8, count=count, offset=skip_bytes)
+    raw = raw[: len(raw) - len(raw) % width].reshape(-1, width)
+    padded = np.zeros((len(raw), 4), dtype=np.uint8)
+    padded[:, 1:4] = raw[:, first : first + 3]
+    values = padded.view("<i4").ravel() >> 8
+    return values.astype(np.float64) / factor
 
 
 def read_wav_coeffs(fname, channel):
@@ -146,7 +143,17 @@ def read_wav_coeffs(fname, channel):
     return values
 
 
+# RF64 puts this in the 32-bit size fields it cannot express
+RF64_SENTINEL = 0xFFFFFFFF
+
+
 def analyze_wav_chunk(type, start, length, file, wav_info):
+    """
+    Read one RIFF chunk into wav_info.
+
+    Returns the effective length of the chunk, which differs from the given
+    one only for an RF64 data chunk, where the real size comes from ds64.
+    """
     if type == "fmt ":
         data = file.read(length)
         wav_info["sampleformat"] = NUMBERFORMATS.get(
@@ -168,7 +175,7 @@ def analyze_wav_chunk(type, start, length, file, wav_info):
             valid_bits_per_sample = struct.unpack("<H", data[18:20])[0]
             if cb_size != 22 or valid_bits_per_sample != wav_info["bitspersample"]:
                 print("Invalid extended wav header")
-                return
+                return length
             _channel_mask = struct.unpack("<L", data[20:24])[0]
             subformat = struct.unpack("<LHHBBBBBBBB", data[24:40])
             if subformat == SUBFORMAT_FLOAT:
@@ -195,9 +202,18 @@ def analyze_wav_chunk(type, start, length, file, wav_info):
         else:
             sfmt = "unknown"
         wav_info["sampleformat"] = sfmt
+    elif type == "ds64":
+        # RF64 only. Holds the 64-bit sizes that the RIFF and data headers
+        # cannot express: riffSize, dataSize, sampleCount, tableLength.
+        data = file.read(length)
+        if length >= 16:
+            wav_info["_ds64_datalength"] = struct.unpack("<Q", data[8:16])[0]
     elif type == "data":
         wav_info["dataoffset"] = start + 8
+        if length == RF64_SENTINEL and wav_info["_ds64_datalength"] is not None:
+            length = wav_info["_ds64_datalength"]
         wav_info["datalength"] = length
+    return length
 
 
 def read_wav_header(filename):
@@ -208,8 +224,13 @@ def read_wav_header(filename):
         with open(filename, "rb") as file_in:
             # Read fixed header
             buf_header = file_in.read(12)
-            # Verify that the correct identifiers are present
-            if (buf_header[0:4] != b"RIFF") or (buf_header[8:12] != b"WAVE"):
+            # Verify that the correct identifiers are present. RF64 is the
+            # variant for files larger than 4 GB, which CamillaDSP writes when
+            # use_rf64 is set. It is a RIFF file with 64-bit sizes in a ds64
+            # chunk, so everything after this point is the same.
+            if (buf_header[0:4] not in (b"RIFF", b"RF64")) or (
+                buf_header[8:12] != b"WAVE"
+            ):
                 print("Input file is not a standard WAV file")
                 return
 
@@ -222,6 +243,8 @@ def read_wav_header(filename):
                 "byterate": None,
                 "samplerate": None,
                 "bytesperframe": None,
+                # internal, removed before returning
+                "_ds64_datalength": None,
             }
 
             # Get file length
@@ -232,14 +255,20 @@ def read_wav_header(filename):
             while True:
                 file_in.seek(next_chunk_location)
                 buf_header = file_in.read(8)
-                chunk_type = buf_header[0:4].decode("utf-8")
+                if len(buf_header) < 8:
+                    break
+                chunk_type = buf_header[0:4].decode("ascii", errors="replace")
                 chunk_length = struct.unpack("<L", buf_header[4:8])[0]
-                analyze_wav_chunk(
+                chunk_length = analyze_wav_chunk(
                     chunk_type, next_chunk_location, chunk_length, file_in, wav_info
                 )
                 next_chunk_location += 8 + chunk_length
+                # RIFF chunks are word aligned, an odd length is padded
+                if chunk_length % 2:
+                    next_chunk_location += 1
                 if next_chunk_location >= input_filesize:
                     break
+            del wav_info["_ds64_datalength"]
             if wav_info["datalength"] is not None and wav_info["sampleformat"] not in [
                 None,
                 "unknown",
