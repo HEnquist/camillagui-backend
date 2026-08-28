@@ -1,0 +1,194 @@
+{
+  "BiquadCombo": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "ButterworthHighpass",
+          "ButterworthLowpass",
+          "LinkwitzRileyHighpass",
+          "LinkwitzRileyLowpass",
+          "FivePointPeq",
+          "GraphicEqualizer",
+          "Tilt"
+        ]
+      }
+    },
+    "required": ["type"]
+  },
+  "ButterworthHighpass": {
+    "properties": {
+      "type": {
+        "enum": ["ButterworthHighpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "order": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": ["type", "freq", "order"],
+    "additionalProperties": false
+  },
+  "ButterworthLowpass": {
+    "properties": {
+      "type": {
+        "enum": ["ButterworthLowpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "order": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": ["type", "freq", "order"],
+    "additionalProperties": false
+  },
+  "LinkwitzRileyHighpass": {
+    "properties": {
+      "type": {
+        "enum": ["LinkwitzRileyHighpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "order": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "multipleOf": 2
+      }
+    },
+    "required": ["type", "freq", "order"],
+    "additionalProperties": false
+  },
+  "LinkwitzRileyLowpass": {
+    "properties": {
+      "type": {
+        "enum": ["LinkwitzRileyLowpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "order": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "multipleOf": 2
+      }
+    },
+    "required": ["type", "freq", "order"],
+    "additionalProperties": false
+  },
+  "Tilt": {
+    "properties": {
+      "type": {
+        "enum": ["Tilt"]
+      },
+      "gain": {
+        "type": "number",
+        "minimum": -100,
+        "Maximum": 100
+      }
+    },
+    "required": ["gain"],
+    "additionalProperties": false
+  },
+  "FivePointPeq": {
+    "properties": {
+      "type": {
+        "enum": ["FivePointPeq"]
+      },
+      "fls": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "fp1": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "fp2": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "fp3": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "fhs": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "qls": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "qp1": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "qp2": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "qp3": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "qhs": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gls": {
+        "type": "number"
+      },
+      "gp1": {
+        "type": "number"
+      },
+      "gp2": {
+        "type": "number"
+      },
+      "gp3": {
+        "type": "number"
+      },
+      "ghs": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "fls", "fp1", "fp2", "fp3", "fhs", "qls", "qp1", "qp2", "qp3", "qhs", "gls", "gp1", "gp2", "gp3", "ghs"],
+    "additionalProperties": false
+  },
+  "GraphicEqualizer": {
+    "properties": {
+      "type": {
+        "enum": ["GraphicEqualizer"]
+      },
+      "freq_min": {
+        "type": ["number", "null"],
+        "exclusiveMinimum": 0.0,
+        "default": null
+      },
+      "freq_max": {
+        "type": ["number", "null"],
+        "exclusiveMinimum": 0.0,
+        "default": null
+      },
+      "gains": {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "minimum": -40.0,
+          "maximim": 40.0
+        }
+      }
+    },
+    "required": ["type", "gains"],
+    "additionalProperties": false
+  }
+}

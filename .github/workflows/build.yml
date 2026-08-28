@@ -145,7 +145,7 @@ jobs:
       name: Install pyinstaller
 
     - name: Bundle app with pyinstaller
-      run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
+      run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --add-data ./backend/dsp/schemas/:backend/dsp/schemas --name camillagui_backend
 
     - name: Compress as zip
       if: ${{ contains(matrix.os, 'windows') }}
@@ -205,7 +205,7 @@ jobs:
             ./venv/bin/python3 -m pip config set global.extra-index-url https://www.piwheels.org/simple
             ./venv/bin/python3 -m pip install -r requirements.txt
             ./venv/bin/python3 -m pip install pyinstaller
-            ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --collect-data camilladsp_plot --name camillagui_backend
+            ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --add-data ./backend/dsp/schemas/:backend/dsp/schemas --name camillagui_backend
 
       - name: Compress as tar.gz
         run: tar -zcvf bundle.tar.gz -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner

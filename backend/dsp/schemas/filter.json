@@ -1,0 +1,29 @@
+{
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "Biquad",
+        "BiquadCombo",
+        "Conv",
+        "Delay",
+        "DiffEq",
+        "Dither",
+        "Gain",
+        "Loudness",
+        "Volume",
+        "Clipper",
+        "LookaheadLimiter"
+      ]
+    },
+    "description": {
+      "type": ["string", "null"],
+      "default": null
+    },
+    "parameters": {
+      "type": "object"
+    }
+  },
+  "required": ["type", "parameters"],
+  "additionalProperties": false
+}

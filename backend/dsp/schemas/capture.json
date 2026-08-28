@@ -1,0 +1,332 @@
+{
+  "capture": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Alsa",
+          "PipeWire",
+          "Wasapi",
+          "Asio",
+          "CoreAudio",
+          "RawFile",
+          "WavFile",
+          "Stdin",
+          "SignalGenerator"
+        ]
+      }
+    },
+    "required": ["type"]
+  },
+  "Alsa": {
+    "properties": {
+      "type": {
+        "enum": ["Alsa"]
+      },
+      "device": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_LE", "S32_LE", "F32_LE", "F64_LE", null],
+        "default": null
+      },
+      "stop_on_inactive": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "link_volume_control": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "link_mute_control": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels", "device"],
+    "additionalProperties": false
+  },
+  "PipeWire": {
+    "properties": {
+      "type": {
+        "enum": ["PipeWire"]
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "node_name": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "node_description": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "node_group_name": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "autoconnect_to": {
+        "type": ["string", "null"],
+        "default": null
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Wasapi": {
+    "properties": {
+      "type": {
+        "enum": ["Wasapi"]
+      },
+      "device": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "exclusive": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "polling": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "loopback": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16", "S24", "S32", "F32", null],
+        "default": null
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Asio": {
+    "properties": {
+      "type": {
+        "enum": ["Asio"]
+      },
+      "device": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16_LE", "S24_4_LE", "S24_3_LE", "S32_LE", "F32_LE", "F64_LE", null],
+        "default": null
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "device", "channels"],
+    "additionalProperties": false
+  },
+  "CoreAudio": {
+    "properties": {
+      "type": {
+        "enum": ["CoreAudio"]
+      },
+      "device": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16", "S24", "S32", "F32", null],
+        "default": null
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Stdin": {
+    "properties": {
+      "type": {
+        "enum": ["Stdin"]
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_RJ_LE", "S24_4_LJ_LE", "S32_LE", "F32_LE", "F64_LE"]
+      },
+      "skip_bytes": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "read_bytes": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "extra_samples": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels", "format"],
+    "additionalProperties": false
+  },
+  "RawFile": {
+    "properties": {
+      "type": {
+        "enum": ["RawFile"]
+      },
+      "filename": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_RJ_LE", "S24_4_LJ_LE", "S32_LE", "F32_LE", "F64_LE"]
+      },
+      "skip_bytes": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "read_bytes": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "extra_samples": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "filename", "channels", "format"],
+    "additionalProperties": false
+  },
+  "WavFile": {
+    "properties": {
+      "type": {
+        "enum": ["WavFile"]
+      },
+      "filename": {
+        "type": "string",
+        "minLength": 1
+      },
+      "extra_samples": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "filename"],
+    "additionalProperties": false
+  },
+  "SignalGenerator": {
+    "properties": {
+      "type": {
+        "enum": ["SignalGenerator"]
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "signal": {
+        "type": "object"
+      },
+      "labels": {
+        "type": ["array", "null"],
+        "items": {
+          "type": ["string", "null"]
+        },
+        "default": null
+      }
+    },
+    "required": ["type", "channels", "signal"],
+    "additionalProperties": false
+  }
+}

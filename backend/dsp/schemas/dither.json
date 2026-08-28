@@ -1,0 +1,59 @@
+{
+  "Dither": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "None",
+          "Flat",
+          "Highpass",
+          "Fweighted441",
+          "FweightedLong441",
+          "FweightedShort441",
+          "Gesemann441",
+          "Gesemann48",
+          "Lipshitz441",
+          "LipshitzLong441",
+          "Shibata441",
+          "ShibataHigh441",
+          "ShibataLow441",
+          "Shibata48",
+          "ShibataHigh48",
+          "ShibataLow48",
+          "Shibata882",
+          "ShibataLow882",
+          "Shibata96",
+          "ShibataLow96",
+          "Shibata192",
+          "ShibataLow192"
+        ]
+      },
+      "bits": {
+        "type": "integer",
+        "minimum": 2
+      }
+    },
+    "required": ["type", "bits"]
+  },
+  "Flat": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Flat"
+        ]
+      },
+      "amplitude": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 100.0
+      },
+      "bits": {
+        "type": "integer",
+        "minimum": 2
+      }
+    },
+    "required": ["type", "amplitude", "bits"],
+    "additionalProperties": false
+  }
+}

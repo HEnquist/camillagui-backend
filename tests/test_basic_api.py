@@ -52,6 +52,7 @@ server_config = {
     "supported_capture_types": None,
     "supported_playback_types": None,
     "can_update_active_config": True,
+    "allow_absolute_paths": False,
     "enable_level_stream": False,
     "level_smoothing_ms": 100,
     "level_max_update_hz": 30,
@@ -541,3 +542,52 @@ async def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(serve
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
+
+
+async def test_validate_config_with_default_graphic_eq_range(server):
+    """
+    A GraphicEqualizer that leaves freq_min and freq_max out used to raise
+    TypeError inside the validator and take the whole endpoint down with a
+    500, because schema validation fills the two keys in as explicit nulls
+    before the Nyquist check compares them. It must validate cleanly at a
+    samplerate that fits the default 20 to 20000 Hz range.
+    """
+    config = {
+        "devices": {
+            "samplerate": 48000,
+            "chunksize": 1024,
+            "capture": {
+                "type": "Alsa",
+                "device": "hw:0",
+                "channels": 2,
+                "format": "S16_LE",
+            },
+            "playback": {
+                "type": "Alsa",
+                "device": "hw:0",
+                "channels": 2,
+                "format": "S16_LE",
+            },
+        },
+        "filters": {
+            "geq": {
+                "type": "BiquadCombo",
+                "parameters": {
+                    "type": "GraphicEqualizer",
+                    "gains": [0.0, 1.0, -1.0],
+                },
+            }
+        },
+        "pipeline": [{"type": "Filter", "channels": [0], "names": ["geq"]}],
+    }
+
+    resp = await server.post("/api/validateconfig", json=config)
+    assert resp.status == 200, await resp.text()
+
+    # 32 kHz cannot fit the default 20000 Hz upper band, and CamillaDSP
+    # rejects that rather than clamping, so the GUI has to report it.
+    config["devices"]["samplerate"] = 32000
+    resp = await server.post("/api/validateconfig", json=config)
+    assert resp.status == 406
+    errors = await resp.json()
+    assert any("samplerate/2" in str(error) for error in errors)

@@ -1,0 +1,101 @@
+{
+  "properties": {
+    "channels": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "monitor_channels": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "minimum": 0
+      },
+      "default": null,
+      "uniqueItems": true
+    },
+    "process_channels": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "minimum": 0
+      },
+      "default": null,
+      "uniqueItems": true
+    },
+    "release": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "release_unit": {
+      "type": "string",
+      "enum": [
+        "ms",
+        "us",
+        "s",
+        "samples"
+      ]
+    },
+    "attack": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "attack_unit": {
+      "type": "string",
+      "enum": [
+        "ms",
+        "us",
+        "s",
+        "samples"
+      ]
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": -100.0,
+      "maximun": 100.0
+    },
+    "factor": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "makeup_gain": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0.0,
+      "default": null
+    },
+    "clip_limit": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": -100.0,
+      "maximum": 100.0,
+      "default": null
+    },
+    "soft_clip": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "channels",
+    "attack",
+    "attack_unit",
+    "release",
+    "release_unit",
+    "threshold",
+    "factor"
+  ],
+  "additionalProperties": false
+}

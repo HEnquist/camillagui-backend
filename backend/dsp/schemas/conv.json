@@ -1,0 +1,102 @@
+{
+  "Conv": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Raw",
+          "Wav",
+          "Values",
+          "Dummy"
+        ]
+      }
+    },
+    "required": ["type"]
+  },
+  "Raw": {
+    "properties": {
+      "type": {
+        "enum": ["Raw"]
+      },
+      "filename": {
+        "type": "string",
+        "minLength": 1
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": [
+          "S16_LE",
+          "S24_3_LE",
+          "S24_4_RJ_LE",
+          "S24_4_LJ_LE",
+          "S32_LE",
+          "F32_LE",
+          "F64_LE",
+          "TEXT",
+          null
+        ],
+        "default": null
+      },
+      "skip_bytes_lines": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      },
+      "read_bytes_lines": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      }
+    },
+    "required": ["type", "filename"],
+    "additionalProperties": false
+  },
+  "Wav": {
+    "properties": {
+      "type": {
+        "enum": ["Wav"]
+      },
+      "filename": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channel": {
+        "type": ["integer", "null"],
+        "default": null,
+        "minimum": 0
+      }
+    },
+    "required": ["type", "filename"],
+    "additionalProperties": false
+  },
+  "Values": {
+    "properties": {
+      "type": {
+        "enum": ["Values"]
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "required": ["type", "values"],
+    "additionalProperties": false
+  },
+  "Dummy": {
+    "properties": {
+      "type": {
+        "enum": ["Dummy"]
+      },
+      "length": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "required": ["type", "length"],
+    "additionalProperties": false
+  }
+}
+
+  

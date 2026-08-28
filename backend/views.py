@@ -8,8 +8,8 @@ from os.path import basename, expanduser, isfile, join
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
-from camilladsp_plot import eval_filter, eval_filterstep
-from camilladsp_plot.audiofileread import read_wav_header
+from backend.dsp import eval_filter, eval_filterstep
+from backend.dsp.audiofileread import read_wav_header
 
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
@@ -413,6 +413,7 @@ async def eval_filterstep_values(request):
             step_index,
             name=f"Filterstep {step_index}",
             npoints=1000,
+            volume=content.get("volume", 0.0),
         )
         data["channels"] = channels
         data["options"] = options
@@ -920,11 +921,16 @@ async def store_configs(request):
             break
         file = data[field_name]
         i += 1
+        content = file.file.read()
         try:
-            content = file.file.read()
             parsed = yaml.safe_load(content)
-            sanitized = strip_config_paths_to_bare_filenames(parsed)
-            output = yaml.dump(sanitized).encode("utf-8")
+            if isinstance(parsed, dict):
+                sanitized = strip_config_paths_to_bare_filenames(parsed)
+                output = yaml.dump(sanitized).encode("utf-8")
+            else:
+                # Not a config mapping, store it unchanged rather than
+                # round-tripping it through the YAML dumper.
+                output = content
         except Exception:
             output = content
         with open(file_in_folder(folder, file.filename), "wb") as f:

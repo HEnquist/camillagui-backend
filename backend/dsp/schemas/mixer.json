@@ -1,0 +1,82 @@
+{
+  "properties": {
+    "description": {
+      "type": ["string", "null"],
+      "default": null
+    },
+    "channels": {
+      "type": "object",
+      "properties": {
+        "in": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "out": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": ["in", "out"],
+      "additionalProperties": false
+    },
+    "mapping": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "dest": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mute": {
+            "type": ["boolean", "null"],
+            "default": null
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "gain": {
+                  "type": ["number", "null"],
+                  "minimum": -150.0,
+                  "maximum": 150.0,
+                  "default": null
+                },
+                "scale": {
+                  "type": ["string", "null"],
+                  "enum": ["dB", "linear", null],
+                  "default": null
+                },
+                "inverted": {
+                  "type": ["boolean", "null"],
+                  "default": null
+                },
+                "mute": {
+                  "type": ["boolean", "null"],
+                  "default": null
+                }
+              },
+              "required": ["channel"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["dest", "sources"],
+        "additionalProperties": false
+      }
+    },
+    "labels": {
+      "type": ["array", "null"],
+      "items": {
+        "type": ["string", "null"]
+      },
+      "default": null
+    }
+  },
+  "required": ["channels", "mapping"],
+  "additionalProperties": false
+}

@@ -1,0 +1,201 @@
+{
+  "playback": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Alsa",
+          "PipeWire",
+          "Wasapi",
+          "Asio",
+          "CoreAudio",
+          "File",
+          "Stdout"
+        ]
+      }
+    },
+    "required": ["type"]
+  },
+  "Alsa": {
+    "properties": {
+      "type": {
+        "enum": ["Alsa"]
+      },
+      "device": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_LE", "S32_LE", "F32_LE", "F64_LE", null],
+        "default": null
+      }
+    },
+    "required": ["type", "channels", "device"],
+    "additionalProperties": false
+  },
+  "PipeWire": {
+    "properties": {
+      "type": {
+        "enum": ["PipeWire"]
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "node_name": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "node_description": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "node_group_name": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "autoconnect_to": {
+        "type": ["string", "null"],
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Wasapi": {
+    "properties": {
+      "type": {
+        "enum": ["Wasapi"]
+      },
+      "device": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "exclusive": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "polling": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16", "S24", "S32", "F32", null],
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Asio": {
+    "properties": {
+      "type": {
+        "enum": ["Asio"]
+      },
+      "device": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16_LE", "S24_4_LE", "S24_3_LE", "S32_LE", "F32_LE", "F64_LE", null],
+        "default": null
+      }
+    },
+    "required": ["type", "device", "channels"],
+    "additionalProperties": false
+  },
+  "CoreAudio": {
+    "properties": {
+      "type": {
+        "enum": ["CoreAudio"]
+      },
+      "device": {
+        "type": ["string", "null"],
+        "default": null,
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "type": ["string", "null"],
+        "enum": ["S16", "S24", "S32", "F32", null],
+        "default": null
+      },
+      "exclusive": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["type", "channels"],
+    "additionalProperties": false
+  },
+  "Stdout": {
+    "properties": {
+      "type": {
+        "enum": ["Stdout"]
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_RJ_LE", "S24_4_LJ_LE", "S32_LE", "F32_LE", "F64_LE"]
+      },
+      "wav_header": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["type", "channels", "format"],
+    "additionalProperties": false
+  },
+  "File": {
+    "properties": {
+      "type": {
+        "enum": ["File"]
+      },
+      "filename": {
+        "type": "string",
+        "minLength": 1
+      },
+      "channels": {
+        "type": "integer",
+        "exclusiveMinimum": 0
+      },
+      "format": {
+        "enum": ["S16_LE", "S24_3_LE", "S24_4_RJ_LE", "S24_4_LJ_LE", "S32_LE", "F32_LE", "F64_LE"]
+      },
+      "wav_header": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "use_rf64": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["type", "filename", "channels", "format"],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,343 @@
+{
+  "Biquad": {
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Lowpass",
+          "Lowshelf",
+          "Highpass",
+          "Highshelf",
+          "Peaking",
+          "Notch",
+          "GeneralNotch",
+          "Bandpass",
+          "Allpass",
+          "AllpassFO",
+          "LowpassFO",
+          "LowshelfFO",
+          "HighpassFO",
+          "HighshelfFO",
+          "LinkwitzTransform",
+          "Free"
+        ]
+      }
+    },
+    "required": ["type"]
+  },
+  "Lowpass": {
+    "properties": {
+      "type": {
+        "enum": ["Lowpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq", "q"],
+    "additionalProperties": false
+  },
+  "Highpass": {
+    "properties": {
+      "type": {
+        "enum": ["Highpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq", "q"],
+    "additionalProperties": false
+  },
+  "Bandpass": {
+    "properties": {
+      "type": {
+        "enum": ["Bandpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "bandwidth": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "Notch": {
+    "properties": {
+      "type": {
+        "enum": ["Notch"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "bandwidth": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "GeneralNotch": {
+    "properties": {
+      "type": {
+        "enum": ["GeneralNotch"]
+      },
+      "freq_p": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q_p": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "freq_z": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "normalize_at_dc": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["type", "freq_p", "freq_z", "q_p"],
+    "additionalProperties": false
+  },
+  "Allpass": {
+    "properties": {
+      "type": {
+        "enum": ["Allpass"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "bandwidth": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "LowpassFO": {
+    "properties": {
+      "type": {
+        "enum": ["LowpassFO"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "HighpassFO": {
+    "properties": {
+      "type": {
+        "enum": ["HighpassFO"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "AllpassFO": {
+    "properties": {
+      "type": {
+        "enum": ["AllpassFO"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq"],
+    "additionalProperties": false
+  },
+  "Peaking": {
+    "properties": {
+      "type": {
+        "enum": ["Peaking"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "bandwidth": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gain": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "freq", "gain"],
+    "additionalProperties": false
+  },
+  "Lowshelf": {
+    "properties": {
+      "type": {
+        "enum": ["Lowshelf"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "slope": {
+        "type": "number",
+        "exclusiveMinimum": 0.0,
+        "maximum": 12.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gain": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "freq", "gain"],
+    "additionalProperties": false
+  },
+  "Highshelf": {
+    "properties": {
+      "type": {
+        "enum": ["Highshelf"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "slope": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gain": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "freq", "gain"],
+    "additionalProperties": false
+  },
+  "LowshelfFO": {
+    "properties": {
+      "type": {
+        "enum": ["LowshelfFO"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gain": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "freq", "gain"],
+    "additionalProperties": false
+  },
+  "HighshelfFO": {
+    "properties": {
+      "type": {
+        "enum": ["HighshelfFO"]
+      },
+      "freq": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "gain": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "freq", "gain"],
+    "additionalProperties": false
+  },
+  "LinkwitzTransform": {
+    "properties": {
+      "type": {
+        "enum": ["LinkwitzTransform"]
+      },
+      "freq_act": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q_act": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "freq_target": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "q_target": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      }
+    },
+    "required": ["type", "freq_act", "q_act", "freq_target", "q_target"],
+    "additionalProperties": false
+  },
+  "Free": {
+    "properties": {
+      "type": {
+        "enum": ["Free"]
+      },
+      "a1": {
+        "type": "number"
+      },
+      "a2": {
+        "type": "number"
+      },
+      "b0": {
+        "type": "number"
+      },
+      "b1": {
+        "type": "number"
+      },
+      "b2": {
+        "type": "number"
+      }
+    },
+    "required": ["type", "a1", "a2", "b0", "b1", "b2"],
+    "additionalProperties": false
+  }
+}

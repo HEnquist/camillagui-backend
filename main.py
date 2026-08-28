@@ -5,9 +5,8 @@ import ssl
 
 import camilladsp
 from aiohttp import web
-from camilladsp_plot import VERSION as plot_version
-from camilladsp_plot.validate_config import CamillaValidator
 
+from backend.dsp.validate_config import CamillaValidator
 from backend.eventstream import LevelEventStream, SpectrumEventStream
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import CONFIG_PATH, get_config
@@ -58,7 +57,6 @@ def build_app(backend_config):
     app["STATUSCACHE"] = {
         "backend_version": version_string(VERSION),
         "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
-        "py_cdsp_plot_version": plot_version,
         "capturesignalrms": [],
         "capturesignalpeak": [],
         "playbacksignalrms": [],

@@ -141,7 +141,7 @@ class ConvolverConfig:
     def _delay_filter(delay: int) -> dict:
         return {
             "type": "Delay",
-            "parameters": {"delay": delay, "unit": "ms", "subsample": False},
+            "parameters": {"delay": delay, "delay_unit": "ms", "subsample": False},
         }
 
     def _convolution_filter_definitions(self) -> dict:

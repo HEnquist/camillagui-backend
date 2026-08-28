@@ -1,5 +1,5 @@
 import pytest
-from camilladsp_plot.validate_config import CamillaValidator
+from backend.dsp.validate_config import CamillaValidator
 
 from backend.legacy_config_import import (
     identify_version,
@@ -12,6 +12,10 @@ from backend.legacy_config_import import (
     _look_for_v2_pipeline,
     _look_for_v3_mixer,
     _look_for_v3_sample_formats,
+    _look_for_v4_device_time_units,
+    _look_for_v4_filters,
+    _look_for_v4_processors,
+    _look_for_v4_removed_backends,
 )
 
 
@@ -164,6 +168,20 @@ def config_v4():
     yield config
 
 
+@pytest.fixture
+def config_v5():
+    # Config for camilladsp v5.0.x: every time value states its unit
+    config = config_base()
+    devices = config["devices"]
+    devices["silence_timeout_s"] = devices.pop("silence_timeout")
+    devices["adjust_interval_s"] = devices.pop("adjust_period")
+    devices["rate_measure_interval_s"] = devices.pop("rate_measure_interval")
+    config["filters"]["vol"]["parameters"]["ramp_time_ms"] = config["filters"]["vol"][
+        "parameters"
+    ].pop("ramp_time")
+    yield config
+
+
 def test_identify_v1(config_v1):
     assert _look_for_v1_resampler(config_v1) is True
     assert _look_for_v1_volume(config_v1) is True
@@ -186,7 +204,48 @@ def test_identify_v3(config_v3):
 
 
 def test_identify_v4(config_v4):
+    assert _look_for_v4_device_time_units(config_v4) is True
+    assert _look_for_v4_filters(config_v4) is True
     assert identify_version(config_v4) == 4
+
+
+def test_identify_v4_by_processor_units_alone(config_v5):
+    # A config that is otherwise v5, but whose Compressor predates the
+    # mandatory unit fields, still has to go through migration.
+    config_v5["processors"] = {
+        "comp": {
+            "type": "Compressor",
+            "parameters": {
+                "channels": 2,
+                "attack": 0.025,
+                "release": 1.0,
+                "threshold": -25.0,
+                "factor": 5.0,
+            },
+        }
+    }
+    assert _look_for_v4_processors(config_v5) is True
+    assert identify_version(config_v5) == 4
+
+
+def test_identify_v4_by_removed_backend_alone(config_v5):
+    # Nothing here can be migrated, but the rest of the config still should
+    # be, so that the dropped device is the only thing left to fix.
+    config_v5["devices"]["capture"] = {
+        "type": "Pulse",
+        "device": "default",
+        "channels": 2,
+    }
+    assert _look_for_v4_removed_backends(config_v5) is True
+    assert identify_version(config_v5) == 4
+
+
+def test_identify_v5(config_v5):
+    assert _look_for_v4_device_time_units(config_v5) is False
+    assert _look_for_v4_filters(config_v5) is False
+    assert _look_for_v4_processors(config_v5) is False
+    assert _look_for_v4_removed_backends(config_v5) is False
+    assert identify_version(config_v5) == 5
 
 
 def test_identify_non_mapping_returns_none():

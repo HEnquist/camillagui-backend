@@ -1,5 +1,5 @@
 import pytest
-from camilladsp_plot.validate_config import CamillaValidator
+from backend.dsp.validate_config import CamillaValidator
 
 from backend.legacy_config_import import (
     _modify_devices,
@@ -203,3 +203,147 @@ def test_merge_mixer_mappings(basic_config):
             ],
         }
     )
+
+
+# === v4 -> v5 ===
+
+
+@pytest.fixture
+def v4_config():
+    # Config for camilladsp v4.x, exercising every v5 rename at once
+    return {
+        "devices": {
+            "samplerate": 48000,
+            "chunksize": 1024,
+            "adjust_period": 10,
+            "silence_timeout": 3.0,
+            "rate_measure_interval": 1.0,
+            "volume_ramp_time": 400.0,
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16_LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S32_LE"},
+        },
+        "filters": {
+            "dly": {"type": "Delay", "parameters": {"delay": 3.0, "unit": "mm"}},
+            "dly_default": {"type": "Delay", "parameters": {"delay": 3.0}},
+            "vol": {
+                "type": "Volume",
+                "parameters": {"ramp_time": 200.0, "fader": "Aux1"},
+            },
+            "lim": {"type": "Limiter", "parameters": {"clip_limit": -3.0}},
+        },
+        "processors": {
+            "comp": {
+                "type": "Compressor",
+                "parameters": {
+                    "channels": 2,
+                    "attack": 0.025,
+                    "release": 1.0,
+                    "threshold": -25.0,
+                    "factor": 5.0,
+                },
+            },
+            "gate": {
+                "type": "NoiseGate",
+                "parameters": {
+                    "channels": 2,
+                    "attack": 0.025,
+                    "release": 1.0,
+                    "threshold": -60.0,
+                    "attenuation": 20.0,
+                },
+            },
+            "race": {
+                "type": "RACE",
+                "parameters": {
+                    "channels": 2,
+                    "channel_a": 0,
+                    "channel_b": 1,
+                    "delay": 0.1,
+                    "attenuation": 10.0,
+                },
+            },
+        },
+        "pipeline": [
+            {"type": "Filter", "channels": [0], "names": ["dly", "vol", "lim"]},
+            {"type": "Processor", "name": "comp"},
+        ],
+    }
+
+
+def test_v5_migrates_device_time_units(v4_config):
+    migrate_legacy_config(v4_config)
+    devices = v4_config["devices"]
+    assert devices["adjust_interval_s"] == 10
+    assert devices["silence_timeout_s"] == 3.0
+    assert devices["rate_measure_interval_s"] == 1.0
+    assert devices["volume_ramp_time_ms"] == 400.0
+    for old_name in (
+        "adjust_period",
+        "silence_timeout",
+        "rate_measure_interval",
+        "volume_ramp_time",
+    ):
+        assert old_name not in devices
+
+
+def test_v5_migrates_filter_time_units(v4_config):
+    migrate_legacy_config(v4_config)
+    filters = v4_config["filters"]
+    # an explicit unit is carried over unchanged
+    assert filters["dly"]["parameters"]["delay_unit"] == "mm"
+    assert "unit" not in filters["dly"]["parameters"]
+    # a missing one becomes the CamillaDSP 4 default, so the delay is unchanged
+    assert filters["dly_default"]["parameters"]["delay_unit"] == "ms"
+    assert filters["vol"]["parameters"]["ramp_time_ms"] == 200.0
+    assert "ramp_time" not in filters["vol"]["parameters"]
+
+
+def test_v5_renames_limiter_to_clipper(v4_config):
+    migrate_legacy_config(v4_config)
+    assert v4_config["filters"]["lim"]["type"] == "Clipper"
+    # the parameters are untouched by the rename
+    assert v4_config["filters"]["lim"]["parameters"] == {"clip_limit": -3.0}
+
+
+def test_v5_migrates_processor_time_units(v4_config):
+    migrate_legacy_config(v4_config)
+    processors = v4_config["processors"]
+    # v4 attack and release were in seconds, and the values must not change
+    for name in ("comp", "gate"):
+        params = processors[name]["parameters"]
+        assert params["attack_unit"] == "s"
+        assert params["release_unit"] == "s"
+        assert params["attack"] == 0.025
+        assert params["release"] == 1.0
+    # RACE defaulted to milliseconds
+    assert processors["race"]["parameters"]["delay_unit"] == "ms"
+
+
+def test_v5_migrated_config_validates(v4_config):
+    validator = CamillaValidator()
+    validator.validate_config(v4_config)
+    assert len(validator.get_errors()) > 0
+
+    migrate_legacy_config(v4_config)
+    validator.validate_config(v4_config)
+    assert validator.get_errors() == []
+
+
+def test_v5_migration_keeps_removed_backend_for_the_validator_to_report(v4_config):
+    # A dropped backend is left alone on purpose: the rest of the config is
+    # migrated, and the user is told about the one thing they have to change.
+    v4_config["devices"]["capture"] = {
+        "type": "Pulse",
+        "device": "default",
+        "channels": 2,
+    }
+    migrate_legacy_config(v4_config)
+
+    assert v4_config["devices"]["capture"]["type"] == "Pulse"
+    assert v4_config["devices"]["adjust_interval_s"] == 10
+
+    validator = CamillaValidator()
+    validator.validate_config(v4_config)
+    errors = validator.get_errors()
+    assert errors
+    assert all(error[0][:2] == ["devices", "capture"] for error in errors)

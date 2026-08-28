@@ -1,0 +1,154 @@
+{
+  "Gain": {
+    "properties": {
+      "gain": {
+        "type": "number",
+        "minimum": -150.0,
+        "maximum": 150.0
+      },
+      "inverted": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "mute": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
+      "scale": {
+        "type": ["string", "null"],
+        "enum": ["linear", "dB", null],
+        "default": null
+      }
+    },
+    "required": ["gain"],
+    "additionalProperties": false
+  },
+  "Delay": {
+    "properties": {
+      "delay": {
+        "type": "number",
+        "minimum": 0.0
+      },
+      "delay_unit": {
+        "type": "string",
+        "enum": ["ms", "us", "s", "mm", "samples"]
+      },
+      "subsample": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["delay", "delay_unit"],
+    "additionalProperties": false
+  },
+  "Volume": {
+    "properties": {
+      "ramp_time_ms": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": 0.0
+      },
+      "limit": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": -150.0,
+        "maximum": 50.0
+      },
+      "fader" :{
+        "type": "string",
+        "enum": ["Aux1", "Aux2", "Aux3", "Aux4"]
+      }
+    },
+    "required": ["fader"],
+    "additionalProperties": false
+  },
+  "Loudness": {
+    "properties": {
+      "reference_level": {
+        "type": "number",
+        "minimum": -100.0,
+        "maximum": 20.0
+      },
+      "high_boost": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": 0.0,
+        "maximum": 20.0
+      },
+      "low_boost": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": 0.0,
+        "maximum": 20.0
+      },
+      "fader" :{
+        "type": ["string", "null"],
+        "enum": ["Main", "Aux1", "Aux2", "Aux3", "Aux4", null],
+        "default": null
+      },
+      "attenuate_mid": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": ["reference_level"],
+    "additionalProperties": false
+  },
+  "Clipper": {
+    "properties": {
+      "clip_limit": {
+        "type": "number",
+        "maximum": 0.0
+      },
+      "soft_clip": {
+        "type": ["boolean", "null"],
+        "default": null
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "LookaheadLimiter": {
+    "properties": {
+      "limit": {
+        "type": ["number", "null"],
+        "default": null,
+        "maximum": 0.0
+      },
+      "attack": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "attack_unit": {
+        "type": "string",
+        "enum": ["ms", "us", "s", "samples"]
+      },
+      "release": {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+      },
+      "release_unit": {
+        "type": "string",
+        "enum": ["ms", "us", "s", "samples"]
+      }
+    },
+    "required": ["attack", "attack_unit", "release", "release_unit"],
+    "additionalProperties": false
+  },
+  "DiffEq": {
+    "properties": {
+      "a": {
+        "type": ["array", "null"],
+        "items": {"type": "number"},
+        "default": null
+      },
+      "b": {
+        "type": ["array", "null"],
+        "items": {"type": "number"},
+        "default": null
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "title": "Devices",
+  "type": "object",
+  "properties": {
+    "chunksize": {
+      "type": "integer",
+      "default": 1024,
+      "exclusiveMinimum": 0
+    },
+    "samplerate": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "queuelimit": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "exclusiveMinimum": 0,
+      "default": null
+    },
+    "target_level": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "default": null
+    },
+    "adjust_interval_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "exclusiveMinimum": 0
+    },
+    "silence_threshold": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "maximum": 0.0
+    },
+    "silence_timeout_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "minimum": 0.0
+    },
+    "enable_rate_adjust": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": null
+    },
+    "stop_on_rate_change": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": null
+    },
+    "rate_measure_interval_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "exclusiveMinimum": 0.0
+    },
+    "volume_ramp_time_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "minimum": 0.0
+    },
+    "volume_limit": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "default": null,
+      "minimum": -150.0,
+      "maximum": 50.0
+    },
+    "resampler": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "capture_samplerate": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "default": null,
+      "exclusiveMinimum": 0
+    },
+    "multithreaded": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": null
+    },
+    "worker_threads": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "default": null,
+      "minimum": 0
+    },
+    "capture": {
+      "type": "object"
+    },
+    "playback": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "chunksize",
+    "capture",
+    "playback",
+    "samplerate"
+  ],
+  "additionalProperties": false
+}

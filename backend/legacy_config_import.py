@@ -1,8 +1,21 @@
-from camilladsp_plot.validate_config import CamillaValidator
+from backend.dsp.validate_config import CamillaValidator
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 V3_SAMPLE_FORMATS = ("S16LE", "S24LE3", "S24LE", "S32LE", "FLOAT32LE", "FLOAT64LE")
+
+# Backends dropped in CamillaDSP 5.0. A config using one cannot be repaired
+# automatically, so migration leaves the device alone and lets the validator
+# report it, rather than silently pointing the user at a different device.
+V4_REMOVED_BACKENDS = ("Jack", "Pulse", "Bluez")
+
+# v4->v5 renames of the device settings whose unit is now part of the name
+V4_DEVICE_TIME_RENAMES = {
+    "adjust_period": "adjust_interval_s",
+    "silence_timeout": "silence_timeout_s",
+    "rate_measure_interval": "rate_measure_interval_s",
+    "volume_ramp_time": "volume_ramp_time_ms",
+}
 
 _VALIDATOR = CamillaValidator()
 
@@ -152,10 +165,11 @@ def _modify_conv_filters(config):
 
 
 def _modify_device_sample_format(dev):
-    # Remove format for Pulse
+    # Remove format for Pulse. A v4 config has already had it removed, and
+    # such a config still comes through here on its way to v5.
     if dev["type"] == "Pulse":
-        del dev["format"]
-    else:
+        dev.pop("format", None)
+    elif "format" in dev:
         dev["format"] = _map_format(dev["type"], dev["format"])
 
 
@@ -241,6 +255,80 @@ def _modify_mixers(config):
         mixer["mapping"] = merged_mappings
 
 
+# v4->v5 bakes the unit into the name of the fixed-unit device settings
+def _modify_device_time_units(config):
+    """
+    Rename the device settings whose unit is now part of the field name.
+    The values are unchanged, only the keys move.
+    """
+    devices = config.get("devices")
+    if not isinstance(devices, dict):
+        return
+    for old_name, new_name in V4_DEVICE_TIME_RENAMES.items():
+        if old_name in devices:
+            devices[new_name] = devices.pop(old_name)
+
+
+# v4->v5 requires every time value to state its unit
+def _modify_filter_time_units(config):
+    """
+    Give Delay and Volume filters their v5 keys.
+
+    Delay's "unit" becomes "delay_unit" and is now mandatory, so a config
+    that left it out gets the CamillaDSP 4 default of milliseconds written
+    out explicitly. Volume's "ramp_time" becomes "ramp_time_ms".
+    """
+    filters = config.get("filters")
+    if not isinstance(filters, dict):
+        return
+    for _name, filt in filters.items():
+        params = filt.get("parameters")
+        if not isinstance(params, dict):
+            continue
+        if filt["type"] == "Delay":
+            unit = params.pop("unit", None)
+            params["delay_unit"] = unit if unit is not None else "ms"
+        elif filt["type"] == "Volume" and "ramp_time" in params:
+            params["ramp_time_ms"] = params.pop("ramp_time")
+
+
+# v4->v5 renames the Limiter filter, freeing the name for LookaheadLimiter
+def _modify_limiter_filters(config):
+    """
+    Rename Limiter filters to Clipper. The parameters are unchanged.
+    """
+    filters = config.get("filters")
+    if not isinstance(filters, dict):
+        return
+    for _name, filt in filters.items():
+        if filt["type"] == "Limiter":
+            filt["type"] = "Clipper"
+
+
+# v4->v5 requires every time value to state its unit
+def _modify_processor_time_units(config):
+    """
+    Give the processors their mandatory unit fields.
+
+    Compressor and NoiseGate took attack and release in seconds, so they get
+    an explicit "s". RACE's delay_unit was optional and defaulted to
+    milliseconds, so a missing or null one becomes "ms".
+    """
+    processors = config.get("processors")
+    if not isinstance(processors, dict):
+        return
+    for _name, proc in processors.items():
+        params = proc.get("parameters")
+        if not isinstance(params, dict):
+            continue
+        if proc["type"] in ("Compressor", "NoiseGate"):
+            params.setdefault("attack_unit", "s")
+            params.setdefault("release_unit", "s")
+        elif proc["type"] == "RACE":
+            if params.get("delay_unit") is None:
+                params["delay_unit"] = "ms"
+
+
 def migrate_legacy_config(config):
     """
     Modifies an older config file to the latest format.
@@ -254,6 +342,10 @@ def migrate_legacy_config(config):
     _modify_pipeline_filter_steps(config)
     _modify_mixers(config)
     _modify_conv_filters(config)
+    _modify_device_time_units(config)
+    _modify_filter_time_units(config)
+    _modify_limiter_filters(config)
+    _modify_processor_time_units(config)
 
 
 def _look_for_v1_volume(config):
@@ -354,6 +446,61 @@ def _look_for_v3_sample_formats(config):
     return False
 
 
+def _look_for_v4_device_time_units(config):
+    # The fixed-unit device settings were renamed in v5
+    devices = config.get("devices")
+    if isinstance(devices, dict):
+        if any(old_name in devices for old_name in V4_DEVICE_TIME_RENAMES):
+            return True
+    return False
+
+
+def _look_for_v4_removed_backends(config):
+    # Jack, Pulse and Bluez were dropped in v5. Such a config cannot be
+    # repaired, but it is still worth migrating everything else so the only
+    # thing the user has to fix is the device itself.
+    devices = config.get("devices")
+    if isinstance(devices, dict):
+        for direction in ("capture", "playback"):
+            device = devices.get(direction)
+            if isinstance(device, dict) and device.get("type") in V4_REMOVED_BACKENDS:
+                return True
+    return False
+
+
+def _look_for_v4_filters(config):
+    # Delay took "unit", Volume took "ramp_time", and Limiter became Clipper
+    filters = config.get("filters")
+    if isinstance(filters, dict):
+        for _name, filt in filters.items():
+            if filt["type"] == "Limiter":
+                return True
+            params = filt.get("parameters")
+            if not isinstance(params, dict):
+                continue
+            if filt["type"] == "Delay" and "delay_unit" not in params:
+                return True
+            if filt["type"] == "Volume" and "ramp_time" in params:
+                return True
+    return False
+
+
+def _look_for_v4_processors(config):
+    # attack_unit, release_unit and RACE's delay_unit are all mandatory in v5
+    processors = config.get("processors")
+    if isinstance(processors, dict):
+        for _name, proc in processors.items():
+            params = proc.get("parameters")
+            if not isinstance(params, dict):
+                continue
+            if proc["type"] in ("Compressor", "NoiseGate"):
+                if "attack_unit" not in params or "release_unit" not in params:
+                    return True
+            elif proc["type"] == "RACE" and params.get("delay_unit") is None:
+                return True
+    return False
+
+
 def identify_version(config):
     if not isinstance(config, dict):
         return None
@@ -376,6 +523,14 @@ def identify_version(config):
         return 3
     if _look_for_v3_sample_formats(config):
         return 3
+    if _look_for_v4_device_time_units(config):
+        return 4
+    if _look_for_v4_filters(config):
+        return 4
+    if _look_for_v4_processors(config):
+        return 4
+    if _look_for_v4_removed_backends(config):
+        return 4
     if _VALIDATOR.passes_sections_schema(config):
         return CURRENT_VERSION
     return None

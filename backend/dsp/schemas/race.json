@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "channels": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "channel_a": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "channel_b": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "delay": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "delay_unit": {
+      "type": "string",
+      "enum": ["ms", "us", "s", "mm", "samples"]
+    },
+    "subsample_delay": {
+      "type": ["boolean", "null"],
+      "default": null
+    },
+    "attenuation": {
+      "type": "number",
+      "exclusiveMinimum": 0.0,
+      "maximum": 100.0
+    }
+  },
+  "required": [
+    "channels",
+    "channel_a",
+    "channel_b",
+    "delay",
+    "delay_unit",
+    "attenuation"
+  ],
+  "additionalProperties": false
+}

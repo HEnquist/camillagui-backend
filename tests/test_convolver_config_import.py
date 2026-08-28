@@ -55,11 +55,11 @@ def test_delays_and_mixers_are_imported():
     expected_filters = {
         "Delay3": {
             "type": "Delay",
-            "parameters": {"delay": 3, "unit": "ms", "subsample": False},
+            "parameters": {"delay": 3, "delay_unit": "ms", "subsample": False},
         },
         "Delay4": {
             "type": "Delay",
-            "parameters": {"delay": 4, "unit": "ms", "subsample": False},
+            "parameters": {"delay": 4, "delay_unit": "ms", "subsample": False},
         },
     }
     expected_pipeline = [

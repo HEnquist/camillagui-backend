@@ -1,0 +1,139 @@
+{
+  "resampler": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "AsyncSinc",
+          "AsyncPoly",
+          "Synchronous",
+          "Slip"
+        ]
+      }
+    }
+  },
+  "AsyncSincProfile": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "AsyncSinc"
+        ]
+      },
+      "profile": {
+        "type": "string",
+        "enum": [
+          "VeryFast",
+          "Fast",
+          "Balanced",
+          "Accurate"
+        ]
+      }
+    },
+    "required": [
+      "type",
+      "profile"
+    ],
+    "additionalProperties": false
+  },
+  "AsyncSincFree": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "AsyncSinc"
+        ]
+      },
+      "sinc_len": {
+        "type": "integer",
+        "minimum": 0,
+        "multipleOf": 8
+      },
+      "oversampling_factor": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "interpolation": {
+        "type": "string",
+        "enum": [
+          "Cubic",
+          "Quadratic",
+          "Linear",
+          "Nearest"
+        ]
+      },
+      "window": {
+        "type": "string",
+        "enum": [
+          "Blackman",
+          "Blackman2",
+          "BlackmanHarris",
+          "BlackmanHarris2",
+          "Hann",
+          "Hann2"
+        ]
+      },
+      "f_cutoff": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "exclusiveMinimum": 0.0,
+        "default": null
+      }
+    },
+    "required": [
+      "type",
+      "sinc_len",
+      "oversampling_factor",
+      "interpolation",
+      "window"
+    ],
+    "additionalProperties": false
+  },
+  "AsyncPoly": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "AsyncPoly"
+        ]
+      },
+      "interpolation": {
+        "type": "string",
+        "enum": [
+          "Linear",
+          "Cubic",
+          "Quintic",
+          "Septic"
+        ]
+      }
+    }
+  },
+  "Synchronous": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Synchronous"
+        ]
+      }
+    }
+  },
+  "Slip": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "Slip"
+        ]
+      }
+    }
+  }
+}

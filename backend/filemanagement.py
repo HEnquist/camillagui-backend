@@ -24,7 +24,7 @@ from typing import Optional
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
-from camilladsp_plot.audiofileread import read_wav_header
+from backend.dsp.audiofileread import read_wav_header
 from yaml.scanner import ScannerError
 
 from .legacy_config_import import identify_version, CURRENT_VERSION

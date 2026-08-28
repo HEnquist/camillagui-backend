@@ -143,7 +143,7 @@ class EqAPO:
         params = param_str.split()
         delay = self.parse_number(params[0])
         unit = self.delay_units[params[1]]
-        return {"type": "Delay", "parameters": {"delay": delay, "unit": unit}}
+        return {"type": "Delay", "parameters": {"delay": delay, "delay_unit": unit}}
 
     # Parse a Copy command into a Mixer
     def parse_copy(self, param_str):
