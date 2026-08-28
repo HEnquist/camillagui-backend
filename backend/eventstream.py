@@ -8,6 +8,76 @@ from typing import Any, Callable, Dict, Optional, Set, Tuple, Union
 import aiohttp
 
 
+# CamillaDSP 5.0 websocket framing.
+#
+# Messages are internally tagged. A command is {"command": <name>} plus its
+# arguments as named fields. A reply is one flat object,
+# {"reply": <name>, "result": <status>}, with the payload in "value" and any
+# error text in "message". A command CamillaDSP does not recognise comes back
+# as {"reply": "Invalid", "error": <text>}.
+#
+# The backend talks to CamillaDSP over its own websocket here rather than
+# through pycamilladsp, because these are pushed subscriptions rather than
+# request/response calls, so the framing has to be repeated. Keep it in step
+# with pycamilladsp's camillaws.py.
+
+
+def _format_command(command: str, **args) -> str:
+    """Encode a command with its arguments as named fields."""
+    return json.dumps({"command": command, **args})
+
+
+def _parse_reply(rawreply: Union[str, bytes]) -> Tuple[str, str, Any, Optional[str]]:
+    """
+    Decode a reply into (name, result, value, message).
+
+    Raises IOError if the message is not a well-formed reply, or if CamillaDSP
+    rejected the command outright.
+    """
+    try:
+        reply = json.loads(rawreply)
+    except json.JSONDecodeError as exc:
+        raise IOError(f"Invalid response received: {rawreply!r}") from exc
+    if not isinstance(reply, dict) or "reply" not in reply:
+        raise IOError(f"Invalid response received: {rawreply!r}")
+    if reply["reply"] == "Invalid":
+        # The command was not recognized, or is not valid in the current state.
+        raise IOError(reply.get("error") or "Command not recognized")
+    result = reply.get("result")
+    if not isinstance(result, str):
+        raise IOError(f"Invalid response received: {rawreply!r}")
+    return reply["reply"], result, reply.get("value"), reply.get("message")
+
+
+def _message_payload(message: aiohttp.WSMessage) -> Union[str, bytes]:
+    if message.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
+        return message.data
+    if message.type in (
+        aiohttp.WSMsgType.CLOSE,
+        aiohttp.WSMsgType.CLOSING,
+        aiohttp.WSMsgType.CLOSED,
+    ):
+        raise IOError("Websocket closed")
+    if message.type == aiohttp.WSMsgType.ERROR:
+        raise IOError("Websocket error") from message.data
+    raise IOError(f"Unexpected websocket message type: {message.type}")
+
+
+async def _send_command(
+    websocket: aiohttp.ClientWebSocketResponse, command: str, **args
+):
+    """Send a command, wait for its reply, and return the reply value."""
+    await websocket.send_str(_format_command(command, **args))
+    name, result, value, message = _parse_reply(
+        _message_payload(await websocket.receive())
+    )
+    if name != command:
+        raise IOError(f"Got a reply to {name} while waiting for {command}")
+    if result != "Ok":
+        raise IOError(message or f"{command} failed: {result}")
+    return value
+
+
 class LevelEventStream:
     def __init__(
         self,
@@ -96,60 +166,6 @@ class LevelEventStream:
         frame = f"event: {event}\ndata: {json.dumps(data)}\n\n".encode("utf-8")
         self._enqueue_frame(frame)
 
-    def _format_command(self, command: str, arg=None) -> str:
-        if arg is None:
-            return json.dumps(command)
-        return json.dumps({command: arg})
-
-    @staticmethod
-    def _handle_result(result: Union[str, Dict[str, str]]) -> Tuple[str, Optional[str]]:
-        if isinstance(result, str):
-            return result, None
-        return next(iter(result.items()))
-
-    def _handle_reply(self, command: str, rawreply: Union[str, bytes]):
-        try:
-            reply = json.loads(rawreply)
-        except json.JSONDecodeError as exc:
-            raise IOError(f"Invalid response received: {rawreply!r}") from exc
-        if command not in reply:
-            raise IOError(f"Invalid response received: {rawreply!r}")
-        response_data = reply[command]
-        if "error" in response_data:
-            raise IOError(response_data["error"])
-        state, message = self._handle_result(response_data["result"])
-        if state != "Ok":
-            raise IOError(message or f"{command} failed")
-        return response_data.get("value")
-
-    def _handle_event_reply(self, event_name: str, rawreply: Union[str, bytes]):
-        try:
-            reply = json.loads(rawreply)
-        except json.JSONDecodeError as exc:
-            raise IOError(f"Invalid response received: {rawreply!r}") from exc
-        if event_name not in reply:
-            return None
-        response_data = reply[event_name]
-        state, message = self._handle_result(response_data["result"])
-        if state != "Ok":
-            raise IOError(message or f"{event_name} failed")
-        return response_data.get("value")
-
-    async def _send_command(self, websocket: aiohttp.ClientWebSocketResponse, command: str, arg=None):
-        await websocket.send_str(self._format_command(command, arg))
-        reply = await websocket.receive()
-        return self._handle_reply(command, self._message_payload(reply))
-
-    @staticmethod
-    def _message_payload(message: aiohttp.WSMessage) -> Union[str, bytes]:
-        if message.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
-            return message.data
-        if message.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
-            raise IOError("Websocket closed")
-        if message.type == aiohttp.WSMsgType.ERROR:
-            raise IOError("Websocket error") from message.data
-        raise IOError(f"Unexpected websocket message type: {message.type}")
-
     def _process_level_event(self, event_data: Dict[str, object]):
         payload = {
             "capturesignalrms": [float(v) for v in event_data.get("capture_rms", [])],
@@ -177,9 +193,9 @@ class LevelEventStream:
                     )
                     websocket = await session.ws_connect(self._websocket_url)
                     self._websocket = websocket
-                    await self._send_command(websocket, "GetVersion")
-                    await self._send_command(
-                        websocket, "SubscribeVuLevels", self._vu_subscription
+                    await _send_command(websocket, "GetVersion")
+                    await _send_command(
+                        websocket, "SubscribeVuLevels", value=self._vu_subscription
                     )
                     subscribed = True
                     logging.debug("LevelEventStream connected to CamillaDSP")
@@ -191,12 +207,14 @@ class LevelEventStream:
                         if not self._running:
                             should_wait = False
                             break
-                        event_data = self._handle_event_reply(
-                            "VuLevelsEvent", self._message_payload(message)
+                        name, result, value, error = _parse_reply(
+                            _message_payload(message)
                         )
-                        if event_data is None:
+                        if name != "VuLevelsEvent":
                             continue
-                        self._process_level_event(event_data)
+                        if result != "Ok":
+                            raise IOError(error or f"VuLevelsEvent failed: {result}")
+                        self._process_level_event(value)
                     if self._running:
                         raise IOError("Lost connection to CamillaDSP")
                     should_wait = False
@@ -214,7 +232,7 @@ class LevelEventStream:
                     if websocket is not None:
                         if subscribed and not websocket.closed:
                             with suppress(Exception):
-                                await self._send_command(websocket, "StopSubscription")
+                                await _send_command(websocket, "StopSubscription")
                         with suppress(Exception):
                             await websocket.close()
                     self._websocket = None
@@ -313,20 +331,20 @@ class SpectrumEventStream:
             self._websocket = ws
 
             # Send SubscribeSpectrum and wait for CamillaDSP's reply.
-            await ws.send_str(self._format_command("SubscribeSpectrum", params))
-            raw = self._message_payload(await ws.receive())
-            reply = json.loads(raw)
+            await ws.send_str(_format_command("SubscribeSpectrum", value=params))
+            name, result, _value, error = _parse_reply(
+                _message_payload(await ws.receive())
+            )
 
-            if "SubscribeSpectrum" not in reply:
-                raise IOError(f"Unexpected response: {raw!r}")
+            if name != "SubscribeSpectrum":
+                raise IOError(f"Got a reply to {name} while waiting for the subscription")
 
-            state, _ = self._handle_result(reply["SubscribeSpectrum"]["result"])
-            if state == "ProcessingNotRunningError":
+            if result == "ProcessingNotRunningError":
                 if not subscribed.done():
                     subscribed.set_exception(ProcessingNotRunning())
                 return
-            if state != "Ok":
-                raise IOError(f"SubscribeSpectrum failed: {state}")
+            if result != "Ok":
+                raise IOError(error or f"SubscribeSpectrum failed: {result}")
 
             subscribed_ok = True
             if not subscribed.done():
@@ -335,24 +353,23 @@ class SpectrumEventStream:
             # Receive pushed SpectrumEvent messages.
             async for message in ws:
                 try:
-                    reply = json.loads(self._message_payload(message))
-                except (IOError, json.JSONDecodeError):
+                    name, result, value, _error = _parse_reply(
+                        _message_payload(message)
+                    )
+                except IOError:
                     break
-                if "SpectrumEvent" not in reply:
+                if name != "SpectrumEvent":
                     continue
-                event = reply["SpectrumEvent"]
-                state, _ = self._handle_result(event.get("result", "Ok"))
-                if state == "Ok":
-                    value = event.get("value")
+                if result == "Ok":
                     if value is not None:
                         self._publish_json("spectrum", value)
-                elif state == "ProcessingStopped":
+                elif result == "ProcessingStopped":
                     # Forward the cancellation signal, then stop cleanly.
                     self._publish_json("spectrum", {"result": "ProcessingStopped"})
                     subscribed_ok = False  # CamillaDSP already cancelled
                     break
                 else:
-                    logging.debug("SpectrumEvent unexpected result: %s", state)
+                    logging.debug("SpectrumEvent unexpected result: %s", result)
                     break
 
         except asyncio.CancelledError:
@@ -365,7 +382,7 @@ class SpectrumEventStream:
             # Best-effort StopSubscription (skipped when CamillaDSP already cancelled).
             if subscribed_ok and ws is not None and not ws.closed:
                 with suppress(Exception):
-                    await ws.send_str(self._format_command("StopSubscription"))
+                    await ws.send_str(_format_command("StopSubscription"))
                     await ws.receive()
             self._websocket = None
             if ws is not None and not ws.closed:
@@ -374,29 +391,3 @@ class SpectrumEventStream:
             self._session = None
             with suppress(Exception):
                 await session.close()
-
-    @staticmethod
-    def _format_command(command: str, arg: Any = None) -> str:
-        if arg is None:
-            return json.dumps(command)
-        return json.dumps({command: arg})
-
-    @staticmethod
-    def _handle_result(result: Union[str, Dict[str, str]]) -> Tuple[str, Optional[str]]:
-        if isinstance(result, str):
-            return result, None
-        return next(iter(result.items()))
-
-    @staticmethod
-    def _message_payload(message: aiohttp.WSMessage) -> Union[str, bytes]:
-        if message.type in (aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY):
-            return message.data
-        if message.type in (
-            aiohttp.WSMsgType.CLOSE,
-            aiohttp.WSMsgType.CLOSING,
-            aiohttp.WSMsgType.CLOSED,
-        ):
-            raise IOError("WebSocket closed")
-        if message.type == aiohttp.WSMsgType.ERROR:
-            raise IOError("WebSocket error") from message.data
-        raise IOError(f"Unexpected WebSocket message type: {message.type}")
