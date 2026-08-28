@@ -724,7 +724,6 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
         : "",
       cdsp_version: "demo-3.0.0",
       py_cdsp_version: "demo-1.0.0",
-      py_cdsp_plot_version: "demo-1.0.0",
       backend_version: "demo-backend",
       labels,
       title: state.currentConfig.title,
