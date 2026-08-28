@@ -100,7 +100,7 @@ export class FadersPoller {
 }
 
 export class AuxFadersBox extends React.Component<Props, State> {
-  private fadersPoller = new FadersPoller((faders) => this.setState({ faders: faders }), 1000.0, 2000.0)
+  private fadersPoller: FadersPoller | null = null
   private readonly setDspFadersDebounced: DebouncedFuncLeading<(faders: Fader[], prevFaders: Fader[]) => Promise<void>>
 
   constructor(props: Props) {
@@ -118,6 +118,9 @@ export class AuxFadersBox extends React.Component<Props, State> {
       send_to_dsp: false,
       visible: auxFadersVisible,
     }
+    if (auxFadersVisible) {
+      this.fadersPoller = new FadersPoller((faders) => this.setState({ faders: faders }), 1000.0, 2000.0)
+    }
   }
 
   didFadersChange(faders: Fader[], prevState: Readonly<State>) {
@@ -131,14 +134,22 @@ export class AuxFadersBox extends React.Component<Props, State> {
     return false
   }
 
-  componentDidUpdate(prevProps: Readonly<Props>, prevState: Readonly<State>) {
-    const { faders, send_to_dsp } = this.state
+  componentDidUpdate(_prevProps: Readonly<Props>, prevState: Readonly<State>) {
+    const { faders, send_to_dsp, visible } = this.state
+    if (visible !== prevState.visible) {
+      if (visible) {
+        this.fadersPoller = new FadersPoller((faders) => this.setState({ faders: faders }), 1000.0, 2000.0)
+      } else {
+        this.fadersPoller?.stop()
+        this.fadersPoller = null
+      }
+    }
     // Let's ignore any change smaller than 0.1 dB.
     const changed = this.didFadersChange(faders, prevState)
     if (send_to_dsp) {
       if (changed) {
         // The volume or mute state was changed from this gui instance.
-        this.fadersPoller.restart_timer()
+        this.fadersPoller?.restart_timer()
         this.setDspFadersDebounced(faders, prevState.faders)
       }
       this.setState({ send_to_dsp: false })
@@ -147,11 +158,11 @@ export class AuxFadersBox extends React.Component<Props, State> {
   }
 
   componentWillUnmount() {
-    this.fadersPoller.stop()
+    this.fadersPoller?.stop()
   }
 
   private toggleMute(idx: number) {
-    this.fadersPoller.restart_timer()
+    this.fadersPoller?.restart_timer()
     this.setState(({ faders }) => {
       const new_faders = cloneDeep(faders)
       new_faders[idx].mute = !faders[idx].mute
@@ -160,7 +171,7 @@ export class AuxFadersBox extends React.Component<Props, State> {
   }
 
   private moveFader(idx: number, value: number) {
-    this.fadersPoller.restart_timer()
+    this.fadersPoller?.restart_timer()
     this.setState(({ faders }) => {
       const new_faders = cloneDeep(faders)
       new_faders[idx].volume = value
