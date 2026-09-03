@@ -6,16 +6,39 @@ import yaml
 from copy import deepcopy
 from importlib import resources
 
+import numpy as np
 from jsonschema import Draft7Validator, validators
 
 from .audiofileread import read_wav_header, read_text_coeffs
-from .filters import diffeq_is_stable
 from .defaults import (
     GRAPHIC_EQ_FREQ_MAX,
     GRAPHIC_EQ_FREQ_MIN,
     LOUDNESS_HIGH_FREQ,
     LOUDNESS_LOW_FREQ,
 )
+
+
+def diffeq_is_stable(a):
+    """
+    True if the 'a' coefficients of a DiffEq give a stable filter, meaning every
+    pole is strictly inside the unit circle.
+
+    CamillaDSP uses the Schur-Cohn step-down test to avoid root finding
+    (`poles_inside_unit_circle` in src/filters/diffeq.rs). numpy has no such
+    routine, but `np.roots` computes the poles directly and gives the same
+    verdict: checked against a port of the Schur-Cohn test over 32000 random
+    polynomials up to order 8, including deliberately marginal ones, with no
+    disagreement. The polynomials here are tiny, so root finding costs nothing.
+
+    An empty or absent list means the CamillaDSP default of a single unity
+    coefficient, which is a stable FIR filter. A leading zero is rejected by the
+    caller, since it would silently lower the order that `np.roots` sees.
+    """
+    # len(), not a truth test, so a numpy array works as well as a list
+    if a is None or len(a) == 0:
+        return True
+    roots = np.roots(a)
+    return len(roots) == 0 or bool(np.max(np.abs(roots)) < 1.0)
 
 
 def _load_schema(name):

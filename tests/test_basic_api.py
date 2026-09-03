@@ -591,3 +591,82 @@ async def test_validate_config_with_default_graphic_eq_range(server):
     assert resp.status == 406
     errors = await resp.json()
     assert any("samplerate/2" in str(error) for error in errors)
+
+
+@pytest.fixture
+def coeff_files():
+    """
+    Two raw coefficient files whose names differ only in the samplerate, so the
+    $samplerate$ token and the options list both have something to work with.
+    """
+    import struct
+
+    values = [0.0, 0.25, -0.5, 1.0]
+    written = []
+    for samplerate in (44100, 48000):
+        path = os.path.join(TESTFILE_DIR, f"convtest_{samplerate}_2.f32")
+        with open(path, "wb") as f:
+            f.write(struct.pack(f"<{len(values)}f", *values))
+        written.append(path)
+    yield values
+    for path in written:
+        os.remove(path)
+
+
+def _conv_request(filename, samplerate=44100, channels=2):
+    return {
+        "config": {
+            "type": "Conv",
+            "parameters": {
+                "type": "Raw",
+                "filename": filename,
+                "format": "F32_LE",
+                "skip_bytes_lines": 0,
+                "read_bytes_lines": 0,
+            },
+        },
+        "samplerate": samplerate,
+        "channels": channels,
+    }
+
+
+async def test_convcoeffs_reads_a_raw_file(server, coeff_files):
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("convtest_44100_2.f32")
+    )
+    assert resp.status == 200, await resp.text()
+    content = await resp.json()
+    assert content["coefficients"] == coeff_files
+
+
+async def test_convcoeffs_resolves_the_filename_tokens(server, coeff_files):
+    resp = await server.post(
+        "/api/convcoeffs",
+        json=_conv_request("convtest_$samplerate$_$channels$.f32", samplerate=48000),
+    )
+    assert resp.status == 200, await resp.text()
+    content = await resp.json()
+    assert content["coefficients"] == coeff_files
+    # both files match the pattern, so the plot can offer either samplerate
+    assert content["options"] == [
+        {"name": "convtest_44100_2.f32", "samplerate": 44100, "channels": 2},
+        {"name": "convtest_48000_2.f32", "samplerate": 48000, "channels": 2},
+    ]
+
+
+async def test_convcoeffs_rejects_a_path_outside_the_coeff_dir(server):
+    resp = await server.post("/api/convcoeffs", json=_conv_request("/etc/passwd"))
+    assert resp.status == 403
+
+
+async def test_convcoeffs_reports_a_missing_file(server):
+    resp = await server.post("/api/convcoeffs", json=_conv_request("nosuchfile.f32"))
+    assert resp.status == 404
+
+
+async def test_convcoeffs_rejects_a_conv_that_reads_no_file(server):
+    """Dummy and Values are built by the frontend and must never come here."""
+    request = _conv_request("unused.f32")
+    request["config"]["parameters"] = {"type": "Values", "values": [1.0, 0.5]}
+    resp = await server.post("/api/convcoeffs", json=request)
+    assert resp.status == 400

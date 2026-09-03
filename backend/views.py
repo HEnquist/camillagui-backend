@@ -5,11 +5,11 @@ import time
 import traceback
 from os.path import basename, expanduser, isfile, join
 
+import numpy as np
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
-from backend.dsp import eval_filter, eval_filterstep
-from backend.dsp.audiofileread import read_wav_header
+from backend.dsp.audiofileread import read_coeffs, read_wav_header
 
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
@@ -42,11 +42,7 @@ from .filemanagement import (
     zip_of_files,
     zip_response,
 )
-from .filters import (
-    defaults_for_filter,
-    filter_plot_options,
-    pipeline_step_plot_options,
-)
+from .filters import defaults_for_filter, filter_plot_options
 from .legacy_config_import import (
     CURRENT_VERSION,
     identify_version,
@@ -341,83 +337,56 @@ async def set_param_index(request):
     return web.Response(text="OK", headers=HEADERS)
 
 
-async def eval_filter_values(request):
+async def conv_coefficients(request):
     """
-    Evaluate a filter. Returns values for plotting.
-    """
-    content = await request.json()
-    config_dir = request.app["config_dir"]
-    config = content["config"]
-    if not request.app["allow_absolute_paths"]:
-        filename = config.get("parameters", {}).get("filename")
-        if filename:
-            from .filemanagement import _path_is_safe
-            if not _path_is_safe(filename, request.app["coeff_dir"]):
-                raise web.HTTPForbidden(
-                    text=(
-                        f"Coeff path '{filename}' is outside the configured coeff_dir. "
-                        "Set allow_absolute_paths: true in camillagui.yml to allow this."
-                    ),
-                    headers=HEADERS,
-                )
-    convert_filter_path(config, lambda path: coeff_path_to_absolute(path, config_dir, request.app["coeff_dir"]))
-    channels = content["channels"]
-    samplerate = content["samplerate"]
-    volume = content.get("volume", 0.0)
-    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
-    if "filename" in config["parameters"]:
-        filename = config["parameters"]["filename"]
-        options = filter_plot_options(filter_file_names, filename)
-    else:
-        options = []
-    replace_tokens_in_filter_config(config, samplerate, channels)
-    try:
-        data = eval_filter(
-            config,
-            name=(content["name"]),
-            samplerate=samplerate,
-            npoints=1000,
-            volume=volume,
-        )
-        data["channels"] = channels
-        data["options"] = options
-        return web.json_response(data, headers=HEADERS)
-    except FileNotFoundError as e:
-        raise web.HTTPNotFound(text="Filter coefficient file not found") from e
-    except Exception as e:
-        raise web.HTTPBadRequest(text=str(e))
+    Read the coefficients of a Conv filter that gets them from a file, and
+    report which samplerate and channel count variants of that file exist.
 
+    The GUI evaluates filters itself, so this does no DSP. It exists because
+    only the server can reach the filesystem: it resolves the path, applies the
+    $samplerate$ and $channels$ tokens, and decodes the samples.
 
-async def eval_filterstep_values(request):
-    """
-    Evaluate a filter step consisting of one or several filters. Returns values for plotting.
+    The Dummy and Values subtypes carry their coefficients in the config, so
+    the GUI builds those itself and they never come here.
     """
     content = await request.json()
     config = content["config"]
-    step_index = content["index"]
-    config_dir = request.app["config_dir"]
-    if not request.app["allow_absolute_paths"]:
-        _check_config_paths(request, config)
-    samplerate = content["samplerate"]
-    channels = content["channels"]
-    config["devices"]["samplerate"] = samplerate
-    config["devices"]["capture"]["channels"] = channels
-    plot_config = make_config_filter_paths_absolute(config, config_dir, request.app["coeff_dir"])
-    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
-    options = pipeline_step_plot_options(filter_file_names, config, step_index)
-    for _, filt in plot_config.get("filters", {}).items():
-        replace_tokens_in_filter_config(filt, samplerate, channels)
-    try:
-        data = eval_filterstep(
-            plot_config,
-            step_index,
-            name=f"Filterstep {step_index}",
-            npoints=1000,
-            volume=content.get("volume", 0.0),
+    parameters = config["parameters"]
+    if parameters.get("type") not in ("Raw", "Wav"):
+        raise web.HTTPBadRequest(
+            text=f"Conv subtype '{parameters.get('type')}' reads no coefficient file",
+            headers=HEADERS,
         )
-        data["channels"] = channels
-        data["options"] = options
-        return web.json_response(data, headers=HEADERS)
+    filename = parameters.get("filename")
+    if not request.app["allow_absolute_paths"] and filename:
+        from .filemanagement import _path_is_safe
+
+        if not _path_is_safe(filename, request.app["coeff_dir"]):
+            raise web.HTTPForbidden(
+                text=(
+                    f"Coeff path '{filename}' is outside the configured coeff_dir. "
+                    "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                ),
+                headers=HEADERS,
+            )
+    convert_filter_path(
+        config,
+        lambda path: coeff_path_to_absolute(
+            path, request.app["config_dir"], request.app["coeff_dir"]
+        ),
+    )
+    # the options come from the name as written, with the tokens still in it,
+    # so they have to be collected before the tokens are replaced
+    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
+    options = filter_plot_options(filter_file_names, parameters["filename"])
+    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
+    try:
+        # a text file gives a list and a binary one a numpy array, and only one
+        # of those is JSON
+        coefficients = np.asarray(read_coeffs(parameters), dtype=float)
+        return web.json_response(
+            {"options": options, "coefficients": coefficients.tolist()}, headers=HEADERS
+        )
     except FileNotFoundError as e:
         raise web.HTTPNotFound(text="Filter coefficient file not found") from e
     except Exception as e:
