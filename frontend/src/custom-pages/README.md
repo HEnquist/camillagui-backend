@@ -108,7 +108,7 @@ config.description: string | null
 { gain: number, mute?: boolean, scale?: "dB" | "Linear" | "Linear2", inverted?: boolean }
 
 // Delay
-{ delay: number, unit?: "ms" | "samples", subsample?: boolean }
+{ delay: number, delay_unit: "ms" | "us" | "s" | "mm" | "samples", subsample?: boolean }
 
 // Conv (convolution / FIR)
 { type: "Raw" | "Wav" | "Values", filename?: string, values?: number[] }
@@ -201,28 +201,36 @@ const res = await fetch("/api/storedcoeffs")
 const files: string[] = await res.json()
 ```
 
-### POST /api/evalfilter
+### Evaluating a filter
 
-Evaluate a filter's frequency response. Returns magnitude, phase, and optionally group delay for
-plotting. The `name` field is only used as a label in the response.
+Filter evaluation runs in the browser, not on the backend, so it is a plain function call rather
+than an endpoint. Custom pages compile into the app, so they can import it directly.
 
 ```ts
-const res = await fetch("/api/evalfilter", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    name: "MyFilter",
-    config: config.filters["MyFilter"],   // the filter definition object
-    samplerate: config.devices.samplerate,
-    channels: config.devices.capture.channels,
-  }),
+import { evalFilter, evalFilterStep } from "../camilladsp/eval"
+
+const data = await evalFilter(config.filters["MyFilter"], {
+  name: "MyFilter",
+  samplerate: config.devices.samplerate,
+  channels: config.devices.capture.channels,
 })
-const data = await res.json()
-// data.freq: number[]        — frequency axis in Hz
-// data.magnitude: number[]   — magnitude in dB at each frequency
-// data.phase: number[]       — phase in radians
-// data.groupdelay: number[]  — group delay in ms (may be absent)
+// data.f: number[]            - frequency axis in Hz
+// data.magnitude: number[]    - magnitude in dB at each frequency
+// data.phase: number[]        - phase in degrees
+// data.f_groupdelay: number[] - frequency axis for the group delay, one point shorter
+// data.groupdelay: number[]   - group delay in ms
+// data.impulse: number[]      - the impulse response, Conv filters only
+
+// The combined response of a whole pipeline step
+const step = await evalFilterStep(config, 0, {
+  samplerate: config.devices.samplerate,
+  channels: config.devices.capture.channels,
+})
 ```
+
+It returns a promise because a Conv filter reading a coefficient file has to ask the backend for
+the coefficients. Everything else resolves without touching the network, so it is cheap enough to
+call on every render.
 
 ### POST /api/setparam/{name}
 
@@ -435,6 +443,7 @@ export default QuickEQ
 ```tsx
 import React, { useEffect, useState } from "react"
 import type { CustomPageProps } from "./types"
+import { evalFilter } from "../camilladsp/eval"
 import { Box } from "../utilities/ui-components"
 
 const FILTER_NAME = "MyLowpass"
@@ -446,21 +455,14 @@ function FilterPlot({ config }: CustomPageProps) {
   useEffect(() => {
     const filter = config.filters[FILTER_NAME]
     if (!filter) return
-    fetch("/api/evalfilter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: FILTER_NAME,
-        config: filter,
-        samplerate: config.devices.samplerate,
-        channels: config.devices.capture.channels,
-      }),
+    evalFilter(filter, {
+      name: FILTER_NAME,
+      samplerate: config.devices.samplerate,
+      channels: config.devices.capture.channels,
+    }).then((data) => {
+      setFreqs(data.f)
+      setMagnitude(data.magnitude ?? null)
     })
-      .then((r) => r.json())
-      .then((data) => {
-        setFreqs(data.freq)
-        setMagnitude(data.magnitude)
-      })
   }, [config])
 
   return (
@@ -495,8 +497,8 @@ export default FilterPlot
   isn't present.
 - **Local state for UI:** Use `useState` freely for things like selected channel, expanded panels,
   or intermediate form values.
-- **Derived data from the DSP:** Call `/api/evalfilter` inside `useEffect` with `config` as a
-  dependency. Re-fetches automatically when the user edits filters elsewhere.
+- **Derived data from the DSP:** Call `evalFilter` inside `useEffect` with `config` as a
+  dependency. Re-evaluates automatically when the user edits filters elsewhere.
 - **Real-time values:** Use `EventSource("/api/events")` for live level meters. Close the source
   in the `useEffect` cleanup to avoid leaks.
 - **TypeScript casts:** Filter parameters are typed as `Record<string, unknown>`. Cast to a

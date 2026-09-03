@@ -23,6 +23,7 @@ import {
   Processors,
   ProcessorStep,
 } from "../camilladsp/config"
+import { evalFilterStep } from "../camilladsp/eval"
 import { moveItem, moveItemDown, moveItemUp } from "../utilities/arrays"
 import { ChartContent, ChartPopup } from "../utilities/chart"
 import { Update } from "../utilities/common"
@@ -102,26 +103,19 @@ export class PipelineTab extends React.Component<
 
   plotFilterStep = (index: number, samplerate?: number, channels?: number) => {
     const config = this.props.config
-    fetch("/api/evalfilterstep", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        index: index,
-        config: config,
-        samplerate: samplerate || config.devices.samplerate,
-        channels: channels || this.state.capture_channels,
-        volume: this.state.plot_at_volume,
-      }),
+    evalFilterStep(config, index, {
+      name: `Filterstep ${index}`,
+      samplerate: samplerate || config.devices.samplerate,
+      channels: channels || this.state.capture_channels,
+      volume: this.state.plot_at_volume,
     }).then(
-      (result) =>
-        result.json().then((data) =>
-          this.setState({
-            plotFilterStep: true,
-            stepIndex: index,
-            data: data,
-          }),
-        ),
-      (error) => console.log("Failed", error),
+      (data) =>
+        this.setState({
+          plotFilterStep: true,
+          stepIndex: index,
+          data: data,
+        }),
+      (error) => console.log("Filter step evaluation failed", error),
     )
   }
 

@@ -27,6 +27,16 @@ camilladsp/                 # Domain types + status polling
   status.ts                 # Status/state types
   usevumeterstatus.ts       # React hook for VU meter SSE stream
   versions.tsx              # Version mismatch UI
+  eval/                     # Filter evaluation — see below
+    index.ts                # evalFilter / evalFilterStep, and the Conv coefficient cache
+    filters.ts              # Transfer function per filter type
+    biquad.ts               # Biquad coefficients for all 17 subtypes
+    conv.ts                 # FFT, peak search, polar interpolation
+    complex.ts              # Elementwise complex arithmetic over Float64Arrays
+    unwrap.ts               # Phase unwrapping and group delay
+    defaults.ts             # CamillaDSP's defaults for optional parameters
+    params.ts               # Narrowing helpers for the untyped parameter bag
+    fixtures/variants.json  # every schema-valid filter config, see below
 
 # Tab components (one per GUI tab)
 titletab.tsx
@@ -90,7 +100,36 @@ Key endpoints used by the frontend:
 - `POST /api/setconfig` — push config to running DSP `{filename, config}`
 - `POST /api/saveconfigfile` — save config to disk `{filename, config}`
 - `GET /api/events` — SSE stream for status/level events
-- `POST /api/evalfilter` / `POST /api/evalfilterstep` — filter frequency response
+- `POST /api/convcoeffs` — coefficients of a Conv filter that reads a file
+
+## Filter evaluation
+
+Filter plots are computed here, not on the backend. `evalFilter(filter, {samplerate, channels,
+volume})` and `evalFilterStep(config, index, ...)` return a `ChartContent`. They are async only
+because a Conv reading a coefficient file has to ask the backend for the coefficients, through
+`POST /api/convcoeffs`; everything else resolves without touching the network, cheaply enough to
+run on every keystroke. Resolved coefficients are cached, keyed on the Conv parameters plus
+samplerate and channels, so dragging a control next to a Conv does not refetch it.
+
+Three test files cover it:
+
+- `properties.test.ts` is the one that matters. Every assertion is a closed-form property the
+  filter must satisfy, checked against no other implementation: a Butterworth of any order has the
+  Butterworth magnitude on the prewarped frequency axis, an allpass is unity everywhere, a peaking
+  filter is exactly its gain at the centre, a Linkwitz-Riley's two halves sum flat, a delay of N
+  samples has a group delay of N/fs. **Add to this file when you add a filter.** It fails on
+  wrongness rather than on change, so fixing a bug turns it green.
+- `filters.test.ts` covers the behaviour of each type: band roles, defaults, null handling, unknown
+  types raising rather than being dropped.
+- `variants.test.ts` evaluates every filter config the backend's JSON schemas allow, from
+  `fixtures/variants.json`, written by `camillagui-backend/tools/dump_filter_variants.py`. **The
+  schemas are in Python and the evaluator is in TypeScript**, so this is the only thing keeping
+  them coupled: when a filter schema changes, re-run that tool and commit the result. The backend's
+  `test_eval_validated_configs.py` fails until you do.
+
+A fixture of curves captured from the Python evaluator gated the original port, then was dropped.
+It only ever pinned what the GUI had been drawing, which nothing had verified against CamillaDSP,
+so a genuine fix would have shown up as dozens of red cases in an unreadable 1.8 MB blob.
 
 ## Key patterns
 

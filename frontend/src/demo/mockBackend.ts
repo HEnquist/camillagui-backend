@@ -433,45 +433,32 @@ function captureChannelCount(config: Config) {
   return "channels" in config.devices.capture ? config.devices.capture.channels : 2
 }
 
-function generateChartContent(name: string) {
-  const points = 192
-  const f = Array.from({ length: points }, (_, index) => {
-    const min = Math.log10(20)
-    const max = Math.log10(20000)
-    return 10 ** (min + ((max - min) * index) / (points - 1))
+/**
+ * A synthetic impulse response for demo mode.
+ *
+ * Filter evaluation now runs in the browser, so the demo backend only has to
+ * supply what a real one would: the coefficients behind a Conv filter that
+ * reads a file. The GUI does the FFT and plots the real response of these.
+ */
+function makeConvCoefficients(filename: string) {
+  const taps = 512
+  const nameHash = Array.from(filename).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const center = 96
+  const cutoff = 0.15 + (nameHash % 17) / 100
+  const coefficients = Array.from({ length: taps }, (_, index) => {
+    const n = index - center
+    const sinc = n === 0 ? 2 * cutoff : Math.sin(2 * Math.PI * cutoff * n) / (Math.PI * n)
+    // Hann window over the part of the response that carries the impulse
+    const window = index < 2 * center ? 0.5 - 0.5 * Math.cos((Math.PI * index) / center) : 0
+    return sinc * window
   })
-  const nameHash = Array.from(name).reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const magnitude = f.map((freq, index) => {
-    const sweep = Math.sin(Math.log(freq) * 1.7 + nameHash * 0.03) * 2.5
-    const contour = Math.cos(index / 18 + nameHash * 0.02) * 0.8
-    return Number((sweep + contour).toFixed(3))
-  })
-  const phase = f.map((freq) => Number((Math.sin(Math.log(freq) * 0.9 + nameHash * 0.01) * 70).toFixed(3)))
-  const time = Array.from({ length: 256 }, (_, index) => index / state.currentConfig.devices.samplerate)
-  const impulse = time.map((t, index) => {
-    const center = 18 / state.currentConfig.devices.samplerate
-    const distance = (t - center) * state.currentConfig.devices.samplerate * 0.12
-    const envelope = Math.exp(-(distance ** 2))
-    const ripple = Math.cos(index / 8) * 0.12
-    return Number((envelope + ripple).toFixed(5))
-  })
-  const groupdelay = f.map((freq) => Number((2.5 + Math.sin(Math.log(freq) * 1.3 + nameHash * 0.02) * 0.8).toFixed(3)))
   return {
-    name,
-    samplerate: state.currentConfig.devices.samplerate,
-    channels: captureChannelCount(state.currentConfig),
     options: [
-      { name: "48 kHz stereo", samplerate: 48000, channels: 2 },
-      { name: "96 kHz stereo", samplerate: 96000, channels: 2 },
-      { name: "48 kHz 4 ch", samplerate: 48000, channels: 4 },
+      { name: "48000 Hz - 2 Channels", samplerate: 48000, channels: 2 },
+      { name: "96000 Hz - 2 Channels", samplerate: 96000, channels: 2 },
+      { name: "48000 Hz - 4 Channels", samplerate: 48000, channels: 4 },
     ],
-    f,
-    magnitude,
-    phase,
-    time,
-    impulse,
-    f_groupdelay: f,
-    groupdelay,
+    coefficients,
   }
 }
 
@@ -746,14 +733,9 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     return textResponse("OK")
   }
 
-  if (pathname === "/api/evalfilter" && method === "POST") {
-    const payload = await requestJson<{ name?: string }>(input, init)
-    return jsonResponse(generateChartContent(payload.name ?? "Filter response"))
-  }
-
-  if (pathname === "/api/evalfilterstep" && method === "POST") {
-    const payload = await requestJson<{ index?: number }>(input, init)
-    return jsonResponse(generateChartContent(`Pipeline step ${payload.index ?? 0}`))
+  if (pathname === "/api/convcoeffs" && method === "POST") {
+    const payload = await requestJson<{ config?: { parameters?: { filename?: string } } }>(input, init)
+    return jsonResponse(makeConvCoefficients(payload.config?.parameters?.filename ?? "demo"))
   }
 
   if (pathname === "/api/wavinfo" && method === "GET") {

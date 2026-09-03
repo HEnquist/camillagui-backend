@@ -31,6 +31,7 @@ import {
   FilterParameterValue,
   PeqBand,
 } from "./camilladsp/config"
+import { evalFilter } from "./camilladsp/eval"
 import { Chart, ChartContent, PlotVolumeSlider } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
@@ -330,9 +331,9 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         this.updateDefaults(filename)
       }
     }
-    this.plotFilter()
   }
 
+  /** Only file backed Conv filters go to the backend, and only they need debouncing. */
   private timer = delayedExecutor(500)
 
   private uploadCoeffs(files: FileList) {
@@ -405,8 +406,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         prevFilter.type !== currentFilter.type ||
         !isEqual(prevFilter.parameters, currentFilter.parameters) ||
         this.state.plot_at_volume !== prevState.plot_at_volume
-      )
-        this.timer(() => this.plotFilter())
+      ) {
+        // Everything except a Conv reading a coefficient file is evaluated in
+        // the browser, so it can follow the control being dragged directly.
+        if (isConvolutionFileFilter(currentFilter)) this.timer(() => this.plotFilter())
+        else this.plotFilter()
+      }
     }
   }
 
@@ -433,25 +438,16 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   }
 
   private plotFilter(samplerate?: number, channels?: number) {
-    fetch("/api/evalfilter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: this.props.name,
-        config: this.props.filter,
-        samplerate: samplerate || this.props.samplerate,
-        channels: channels || this.state.channels,
-        volume: this.state.plot_at_volume,
-      }),
+    evalFilter(this.props.filter, {
+      name: this.props.name,
+      samplerate: samplerate || this.props.samplerate,
+      channels: channels || this.state.channels,
+      volume: this.state.plot_at_volume,
     }).then(
-      (result) =>
-        result.json().then(
-          (data) => {
-            if (this.state.showFilterPlot) this.setState({ data: data as ChartContent })
-          },
-          (error) => console.log("JSON parse failed", error),
-        ),
-      (error) => console.log("api call failed", error),
+      (data) => {
+        if (this.state.showFilterPlot) this.setState({ data })
+      },
+      (error) => console.log("Filter evaluation failed", error),
     )
   }
 
