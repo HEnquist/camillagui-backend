@@ -43,7 +43,6 @@ backend/
     filters.py                   # Filter implementations for evaluation
     defaults.py                  # CamillaDSP's defaults for optional parameters
     audiofileread.py             # wav header + coefficient file reading
-    cooley_tukey.py              # FFT, with a numpy fast path
     schemas/                     # JSON schemas for every config section
 
 tests/                           # pytest test suite
@@ -74,7 +73,7 @@ build/                           # Place compiled frontend files here before bun
 - `aiohttp` — async HTTP server
 - `PyYAML` — config file parsing
 - `jsonschema` — config validation
-- `numpy` — optional, speeds up filter evaluation (`backend/dsp/cooley_tukey.py` falls back to a pure-Python FFT)
+- `numpy` — required; `backend/dsp/` evaluates filters as numpy arrays throughout
 
 `pycamilladsp-plot` used to provide validation and filter evaluation. As of CamillaDSP 5.0 it is
 merged into `backend/dsp/` and deprecated as a separate library, so it must **not** be installed.
