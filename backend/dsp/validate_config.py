@@ -337,7 +337,7 @@ class CamillaValidator:
                 path=["devices", "resampler"],
             )
             resamp_type = self.config["devices"]["resampler"]["type"]
-            if resamp_type in ["Synchronous", "AsyncPoly"]:
+            if resamp_type in ["Synchronous", "AsyncPoly", "Slip"]:
                 resampler_schema = resampler_schemas[resamp_type]
             elif "profile" in self.config["devices"]["resampler"]:
                 resampler_schema = resampler_schemas["AsyncSincProfile"]
@@ -783,11 +783,24 @@ class CamillaValidator:
                         "ASIO must use the same device for capture and playback",
                     )
                 )
-            if self.config["devices"]["resampler"] is not None:
+            if self.config["devices"].get("resampler") is not None:
                 self.errorlist.append(
                     (
                         ["devices", "resampler", "type"],
                         "Full duplex ASIO does not allow resampling",
+                    )
+                )
+        # The Slip resampler only handles ratios close to 1.0, so it cannot
+        # convert between different capture and playback rates.
+        resampler = self.config["devices"].get("resampler")
+        if resampler is not None and resampler["type"] == "Slip":
+            samplerate = self.config["devices"]["samplerate"]
+            capture_samplerate = self.config["devices"].get("capture_samplerate")
+            if capture_samplerate is not None and capture_samplerate != samplerate:
+                self.errorlist.append(
+                    (
+                        ["devices", "capture_samplerate"],
+                        "The Slip resampler requires matching samplerate and capture_samplerate",
                     )
                 )
         # Checks for file-based capture devices

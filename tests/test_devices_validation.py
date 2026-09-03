@@ -574,3 +574,64 @@ def test_devices_validation_accepts_playback_stdout_type():
 
     assert errors == []
     assert warnings == []
+
+
+# === Resampler Rules ===
+
+def test_devices_validation_accepts_slip_resampler():
+    config = _base_config()
+    config["devices"]["resampler"] = {"type": "Slip"}
+
+    errors, warnings, _validator = _validate(config)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_devices_validation_accepts_slip_resampler_with_matching_capture_samplerate():
+    config = _base_config()
+    config["devices"]["resampler"] = {"type": "Slip"}
+    config["devices"]["capture_samplerate"] = config["devices"]["samplerate"]
+
+    errors, warnings, _validator = _validate(config)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_devices_validation_rejects_slip_resampler_with_differing_capture_samplerate():
+    config = _base_config()
+    config["devices"]["resampler"] = {"type": "Slip"}
+    config["devices"]["capture_samplerate"] = 44100
+
+    errors, _warnings, _validator = _validate(config)
+
+    assert (
+        "The Slip resampler requires matching samplerate and capture_samplerate"
+        in _error_messages(errors)
+    )
+
+
+def test_devices_validation_accepts_other_resamplers_with_differing_capture_samplerate():
+    for resampler in (
+        {"type": "Synchronous"},
+        {"type": "AsyncPoly", "interpolation": "Cubic"},
+        {"type": "AsyncSinc", "profile": "Balanced"},
+    ):
+        config = _base_config()
+        config["devices"]["resampler"] = resampler
+        config["devices"]["capture_samplerate"] = 44100
+
+        errors, warnings, _validator = _validate(config)
+
+        assert errors == [], resampler
+        assert warnings == [], resampler
+
+
+def test_devices_validation_rejects_unknown_resampler_type():
+    config = _base_config()
+    config["devices"]["resampler"] = {"type": "Nonexistent"}
+
+    errors, _warnings, _validator = _validate(config)
+
+    assert errors != []

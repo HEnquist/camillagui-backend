@@ -164,3 +164,53 @@ def test_pipeline_validation_rejects_output_channel_mismatch():
     errors, _warnings = _validate(config)
 
     assert "Pipeline outputs 1 channels, playback device has 2" in _error_messages(errors)
+
+# === LookaheadLimiter Processor Rules ===
+
+def _lookahead_limiter_processor(**overrides):
+    parameters = {
+        "channels": 2,
+        "attack": 2.0,
+        "attack_unit": "ms",
+        "release": 100.0,
+        "release_unit": "ms",
+    }
+    parameters.update(overrides)
+    return {"type": "LookaheadLimiter", "parameters": parameters}
+
+
+def test_pipeline_validation_accepts_lookahead_limiter_processor():
+    config = _base_config()
+    config["processors"]["lim"] = _lookahead_limiter_processor(
+        monitor_channels=[0, 1], process_channels=[0, 1], delay_processed_only=False
+    )
+    config["pipeline"].append({"type": "Processor", "name": "lim"})
+
+    errors, warnings = _validate(config)
+
+    assert errors == []
+    assert warnings == []
+    assert config["processors"]["lim"]["parameters"]["limit"] == 0.0
+
+
+def test_pipeline_validation_rejects_lookahead_limiter_processor_wrong_channel_count():
+    config = _base_config()
+    config["processors"]["lim"] = _lookahead_limiter_processor(channels=1)
+    config["pipeline"].append({"type": "Processor", "name": "lim"})
+
+    errors, _warnings = _validate(config)
+
+    assert (
+        "Processor 'lim' has wrong number of channels. Expected 2, found 1"
+        in _error_messages(errors)
+    )
+
+
+def test_pipeline_validation_rejects_lookahead_limiter_processor_bad_monitor_channel():
+    config = _base_config()
+    config["processors"]["lim"] = _lookahead_limiter_processor(monitor_channels=[0, 5])
+    config["pipeline"].append({"type": "Processor", "name": "lim"})
+
+    errors, _warnings = _validate(config)
+
+    assert errors != []

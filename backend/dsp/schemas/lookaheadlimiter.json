@@ -29,16 +29,13 @@
       "uniqueItems": true
     },
     "limit": {
-      "type": [
-        "number",
-        "null"
-      ],
+      "type": "number",
       "maximum": 0.0,
-      "default": null
+      "default": 0.0
     },
     "attack": {
       "type": "number",
-      "exclusiveMinimum": 0.0
+      "minimum": 0.0
     },
     "attack_unit": {
       "type": "string",
@@ -51,7 +48,7 @@
     },
     "release": {
       "type": "number",
-      "exclusiveMinimum": 0.0
+      "minimum": 0.0
     },
     "release_unit": {
       "type": "string",
