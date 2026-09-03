@@ -176,7 +176,7 @@ export class ProcessorsTab extends React.Component<
 }
 
 function hasChannelSelectors(processor: Processor): boolean {
-  return processor.type === "Compressor" || processor.type === "NoiseGate"
+  return processor.type === "Compressor" || processor.type === "NoiseGate" || processor.type === "LookaheadLimiter"
 }
 
 interface ProcessorViewProps {
@@ -255,12 +255,13 @@ const defaultParameters: {
       monitor_channels: [0, 1],
       process_channels: [0, 1],
       attack: 0.025,
+      attack_unit: "s",
       release: 1.0,
+      release_unit: "s",
       threshold: -25.0,
       factor: 5.0,
       makeup_gain: 15.0,
       soft_clip: false,
-      enable_clip: false,
       clip_limit: 0.0,
     },
   },
@@ -270,9 +271,24 @@ const defaultParameters: {
       monitor_channels: [0, 1],
       process_channels: [0, 1],
       attack: 0.025,
+      attack_unit: "s",
       release: 1.0,
+      release_unit: "s",
       threshold: -25.0,
       attenuation: 20.0,
+    },
+  },
+  LookaheadLimiter: {
+    Default: {
+      channels: 2,
+      monitor_channels: [0, 1],
+      process_channels: [0, 1],
+      limit: 0.0,
+      attack: 2.0,
+      attack_unit: "ms",
+      release: 100.0,
+      release_unit: "ms",
+      delay_processed_only: false,
     },
   },
   RACE: {
@@ -510,7 +526,13 @@ class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
     attack: {
       type: "float",
       desc: "attack",
-      tooltip: "Attack time in seconds",
+      tooltip: "Attack time, in the unit given by attack_unit",
+    },
+    attack_unit: {
+      type: "enum",
+      desc: "attack_unit",
+      options: ["ms", "us", "s", "samples"],
+      tooltip: "Unit for the attack time",
     },
     attenuation: {
       type: "float",
@@ -536,7 +558,13 @@ class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
     release: {
       type: "float",
       desc: "release",
-      tooltip: "Release time in seconds",
+      tooltip: "Release time, in the unit given by release_unit",
+    },
+    release_unit: {
+      type: "enum",
+      desc: "release_unit",
+      options: ["ms", "us", "s", "samples"],
+      tooltip: "Unit for the release time",
     },
     threshold: {
       type: "float",
@@ -556,7 +584,7 @@ class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
     delay: {
       type: "float",
       desc: "delay",
-      tooltip: "RACE delay",
+      tooltip: "RACE delay, in the unit given by delay_unit",
     },
     subsample_delay: {
       type: "bool",
@@ -566,8 +594,20 @@ class ProcessorParams extends React.Component<ProcessorParamsProps, unknown> {
     delay_unit: {
       type: "enum",
       desc: "delay_unit",
-      options: ["ms", "us", "mm", "samples"],
+      options: ["ms", "us", "s", "mm", "samples"],
       tooltip: "Unit for delay",
+    },
+    limit: {
+      type: "float",
+      desc: "limit",
+      tooltip: "Maximum output level in dB",
+    },
+    delay_processed_only: {
+      type: "bool",
+      desc: "delay_processed_only",
+      tooltip:
+        "Delay only the processed channels.<br>" +
+        "By default every channel is delayed, so that all channels stay time aligned",
     },
   }
 }

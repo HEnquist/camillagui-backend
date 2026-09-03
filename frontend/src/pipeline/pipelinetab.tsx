@@ -57,6 +57,7 @@ export class PipelineTab extends React.Component<
     stepIndex?: number
     data: ChartContent
     capture_channels: number
+    plot_at_volume: number
   }
 > {
   constructor(props: PipelineTabProps) {
@@ -71,6 +72,7 @@ export class PipelineTab extends React.Component<
         options: [{ name: "" }],
       },
       capture_channels: 2,
+      plot_at_volume: 0.0,
     }
   }
   componentDidMount() {
@@ -108,6 +110,7 @@ export class PipelineTab extends React.Component<
         config: config,
         samplerate: samplerate || config.devices.samplerate,
         channels: channels || this.state.capture_channels,
+        volume: this.state.plot_at_volume,
       }),
     }).then(
       (result) =>
@@ -235,6 +238,10 @@ export class PipelineTab extends React.Component<
                     this.plotFilterStep(this.state.stepIndex!, current.samplerate, current.channels)
                   }}
                   onClose={() => this.setState({ plotFilterStep: false })}
+                  volume={stepHasLoudness(config, this.state.stepIndex) ? this.state.plot_at_volume : undefined}
+                  onVolumeChange={(volume) =>
+                    this.setState({ plot_at_volume: volume }, () => this.plotFilterStep(this.state.stepIndex!))
+                  }
                 />
               )}
             </div>
@@ -244,6 +251,14 @@ export class PipelineTab extends React.Component<
       </ErrorBoundary>
     )
   }
+}
+
+/** True if the pipeline step at `index` is a filter step containing a Loudness filter. */
+function stepHasLoudness(config: Config, index: number | undefined): boolean {
+  if (index === undefined) return false
+  const step = config.pipeline?.[index]
+  if (step === undefined || step.type !== "Filter") return false
+  return step.names.some((name) => config.filters?.[name]?.type === "Loudness")
 }
 
 function usePipelineStepDndSort(stepIndex: number, updatePipeline: (update: Update<Pipeline>) => void) {

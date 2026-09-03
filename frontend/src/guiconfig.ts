@@ -30,17 +30,14 @@ export type CaptureType =
   | "Alsa"
   | "Asio"
   | "Wasapi"
-  | "Jack"
   | "CoreAudio"
-  | "Pulse"
   | "PipeWire"
   | "RawFile"
   | "WavFile"
   | "Stdin"
-  | "Bluez"
   | "SignalGenerator"
 
-export type PlaybackType = "Alsa" | "Asio" | "Wasapi" | "Jack" | "CoreAudio" | "Pulse" | "PipeWire" | "File" | "Stdout"
+export type PlaybackType = "Alsa" | "Asio" | "Wasapi" | "CoreAudio" | "PipeWire" | "File" | "Stdout"
 
 export interface ShortcutSection {
   section: string

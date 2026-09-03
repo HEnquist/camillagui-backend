@@ -25,13 +25,45 @@ export function ChartPopup(props: {
   data: ChartContent
   onChange: (item: string) => void
   onClose: () => void
+  /** Volume to evaluate at. Pass both to show a slider, for plots containing a Loudness filter. */
+  volume?: number
+  onVolumeChange?: (volume: number) => void
 }) {
+  const { volume, onVolumeChange } = props
   return (
     <ReactjsPopup open={props.open} onClose={props.onClose}>
       <CloseButton onClick={props.onClose} />
       <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
       <Chart onChange={props.onChange} data={props.data} />
+      {volume !== undefined && onVolumeChange !== undefined && (
+        <PlotVolumeSlider volume={volume} onChange={onVolumeChange} />
+      )}
     </ReactjsPopup>
+  )
+}
+
+/** Slider for the volume a Loudness filter is evaluated at, from -50 to +20 dB in 0.1 dB steps. */
+export function PlotVolumeSlider(props: { volume: number; onChange: (volume: number) => void }) {
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      <input
+        type="range"
+        min={-500}
+        max={200}
+        value={props.volume * 10.0}
+        onBlur={(e) => props.onChange(e.target.valueAsNumber / 10.0)}
+        onChange={(e) => props.onChange(e.target.valueAsNumber / 10.0)}
+        data-tooltip-html="Volume setting to evaluate filter at"
+        data-tooltip-id="main-tooltip"
+      />
+      <div>{props.volume} dB</div>
+    </div>
   )
 }
 

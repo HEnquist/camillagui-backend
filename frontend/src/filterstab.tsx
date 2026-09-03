@@ -29,8 +29,9 @@ import {
   ConvSubtypeOptions,
   DitherSubtypeOptions,
   FilterParameterValue,
+  PeqBand,
 } from "./camilladsp/config"
-import { Chart, ChartContent } from "./utilities/chart"
+import { Chart, ChartContent, PlotVolumeSlider } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
 import { doUpload, loadFiles, FileInfo } from "./utilities/files"
@@ -241,6 +242,27 @@ function isConvolutionFileFilter(filter: Filter): boolean {
 
 function isGraphicEqualizer(filter: Filter): boolean {
   return filter.type === "BiquadCombo" && filter.parameters.type === "GraphicEqualizer"
+}
+
+const peqBandTooltips = {
+  freq: "Band frequency in Hz. Bands must be listed with rising frequency",
+  q: "Band Q-value",
+  gain: "Band gain in dB. A band with zero gain is left out when the filter is built",
+}
+
+function isNPointPeq(filter: Filter): boolean {
+  return filter.type === "BiquadCombo" && filter.parameters.type === "NPointPeq"
+}
+
+/** Both `gains` and `bands` are arrays, so Array.isArray alone no longer narrows to numbers. */
+function asGains(value: FilterParameterValue): number[] | undefined {
+  return Array.isArray(value) && value.every((v) => typeof v === "number") ? (value as number[]) : undefined
+}
+
+function asBands(value: FilterParameterValue): PeqBand[] | undefined {
+  return Array.isArray(value) && value.every((v) => typeof v === "object" && v !== null)
+    ? (value as PeqBand[])
+    : undefined
 }
 
 interface FilterDefaults {
@@ -562,25 +584,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
                 onClick={this.toggleExpand}
               />
               {this.props.filter.type === "Loudness" ? (
-                <div
-                  style={{
-                    display: "inline-flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <input
-                    type="range"
-                    min={-500}
-                    max={200}
-                    value={this.state.plot_at_volume * 10.0}
-                    onBlur={(e) => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
-                    onChange={(e) => this.setPlotVolume(e.target.valueAsNumber / 10.0)}
-                    data-tooltip-html="Volume setting to evaluate filter at"
-                    data-tooltip-id="main-tooltip"
-                  />
-                  <div>{this.state.plot_at_volume} dB</div>
-                </div>
+                <PlotVolumeSlider volume={this.state.plot_at_volume} onChange={this.setPlotVolume} />
               ) : null}
             </div>
           </div>
@@ -603,6 +607,21 @@ function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter>
 }
 
 const hiddenParameters = ["skip_bytes_lines", "read_bytes_lines"]
+
+const customRenderedParameters = ["gains", "bands"]
+
+type ParameterInfo =
+  | {
+      type: "text" | "int" | "float" | "floatlist" | "bool" | "optional_bool" | "optional_int" | "optional_float"
+      desc: string
+      tooltip: string
+    }
+  | {
+      type: "enum"
+      desc: string
+      tooltip: string
+      options: string[] | { value: string | null; label: string }[]
+    }
 
 interface FilterParamsProps {
   filter: Filter
@@ -684,8 +703,8 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
 
   private addBand() {
     this.props.updateFilter((filter) => {
-      const gains = filter.parameters.gains
-      if (Array.isArray(gains)) {
+      const gains = asGains(filter.parameters.gains)
+      if (gains) {
         gains.push(0.0)
       }
     })
@@ -693,8 +712,8 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
 
   private removeBand() {
     this.props.updateFilter((filter) => {
-      const gains = filter.parameters.gains
-      if (Array.isArray(gains)) {
+      const gains = asGains(filter.parameters.gains)
+      if (gains) {
         gains.pop()
       }
     })
@@ -703,8 +722,8 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
   private adjustBand(band: number, value: string) {
     const val = parseFloat(value)
     this.props.updateFilter((filter) => {
-      const gains = filter.parameters.gains
-      if (Array.isArray(gains)) {
+      const gains = asGains(filter.parameters.gains)
+      if (gains) {
         gains[band] = val
       }
     })
@@ -772,60 +791,134 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
               justifyContent: "center",
             }}
           >
-            {Array.isArray(filter.parameters.gains) &&
-              filter.parameters.gains.map((gain: number, index: number) => (
+            {asGains(filter.parameters.gains)?.map((gain: number, index: number) => (
+              <div
+                key={"eqslider" + index}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 <div
-                  key={"eqslider" + index}
                   style={{
                     display: "flex",
-                    flexDirection: "column",
+                    flexDirection: "row",
+                    justifyContent: "center",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {gain.toFixed(1)}
-                  </div>
-                  <div className="eqslider-wrapper">
-                    <input
-                      className="eqslider"
-                      type="range"
-                      min="-10"
-                      max="10"
-                      value={gain}
-                      step="0.1"
-                      onChange={(e) => this.adjustBand(index, e.target.value)}
-                      onDoubleClick={() => this.adjustBand(index, "0.0")}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {this.eqBandFrequency(
-                      typeof filter.parameters.freq_min === "number" ? filter.parameters.freq_min : 0,
-                      typeof filter.parameters.freq_max === "number" ? filter.parameters.freq_max : 0,
-                      Array.isArray(filter.parameters.gains) ? filter.parameters.gains.length : 0,
-                      index,
-                    )}
-                  </div>
+                  {gain.toFixed(1)}
                 </div>
-              ))}
+                <div className="eqslider-wrapper">
+                  <input
+                    className="eqslider"
+                    type="range"
+                    min="-10"
+                    max="10"
+                    value={gain}
+                    step="0.1"
+                    onChange={(e) => this.adjustBand(index, e.target.value)}
+                    onDoubleClick={() => this.adjustBand(index, "0.0")}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                  }}
+                >
+                  {this.eqBandFrequency(
+                    typeof filter.parameters.freq_min === "number" ? filter.parameters.freq_min : 0,
+                    typeof filter.parameters.freq_max === "number" ? filter.parameters.freq_max : 0,
+                    Array.isArray(filter.parameters.gains) ? filter.parameters.gains.length : 0,
+                    index,
+                  )}
+                </div>
+              </div>
+            ))}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <AddButton tooltip="Add one band" onClick={this.addBand} />
               <DeleteButton tooltip="Remove one band" onClick={this.removeBand} />
             </div>
           </div>
         )}
+        {isNPointPeq(filter) && this.renderPeqBands(asBands(filter.parameters.bands) ?? [], errors)}
       </div>
     )
+  }
+
+  /**
+   * One row per band, with the role its position gives it. The DSP leaves out a
+   * band whose gain is 0, so that is how a band is disabled without removing it.
+   */
+  private renderPeqBands(bands: PeqBand[], errors: Errors) {
+    const bandErrors = errors.forSubpath("parameters", "bands")
+    const role = (index: number) => (index === 0 ? "low shelf" : index === bands.length - 1 ? "high shelf" : "peaking")
+    return (
+      <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
+        <div style={{ display: "flex", flexDirection: "row", gap: "5px", textAlign: "center" }}>
+          <div style={{ width: "6em" }}>freq</div>
+          <div style={{ width: "5em" }}>Q</div>
+          <div style={{ width: "5em" }}>gain</div>
+          <div style={{ width: "6em" }} />
+        </div>
+        {bands.map((band, index) => (
+          <div
+            key={"peqband" + index}
+            style={{ display: "flex", flexDirection: "row", gap: "5px", alignItems: "center" }}
+          >
+            {(["freq", "q", "gain"] as const).map((field) => (
+              <FloatInput
+                key={field}
+                value={band[field]}
+                error={bandErrors.messageFor(String(index), field) !== undefined}
+                style={{ width: field === "freq" ? "6em" : "5em" }}
+                tooltip={peqBandTooltips[field]}
+                onChange={(value) => this.setPeqBand(index, field, value)}
+              />
+            ))}
+            <div style={{ width: "6em", textAlign: "left" }}>{role(index)}</div>
+            <DeleteButton
+              tooltip={bands.length > 2 ? "Remove this band" : "At least two bands are needed"}
+              smallButton={true}
+              onClick={() => this.removePeqBand(index)}
+            />
+          </div>
+        ))}
+        <ErrorMessage message={bandErrors.rootMessage()} />
+        <div style={{ display: "flex", flexDirection: "row" }}>
+          <AddButton tooltip="Add one band" onClick={this.addPeqBand} />
+        </div>
+      </div>
+    )
+  }
+
+  private setPeqBand(index: number, field: keyof PeqBand, value: number) {
+    this.props.updateFilter((filter) => {
+      const bands = asBands(filter.parameters.bands)
+      if (bands) bands[index][field] = value
+    })
+  }
+
+  /**
+   * Insert after the band being extended, keeping the list in rising frequency
+   * order, which the DSP requires. A new last band takes over as the high shelf.
+   */
+  private addPeqBand() {
+    this.props.updateFilter((filter) => {
+      const bands = asBands(filter.parameters.bands)
+      if (!bands || bands.length === 0) return
+      const last = bands[bands.length - 1]
+      bands.push({ freq: last.freq, q: last.q, gain: 0.0 })
+    })
+  }
+
+  private removePeqBand(index: number) {
+    this.props.updateFilter((filter) => {
+      const bands = asBands(filter.parameters.bands)
+      // Two bands are the minimum, for the low and high shelf.
+      if (bands && bands.length > 2) bands.splice(index, 1)
+    })
   }
 
   private renderFilterParams(parameters: { [p: string]: unknown }, errors: Errors) {
@@ -833,7 +926,10 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       if (parameter === "type")
         // 'type' is already rendered by parent component
         return null
-      const info = this.parameterInfos[parameter]
+      if (customRenderedParameters.includes(parameter))
+        // rendered by the GraphicEqualizer sliders or the NPointPeq band rows
+        return null
+      const info = this.parameterInfoOverrides[this.props.filter.type]?.[parameter] ?? this.parameterInfos[parameter]
       if (info === undefined) {
         console.log(`Rendering for filter parameter '${parameter}' is not implemented`)
         return null
@@ -889,13 +985,8 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
         return <OptionalBoolOption value={propValue as boolean | null} {...commonProps} key={commonProps.key} />
       if (info.type === "floatlist")
         return <FloatListOption value={propValue as number[]} {...commonProps} key={commonProps.key} />
-      if (info.type === "enum") {
-        let options = info.options
-        if (parameter === "fader" && this.props.filter.type === "Volume") {
-          options = VolumeFaders
-        }
-        return <EnumOption value={propValue as string} {...commonProps} key={commonProps.key} options={options} />
-      }
+      if (info.type === "enum")
+        return <EnumOption value={propValue as string} {...commonProps} key={commonProps.key} options={info.options} />
       return null
     })
   }
@@ -947,20 +1038,9 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
     )
   }
 
-  parameterInfos: {
-    [type: string]:
-      | {
-          type: "text" | "int" | "float" | "floatlist" | "bool" | "optional_bool" | "optional_int" | "optional_float"
-          desc: string
-          tooltip: string
-        }
-      | {
-          type: "enum"
-          desc: string
-          tooltip: string
-          options: string[] | { value: string | null; label: string }[]
-        }
-  } = {
+  // Rendering info per parameter name. A few names mean different things in
+  // different filters, those are listed in parameterInfoOverrides below.
+  parameterInfos: { [parameter: string]: ParameterInfo } = {
     a: {
       type: "floatlist",
       desc: "a",
@@ -1026,10 +1106,21 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "clip_limit",
       tooltip: "Clip limit in dB",
     },
+    attack: {
+      type: "float",
+      desc: "attack",
+      tooltip: "Attack time, the limiter looks this far ahead for peaks<br>The output is delayed by the same amount",
+    },
+    attack_unit: {
+      type: "enum",
+      desc: "attack_unit",
+      options: ["ms", "us", "s", "samples"],
+      tooltip: "Unit for the attack time",
+    },
     delay: {
       type: "float",
       desc: "delay",
-      tooltip: "Delay in ms or samples",
+      tooltip: "Delay, in the unit given by delay_unit",
     },
     filename: {
       type: "text",
@@ -1080,6 +1171,18 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "high_boost",
       tooltip: "Volume boost for high frequencies when volume is at reference_level - 20dB",
     },
+    high_freq: {
+      type: "optional_float",
+      desc: "high_freq",
+      tooltip: "Corner frequency of the high shelf, in Hz.<br>Leave empty for the default of 3500 Hz",
+    },
+    high_q: {
+      type: "optional_float",
+      desc: "high_q",
+      tooltip:
+        "Q-value of the high shelf, between 0.1 and 2.0.<br>" +
+        "Leave empty for the default, which gives a 12 dB/octave slope",
+    },
     inverted: {
       type: "optional_bool",
       desc: "inverted",
@@ -1100,6 +1203,18 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "low_boost",
       tooltip: "Volume boost for low frequencies when volume is at reference_level - 20dB",
     },
+    low_freq: {
+      type: "optional_float",
+      desc: "low_freq",
+      tooltip: "Corner frequency of the low shelf, in Hz.<br>Leave empty for the default of 70 Hz",
+    },
+    low_q: {
+      type: "optional_float",
+      desc: "low_q",
+      tooltip:
+        "Q-value of the low shelf, between 0.1 and 2.0.<br>" +
+        "Leave empty for the default, which gives a 12 dB/octave slope",
+    },
     mute: { type: "optional_bool", desc: "mute", tooltip: "Mute" },
     normalize_at_dc: {
       type: "bool",
@@ -1119,9 +1234,9 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "Q target",
       tooltip: "Target Q-value",
     },
-    ramp_time: {
+    ramp_time_ms: {
       type: "optional_float",
-      desc: "ramp_time",
+      desc: "ramp_time_ms",
       tooltip: "Volume change ramp time in ms",
     },
     read_bytes_lines: {
@@ -1136,6 +1251,17 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
         "Volume level at which low_boost/high_boost is starting to be applied.<br>" +
         "Boost is scaled up linearly to reach the full value at reference_level - 20dB.<br>" +
         "Above reference_level only gain is applied.",
+    },
+    release: {
+      type: "float",
+      desc: "release",
+      tooltip: "Release time, how quickly the gain reduction is released after a peak",
+    },
+    release_unit: {
+      type: "enum",
+      desc: "release_unit",
+      options: ["ms", "us", "s", "samples"],
+      tooltip: "Unit for the release time",
     },
     skip_bytes_lines: {
       type: "optional_int",
@@ -1157,10 +1283,10 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "subsample",
       tooltip: "Use subsample precision for delays",
     },
-    unit: {
+    delay_unit: {
       type: "enum",
-      desc: "unit",
-      options: ["ms", "us", "mm", "samples"],
+      desc: "delay_unit",
+      options: ["ms", "us", "s", "mm", "samples"],
       tooltip: "Unit for delay",
     },
     values: {
@@ -1173,6 +1299,27 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
       desc: "scale",
       options: ["dB", "linear"],
       tooltip: "Scale for gain",
+    },
+  }
+
+  // Parameters whose meaning depends on the filter they belong to.
+  parameterInfoOverrides: {
+    [filterType: string]: { [parameter: string]: ParameterInfo }
+  } = {
+    Volume: {
+      fader: {
+        type: "enum",
+        desc: "fader",
+        options: VolumeFaders,
+        tooltip: "Fader to react to",
+      },
+    },
+    LookaheadLimiter: {
+      limit: {
+        type: "float",
+        desc: "limit",
+        tooltip: "Maximum output level in dB",
+      },
     },
   }
 

@@ -12,11 +12,11 @@ export function defaultConfig(): Config {
 
       //Silence
       silence_threshold: null,
-      silence_timeout: null,
+      silence_timeout_s: null,
 
       //Rate adjust
       enable_rate_adjust: null,
-      adjust_period: null,
+      adjust_interval_s: null,
       target_level: null,
 
       //Resampler
@@ -25,13 +25,13 @@ export function defaultConfig(): Config {
 
       //Rate monitoring
       stop_on_rate_change: null,
-      rate_measure_interval: null,
+      rate_measure_interval_s: null,
 
       //Multithreading
       multithreaded: null,
       worker_threads: null,
 
-      volume_ramp_time: null,
+      volume_ramp_time_ms: null,
       volume_limit: null,
 
       capture: {
@@ -272,7 +272,8 @@ export type FilterType =
   | "Volume"
   | "Loudness"
   | "DiffEq"
-  | "Limiter"
+  | "Clipper"
+  | "LookaheadLimiter"
   | "Dither"
 
 export const FilterTypeOptions: { value: FilterType; label: string }[] = [
@@ -290,7 +291,11 @@ export const FilterTypeOptions: { value: FilterType; label: string }[] = [
   { value: "Volume", label: "Volume : Volume control" },
   { value: "Loudness", label: "Loudness: Loudness control" },
   { value: "DiffEq", label: "DiffEq : Generic difference equation" },
-  { value: "Limiter", label: "Limiter : Limit by soft or hard clipping" },
+  { value: "Clipper", label: "Clipper : Limit by soft or hard clipping" },
+  {
+    value: "LookaheadLimiter",
+    label: "LookaheadLimiter : Limit without distortion, at the cost of some delay",
+  },
   { value: "Dither", label: "Dither : Apply dither and truncate" },
 ]
 
@@ -316,6 +321,7 @@ export type FilterSubtype =
   | "LinkwitzRileyLowpass"
   | "LinkwitzRileyHighpass"
   | "Tilt"
+  | "NPointPeq"
   | "GraphicEqualizer"
   | "Raw"
   | "Wav"
@@ -391,6 +397,10 @@ export const BiquadComboSubtypeOptions: {
   },
   { value: "Tilt", label: "Tilt : Tilt equalizer" },
   {
+    value: "NPointPeq",
+    label: "NPointPeq : Parametric equalizer with shelves at the ends",
+  },
+  {
     value: "GraphicEqualizer",
     label: "GraphicEqualizer : N-band graphic equalizer",
   },
@@ -443,7 +453,7 @@ export const DitherSubtypeOptions: { value: FilterSubtype; label: string }[] = [
 export const DefaultFilterParameters: {
   [type: string]: {
     [subtype: string]: {
-      [parameter: string]: string | number | number[] | boolean | null
+      [parameter: string]: FilterParameterValue
     }
   }
 } = {
@@ -499,6 +509,14 @@ export const DefaultFilterParameters: {
       freq: 1000,
     },
     Tilt: { type: "Tilt", gain: 0.0 },
+    NPointPeq: {
+      type: "NPointPeq",
+      bands: [
+        { freq: 100.0, q: 0.7, gain: 0.0 },
+        { freq: 1000.0, q: 0.7, gain: 0.0 },
+        { freq: 5000.0, q: 0.7, gain: 0.0 },
+      ],
+    },
     GraphicEqualizer: {
       type: "GraphicEqualizer",
       freq_min: 20.0,
@@ -519,19 +537,23 @@ export const DefaultFilterParameters: {
     Dummy: { type: "Dummy", length: 1024 },
   },
   Delay: {
-    Default: { delay: 0.0, unit: "ms", subsample: false },
+    Default: { delay: 0.0, delay_unit: "ms", subsample: false },
   },
   Gain: {
     Default: { gain: 0.0, scale: "dB", inverted: false, mute: false },
   },
   Volume: {
-    Default: { ramp_time: null, limit: null, fader: "Aux1" },
+    Default: { ramp_time_ms: null, limit: null, fader: "Aux1" },
   },
   Loudness: {
     Default: {
       reference_level: 0.0,
       high_boost: 5,
       low_boost: 5,
+      high_freq: null,
+      low_freq: null,
+      high_q: null,
+      low_q: null,
       fader: "Main",
       attenuate_mid: false,
     },
@@ -563,8 +585,17 @@ export const DefaultFilterParameters: {
     Shibata192: { type: "Shibata192", bits: 16 },
     ShibataLow192: { type: "ShibataLow192", bits: 16 },
   },
-  Limiter: {
+  Clipper: {
     Default: { soft_clip: false, clip_limit: 0.0 },
+  },
+  LookaheadLimiter: {
+    Default: {
+      limit: 0.0,
+      attack: 2.0,
+      attack_unit: "ms",
+      release: 100.0,
+      release_unit: "ms",
+    },
   },
 }
 
@@ -638,7 +669,9 @@ export function defaultProcessor() {
       monitor_channels: [0, 1],
       process_channels: [0, 1],
       attack: 0.025,
+      attack_unit: "s",
       release: 1.0,
+      release_unit: "s",
       threshold: -25.0,
       factor: 5.0,
       makeup_gain: 15.0,
@@ -784,11 +817,11 @@ export interface Devices {
 
   //Silence
   silence_threshold: number | null
-  silence_timeout: number | null
+  silence_timeout_s: number | null
 
   //Rate adjust
   enable_rate_adjust: boolean | null
-  adjust_period: number | null
+  adjust_interval_s: number | null
   target_level: number | null
 
   //Resampler
@@ -797,10 +830,10 @@ export interface Devices {
 
   //Rate monitoring
   stop_on_rate_change: boolean | null
-  rate_measure_interval: number | null
+  rate_measure_interval_s: number | null
 
   //Volume control settings
-  volume_ramp_time: number | null
+  volume_ramp_time_ms: number | null
   volume_limit: number | null
 
   //Multithreading
@@ -811,7 +844,7 @@ export interface Devices {
   playback: PlaybackDevice
 }
 
-export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous"
+export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous" | "Slip"
 export type AsyncSincProfile = "VeryFast" | "Fast" | "Balanced" | "Accurate" | "Free"
 export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]
 export type AsyncSincInterpolation = "Nearest" | "Linear" | "Quadratic" | "Cubic"
@@ -837,6 +870,10 @@ export const ResamplerTypeOptions: { value: ResamplerType; label: string }[] = [
   {
     value: "Synchronous",
     label: "Synchronous",
+  },
+  {
+    value: "Slip",
+    label: "Slip",
   },
 ]
 
@@ -896,6 +933,7 @@ export type Resampler =
     }
   | { type: "AsyncPoly"; interpolation: AsyncPolyInterpolation }
   | { type: "Synchronous" }
+  | { type: "Slip" }
 
 export function defaultResampler(type: ResamplerType): Resampler {
   if (type === "AsyncSinc") {
@@ -907,6 +945,10 @@ export function defaultResampler(type: ResamplerType): Resampler {
     return {
       type: "AsyncPoly",
       interpolation: "Cubic",
+    }
+  } else if (type === "Slip") {
+    return {
+      type: "Slip",
     }
   }
   return {
@@ -964,22 +1006,10 @@ export type CaptureDevice =
       labels: (string | null)[] | null
     }
   | {
-      type: "Jack"
-      channels: number
-      device: string
-      labels: (string | null)[] | null
-    }
-  | {
       type: "CoreAudio"
       channels: number
       format: CoreAudioFormat | null
       device: string | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "Pulse"
-      channels: number
-      device: string
       labels: (string | null)[] | null
     }
   | {
@@ -1014,14 +1044,6 @@ export type CaptureDevice =
       extra_samples: number | null
       skip_bytes: number | null
       read_bytes: number | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "Bluez"
-      channels: number
-      format: BinaryFormat
-      service: string | null
-      dbus_path: string
       labels: (string | null)[] | null
     }
   | {
@@ -1066,14 +1088,12 @@ export type PlaybackDevice =
       format: AsioFormat | null
       device: string
     }
-  | { type: "Jack"; channels: number; device: string }
   | {
       type: "Alsa"
       channels: number
       format: AlsaFormat | null
       device: string
     }
-  | { type: "Pulse"; channels: number; device: string }
   | {
       type: "PipeWire"
       channels: number
@@ -1095,8 +1115,9 @@ export type PlaybackDevice =
       format: BinaryFormat
       filename: string
       wav_header: boolean | null
+      use_rf64: boolean | null
     }
-  | { type: "Stdout"; channels: number; format: BinaryFormat }
+  | { type: "Stdout"; channels: number; format: BinaryFormat; wav_header: boolean | null }
 
 export type BinaryFormat = "S16_LE" | "S24_3_LE" | "S24_4_LJ_LE" | "S24_4_RJ_LE" | "S32_LE" | "F32_LE" | "F64_LE"
 
@@ -1332,7 +1353,18 @@ export interface Processor {
   parameters: { [name: string]: ProcessorParameterValue }
 }
 
-export type FilterParameterValue = string | number | number[] | boolean | null
+export type FilterParameterValue = string | number | number[] | boolean | null | PeqBand[]
+
+/**
+ * One band of an NPointPeq parametric equalizer. The role follows the position
+ * in the list: the first band is a low shelf, the last a high shelf, and the
+ * ones in between are peaking filters.
+ */
+export interface PeqBand {
+  freq: number
+  q: number
+  gain: number
+}
 export type ProcessorParameterValue = string | number | number[] | boolean | null
 
 export type Mixers = {

@@ -84,7 +84,6 @@ function getPlaybackSamplerateDescription(devices: Devices): string {
   return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
 }
 
-// TODO add volume_ramp_time
 // TODO redo resampler config
 
 export function DevicesTab(props: {
@@ -339,11 +338,11 @@ function SilenceOptions(props: {
         onChange={(silenceThreshold) => props.onChange((devices) => (devices.silence_threshold = silenceThreshold))}
       />
       <OptionalFloatOption
-        value={props.devices.silence_timeout}
-        error={props.errors.messageFor("silence_timeout")}
-        desc="silence_timeout"
+        value={props.devices.silence_timeout_s}
+        error={props.errors.messageFor("silence_timeout_s")}
+        desc="silence_timeout_s"
         tooltip="Pause processing after this many seconds of silence"
-        onChange={(silenceTimeout) => props.onChange((devices) => (devices.silence_timeout = silenceTimeout))}
+        onChange={(silenceTimeout) => props.onChange((devices) => (devices.silence_timeout_s = silenceTimeout))}
       />
     </Box>
   )
@@ -351,7 +350,7 @@ function SilenceOptions(props: {
 
 function RateAdjustOptions(props: { devices: Devices; errors: Errors; onChange: (update: Update<Devices>) => void }) {
   const playbackDeviceIsOneOf = (types: string[]) => types.includes(props.devices.playback.type)
-  if (playbackDeviceIsOneOf(["File", "Stdout", "Pulse"])) return null
+  if (playbackDeviceIsOneOf(["File", "Stdout"])) return null
   return (
     <Box title="Rate adjust">
       <OptionalBoolOption
@@ -361,12 +360,12 @@ function RateAdjustOptions(props: { devices: Devices; errors: Errors; onChange: 
         tooltip="Enable rate adjust"
         onChange={(enableRateAdjust) => props.onChange((devices) => (devices.enable_rate_adjust = enableRateAdjust))}
       />
-      <OptionalIntOption
-        value={props.devices.adjust_period}
-        error={props.errors.messageFor("adjust_period")}
-        desc="adjust_period"
+      <OptionalFloatOption
+        value={props.devices.adjust_interval_s}
+        error={props.errors.messageFor("adjust_interval_s")}
+        desc="adjust_interval_s"
         tooltip="Delay in seconds between rate adjustments"
-        onChange={(adjustPeriod) => props.onChange((devices) => (devices.adjust_period = adjustPeriod))}
+        onChange={(adjustInterval) => props.onChange((devices) => (devices.adjust_interval_s = adjustInterval))}
       />
       <OptionalIntOption
         value={props.devices.target_level}
@@ -533,12 +532,12 @@ function RateMonitoringOptions(props: {
   return (
     <Box title="Capture rate monitoring">
       <OptionalFloatOption
-        value={props.devices.rate_measure_interval}
-        error={props.errors.messageFor("rate_measure_interval")}
-        desc="rate_measure_interval"
+        value={props.devices.rate_measure_interval_s}
+        error={props.errors.messageFor("rate_measure_interval_s")}
+        desc="rate_measure_interval_s"
         tooltip="Interval for rate measurements, in seconds"
         onChange={(rateMeasureInterval) =>
-          props.onChange((devices) => (devices.rate_measure_interval = rateMeasureInterval))
+          props.onChange((devices) => (devices.rate_measure_interval_s = rateMeasureInterval))
         }
       />
       <OptionalBoolOption
@@ -589,11 +588,11 @@ function VolumeOptions(props: {
   return (
     <Box title="Volume control settings">
       <OptionalFloatOption
-        value={props.devices.volume_ramp_time}
-        error={props.errors.messageFor("volume_ramp_time")}
-        desc="volume_ramp_time"
+        value={props.devices.volume_ramp_time_ms}
+        error={props.errors.messageFor("volume_ramp_time_ms")}
+        desc="volume_ramp_time_ms"
         tooltip="Ramp time for main volume control, in milliseconds"
-        onChange={(volumeRampTime) => props.onChange((devices) => (devices.volume_ramp_time = volumeRampTime))}
+        onChange={(volumeRampTime) => props.onChange((devices) => (devices.volume_ramp_time_ms = volumeRampTime))}
       />
       <OptionalFloatOption
         value={props.devices.volume_limit}
@@ -643,12 +642,6 @@ function CaptureOptions(props: {
       device: null,
       labels: null,
     },
-    Pulse: {
-      type: "Pulse",
-      channels: 2,
-      device: "enter device name...",
-      labels: null,
-    },
     PipeWire: {
       type: "PipeWire",
       channels: 2,
@@ -675,7 +668,6 @@ function CaptureOptions(props: {
       device: "enter device name...",
       labels: null,
     },
-    Jack: { type: "Jack", channels: 2, device: "default", labels: null },
     Stdin: {
       type: "Stdin",
       channels: 2,
@@ -699,14 +691,6 @@ function CaptureOptions(props: {
       type: "WavFile",
       filename: "capture.wav",
       extra_samples: null,
-      labels: null,
-    },
-    Bluez: {
-      type: "Bluez",
-      service: null,
-      dbus_path: "dbus_path",
-      format: "S16_LE",
-      channels: 2,
       labels: null,
     },
     SignalGenerator: {
@@ -822,8 +806,7 @@ function CaptureOptions(props: {
               devices.capture.type === "Alsa" ||
               devices.capture.type === "Asio" ||
               devices.capture.type === "Wasapi" ||
-              devices.capture.type === "CoreAudio" ||
-              devices.capture.type === "Jack"
+              devices.capture.type === "CoreAudio"
             ) {
               devices.capture.device = device
             }
@@ -856,10 +839,7 @@ function CaptureOptions(props: {
               capture.format = format as CoreAudioFormat | null
             } else if (capture.type === "Wasapi") {
               capture.format = format as WasapiFormat | null
-            } else if (
-              format !== null &&
-              (capture.type === "Stdin" || capture.type === "RawFile" || capture.type === "Bluez")
-            ) {
+            } else if (format !== null && (capture.type === "Stdin" || capture.type === "RawFile")) {
               capture.format = format as BinaryFormat
             }
           })
@@ -891,8 +871,7 @@ function CaptureOptions(props: {
           }
         />
       )}
-      {(capture.type === "Bluez" ||
-        capture.type === "RawFile" ||
+      {(capture.type === "RawFile" ||
         capture.type === "Stdin" ||
         capture.type === "CoreAudio" ||
         capture.type === "Alsa" ||
@@ -915,7 +894,7 @@ function CaptureOptions(props: {
                 capture.format = format as CoreAudioFormat | null
               } else if (capture.type === "Wasapi") {
                 capture.format = format as WasapiFormat | null
-              } else if (capture.type === "Stdin" || capture.type === "RawFile" || capture.type === "Bluez") {
+              } else if (capture.type === "Stdin" || capture.type === "RawFile") {
                 capture.format = format as BinaryFormat
               }
             })
@@ -1048,21 +1027,6 @@ function CaptureOptions(props: {
               buttonSize="small"
               enabled={capture.device !== null && capture.device !== ""}
             />
-          }
-        />
-      )}
-      {capture.type === "Pulse" && (
-        <TextOption
-          value={capture.device}
-          error={errors.messageFor("device")}
-          desc="device"
-          tooltip="Name of device"
-          onChange={(device) =>
-            onChange((devices) => {
-              if (devices.capture.type === "Pulse") {
-                devices.capture.device = device
-              }
-            })
           }
         />
       )}
@@ -1206,36 +1170,6 @@ function CaptureOptions(props: {
               onChange((devices) => {
                 if (devices.capture.type === "RawFile" || devices.capture.type === "Stdin") {
                   devices.capture.read_bytes = read_bytes
-                }
-              })
-            }
-          />
-        </>
-      )}
-      {capture.type === "Bluez" && (
-        <>
-          <OptionalTextOption
-            value={capture.service}
-            error={errors.messageFor("service")}
-            desc="service"
-            tooltip="Name of d-bus service"
-            onChange={(service) =>
-              onChange((devices) => {
-                if (devices.capture.type === "Bluez") {
-                  devices.capture.service = service
-                }
-              })
-            }
-          />
-          <TextOption
-            value={capture.dbus_path}
-            error={errors.messageFor("dbus_path")}
-            desc="dbus_path"
-            tooltip="d-bus path to Bluez"
-            onChange={(dbus_path) =>
-              onChange((devices) => {
-                if (devices.capture.type === "Bluez") {
-                  devices.capture.dbus_path = dbus_path
                 }
               })
             }
@@ -1392,7 +1326,6 @@ function PlaybackOptions(props: {
       device: null,
       exclusive: null,
     },
-    Pulse: { type: "Pulse", channels: 2, device: "enter device name..." },
     PipeWire: {
       type: "PipeWire",
       channels: 2,
@@ -1415,14 +1348,14 @@ function PlaybackOptions(props: {
       format: null,
       device: "enter device name...",
     },
-    Jack: { type: "Jack", channels: 2, device: "default" },
-    Stdout: { type: "Stdout", channels: 2, format: "S32_LE" },
+    Stdout: { type: "Stdout", channels: 2, format: "S32_LE", wav_header: null },
     File: {
       type: "File",
       channels: 2,
       format: "S32_LE",
       filename: "output.raw",
       wav_header: false,
+      use_rf64: null,
     },
   }
   const { onChange, playback, errors, supported_playback_types } = props
@@ -1471,8 +1404,7 @@ function PlaybackOptions(props: {
               devices.playback.type === "Alsa" ||
               devices.playback.type === "Asio" ||
               devices.playback.type === "Wasapi" ||
-              devices.playback.type === "CoreAudio" ||
-              devices.playback.type === "Jack"
+              devices.playback.type === "CoreAudio"
             ) {
               devices.playback.device = device
             }
@@ -1645,21 +1577,6 @@ function PlaybackOptions(props: {
           }
         />
       )}
-      {playback.type === "Pulse" && (
-        <TextOption
-          value={playback.device}
-          error={errors.messageFor("device")}
-          desc="device"
-          tooltip="Name of device"
-          onChange={(device) =>
-            onChange((devices) => {
-              if (devices.playback.type === "Pulse") {
-                devices.playback.device = device
-              }
-            })
-          }
-        />
-      )}
       {(playback.type === "Wasapi" || playback.type === "CoreAudio") && (
         <OptionalBoolOption
           value={playback.exclusive}
@@ -1691,40 +1608,55 @@ function PlaybackOptions(props: {
         />
       )}
       {playback.type === "File" && (
-        <>
-          <TextOption
-            value={playback.filename}
-            error={errors.messageFor("filename")}
-            warning={
-              availableAudioFiles.some((f) => f.name === playback.filename)
-                ? "This file already exists and will be overwritten"
-                : undefined
-            }
-            desc="filename"
-            tooltip="Filename including path"
-            onChange={(filename) => {
-              if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
-              onChange((devices) => {
-                if (devices.playback.type === "File") {
-                  devices.playback.filename = filename
-                }
-              })
-            }}
-          />
-          <OptionalBoolOption
-            value={playback.wav_header}
-            error={errors.messageFor("device")}
-            desc="wav_header"
-            tooltip="Write output as a wav file"
-            onChange={(wav_header) =>
-              onChange((devices) => {
-                if (devices.playback.type === "File") {
-                  devices.playback.wav_header = wav_header
-                }
-              })
-            }
-          />
-        </>
+        <TextOption
+          value={playback.filename}
+          error={errors.messageFor("filename")}
+          warning={
+            availableAudioFiles.some((f) => f.name === playback.filename)
+              ? "This file already exists and will be overwritten"
+              : undefined
+          }
+          desc="filename"
+          tooltip="Filename including path"
+          onChange={(filename) => {
+            if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
+            onChange((devices) => {
+              if (devices.playback.type === "File") {
+                devices.playback.filename = filename
+              }
+            })
+          }}
+        />
+      )}
+      {(playback.type === "File" || playback.type === "Stdout") && (
+        <OptionalBoolOption
+          value={playback.wav_header}
+          error={errors.messageFor("wav_header")}
+          desc="wav_header"
+          tooltip="Write output as a wav file"
+          onChange={(wav_header) =>
+            onChange((devices) => {
+              if (devices.playback.type === "File" || devices.playback.type === "Stdout") {
+                devices.playback.wav_header = wav_header
+              }
+            })
+          }
+        />
+      )}
+      {playback.type === "File" && (
+        <OptionalBoolOption
+          value={playback.use_rf64}
+          error={errors.messageFor("use_rf64")}
+          desc="use_rf64"
+          tooltip="Write an RF64 header, to allow files larger than 4 GB.<br>Requires wav_header and a seekable file"
+          onChange={(use_rf64) =>
+            onChange((devices) => {
+              if (devices.playback.type === "File") {
+                devices.playback.use_rf64 = use_rf64
+              }
+            })
+          }
+        />
       )}
       {playback.type === "PipeWire" && (
         <>

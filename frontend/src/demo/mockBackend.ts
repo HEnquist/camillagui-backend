@@ -109,19 +109,8 @@ function demoPathsAreValid(config: Config): string[] {
 }
 
 const BACKENDS = {
-  playback: ["Alsa", "CoreAudio", "Wasapi", "Jack", "Pulse", "PipeWire", "File", "Stdout"],
-  capture: [
-    "Alsa",
-    "CoreAudio",
-    "Wasapi",
-    "Jack",
-    "Pulse",
-    "PipeWire",
-    "Stdin",
-    "RawFile",
-    "WavFile",
-    "SignalGenerator",
-  ],
+  playback: ["Alsa", "CoreAudio", "Wasapi", "PipeWire", "File", "Stdout"],
+  capture: ["Alsa", "CoreAudio", "Wasapi", "PipeWire", "Stdin", "RawFile", "WavFile", "SignalGenerator"],
 } as const
 
 const DEVICE_OPTIONS: Record<string, [string, string][]> = {
@@ -140,11 +129,6 @@ const DEVICE_OPTIONS: Record<string, [string, string][]> = {
   Wasapi: [
     ["Primary Sound Driver", "Primary Sound Driver"],
     ["USB Audio Device", "USB Audio Device"],
-    ["Busy Device", "Busy Device"],
-  ],
-  Jack: [
-    ["system", "system"],
-    ["studio", "studio"],
     ["Busy Device", "Busy Device"],
   ],
 }
