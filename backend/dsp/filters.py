@@ -9,7 +9,12 @@ from .defaults import (
     GRAPHIC_EQ_FREQ_MAX,
     GRAPHIC_EQ_FREQ_MIN,
     LOUDNESS_HIGH_BOOST,
+    LOUDNESS_HIGH_FREQ,
+    LOUDNESS_HIGH_Q,
     LOUDNESS_LOW_BOOST,
+    LOUDNESS_LOW_FREQ,
+    LOUDNESS_LOW_Q,
+    NPOINT_PEQ_MIN_GAIN,
 )
 
 
@@ -154,6 +159,29 @@ class Conv(object):
         return t, self.impulse
 
 
+def diffeq_is_stable(a):
+    """
+    True if the 'a' coefficients of a DiffEq give a stable filter, meaning every
+    pole is strictly inside the unit circle.
+
+    CamillaDSP uses the Schur-Cohn step-down test to avoid root finding
+    (`poles_inside_unit_circle` in src/filters/diffeq.rs). numpy has no such
+    routine, but `np.roots` computes the poles directly and gives the same
+    verdict: checked against a port of the Schur-Cohn test over 32000 random
+    polynomials up to order 8, including deliberately marginal ones, with no
+    disagreement. The polynomials here are tiny, so root finding costs nothing.
+
+    An empty or absent list means the CamillaDSP default of a single unity
+    coefficient, which is a stable FIR filter. A leading zero is rejected by the
+    caller, since it would silently lower the order that `np.roots` sees.
+    """
+    # len(), not a truth test, so a numpy array works as well as a list
+    if a is None or len(a) == 0:
+        return True
+    roots = np.roots(a)
+    return len(roots) == 0 or bool(np.max(np.abs(roots)) < 1.0)
+
+
 class DiffEq(BaseFilter):
     def __init__(self, conf, fs):
         self.fs = fs
@@ -172,8 +200,7 @@ class DiffEq(BaseFilter):
         return freq, A
 
     def is_stable(self):
-        # TODO
-        return None
+        return diffeq_is_stable(self.a)
 
 
 class Delay(BaseFilter):
@@ -324,53 +351,34 @@ class BiquadCombo(BaseFilter):
                 else:
                     bqconf = {"freq": self.freq, "type": type_fo}
                 self.biquads.append(Biquad(bqconf, self.fs))
-        elif self.ftype == "FivePointPeq":
-            lsconf = Biquad(
-                {
-                    "freq": conf["fls"],
-                    "q": conf["qls"],
-                    "gain": conf["gls"],
-                    "type": "Lowshelf",
-                },
-                fs,
-            )
-            hsconf = Biquad(
-                {
-                    "freq": conf["fhs"],
-                    "q": conf["qhs"],
-                    "gain": conf["ghs"],
-                    "type": "Highshelf",
-                },
-                fs,
-            )
-            p1conf = Biquad(
-                {
-                    "freq": conf["fp1"],
-                    "q": conf["qp1"],
-                    "gain": conf["gp1"],
-                    "type": "Peaking",
-                },
-                fs,
-            )
-            p2conf = Biquad(
-                {
-                    "freq": conf["fp2"],
-                    "q": conf["qp2"],
-                    "gain": conf["gp2"],
-                    "type": "Peaking",
-                },
-                fs,
-            )
-            p3conf = Biquad(
-                {
-                    "freq": conf["fp3"],
-                    "q": conf["qp3"],
-                    "gain": conf["gp3"],
-                    "type": "Peaking",
-                },
-                fs,
-            )
-            self.biquads = [lsconf, p1conf, p2conf, p3conf, hsconf]
+        elif self.ftype == "NPointPeq":
+            # The role of a band follows its position: the first is a low shelf,
+            # the last a high shelf, and the ones between are peaking filters.
+            # A band with no significant gain does nothing, so the DSP leaves it
+            # out; skip it here too so the plot matches.
+            bands = conf["bands"]
+            last = len(bands) - 1
+            self.biquads = []
+            for n, band in enumerate(bands):
+                if abs(band["gain"]) <= NPOINT_PEQ_MIN_GAIN:
+                    continue
+                if n == 0:
+                    bqtype = "Lowshelf"
+                elif n == last:
+                    bqtype = "Highshelf"
+                else:
+                    bqtype = "Peaking"
+                self.biquads.append(
+                    Biquad(
+                        {
+                            "freq": band["freq"],
+                            "q": band["q"],
+                            "gain": band["gain"],
+                            "type": bqtype,
+                        },
+                        fs,
+                    )
+                )
         elif self.ftype == "GraphicEqualizer":
             bands = len(conf["gains"])
             # 'or' on purpose: zero is invalid here (the DSP rejects it)
@@ -418,6 +426,13 @@ class BiquadCombo(BaseFilter):
         return freq, A
 
 
+def _or_default(conf, key, default):
+    """Read an optional parameter. A missing key and an explicit null both mean
+    "not set", so both get CamillaDSP's default."""
+    value = conf.get(key)
+    return default if value is None else value
+
+
 class Loudness(BaseFilter):
     def __init__(self, conf, fs, volume):
         rel_vol = volume - conf["reference_level"]
@@ -426,12 +441,8 @@ class Loudness(BaseFilter):
             rel_boost = 1.0
         elif rel_boost < 0.0:
             rel_boost = 0.0
-        high_boost = conf.get("high_boost")
-        if high_boost is None:
-            high_boost = LOUDNESS_HIGH_BOOST
-        low_boost = conf.get("low_boost")
-        if low_boost is None:
-            low_boost = LOUDNESS_LOW_BOOST
+        high_boost = _or_default(conf, "high_boost", LOUDNESS_HIGH_BOOST)
+        low_boost = _or_default(conf, "low_boost", LOUDNESS_LOW_BOOST)
         high_boost = rel_boost * high_boost
         low_boost = rel_boost * low_boost
         if conf.get("attenuate_mid"):
@@ -440,11 +451,25 @@ class Loudness(BaseFilter):
         else:
             self.mid_gain = 1.0
 
+        # The shelves take a Q, as in the DSP. The default Q is equivalent to the
+        # fixed 12 dB/octave slope used before these parameters existed.
         lsconf = Biquad(
-            {"freq": 70.0, "slope": 12.0, "gain": low_boost, "type": "Lowshelf"}, fs
+            {
+                "freq": _or_default(conf, "low_freq", LOUDNESS_LOW_FREQ),
+                "q": _or_default(conf, "low_q", LOUDNESS_LOW_Q),
+                "gain": low_boost,
+                "type": "Lowshelf",
+            },
+            fs,
         )
         hsconf = Biquad(
-            {"freq": 3500.0, "slope": 12.0, "gain": high_boost, "type": "Highshelf"}, fs
+            {
+                "freq": _or_default(conf, "high_freq", LOUDNESS_HIGH_FREQ),
+                "q": _or_default(conf, "high_q", LOUDNESS_HIGH_Q),
+                "gain": high_boost,
+                "type": "Highshelf",
+            },
+            fs,
         )
         self.biquads = [lsconf, hsconf]
 

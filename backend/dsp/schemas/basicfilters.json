@@ -81,6 +81,28 @@
         "minimum": 0.0,
         "maximum": 20.0
       },
+      "high_freq": {
+        "type": ["number", "null"],
+        "default": null,
+        "exclusiveMinimum": 0.0
+      },
+      "low_freq": {
+        "type": ["number", "null"],
+        "default": null,
+        "exclusiveMinimum": 0.0
+      },
+      "high_q": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": 0.1,
+        "maximum": 2.0
+      },
+      "low_q": {
+        "type": ["number", "null"],
+        "default": null,
+        "minimum": 0.1,
+        "maximum": 2.0
+      },
       "fader" :{
         "type": ["string", "null"],
         "enum": ["Main", "Aux1", "Aux2", "Aux3", "Aux4", null],

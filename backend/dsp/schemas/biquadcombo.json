@@ -8,7 +8,7 @@
           "ButterworthLowpass",
           "LinkwitzRileyHighpass",
           "LinkwitzRileyLowpass",
-          "FivePointPeq",
+          "NPointPeq",
           "GraphicEqualizer",
           "Tilt"
         ]
@@ -100,68 +100,35 @@
     "required": ["gain"],
     "additionalProperties": false
   },
-  "FivePointPeq": {
+  "NPointPeq": {
     "properties": {
       "type": {
-        "enum": ["FivePointPeq"]
+        "enum": ["NPointPeq"]
       },
-      "fls": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "fp1": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "fp2": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "fp3": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "fhs": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "qls": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "qp1": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "qp2": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "qp3": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "qhs": {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-      },
-      "gls": {
-        "type": "number"
-      },
-      "gp1": {
-        "type": "number"
-      },
-      "gp2": {
-        "type": "number"
-      },
-      "gp3": {
-        "type": "number"
-      },
-      "ghs": {
-        "type": "number"
+      "bands": {
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "type": "object",
+          "properties": {
+            "freq": {
+              "type": "number",
+              "exclusiveMinimum": 0.0
+            },
+            "q": {
+              "type": "number",
+              "exclusiveMinimum": 0.0
+            },
+            "gain": {
+              "type": "number"
+            }
+          },
+          "required": ["freq", "q", "gain"],
+          "additionalProperties": false
+        }
       }
     },
-    "required": ["type", "fls", "fp1", "fp2", "fp3", "fhs", "qls", "qp1", "qp2", "qp3", "qhs", "gls", "gp1", "gp2", "gp3", "ghs"],
+    "required": ["type", "bands"],
     "additionalProperties": false
   },
   "GraphicEqualizer": {

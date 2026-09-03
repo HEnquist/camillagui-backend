@@ -26,9 +26,12 @@ SAMPLE = {
     "normalize_at_dc": False, "freq_act": 60.0, "q_act": 0.7,
     "freq_target": 30.0, "q_target": 0.8,
     "a1": -0.2, "a2": 0.1, "b0": 0.9, "b1": 0.1, "b2": -0.05,
-    "fls": 100.0, "qls": 0.7, "gls": 3.0, "fp1": 300.0, "qp1": 1.0,
-    "gp1": -2.0, "fp2": 1000.0, "qp2": 1.0, "gp2": 2.0, "fp3": 3000.0,
-    "qp3": 1.0, "gp3": -1.0, "fhs": 8000.0, "qhs": 0.7, "ghs": 3.0,
+    # NPointPeq: rising frequency, first is the low shelf and last the high shelf
+    "bands": [
+        {"freq": 100.0, "q": 0.7, "gain": 3.0},
+        {"freq": 1000.0, "q": 1.0, "gain": -2.0},
+        {"freq": 8000.0, "q": 0.7, "gain": 3.0},
+    ],
     "freq_min": 20.0, "freq_max": 20000.0, "gains": [0.0, 3.0, 0.0],
     "delay": 3.0, "delay_unit": "ms", "subsample": False,
     "inverted": False, "mute": False, "scale": "dB",
@@ -38,6 +41,7 @@ SAMPLE = {
     "attack": 1.0, "attack_unit": "ms",
     "release": 100.0, "release_unit": "ms",
     "reference_level": -25.0, "high_boost": 10.0, "low_boost": 10.0,
+    "high_freq": 3500.0, "low_freq": 70.0, "high_q": 0.7, "low_q": 0.7,
     "attenuate_mid": False,
     "soft_clip": False, "clip_limit": -3.0,
     "bits": 16, "amplitude": 0.5,

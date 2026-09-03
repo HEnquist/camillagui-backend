@@ -1,6 +1,11 @@
+import math
+
+import numpy as np
 import pytest
 
+from backend.dsp.defaults import LOUDNESS_LOW_Q
 from backend.dsp.eval_filterconfig import eval_filter, eval_filterstep
+from backend.dsp.filters import Biquad, BiquadCombo, Loudness, diffeq_is_stable
 
 
 def _assert_eval_result_shape(result, npoints):
@@ -151,22 +156,30 @@ def test_eval_biquadcombo_tilt_positive_gain_tilts_up_towards_high_frequencies()
         {"type": "LinkwitzRileyHighpass", "freq": 1000.0, "order": 4},
         {"type": "LinkwitzRileyLowpass", "freq": 1000.0, "order": 4},
         {
-            "type": "FivePointPeq",
-            "fls": 80.0,
-            "fp1": 200.0,
-            "fp2": 800.0,
-            "fp3": 2400.0,
-            "fhs": 6000.0,
-            "qls": 0.7,
-            "qp1": 1.0,
-            "qp2": 1.0,
-            "qp3": 1.0,
-            "qhs": 0.7,
-            "gls": 1.0,
-            "gp1": -1.0,
-            "gp2": 0.5,
-            "gp3": -0.5,
-            "ghs": 1.0,
+            "type": "NPointPeq",
+            "bands": [
+                {"freq": 80.0, "q": 0.7, "gain": 1.0},
+                {"freq": 200.0, "q": 1.0, "gain": -1.0},
+                {"freq": 800.0, "q": 1.0, "gain": 0.5},
+                {"freq": 2400.0, "q": 1.0, "gain": -0.5},
+                {"freq": 6000.0, "q": 0.7, "gain": 1.0},
+            ],
+        },
+        # Only the two shelves, the minimum a NPointPeq can have
+        {
+            "type": "NPointPeq",
+            "bands": [
+                {"freq": 100.0, "q": 0.7, "gain": 2.0},
+                {"freq": 5000.0, "q": 0.7, "gain": -2.0},
+            ],
+        },
+        # Every band disabled by zero gain, so no biquads are built at all
+        {
+            "type": "NPointPeq",
+            "bands": [
+                {"freq": 100.0, "q": 0.7, "gain": 0.0},
+                {"freq": 5000.0, "q": 0.7, "gain": 0.0},
+            ],
         },
     ],
 )
@@ -337,3 +350,187 @@ def test_unwrap_phase_follows_a_steep_but_smooth_slope():
     theirs = np.unwrap(wrapped, discont=150.0, period=360.0)
     theirs -= theirs[0]
     assert np.abs(theirs - reference).max() > 1000.0
+
+
+
+def test_npointpeq_assigns_band_roles_by_position():
+    # First band is a low shelf, last a high shelf, the ones between are peaking.
+    bands = [
+        {"freq": 100.0, "q": 0.7, "gain": 3.0},
+        {"freq": 1000.0, "q": 1.0, "gain": -2.0},
+        {"freq": 5000.0, "q": 0.7, "gain": 4.0},
+    ]
+    combo = BiquadCombo({"type": "NPointPeq", "bands": bands}, 48000)
+    expected = [
+        Biquad({"freq": 100.0, "q": 0.7, "gain": 3.0, "type": "Lowshelf"}, 48000),
+        Biquad({"freq": 1000.0, "q": 1.0, "gain": -2.0, "type": "Peaking"}, 48000),
+        Biquad({"freq": 5000.0, "q": 0.7, "gain": 4.0, "type": "Highshelf"}, 48000),
+    ]
+
+    freq = np.geomspace(10.0, 20000.0, 200)
+    _f, actual = combo.complex_gain(freq)
+    reference = np.ones(len(freq), dtype=complex)
+    for biquad in expected:
+        reference = reference * biquad.complex_gain(freq)[1]
+
+    assert np.allclose(actual, reference)
+
+
+def test_npointpeq_leaves_out_bands_with_no_significant_gain():
+    # Matches BiquadCombo::make_npeq, which skips a band with |gain| <= 0.001.
+    # That is how a band is disabled without removing it from the list.
+    def biquad_count(middle_gain):
+        bands = [
+            {"freq": 100.0, "q": 0.7, "gain": 3.0},
+            {"freq": 1000.0, "q": 1.0, "gain": middle_gain},
+            {"freq": 5000.0, "q": 0.7, "gain": 4.0},
+        ]
+        return len(BiquadCombo({"type": "NPointPeq", "bands": bands}, 48000).biquads)
+
+    assert biquad_count(0.001) == 2
+    assert biquad_count(-0.001) == 2
+    assert biquad_count(0.0011) == 3
+
+
+def test_npointpeq_with_every_band_disabled_is_flat():
+    bands = [
+        {"freq": 100.0, "q": 0.7, "gain": 0.0},
+        {"freq": 5000.0, "q": 0.7, "gain": 0.0},
+    ]
+    combo = BiquadCombo({"type": "NPointPeq", "bands": bands}, 48000)
+
+    freq = np.geomspace(10.0, 20000.0, 100)
+    _f, gain = combo.complex_gain(freq)
+
+    assert combo.biquads == []
+    assert np.allclose(gain, 1.0)
+
+
+def _loudness_reference(conf, volume, freq, samplerate=48000):
+    """The two shelves as CamillaDSP builds them, see src/filters/loudness.rs."""
+    rel_boost = min(max(-(volume - conf["reference_level"]) / 20.0, 0.0), 1.0)
+    shelves = [
+        Biquad(
+            {
+                "freq": conf.get("low_freq", 70.0),
+                "q": conf.get("low_q", 1.0 / math.sqrt(2.0)),
+                "gain": rel_boost * conf.get("low_boost", 10.0),
+                "type": "Lowshelf",
+            },
+            samplerate,
+        ),
+        Biquad(
+            {
+                "freq": conf.get("high_freq", 3500.0),
+                "q": conf.get("high_q", 1.0 / math.sqrt(2.0)),
+                "gain": rel_boost * conf.get("high_boost", 10.0),
+                "type": "Highshelf",
+            },
+            samplerate,
+        ),
+    ]
+    gain = np.ones(len(freq), dtype=complex)
+    for shelf in shelves:
+        gain = gain * shelf.complex_gain(freq)[1]
+    return gain
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"reference_level": 0.0},
+        {"reference_level": 0.0, "low_freq": 120.0, "high_freq": 6000.0},
+        {"reference_level": 0.0, "low_q": 0.4, "high_q": 1.5},
+        {
+            "reference_level": 0.0,
+            "low_freq": 150.0,
+            "low_q": 1.8,
+            "high_freq": 8000.0,
+            "high_q": 0.3,
+        },
+    ],
+)
+def test_loudness_shelves_match_the_dsp(params):
+    freq = np.geomspace(10.0, 20000.0, 400)
+    evaluated = Loudness(dict(params), 48000, -20.0).complex_gain(freq)[1]
+
+    assert np.allclose(evaluated, _loudness_reference(params, -20.0, freq))
+
+
+def test_loudness_treats_an_explicit_null_as_not_set():
+    # The schema fills the optional parameters in as nulls, which must fall back
+    # to CamillaDSP's defaults exactly like a missing key does.
+    freq = np.geomspace(10.0, 20000.0, 200)
+    with_nulls = {
+        "reference_level": 0.0,
+        "high_freq": None,
+        "low_freq": None,
+        "high_q": None,
+        "low_q": None,
+    }
+
+    assert np.allclose(
+        Loudness(with_nulls, 48000, -20.0).complex_gain(freq)[1],
+        Loudness({"reference_level": 0.0}, 48000, -20.0).complex_gain(freq)[1],
+    )
+
+
+def test_loudness_default_q_equals_the_old_fixed_slope():
+    # Before high_q/low_q existed the shelves used a fixed 12 dB/octave slope.
+    # The default Q has to reproduce that, or every existing config changes shape.
+    freq = np.geomspace(10.0, 20000.0, 400)
+    for boost in (1.0, 5.0, 10.0, 20.0):
+        by_slope = Biquad(
+            {"freq": 70.0, "slope": 12.0, "gain": boost, "type": "Lowshelf"}, 48000
+        )
+        by_q = Biquad(
+            {"freq": 70.0, "q": LOUDNESS_LOW_Q, "gain": boost, "type": "Lowshelf"},
+            48000,
+        )
+
+        assert np.allclose(by_slope.complex_gain(freq)[1], by_q.complex_gain(freq)[1])
+
+
+def _schur_cohn(a):
+    """
+    Port of `poles_inside_unit_circle` from CamillaDSP's src/filters/diffeq.rs,
+    used here only as an independent reference for diffeq_is_stable.
+    """
+    coeffs = list(a)
+    for order in range(len(coeffs) - 1, 0, -1):
+        reflection = coeffs[order]
+        if abs(reflection) >= 1.0:
+            return False
+        scale = 1.0 - reflection * reflection
+        prev = list(coeffs)
+        for n in range(1, order):
+            coeffs[n] = (prev[n] - reflection * prev[order - n]) / scale
+        coeffs = coeffs[:order]
+    return True
+
+
+def test_diffeq_is_stable_agrees_with_the_dsp_algorithm():
+    # The DSP uses Schur-Cohn to avoid root finding, the GUI uses np.roots.
+    # They must reach the same verdict, including near the unit circle.
+    rng = np.random.default_rng(0)
+    for order in range(1, 9):
+        for _ in range(500):
+            spread = 1.15 if rng.random() < 0.5 else 1.001
+            a = np.poly(rng.uniform(-spread, spread, order))
+
+            assert diffeq_is_stable(a) == _schur_cohn(list(a)), list(a)
+
+
+@pytest.mark.parametrize(
+    "a,expected",
+    [
+        ([], True),
+        ([1.0], True),
+        ([1.0, 0.0], True),
+        ([1.0, -2.0, 1.0], False),
+        ([1.0, 0.0, -1.0], False),
+        ([1.0, -1.9999999, 0.99999999], True),
+    ],
+)
+def test_diffeq_is_stable_boundary_cases(a, expected):
+    assert diffeq_is_stable(a) is expected

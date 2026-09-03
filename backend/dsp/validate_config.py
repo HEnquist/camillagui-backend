@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import math
 import yaml
 from copy import deepcopy
 from importlib import resources
@@ -8,7 +9,13 @@ from importlib import resources
 from jsonschema import Draft7Validator, validators
 
 from .audiofileread import read_wav_header, read_text_coeffs
-from .defaults import GRAPHIC_EQ_FREQ_MAX, GRAPHIC_EQ_FREQ_MIN
+from .filters import diffeq_is_stable
+from .defaults import (
+    GRAPHIC_EQ_FREQ_MAX,
+    GRAPHIC_EQ_FREQ_MIN,
+    LOUDNESS_HIGH_FREQ,
+    LOUDNESS_LOW_FREQ,
+)
 
 
 def _load_schema(name):
@@ -549,11 +556,6 @@ class CamillaValidator:
                     "freq",
                     "freq_act",
                     "freq_target",
-                    "fls",
-                    "fhs",
-                    "fp1",
-                    "fp2",
-                    "fp3",
                     "freq_p",
                     "freq_z",
                     "freq_min",
@@ -572,6 +574,24 @@ class CamillaValidator:
                             msg = "Frequency must be < samplerate/2"
                             path = ["filters", filter_name, "parameters", freq_prop]
                             self.errorlist.append((path, msg))
+            # Check that DiffEq coefficients are finite and give a stable filter
+            if filter_conf["type"] == "DiffEq":
+                params = filter_conf["parameters"]
+                a = params.get("a") or []
+                b = params.get("b") or []
+                path = ["filters", filter_name, "parameters"]
+                if any(not math.isfinite(coeff) for coeff in list(a) + list(b)):
+                    msg = "All coefficients must be finite numbers"
+                    self.errorlist.append((path + ["a"], msg))
+                elif a and a[0] == 0.0:
+                    msg = "The first 'a' coefficient must not be zero"
+                    self.errorlist.append((path + ["a"], msg))
+                elif not diffeq_is_stable(a):
+                    msg = (
+                        "Unstable filter, the 'a' coefficients give poles "
+                        "on or outside the unit circle"
+                    )
+                    self.errorlist.append((path + ["a"], msg))
             # Check that free biquads are stable
             if (
                 filter_conf["type"] == "Biquad"
@@ -598,6 +618,47 @@ class CamillaValidator:
                     msg = "Both 'bandwidth' and 'q' given, only one is allowed"
                     path = ["filters", filter_name, "parameters"]
                     self.errorlist.append((path, msg))
+            # Check the Loudness shelf frequencies against each other and Nyquist
+            if filter_conf["type"] == "Loudness":
+                low_freq = self.value_or_default(
+                    ("parameters", "low_freq"), config=filter_conf
+                )
+                high_freq = self.value_or_default(
+                    ("parameters", "high_freq"), config=filter_conf
+                )
+                if high_freq >= maxfreq:
+                    msg = "High freq must be < samplerate/2"
+                    path = ["filters", filter_name, "parameters", "high_freq"]
+                    self.errorlist.append((path, msg))
+                if high_freq <= low_freq:
+                    msg = "High freq must be higher than low freq"
+                    path = ["filters", filter_name, "parameters", "high_freq"]
+                    self.errorlist.append((path, msg))
+            # Check the NPointPeq bands: below Nyquist and listed with rising frequency
+            if (
+                filter_conf["type"] == "BiquadCombo"
+                and filter_conf["parameters"]["type"] == "NPointPeq"
+            ):
+                bands = filter_conf["parameters"]["bands"]
+                for n, band in enumerate(bands):
+                    if band["freq"] >= maxfreq:
+                        msg = "Frequency must be < samplerate/2"
+                        path = ["filters", filter_name, "parameters", "bands", n, "freq"]
+                        self.errorlist.append((path, msg))
+                # The first band becomes the low shelf and the last the high shelf,
+                # so the bands have to be listed with rising frequency.
+                for n, (lower, upper) in enumerate(zip(bands, bands[1:])):
+                    if upper["freq"] < lower["freq"]:
+                        msg = "Band frequencies must not decrease along the list"
+                        path = [
+                            "filters",
+                            filter_name,
+                            "parameters",
+                            "bands",
+                            n + 1,
+                            "freq",
+                        ]
+                        self.errorlist.append((path, msg))
             # Check that GraphicEqualizer min frequency is smaller than max frequency
             if (
                 filter_conf["type"] == "BiquadCombo"
@@ -907,6 +968,8 @@ DEFAULT_VALUES = {
     ("parameters", "skip_bytes_lines"): 0,
     ("parameters", "read_bytes_lines"): 0,
     ("parameters", "channel"): 0,
+    ("parameters", "low_freq"): LOUDNESS_LOW_FREQ,
+    ("parameters", "high_freq"): LOUDNESS_HIGH_FREQ,
 }
 
 if __name__ == "__main__":

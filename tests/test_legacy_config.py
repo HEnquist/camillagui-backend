@@ -230,6 +230,27 @@ def v4_config():
                 "parameters": {"ramp_time": 200.0, "fader": "Aux1"},
             },
             "lim": {"type": "Limiter", "parameters": {"clip_limit": -3.0}},
+            "peq": {
+                "type": "BiquadCombo",
+                "parameters": {
+                    "type": "FivePointPeq",
+                    "fls": 80.0,
+                    "qls": 0.7,
+                    "gls": 1.0,
+                    "fp1": 200.0,
+                    "qp1": 1.0,
+                    "gp1": -1.0,
+                    "fp2": 800.0,
+                    "qp2": 1.0,
+                    "gp2": 0.5,
+                    "fp3": 2400.0,
+                    "qp3": 1.0,
+                    "gp3": -0.5,
+                    "fhs": 6000.0,
+                    "qhs": 0.7,
+                    "ghs": 1.0,
+                },
+            },
         },
         "processors": {
             "comp": {
@@ -303,6 +324,46 @@ def test_v5_renames_limiter_to_clipper(v4_config):
     assert v4_config["filters"]["lim"]["type"] == "Clipper"
     # the parameters are untouched by the rename
     assert v4_config["filters"]["lim"]["parameters"] == {"clip_limit": -3.0}
+
+
+def test_v5_migrates_fivepointpeq_to_npointpeq(v4_config):
+    migrate_legacy_config(v4_config)
+    params = v4_config["filters"]["peq"]["parameters"]
+    assert params["type"] == "NPointPeq"
+    # The low shelf comes first and the high shelf last, which is the order the
+    # old filter already applied them in, so the response is unchanged.
+    assert params["bands"] == [
+        {"freq": 80.0, "q": 0.7, "gain": 1.0},
+        {"freq": 200.0, "q": 1.0, "gain": -1.0},
+        {"freq": 800.0, "q": 1.0, "gain": 0.5},
+        {"freq": 2400.0, "q": 1.0, "gain": -0.5},
+        {"freq": 6000.0, "q": 0.7, "gain": 1.0},
+    ]
+    # none of the old numbered keys survive
+    assert set(params) == {"type", "bands"}
+
+
+def test_v5_migrated_fivepointpeq_has_the_same_response(v4_config):
+    import numpy as np
+
+    from backend.dsp.filters import Biquad, BiquadCombo
+
+    migrate_legacy_config(v4_config)
+    migrated = BiquadCombo(v4_config["filters"]["peq"]["parameters"], 48000)
+    v4_sections = [
+        Biquad({"freq": 80.0, "q": 0.7, "gain": 1.0, "type": "Lowshelf"}, 48000),
+        Biquad({"freq": 200.0, "q": 1.0, "gain": -1.0, "type": "Peaking"}, 48000),
+        Biquad({"freq": 800.0, "q": 1.0, "gain": 0.5, "type": "Peaking"}, 48000),
+        Biquad({"freq": 2400.0, "q": 1.0, "gain": -0.5, "type": "Peaking"}, 48000),
+        Biquad({"freq": 6000.0, "q": 0.7, "gain": 1.0, "type": "Highshelf"}, 48000),
+    ]
+
+    freq = np.geomspace(10.0, 20000.0, 300)
+    reference = np.ones(len(freq), dtype=complex)
+    for section in v4_sections:
+        reference = reference * section.complex_gain(freq)[1]
+
+    assert np.allclose(migrated.complex_gain(freq)[1], reference)
 
 
 def test_v5_migrates_processor_time_units(v4_config):

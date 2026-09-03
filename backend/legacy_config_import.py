@@ -305,6 +305,38 @@ def _modify_limiter_filters(config):
             filt["type"] = "Clipper"
 
 
+# v4->v5 generalises FivePointPeq to a free number of bands
+def _modify_fivepointpeq_filters(config):
+    """
+    Turn a FivePointPeq biquad combo into the v5 NPointPeq.
+
+    The fifteen numbered parameters become a "bands" list of five entries,
+    in the order the old filter already applied them: the low shelf first,
+    then the three peaking filters, then the high shelf. NPointPeq gives a
+    band its role by position, so the resulting filter is identical.
+    """
+    filters = config.get("filters")
+    if not isinstance(filters, dict):
+        return
+    for _name, filt in filters.items():
+        params = filt.get("parameters")
+        if not isinstance(params, dict):
+            continue
+        if filt["type"] != "BiquadCombo" or params.get("type") != "FivePointPeq":
+            continue
+        bands = []
+        for prefix in ("ls", "p1", "p2", "p3", "hs"):
+            bands.append(
+                {
+                    "freq": params.pop(f"f{prefix}"),
+                    "q": params.pop(f"q{prefix}"),
+                    "gain": params.pop(f"g{prefix}"),
+                }
+            )
+        params["type"] = "NPointPeq"
+        params["bands"] = bands
+
+
 # v4->v5 requires every time value to state its unit
 def _modify_processor_time_units(config):
     """
@@ -345,6 +377,7 @@ def migrate_legacy_config(config):
     _modify_device_time_units(config)
     _modify_filter_time_units(config)
     _modify_limiter_filters(config)
+    _modify_fivepointpeq_filters(config)
     _modify_processor_time_units(config)
 
 
@@ -469,7 +502,8 @@ def _look_for_v4_removed_backends(config):
 
 
 def _look_for_v4_filters(config):
-    # Delay took "unit", Volume took "ramp_time", and Limiter became Clipper
+    # Delay took "unit", Volume took "ramp_time", Limiter became Clipper,
+    # and the FivePointPeq biquad combo became NPointPeq
     filters = config.get("filters")
     if isinstance(filters, dict):
         for _name, filt in filters.items():
@@ -481,6 +515,8 @@ def _look_for_v4_filters(config):
             if filt["type"] == "Delay" and "delay_unit" not in params:
                 return True
             if filt["type"] == "Volume" and "ramp_time" in params:
+                return True
+            if filt["type"] == "BiquadCombo" and params.get("type") == "FivePointPeq":
                 return True
     return False
 

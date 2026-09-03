@@ -76,6 +76,7 @@
       },
       "values": {
         "type": "array",
+        "minItems": 1,
         "items": {
           "type": "number"
         }
