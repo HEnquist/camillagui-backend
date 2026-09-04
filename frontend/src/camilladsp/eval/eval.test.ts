@@ -4,7 +4,7 @@
  * options a step offers.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { blankNoisyPhase } from "./complex"
+import { blankPhaseBelow, phaseNoiseFloor } from "./complex"
 import {
   clearCoefficientCache,
   entriesToEvict,
@@ -207,50 +207,73 @@ describe("a phase too deep to be readable", () => {
     vi.restoreAllMocks()
   })
 
-  /** A 1001 tap windowed sinc lowpass, whose stopband runs past -200 dB. */
-  function sincLowpass(cutoff: number): Filter {
+  /** A windowed sinc, whose stopband runs past -200 dB. */
+  function windowedSinc(cutoff: number, highpass = false): Filter {
     const taps = 1001
     const centre = (taps - 1) / 2
     const fc = cutoff / 48000
     const values = Array.from({ length: taps }, (_, n) => {
       const k = n - centre
-      const sinc = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k)
-      return sinc * (0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (taps - 1)))
+      const lowpass = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k)
+      const value = highpass ? (k === 0 ? 1 : 0) - lowpass : lowpass
+      const x = (2 * Math.PI * n) / (taps - 1)
+      return value * (0.42 - 0.5 * Math.cos(x) + 0.08 * Math.cos(2 * x))
     })
     return { type: "Conv", description: null, parameters: { type: "Values", values } }
   }
 
-  it("is left out of an FIR's deep stopband, along with its group delay", async () => {
-    const result = await evalFilter(sincLowpass(1000.0), { samplerate: 48000, channels: 2 })
+  it("reports the level it starts at, so the plot can offer to hide it", async () => {
+    const result = await evalFilter(windowedSinc(1000.0), { samplerate: 48000, channels: 2 })
     const magnitude = result.magnitude!
-    const floor = Math.max(...magnitude) - 150
-    const blanked = result.phase!.map((p, i) => [p, i] as const).filter(([p]) => !Number.isFinite(p))
-    expect(blanked.length).toBeGreaterThan(50)
-    // nothing is hidden that is not far below everything else on the plot
-    blanked.forEach(([, i]) => expect(magnitude[i]).toBeLessThan(floor))
-    expect(result.groupdelay!.some((d) => !Number.isFinite(d))).toBe(true)
+    expect(result.phaseFloor).toBeCloseTo(Math.max(...magnitude) - 150, 9)
+    expect(magnitude.filter((value) => value < result.phaseFloor!).length).toBeGreaterThan(50)
   })
 
-  it("keeps the magnitude, which is smooth where the phase is hash", async () => {
-    const result = await evalFilter(sincLowpass(1000.0), { samplerate: 48000, channels: 2 })
-    expect(Math.min(...result.magnitude!)).toBeLessThan(-200)
+  it("still delivers every point of the phase, hiding it being the plot's choice", async () => {
+    const result = await evalFilter(windowedSinc(1000.0), { samplerate: 48000, channels: 2 })
+    expect(result.phase!.every(Number.isFinite)).toBe(true)
     expect(result.magnitude!.every(Number.isFinite)).toBe(true)
+    expect(Math.min(...result.magnitude!)).toBeLessThan(-200)
   })
 
-  it("keeps every point of the phase that is above the floor", async () => {
-    const result = await evalFilter(sincLowpass(1000.0), { samplerate: 48000, channels: 2 })
-    const magnitude = result.magnitude!
-    const floor = Math.max(...magnitude) - 150
-    result.phase!.forEach((p, i) => {
-      if (magnitude[i] >= floor) expect(Number.isFinite(p)).toBe(true)
-    })
+  it("leaves out the group delay there, which is not the plot's choice", async () => {
+    const result = await evalFilter(windowedSinc(1000.0), { samplerate: 48000, channels: 2 })
+    const gaps = result.groupdelay!.map((d, n) => [d, n] as const).filter(([d]) => !Number.isFinite(d))
+    expect(gaps.length).toBeGreaterThan(0)
+    // group delay sits on the midpoints, so a gap means either end is too deep
+    gaps.forEach(([, n]) =>
+      expect(Math.min(result.magnitude![n], result.magnitude![n + 1])).toBeLessThan(result.phaseFloor!),
+    )
   })
 
-  it("is measured from the curve's own peak", () => {
-    const magnitude = [40.0, -100.0, -120.0]
+  it("does not let the unreadable region move the group delay that is readable", async () => {
+    // The point of computing it from a blanked phase. On a highpass the
+    // unreadable stretch sits below the passband, so a prediction carried up
+    // through it lands hundreds of ms out on the part anyone looks at.
+    const result = await evalFilter(windowedSinc(1000.0, true), { samplerate: 48000, channels: 2 })
+    const readable = result.groupdelay!.filter((d, n) => Number.isFinite(d) && result.magnitude![n] > -60)
+    expect(readable.length).toBeGreaterThan(100)
+    // a 1001 tap linear phase filter, plotted with its bulk delay removed
+    readable.forEach((delay) => expect(Math.abs(delay)).toBeLessThan(1.0))
+  })
+
+  it("has no floor for a filter evaluated in closed form, however far down it goes", async () => {
+    const highpass: Filter = {
+      type: "BiquadCombo",
+      description: null,
+      parameters: { type: "ButterworthHighpass", order: 4, freq: 1000.0 },
+    }
+    const result = await evalFilter(highpass, { samplerate: 48000, channels: 2 })
+    expect(result.phaseFloor).toBeUndefined()
+    expect(Math.min(...result.magnitude!)).toBeLessThan(-200)
+    expect(result.phase!.every(Number.isFinite)).toBe(true)
+    expect(result.groupdelay!.every(Number.isFinite)).toBe(true)
+  })
+
+  it("measures the floor from the curve's own peak", () => {
+    expect(phaseNoiseFloor([40.0, -100.0, -120.0])).toBeCloseTo(-110.0, 9)
     const phase = [1.0, 2.0, 3.0]
-    blankNoisyPhase(magnitude, phase)
-    // 40 dB peak, so the floor is at -110 dB
+    blankPhaseBelow(-110.0, [40.0, -100.0, -120.0], phase)
     expect(phase.map(Number.isFinite)).toEqual([true, true, false])
   })
 
@@ -279,21 +302,6 @@ describe("a phase too deep to be readable", () => {
       else expect(n).toBeGreaterThanOrEqual(599)
     })
     expect(result.groupdelay.slice(645).every((d) => Math.abs(d - 7.0) < 1e-9)).toBe(true)
-  })
-
-  it("leaves a filter evaluated in closed form alone, however far down it goes", async () => {
-    // a 4th order highpass at 1 kHz really is 240 dB down at 1 Hz, deeper than
-    // anything blanked above, and its phase there is smooth and readable: no
-    // nulls to rotate through, so nothing for the grid to alias
-    const highpass: Filter = {
-      type: "BiquadCombo",
-      description: null,
-      parameters: { type: "ButterworthHighpass", order: 4, freq: 1000.0 },
-    }
-    const result = await evalFilter(highpass, { samplerate: 48000, channels: 2 })
-    expect(Math.min(...result.magnitude!)).toBeLessThan(-200)
-    expect(result.phase!.every(Number.isFinite)).toBe(true)
-    expect(result.groupdelay!.every(Number.isFinite)).toBe(true)
   })
 })
 

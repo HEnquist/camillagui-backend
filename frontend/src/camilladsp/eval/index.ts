@@ -6,7 +6,7 @@
  * browser, which is almost always the faster machine of the two, and needs no
  * network at all except for Conv filters that read coefficients from a file.
  */
-import { blankNoisyPhase, magnitudeDb, multiplyInto, phaseDegrees, unitCurve } from "./complex"
+import { blankPhaseBelow, magnitudeDb, multiplyInto, phaseDegrees, phaseNoiseFloor, unitCurve } from "./complex"
 import { convComplexGain } from "./conv"
 import { complexGain } from "./filters"
 import { FilterEvalError, num, numList, Params } from "./params"
@@ -205,6 +205,22 @@ async function convCoefficients(filterconf: Filter, samplerate: number, channels
   throw new FilterEvalError(`Unknown Conv subtype ${String(subtype)}`)
 }
 
+/**
+ * The phase the group delay is read from: the unreadable stretch taken out.
+ *
+ * This is not the toggle the plot offers. The group delay predicts each step
+ * from the one below it in frequency, so letting it run through a region of
+ * aliased phase moves the readable part of the curve as well, by hundreds of
+ * milliseconds on a highpass. The phase trace itself has no such coupling, so
+ * that one is the reader's to show or hide.
+ */
+function blankedForGroupDelay(phase: number[], magnitude: number[], floor: number | undefined): number[] {
+  if (floor === undefined) return phase
+  const blanked = [...phase]
+  blankPhaseBelow(floor, magnitude, blanked)
+  return blanked
+}
+
 /** Evaluate one filter, for the plot in the filters tab. */
 export async function evalFilter(filterconf: Filter, options: EvalOptions): Promise<ChartContent> {
   const { samplerate, channels } = options
@@ -238,8 +254,9 @@ export async function evalFilter(filterconf: Filter, options: EvalOptions): Prom
   const magnitude = magnitudeDb(curve)
   const phase = phaseDegrees(curve)
   // only an FIR has a stopband full of nulls for the plot grid to alias
-  if (filterconf.type === "Conv") blankNoisyPhase(magnitude, phase)
-  const groupdelay = calcGroupDelay(result.f, phase)
+  const phaseFloor = filterconf.type === "Conv" ? phaseNoiseFloor(magnitude) : undefined
+  const groupdelay = calcGroupDelay(result.f, blankedForGroupDelay(phase, magnitude, phaseFloor))
+  result.phaseFloor = phaseFloor
   result.magnitude = magnitude
   result.phase = phase
   result.f_groupdelay = groupdelay.freq
@@ -305,8 +322,8 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
 
   const magnitude = magnitudeDb(total)
   const phase = phaseDegrees(total)
-  if (hasConv) blankNoisyPhase(magnitude, phase)
-  const groupdelay = calcGroupDelay(freq, phase)
+  const phaseFloor = hasConv ? phaseNoiseFloor(magnitude) : undefined
+  const groupdelay = calcGroupDelay(freq, blankedForGroupDelay(phase, magnitude, phaseFloor))
   return {
     name,
     samplerate,
@@ -316,6 +333,7 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
     time: [],
     magnitude,
     phase,
+    phaseFloor,
     f_groupdelay: groupdelay.freq,
     groupdelay: groupdelay.groupdelay,
   }

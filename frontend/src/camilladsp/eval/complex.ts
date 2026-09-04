@@ -88,7 +88,7 @@ export function phaseDegrees(curve: ComplexCurve): number[] {
 export const PHASE_NOISE_FLOOR_DB = 150.0
 
 /**
- * Blank the phase, in place, deep below a convolution filter's passband.
+ * The level below which a convolution filter's phase is not worth drawing.
  *
  * The phase there is correct and unreadable. An FIR's stopband is a run of
  * nulls spaced fs/taps apart, 48 Hz for a 1001 tap filter, and the phase turns
@@ -104,12 +104,23 @@ export const PHASE_NOISE_FLOOR_DB = 150.0
  * slowly varying and perfectly readable: it has no nulls to rotate through.
  * Depth alone is not the problem, density of nulls is, and only an FIR has them.
  *
+ * The group delay is always computed from a blanked copy, whatever the plot is
+ * set to show, because the prediction it carries forward walks through this
+ * region: on a highpass, whose unreadable stretch sits below the passband, an
+ * unblanked phase moved the readable group delay by as much as 608 ms. What a
+ * reader may switch back on is the phase trace itself, which is drawn point by
+ * point and cannot mislead its neighbours.
+ *
  * Blanked points are NaN, which the plot draws as a gap in the line rather
  * than as a value, and which `calcGroupDelay` propagates and ignores.
  */
-export function blankNoisyPhase(magnitude: ArrayLike<number>, phase: number[]): void {
+export function phaseNoiseFloor(magnitude: ArrayLike<number>): number {
   let peak = -Infinity
   for (let n = 0; n < magnitude.length; n++) if (magnitude[n] > peak) peak = magnitude[n]
-  const floor = peak - PHASE_NOISE_FLOOR_DB
+  return peak - PHASE_NOISE_FLOOR_DB
+}
+
+/** Blank the phase, in place, wherever the magnitude falls below `floor`. */
+export function blankPhaseBelow(floor: number, magnitude: ArrayLike<number>, phase: number[]): void {
   for (let n = 0; n < phase.length; n++) if (magnitude[n] < floor) phase[n] = NaN
 }

@@ -119,6 +119,15 @@ samples, and are kept as a typed array view over those bytes. The backend sends 
 source file holds no more than that, which halves the payload for the usual coefficient file and
 loses nothing. See `unframeCoefficients`.
 
+A convolution filter's `ChartContent` carries `phaseFloor`, the level more than 150 dB below its
+peak where an FIR's nulls sit closer together than the plot can sample, so a drawn phase there is
+aliasing rather than phase. The chart's toolbar offers an eye button, hiding on by default,
+which appears only when the curve actually goes that deep and swaps between `mdiEyeOff` and
+`mdiEye` to show which way it is set. **The group delay is always computed
+from a blanked phase, whatever the checkbox says**, because it predicts each step from the one below
+it in frequency: letting that run through the aliased region moved the readable group delay of a
+highpass by 608 ms. The phase trace has no such coupling, which is why only it is optional.
+
 Four test files cover it:
 
 - `properties.test.ts` is the one that matters. Every assertion is a closed-form property the
