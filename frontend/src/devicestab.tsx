@@ -30,8 +30,8 @@ import {
 import { DeviceCapabilities, DeviceCapabilitiesPopup } from "./devicecapabilitiespopup"
 import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig"
 import { Update } from "./utilities/common"
-import { FileInfo, loadFiles } from "./utilities/files"
 import { Errors } from "./utilities/errors"
+import { FileInfo, loadFiles } from "./utilities/files"
 import {
   add_default_option_inplace,
   Box,

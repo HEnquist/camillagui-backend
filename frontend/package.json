@@ -5,7 +5,7 @@
   "homepage": ".",
   "type": "module",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
@@ -53,8 +53,8 @@
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.4",
-    "@feedthrough/core": "file:../feedthrough/packages/core",
-    "@feedthrough/vite": "file:../feedthrough/packages/vite",
+    "@feedthrough/core": "^0.3.0",
+    "@feedthrough/vite": "^0.3.0",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@tanstack/react-table": "^8.21.3",

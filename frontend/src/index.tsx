@@ -13,6 +13,7 @@ import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
+import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
@@ -31,7 +32,6 @@ import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
 import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
-import type { CustomPageComponent } from "./custom-pages/types"
 
 const customPageModules = import.meta.glob<{ default: CustomPageComponent }>(
   "./custom-pages/*.tsx",
