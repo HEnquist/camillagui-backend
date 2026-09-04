@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef } from "react"
-import { mdiHome, mdiImage, mdiTable } from "@mdi/js"
+import React, { useCallback, useMemo, useRef, useState } from "react"
+import { mdiEye, mdiEyeOff, mdiHome, mdiImage, mdiTable } from "@mdi/js"
 import {
   Chart as ChartJS,
   Legend,
@@ -75,8 +75,16 @@ export interface ChartContent {
   f: number[]
   magnitude?: number[]
   phase?: number[]
-  impulse?: number[]
-  time: number[]
+  // the impulse response arrives from the backend as raw float64 and is kept
+  // as a view over those bytes, so these are typed arrays rather than lists
+  impulse?: ArrayLike<number>
+  time: ArrayLike<number>
+  /**
+   * The level, in dB, below which the phase is aliasing rather than phase. Set
+   * for a convolution filter, absent for anything evaluated in closed form.
+   */
+  phaseFloor?: number
+  /** Group delay in ms, one value per frequency in `f_groupdelay`. */
   groupdelay?: number[]
   f_groupdelay?: number[]
 }
@@ -89,6 +97,7 @@ export interface FilterOption {
 
 export function Chart(props: { data: ChartContent; onChange: (item: string) => void }) {
   const chartRef = useRef<ChartJS<"scatter"> & { resetZoom: () => void }>(null)
+  const [hideUnreadablePhase, setHideUnreadablePhase] = useState(true)
   const downloadPlot = useCallback(() => {
     const link = document.createElement("a")
     link.download = props.data.name.replace(/\s/g, "_") + ".png"
@@ -108,8 +117,10 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
 
   const data: ChartData<"scatter"> = { labels: [props.data.name], datasets: [] }
 
-  function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
-    return xvect.map((x, idx) => ({
+  function make_pointlist(xvect: ArrayLike<number>, yvect: ArrayLike<number>, scaling_x: number, scaling_y: number) {
+    // Array.from, not map: xvect may be a Float64Array, whose own map would
+    // coerce these points back to numbers
+    return Array.from(xvect, (x, idx) => ({
       x: scaling_x * x,
       y: scaling_y * yvect[idx],
     }))
@@ -120,15 +131,13 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
     const phasedat = props.data.phase
     const delaydat = props.data.groupdelay
 
-    const table = props.data.f.map((f, i) => {
-      let mag: number | null = null
-      if (magdat !== undefined) mag = magdat[i]
-      let phase: number | null = null
-      if (phasedat !== undefined) phase = phasedat[i]
-      let delay: number | null = null
-      if (delaydat !== undefined) delay = delaydat[i]
-      return [f, mag, phase, delay]
-    })
+    // a blanked point, deep below a convolution filter's passband where the
+    // phase is not readable, is an empty field rather than the text NaN
+    const value = (values: number[] | undefined, i: number) => {
+      const v = values === undefined ? undefined : values[i]
+      return v === undefined || !Number.isFinite(v) ? null : v
+    }
+    const table = props.data.f.map((f, i) => [f, value(magdat, i), value(phasedat, i), value(delaydat, i)])
     const csvContent =
       "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
       table.map((row) => row.join(",")).join("\n")
@@ -138,12 +147,17 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
     link.click()
   }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
 
+  const phaseFloor = props.data.phaseFloor
+  const magnitude = props.data.magnitude
+  // only worth offering when there is something to hide
+  const hasUnreadablePhase =
+    phaseFloor !== undefined && magnitude !== undefined && magnitude.some((value) => value < phaseFloor)
+
   const styles = cssStyles()
   const gainColor = styles.getPropertyValue("--gain-color")
   const phaseColor = styles.getPropertyValue("--phase-color")
   const impulseColor = styles.getPropertyValue("--impulse-color")
   const groupdelayColor = styles.getPropertyValue("--groupdelay-color")
-  const magnitude = props.data.magnitude
   if (magnitude) {
     const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
     data.datasets.push({
@@ -161,7 +175,17 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
   }
   const phase = props.data.phase
   if (phase) {
-    const phasepoints = make_pointlist(props.data.f, phase, 1.0, 1.0)
+    // Below the floor the phase turns a full circle between neighbouring nulls
+    // and the grid samples it far too sparsely to show that, so what would be
+    // drawn is the aliasing. The values are right, so it is offered as a
+    // choice rather than simply dropped. Group delay is not offered: it is
+    // read from a blanked phase whatever this is set to, since a prediction
+    // carried through the aliased region moves the readable part of the curve.
+    const hidden =
+      hideUnreadablePhase && phaseFloor !== undefined && magnitude !== undefined
+        ? phase.map((value, n) => (magnitude[n] < phaseFloor ? NaN : value))
+        : phase
+    const phasepoints = make_pointlist(props.data.f, hidden, 1.0, 1.0)
     data.datasets.push({
       label: "Phase",
       fill: false,
@@ -504,6 +528,13 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
       <Scatter data={data} options={options} ref={chartRef} />
       <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadPlot} />
       <MdiButton icon={mdiTable} tooltip="Save plot data as csv" onClick={downloadData} />
+      {hasUnreadablePhase && (
+        <MdiButton
+          icon={hideUnreadablePhase ? mdiEyeOff : mdiEye}
+          tooltip={hideUnreadablePhase ? "Show unreliable phase" : "Hide unreliable phase"}
+          onClick={() => setHideUnreadablePhase(!hideUnreadablePhase)}
+        />
+      )}
       <MdiButton icon={mdiHome} tooltip="Reset zoom and pan" onClick={resetView} />
       <ReactTooltip />
     </>

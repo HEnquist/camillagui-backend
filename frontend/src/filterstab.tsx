@@ -31,6 +31,7 @@ import {
   FilterParameterValue,
   PeqBand,
 } from "./camilladsp/config"
+import { clearCoefficientCache, evalFilter } from "./camilladsp/eval"
 import { Chart, ChartContent, PlotVolumeSlider } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
@@ -330,9 +331,13 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         this.updateDefaults(filename)
       }
     }
-    this.plotFilter()
   }
 
+  /**
+   * Only a Conv needs debouncing: a file backed one goes to the backend, and
+   * Dummy and Values can carry an impulse response long enough that the FFT is
+   * worth keeping off every keystroke.
+   */
   private timer = delayedExecutor(500)
 
   private uploadCoeffs(files: FileList) {
@@ -342,6 +347,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       (fileNames) => {
         this.setState({ uploadState: { success: true } })
         const { updateAvailableCoeffFiles } = this.props
+        // an upload may have replaced a file the cache still holds coefficients for
+        clearCoefficientCache()
         this.pickFilterFile(fileNames[0])
         updateAvailableCoeffFiles()
       },
@@ -405,8 +412,12 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         prevFilter.type !== currentFilter.type ||
         !isEqual(prevFilter.parameters, currentFilter.parameters) ||
         this.state.plot_at_volume !== prevState.plot_at_volume
-      )
-        this.timer(() => this.plotFilter())
+      ) {
+        // Everything except a Conv is evaluated in the browser from a handful
+        // of coefficients, so it can follow the control being dragged directly.
+        if (currentFilter.type === "Conv") this.timer(() => this.plotFilter())
+        else this.plotFilter()
+      }
     }
   }
 
@@ -433,30 +444,21 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   }
 
   private plotFilter(samplerate?: number, channels?: number) {
-    fetch("/api/evalfilter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: this.props.name,
-        config: this.props.filter,
-        samplerate: samplerate || this.props.samplerate,
-        channels: channels || this.state.channels,
-        volume: this.state.plot_at_volume,
-      }),
+    evalFilter(this.props.filter, {
+      name: this.props.name,
+      samplerate: samplerate || this.props.samplerate,
+      channels: channels || this.state.channels,
+      volume: this.state.plot_at_volume,
     }).then(
-      (result) =>
-        result.json().then(
-          (data) => {
-            if (this.state.showFilterPlot) this.setState({ data: data as ChartContent })
-          },
-          (error) => console.log("JSON parse failed", error),
-        ),
-      (error) => console.log("api call failed", error),
+      (data) => {
+        if (this.state.showFilterPlot) this.setState({ data })
+      },
+      (error) => console.log("Filter evaluation failed", error),
     )
   }
 
   render() {
-    const { name, filter } = this.props
+    const { name } = this.props
     const uploadState = this.state.uploadState
     const isValidFilterName = (newName: string) =>
       name === newName || (newName.trim().length > 0 && this.props.isFreeFilterName(newName))
@@ -517,13 +519,6 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
               tooltip="Plot frequency response of this filter"
               onClick={this.toggleFilterPlot}
             />
-            {isConvolutionFileFilter(filter) && (
-              <MdiButton
-                icon={mdiFileSearch}
-                tooltip="Pick filter file"
-                onClick={() => this.setState({ filterFilePopupOpen: true })}
-              />
-            )}
             <DeleteButton tooltip={"Delete this filter"} onClick={this.props.remove} />
           </div>
           <FilterParams
@@ -536,6 +531,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
             filterDefaults={this.state.filterDefaults}
             showDefaults={this.state.showDefaults}
             setShowDefaults={() => this.setState({ showDefaults: true })}
+            openFilePicker={() => this.setState({ filterFilePopupOpen: true })}
           />
         </div>
 
@@ -633,6 +629,7 @@ interface FilterParamsProps {
   filterDefaults: FilterDefaults
   setShowDefaults: () => void
   showDefaults: boolean
+  openFilePicker: () => void
 }
 
 class FilterParams extends React.Component<FilterParamsProps, unknown> {
@@ -1014,6 +1011,7 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
         {...props}
         value={selectedFile}
         error={error}
+        icon={{ path: mdiFileSearch, tooltip: "Pick filter file", onClick: this.props.openFilePicker }}
         onChange={(value) => {
           if (!allowAbsolutePaths && containsPathSeparator(value)) return
           this.props.updateFilter(coeffFileNameUpdate(coeffDir, value))

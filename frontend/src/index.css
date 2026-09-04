@@ -405,6 +405,35 @@ textarea.logfileviewer {
   gap: 4px;
 }
 
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.input-with-icon > input {
+  width: 100%;
+  padding-right: 26px;
+}
+
+.input-icon-button {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--button-icon-color);
+  opacity: 0.65;
+}
+
+.input-icon-button:hover {
+  opacity: 1;
+}
+
 .textbox {
   display: table-cell;
   width: 100%;
