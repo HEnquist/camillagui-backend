@@ -13,7 +13,7 @@
  * parameters turn into explicit nulls.
  *
  * This checks that the evaluator copes, not what it computes. The numbers are
- * pinned by golden.test.ts.
+ * covered by properties.test.ts.
  */
 import { describe, expect, it } from "vitest"
 import { Filter } from "../config"

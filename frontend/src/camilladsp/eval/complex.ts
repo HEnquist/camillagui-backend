@@ -38,6 +38,24 @@ export function multiplyInto(target: ComplexCurve, factor: ComplexCurve): void {
   }
 }
 
+/**
+ * Multiply `target` in place by the response of a pure delay, `exp(-j*2*pi*f*t)`.
+ *
+ * Closed form at every frequency, so unlike a delay carried in a sampled phase
+ * curve there is nothing here to unwrap and no grid to be too coarse.
+ */
+export function applyDelayInto(target: ComplexCurve, delaySeconds: number, freq: ArrayLike<number>): void {
+  const { re, im } = target
+  for (let n = 0; n < re.length; n++) {
+    const angle = -2.0 * Math.PI * freq[n] * delaySeconds
+    const wr = Math.cos(angle)
+    const wi = Math.sin(angle)
+    const r = re[n] * wr - im[n] * wi
+    im[n] = re[n] * wi + im[n] * wr
+    re[n] = r
+  }
+}
+
 /** Magnitude in dB, with the same small offset the DSP plots use to keep log10 finite. */
 export function magnitudeDb(curve: ComplexCurve): number[] {
   const out = new Array<number>(curve.re.length)
@@ -54,4 +72,44 @@ export function phaseDegrees(curve: ComplexCurve): number[] {
     out[n] = Math.atan2(curve.im[n], curve.re[n]) * (180.0 / Math.PI)
   }
   return out
+}
+
+/**
+ * How far below a curve's own peak the phase stops being worth drawing.
+ *
+ * This is a legibility threshold, not an accuracy one. The numbers down there
+ * are right: a 1001 tap windowed sinc lowpass reaches -201 dB at 22 kHz, and
+ * the plot agrees with 80 digit arithmetic to 0.002 dB, because a float64 FFT
+ * of that filter does not reach its own noise floor until about -272 dB.
+ *
+ * 150 dB was picked by trying it on real filters. It took the hash out of the
+ * plots and hid nothing anyone wanted to see.
+ */
+export const PHASE_NOISE_FLOOR_DB = 150.0
+
+/**
+ * Blank the phase, in place, deep below a convolution filter's passband.
+ *
+ * The phase there is correct and unreadable. An FIR's stopband is a run of
+ * nulls spaced fs/taps apart, 48 Hz for a 1001 tap filter, and the phase turns
+ * through a full circle at each one. The plot's log grid is 155 Hz per point at
+ * 20 kHz, so three of those nulls fall between neighbouring points and the
+ * phase is sampled far too sparsely to show what it does. What gets drawn is
+ * the aliasing, a hash of values between -180 and 180, and the group delay read
+ * from it is worse. The magnitude is smooth at the same frequencies and is left
+ * alone.
+ *
+ * Only for a convolution filter. A 4th order Butterworth highpass at 1000 Hz is
+ * 240 dB down at 1 Hz, deeper than anything here, and its phase is smooth,
+ * slowly varying and perfectly readable: it has no nulls to rotate through.
+ * Depth alone is not the problem, density of nulls is, and only an FIR has them.
+ *
+ * Blanked points are NaN, which the plot draws as a gap in the line rather
+ * than as a value, and which `calcGroupDelay` propagates and ignores.
+ */
+export function blankNoisyPhase(magnitude: ArrayLike<number>, phase: number[]): void {
+  let peak = -Infinity
+  for (let n = 0; n < magnitude.length; n++) if (magnitude[n] > peak) peak = magnitude[n]
+  const floor = peak - PHASE_NOISE_FLOOR_DB
+  for (let n = 0; n < phase.length; n++) if (magnitude[n] < floor) phase[n] = NaN
 }

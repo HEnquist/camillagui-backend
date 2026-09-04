@@ -31,7 +31,7 @@ import {
   FilterParameterValue,
   PeqBand,
 } from "./camilladsp/config"
-import { evalFilter } from "./camilladsp/eval"
+import { clearCoefficientCache, evalFilter } from "./camilladsp/eval"
 import { Chart, ChartContent, PlotVolumeSlider } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
@@ -333,7 +333,11 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     }
   }
 
-  /** Only file backed Conv filters go to the backend, and only they need debouncing. */
+  /**
+   * Only a Conv needs debouncing: a file backed one goes to the backend, and
+   * Dummy and Values can carry an impulse response long enough that the FFT is
+   * worth keeping off every keystroke.
+   */
   private timer = delayedExecutor(500)
 
   private uploadCoeffs(files: FileList) {
@@ -343,6 +347,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       (fileNames) => {
         this.setState({ uploadState: { success: true } })
         const { updateAvailableCoeffFiles } = this.props
+        // an upload may have replaced a file the cache still holds coefficients for
+        clearCoefficientCache()
         this.pickFilterFile(fileNames[0])
         updateAvailableCoeffFiles()
       },
@@ -407,9 +413,9 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
         !isEqual(prevFilter.parameters, currentFilter.parameters) ||
         this.state.plot_at_volume !== prevState.plot_at_volume
       ) {
-        // Everything except a Conv reading a coefficient file is evaluated in
-        // the browser, so it can follow the control being dragged directly.
-        if (isConvolutionFileFilter(currentFilter)) this.timer(() => this.plotFilter())
+        // Everything except a Conv is evaluated in the browser from a handful
+        // of coefficients, so it can follow the control being dragged directly.
+        if (currentFilter.type === "Conv") this.timer(() => this.plotFilter())
         else this.plotFilter()
       }
     }

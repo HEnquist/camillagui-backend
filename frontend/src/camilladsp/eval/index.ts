@@ -6,7 +6,7 @@
  * browser, which is almost always the faster machine of the two, and needs no
  * network at all except for Conv filters that read coefficients from a file.
  */
-import { magnitudeDb, multiplyInto, phaseDegrees, unitCurve } from "./complex"
+import { blankNoisyPhase, magnitudeDb, multiplyInto, phaseDegrees, unitCurve } from "./complex"
 import { convComplexGain } from "./conv"
 import { complexGain } from "./filters"
 import { FilterEvalError, num, numList, Params } from "./params"
@@ -23,7 +23,7 @@ const NPOINTS = 1000
  *
  * The step is the span divided by the number of points rather than by one
  * less, so the last point falls just short of `maxval`. That is what the DSP's
- * own plots do, and the golden fixture pins it.
+ * own plots do, and `eval.test.ts` pins it.
  */
 export function logspace(minval: number, maxval: number, npoints: number): Float64Array {
   const logmin = Math.log10(minval)
@@ -57,7 +57,7 @@ interface ConvCoefficients {
  * Dragging a control anywhere in a pipeline step re-evaluates every filter in
  * it, so without this a neighbouring Conv would be refetched on every frame.
  * The entries are large, up to a few megabytes for a long impulse response, so
- * only the most recent few are kept.
+ * only the least recently used few are kept.
  */
 const COEFF_CACHE_SIZE = 8
 const coeffCache = new Map<string, Promise<ConvCoefficients>>()
@@ -66,7 +66,13 @@ function cacheKey(filterconf: Filter, samplerate: number, channels: number): str
   return JSON.stringify([filterconf.parameters, samplerate, channels])
 }
 
-/** Drop the cached coefficients. Exported for tests. */
+/**
+ * Drop the cached coefficients.
+ *
+ * The cache is keyed on the filter parameters, so it cannot see a coefficient
+ * file being replaced under a name it already holds. Call this whenever the
+ * files on the backend change: after an upload, a delete or a rename.
+ */
 export function clearCoefficientCache(): void {
   coeffCache.clear()
 }
@@ -83,7 +89,13 @@ async function fetchConvCoefficients(
 ): Promise<ConvCoefficients> {
   const key = cacheKey(filterconf, samplerate, channels)
   const cached = coeffCache.get(key)
-  if (cached !== undefined) return cached
+  if (cached !== undefined) {
+    // re-insert, so the entries fall out of the Map in least recently used
+    // order rather than in the order they were first fetched
+    coeffCache.delete(key)
+    coeffCache.set(key, cached)
+    return cached
+  }
 
   const pending = (async () => {
     const response = await fetch("/api/convcoeffs", {
@@ -159,6 +171,8 @@ export async function evalFilter(filterconf: Filter, options: EvalOptions): Prom
 
   const magnitude = magnitudeDb(curve)
   const phase = phaseDegrees(curve)
+  // only an FIR has a stopband full of nulls for the plot grid to alias
+  if (filterconf.type === "Conv") blankNoisyPhase(magnitude, phase)
   const groupdelay = calcGroupDelay(result.f, phase)
   result.magnitude = magnitude
   result.phase = phase
@@ -206,10 +220,12 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
 
   const total = unitCurve(npoints)
   const convOptions: FilterOption[][] = []
+  let hasConv = false
   for (const filterName of names) {
     const filterconf = config.filters?.[filterName]
     if (filterconf === undefined) throw new FilterEvalError(`Unknown filter ${filterName}`)
     if (filterconf.type === "Conv") {
+      hasConv = true
       const conv = await convCoefficients(filterconf, samplerate, channels)
       // the bulk delay of a Conv is part of the step's response, so unlike the
       // single filter plot it is not removed here
@@ -223,6 +239,7 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
 
   const magnitude = magnitudeDb(total)
   const phase = phaseDegrees(total)
+  if (hasConv) blankNoisyPhase(magnitude, phase)
   const groupdelay = calcGroupDelay(freq, phase)
   return {
     name,

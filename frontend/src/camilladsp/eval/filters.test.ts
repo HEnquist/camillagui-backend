@@ -202,7 +202,7 @@ describe("phase unwrapping", () => {
     }
     const wrapped = truth.map((value) => ((((value + 180.0) % 360.0) + 360.0) % 360.0) - 180.0)
 
-    const ours = unwrapPhase(wrapped)
+    const ours = unwrapPhase(wrapped, 270.0)
     const offset = ours[0] - truth[0]
     ours.forEach((value, n) => expect(Math.abs(value - offset - truth[n])).toBeLessThan(1.0))
 

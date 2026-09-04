@@ -120,15 +120,13 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
     const phasedat = props.data.phase
     const delaydat = props.data.groupdelay
 
-    const table = props.data.f.map((f, i) => {
-      let mag: number | null = null
-      if (magdat !== undefined) mag = magdat[i]
-      let phase: number | null = null
-      if (phasedat !== undefined) phase = phasedat[i]
-      let delay: number | null = null
-      if (delaydat !== undefined) delay = delaydat[i]
-      return [f, mag, phase, delay]
-    })
+    // a blanked point, deep below a convolution filter's passband where the
+    // phase is not readable, is an empty field rather than the text NaN
+    const value = (values: number[] | undefined, i: number) => {
+      const v = values === undefined ? undefined : values[i]
+      return v === undefined || !Number.isFinite(v) ? null : v
+    }
+    const table = props.data.f.map((f, i) => [f, value(magdat, i), value(phasedat, i), value(delaydat, i)])
     const csvContent =
       "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
       table.map((row) => row.join(",")).join("\n")

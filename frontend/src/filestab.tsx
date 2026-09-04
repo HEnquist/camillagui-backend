@@ -13,6 +13,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
 import { Config, CURRENT_CONFIG_VERSION, defaultConfig } from "./camilladsp/config"
+import { clearCoefficientCache } from "./camilladsp/eval"
 import { GuiConfig } from "./guiconfig"
 import { ImportPopup, ImportPopupProps } from "./import/importpopup"
 import { PipelinePopup } from "./pipeline/pipelineplotter"
@@ -202,6 +203,15 @@ class FileTable extends Component<
     }
   }
 
+  /**
+   * Drop the cached coefficients after this table has changed the files on
+   * disk. A plot caches what it read by filter name, so a file replaced under
+   * a name already in use would otherwise keep plotting its old contents.
+   */
+  private coefficientFilesChanged() {
+    if (this.type === "coeff") clearCoefficientCache()
+  }
+
   private update() {
     loadFiles(this.type).then((files) => {
       if (!isEqual(files, this.state.files)) {
@@ -221,6 +231,7 @@ class FileTable extends Component<
       body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
     })
     this.setState({ fileStatus: null })
+    this.coefficientFilesChanged()
     this.update()
   }
 
@@ -240,6 +251,7 @@ class FileTable extends Component<
       files,
       () => {
         this.showSuccess(EMPTY_FILENAME, "upload")
+        this.coefficientFilesChanged()
         this.update()
       },
       (message) => this.showErrorMessage(EMPTY_FILENAME, "upload", message),
@@ -397,6 +409,7 @@ class FileTable extends Component<
       )
       if (response.ok) {
         this.showSuccess(newName, "rename")
+        this.coefficientFilesChanged()
         this.update()
       } else {
         const message = await response.text()

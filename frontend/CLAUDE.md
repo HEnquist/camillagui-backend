@@ -109,16 +109,19 @@ volume})` and `evalFilterStep(config, index, ...)` return a `ChartContent`. They
 because a Conv reading a coefficient file has to ask the backend for the coefficients, through
 `POST /api/convcoeffs`; everything else resolves without touching the network, cheaply enough to
 run on every keystroke. Resolved coefficients are cached, keyed on the Conv parameters plus
-samplerate and channels, so dragging a control next to a Conv does not refetch it.
+samplerate and channels, so dragging a control next to a Conv does not refetch it. The cache
+cannot see a file being replaced under a name it already holds, so anything that changes the
+coefficient files on the backend calls `clearCoefficientCache()`.
 
-Three test files cover it:
+Four test files cover it:
 
 - `properties.test.ts` is the one that matters. Every assertion is a closed-form property the
   filter must satisfy, checked against no other implementation: a Butterworth of any order has the
   Butterworth magnitude on the prewarped frequency axis, an allpass is unity everywhere, a peaking
   filter is exactly its gain at the centre, a Linkwitz-Riley's two halves sum flat, a delay of N
-  samples has a group delay of N/fs. **Add to this file when you add a filter.** It fails on
-  wrongness rather than on change, so fixing a bug turns it green.
+  samples has a group delay of N/fs, a Conv whose impulse sits at sample N delays by N/fs and
+  flattens again once the bulk delay is removed. **Add to this file when you add a filter.** It
+  fails on wrongness rather than on change, so fixing a bug turns it green.
 - `filters.test.ts` covers the behaviour of each type: band roles, defaults, null handling, unknown
   types raising rather than being dropped.
 - `variants.test.ts` evaluates every filter config the backend's JSON schemas allow, from
@@ -126,6 +129,8 @@ Three test files cover it:
   schemas are in Python and the evaluator is in TypeScript**, so this is the only thing keeping
   them coupled: when a filter schema changes, re-run that tool and commit the result. The backend's
   `test_eval_validated_configs.py` fails until you do.
+- `eval.test.ts` covers the plumbing rather than the numbers: the coefficient cache, combining a
+  whole pipeline step, and the samplerate and channel options a step offers.
 
 A fixture of curves captured from the Python evaluator gated the original port, then was dropped.
 It only ever pinned what the GUI had been drawing, which nothing had verified against CamillaDSP,

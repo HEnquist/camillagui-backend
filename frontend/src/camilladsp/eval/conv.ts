@@ -2,7 +2,7 @@
  * Convolution filters: the FFT of an impulse response, interpolated onto the
  * plot's log frequency grid.
  */
-import { ComplexCurve, zeroCurve } from "./complex"
+import { applyDelayInto, ComplexCurve, zeroCurve } from "./complex"
 import { unwrapPhase } from "./unwrap"
 
 /** The smallest power of two that is at least `n`. */
@@ -89,15 +89,23 @@ export function findPeak(impulse: ArrayLike<number>): number {
 /**
  * Linear interpolation from the dense FFT grid onto the plot grid.
  *
- * The index mapping is `len(y) * xnew / xold[len-1]`, deliberately using the
- * length rather than the last index, and clamps at the end of the array. That
- * is what the DSP's own plots do, so it is kept exactly.
+ * The grid is uniform, so a frequency maps straight onto a fractional index by
+ * dividing by the bin spacing. `xlast` is the last bin, at index `len - 1`, so
+ * the spacing is `xlast / (len - 1)`, and the index is `(len - 1) * f / xlast`.
+ *
+ * The Python this was ported from divided by the length instead, which stretched
+ * every Conv curve along the frequency axis by len/(len-1), a fifth of a percent
+ * with the usual 512 point half spectrum. That came from pycamilladsp-plot
+ * commit e4867a1, which replaced `np.interp` with index arithmetic and took the
+ * bin spacing from the wrong end of the fencepost. It is corrected here: a Conv
+ * whose impulse sits at sample N now has a group delay of exactly N/fs, where
+ * before it was 0.196% high at every frequency.
  */
 function interpolate(y: Float64Array, xlast: number, xnew: ArrayLike<number>): Float64Array {
   const out = new Float64Array(xnew.length)
   const last = y.length - 1
   for (let n = 0; n < xnew.length; n++) {
-    const idx = (y.length * xnew[n]) / xlast
+    const idx = ((y.length - 1) * xnew[n]) / xlast
     const floor = Math.floor(idx)
     const fract = idx - floor
     const i1 = Math.min(floor, last)
@@ -150,7 +158,19 @@ export function convSpectrum(
   fs: number,
   removeDelay: boolean,
 ): { freq: Float64Array; curve: ComplexCurve } {
-  const npoints = Math.max(1024, nextPow2(impulse.length))
+  // Zero padded to at least one bin per Hz, not merely to the length of the
+  // impulse response. Padding costs nothing in accuracy, it evaluates the same
+  // transform at more frequencies, and the plot needs those frequencies: its
+  // log axis puts hundreds of points below 100 Hz, and a 2000 tap filter
+  // padded only to its own length has 23 Hz bins, so the whole knee of a
+  // highpass is drawn by interpolating across it. That was worth 4.7 dB of
+  // error at the knee, falling fourfold for every doubling of the length.
+  //
+  // The cost lands where it is affordable. A filter long enough for the FFT to
+  // be expensive already resolves better than a Hz, so nothing changes for it;
+  // a short filter is padded a long way, but a 65k point transform is a few
+  // milliseconds, once, and the result is cached.
+  const npoints = Math.max(nextPow2(impulse.length), nextPow2(fs))
   const re = new Float64Array(npoints)
   const im = new Float64Array(npoints)
   re.set(impulse)
@@ -179,13 +199,25 @@ export function convSpectrum(
   return { freq, curve }
 }
 
-/** The transfer function of a convolution filter on the plot's frequency grid. */
+/**
+ * The transfer function of a convolution filter on the plot's frequency grid.
+ *
+ * The bulk delay is always taken out before the interpolation, whether or not
+ * the caller wants it in the result, because interpolating the phase means
+ * unwrapping it on the FFT grid first, and a peak sitting late in the impulse
+ * response turns the phase by more than half a circle from one bin to the next,
+ * which no unwrap can follow. Taking the peak out leaves a phase that barely
+ * moves between bins. Where the caller wants the delay it goes back on
+ * afterwards in closed form, which is exact at any length.
+ */
 export function convComplexGain(
   impulse: ArrayLike<number>,
   fs: number,
   freq: ArrayLike<number>,
   removeDelay = false,
 ): ComplexCurve {
-  const spectrum = convSpectrum(impulse, fs, removeDelay)
-  return interpolatePolar(spectrum.curve, spectrum.freq, freq)
+  const spectrum = convSpectrum(impulse, fs, true)
+  const curve = interpolatePolar(spectrum.curve, spectrum.freq, freq)
+  if (!removeDelay) applyDelayInto(curve, findPeak(impulse) / fs, freq)
+  return curve
 }
