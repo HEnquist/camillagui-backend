@@ -4,10 +4,18 @@
  * options a step offers.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { Config, defaultConfig, Filter } from "../config"
 import { blankNoisyPhase } from "./complex"
-import { clearCoefficientCache, evalFilter, evalFilterStep, intersectFilterOptions, logspace } from "./index"
+import {
+  clearCoefficientCache,
+  entriesToEvict,
+  evalFilter,
+  evalFilterStep,
+  intersectFilterOptions,
+  logspace,
+} from "./index"
 import { calcGroupDelay } from "./unwrap"
+import { FilterOption } from "../../utilities/chart"
+import { Config, defaultConfig, Filter } from "../config"
 
 function convFilter(filename: string): Filter {
   return {
@@ -21,8 +29,25 @@ function gainFilter(gain: number): Filter {
   return { type: "Gain", description: null, parameters: { gain, scale: "dB" } }
 }
 
+/** The framing the backend replies with: header length, header, padding, samples. */
+export function frameCoefficients(
+  coefficients: number[],
+  format: "float32" | "float64" = "float64",
+  options: FilterOption[] = [],
+): ArrayBuffer {
+  const header = new TextEncoder().encode(JSON.stringify({ options, format }))
+  const start = 4 + header.length + ((8 - ((4 + header.length) % 8)) % 8)
+  const width = format === "float32" ? 4 : 8
+  const buffer = new ArrayBuffer(start + width * coefficients.length)
+  new DataView(buffer).setUint32(0, header.length, true)
+  new Uint8Array(buffer, 4, header.length).set(header)
+  if (format === "float32") new Float32Array(buffer, start).set(coefficients)
+  else new Float64Array(buffer, start).set(coefficients)
+  return buffer
+}
+
 function stubCoefficients(coefficients: number[] = [1.0, 0.0, 0.0, 0.0]) {
-  const fetchMock = vi.fn(async () => new Response(JSON.stringify({ options: [], coefficients })))
+  const fetchMock = vi.fn(async () => new Response(frameCoefficients(coefficients)))
   vi.stubGlobal("fetch", fetchMock)
   return fetchMock
 }
@@ -72,21 +97,52 @@ describe("coefficient cache", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it.each([
+    // sizes in least recently used order, budget, how many of the oldest go
+    [[10, 10, 10], 100, 0],
+    [[60, 60], 100, 1],
+    [[60, 20, 20], 100, 0], // exactly the budget, nothing has to go
+    [[70, 20, 20], 100, 1],
+    [[90, 90, 90], 100, 2],
+    // never the newest, even when it does not fit on its own
+    [[200], 100, 0],
+    [[10, 200], 100, 1],
+    [[], 100, 0],
+  ] as const)("evicts %j against a budget of %i", (sizes, budget, expected) => {
+    expect(entriesToEvict([...sizes], budget)).toBe(expected)
+  })
+
+  it("keeps a dozen small entries, where a cap on the count would not", async () => {
+    // the sizes differ by orders of magnitude, so counting entries is the wrong
+    // bound: twelve short impulse responses are nothing at all
+    const fetchMock = stubCoefficients([1.0, 0.0])
+    for (let n = 0; n < 12; n++) await evalFilter(convFilter(`small${n}.raw`), filterOptions)
+    expect(fetchMock).toHaveBeenCalledTimes(12)
+    await evalFilter(convFilter("small0.raw"), filterOptions)
+    expect(fetchMock).toHaveBeenCalledTimes(12)
+  })
+
   it("keeps the entries it is still being asked for, not the ones fetched first", async () => {
-    // The cache holds a few megabytes per entry, so it is small. Evicting in
-    // fetch order would throw out the filter being edited as soon as enough
-    // others had been plotted after it.
+    // Using an entry has to move it to the front, or the filter being edited
+    // would be evicted as soon as enough others had been plotted after it.
     const fetchMock = stubCoefficients()
     const first = convFilter("first.raw")
     await evalFilter(first, filterOptions)
     for (let n = 0; n < 7; n++) await evalFilter(convFilter(`other${n}.raw`), filterOptions)
-    // still in the cache, and using it moves it to the front
     await evalFilter(first, filterOptions)
     expect(fetchMock).toHaveBeenCalledTimes(8)
-    // one more entry pushes out the least recently used, which is no longer this one
-    await evalFilter(convFilter("last.raw"), filterOptions)
-    await evalFilter(first, filterOptions)
-    expect(fetchMock).toHaveBeenCalledTimes(9)
+  })
+
+  it.each(["float32", "float64"] as const)("reads a %s reply", async (format) => {
+    // the backend picks the width from what the source file can hold, so both
+    // have to come back as usable coefficients
+    const coefficients = [1.0, -0.5, 0.25, 0.0]
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(frameCoefficients(coefficients, format))),
+    )
+    const result = await evalFilter(convFilter("impulse.raw"), filterOptions)
+    expect(Array.from(result.impulse!)).toEqual(coefficients)
   })
 
   it("does not go to the backend for a Conv that carries its own values", async () => {

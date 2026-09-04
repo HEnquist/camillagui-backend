@@ -149,8 +149,9 @@ describe("Conv", () => {
       npoints: 32,
     })
     result.magnitude!.forEach((gain) => expect(gain).toBeCloseTo(0.0, 12))
-    expect(result.impulse).toEqual([1.0])
-    expect(result.time).toEqual([0.0])
+    // the impulse response stays in the typed array it arrives in
+    expect(Array.from(result.impulse!)).toEqual([1.0])
+    expect(Array.from(result.time)).toEqual([0.0])
   })
 
   it("finds the last of several equal peaks", () => {

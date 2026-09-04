@@ -48,7 +48,8 @@ export interface EvalOptions {
 /** What the backend knows about a Conv filter's coefficient file. */
 interface ConvCoefficients {
   options: FilterOption[]
-  coefficients: number[]
+  // whichever width the backend judged lossless for the source file
+  coefficients: Float32Array | Float64Array
 }
 
 /**
@@ -56,11 +57,48 @@ interface ConvCoefficients {
  *
  * Dragging a control anywhere in a pipeline step re-evaluates every filter in
  * it, so without this a neighbouring Conv would be refetched on every frame.
- * The entries are large, up to a few megabytes for a long impulse response, so
- * only the least recently used few are kept.
+ *
+ * Bounded by how much memory the entries take rather than by how many there
+ * are, because their sizes differ by orders of magnitude: a Values filter is a
+ * handful of bytes and a room correction is megabytes. Counting entries would
+ * be both too loose, eight long impulse responses being hundreds of megabytes,
+ * and too tight, a pipeline step with a dozen short ones evicting itself on
+ * every pass.
  */
-const COEFF_CACHE_SIZE = 8
-const coeffCache = new Map<string, Promise<ConvCoefficients>>()
+const COEFF_CACHE_BYTES = 64 * 1024 * 1024
+
+interface CacheEntry {
+  coefficients: Promise<ConvCoefficients>
+  /** Filled in when the fetch resolves, since the size is unknown until then. */
+  bytes: number
+}
+
+const coeffCache = new Map<string, CacheEntry>()
+
+/**
+ * How many of the oldest entries have to go for the rest to fit in the budget,
+ * given their sizes in least recently used order.
+ *
+ * The newest is never one of them. It is the response to whatever is being
+ * plotted right now, so dropping it would mean fetching it again immediately,
+ * and a single file larger than the whole budget would never be cached at all.
+ */
+export function entriesToEvict(sizes: number[], budget: number): number {
+  let total = sizes.reduce((sum, bytes) => sum + bytes, 0)
+  let evicted = 0
+  while (total > budget && evicted < sizes.length - 1) {
+    total -= sizes[evicted]
+    evicted++
+  }
+  return evicted
+}
+
+function pruneCoefficientCache(): void {
+  const sizes = [...coeffCache.values()].map((entry) => entry.bytes)
+  const evicted = entriesToEvict(sizes, COEFF_CACHE_BYTES)
+  const keys = [...coeffCache.keys()]
+  for (let n = 0; n < evicted; n++) coeffCache.delete(keys[n])
+}
 
 function cacheKey(filterconf: Filter, samplerate: number, channels: number): string {
   return JSON.stringify([filterconf.parameters, samplerate, channels])
@@ -75,6 +113,32 @@ function cacheKey(filterconf: Filter, samplerate: number, channels: number): str
  */
 export function clearCoefficientCache(): void {
   coeffCache.clear()
+}
+
+/**
+ * Unpack the reply from `/api/convcoeffs`.
+ *
+ * Not JSON. A million taps as decimal text is 21.8 MB, 390 ms for the backend
+ * to format and 37 ms here to parse; as raw floats it is 8.4 MB or less, 19 ms
+ * to write, and free to read, because the array below is a view over the bytes
+ * rather than a copy of them. The backend is often the slowest machine in the
+ * system, so that is where it matters most.
+ *
+ * The frame is a little endian uint32 length, a JSON header of that length,
+ * padding to the next multiple of 8, and then the samples. The padding is what
+ * makes the view possible, since Float64Array needs a byte offset it can divide
+ * by 8. The header carries the samplerate and channel options, and the width of
+ * the samples: the backend sends float32 when the source file holds no more
+ * than that, which is every format except F64_LE, S32_LE and TEXT, so the usual
+ * coefficient file crosses the wire at half the size and loses nothing.
+ */
+function unframeCoefficients(buffer: ArrayBuffer): ConvCoefficients {
+  const headerLength = new DataView(buffer).getUint32(0, true)
+  const header = new TextDecoder().decode(new Uint8Array(buffer, 4, headerLength))
+  const { options, format } = JSON.parse(header) as { options: FilterOption[]; format: string }
+  const start = 4 + headerLength + ((8 - ((4 + headerLength) % 8)) % 8)
+  const coefficients = format === "float32" ? new Float32Array(buffer, start) : new Float64Array(buffer, start)
+  return { options, coefficients }
 }
 
 /**
@@ -94,7 +158,7 @@ async function fetchConvCoefficients(
     // order rather than in the order they were first fetched
     coeffCache.delete(key)
     coeffCache.set(key, cached)
-    return cached
+    return cached.coefficients
   }
 
   const pending = (async () => {
@@ -104,17 +168,19 @@ async function fetchConvCoefficients(
       body: JSON.stringify({ config: filterconf, samplerate, channels }),
     })
     if (!response.ok) throw new FilterEvalError(await response.text())
-    return (await response.json()) as ConvCoefficients
+    return unframeCoefficients(await response.arrayBuffer())
   })()
-  // a failed fetch must not be remembered, or the filter can never plot again
-  pending.catch(() => coeffCache.delete(key))
+  const entry: CacheEntry = { coefficients: pending, bytes: 0 }
+  pending.then(
+    (resolved) => {
+      entry.bytes = resolved.coefficients.byteLength
+      pruneCoefficientCache()
+    },
+    // a failed fetch must not be remembered, or the filter can never plot again
+    () => coeffCache.delete(key),
+  )
 
-  coeffCache.set(key, pending)
-  while (coeffCache.size > COEFF_CACHE_SIZE) {
-    const oldest = coeffCache.keys().next()
-    if (oldest.done) break
-    coeffCache.delete(oldest.value)
-  }
+  coeffCache.set(key, entry)
   return pending
 }
 
@@ -128,14 +194,14 @@ async function convCoefficients(filterconf: Filter, samplerate: number, channels
   const subtype = params.type
   if (subtype === "Raw" || subtype === "Wav") return fetchConvCoefficients(filterconf, samplerate, channels)
   if (subtype === "Dummy") {
-    const coefficients = new Array<number>(num(params, "length")).fill(0.0)
+    const coefficients = new Float64Array(num(params, "length"))
     coefficients[0] = 1.0
     return { options: [], coefficients }
   }
-  if (subtype === "Values") return { options: [], coefficients: numList(params, "values") }
+  if (subtype === "Values") return { options: [], coefficients: Float64Array.from(numList(params, "values")) }
   // a Conv with no parameters at all is a single unity coefficient, which is
   // what CamillaDSP falls back to
-  if (subtype === undefined) return { options: [], coefficients: [1.0] }
+  if (subtype === undefined) return { options: [], coefficients: Float64Array.from([1.0]) }
   throw new FilterEvalError(`Unknown Conv subtype ${String(subtype)}`)
 }
 
@@ -164,7 +230,7 @@ export async function evalFilter(filterconf: Filter, options: EvalOptions): Prom
     curve = convComplexGain(conv.coefficients, samplerate, freq, true)
     result.options = conv.options
     result.impulse = conv.coefficients
-    result.time = conv.coefficients.map((_, n) => n / samplerate)
+    result.time = Float64Array.from(conv.coefficients, (_, n) => n / samplerate)
   } else {
     curve = complexGain(filterconf, samplerate, volume, freq)
   }

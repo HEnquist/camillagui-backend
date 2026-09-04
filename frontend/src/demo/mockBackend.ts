@@ -440,6 +440,27 @@ function captureChannelCount(config: Config) {
  * supply what a real one would: the coefficients behind a Conv filter that
  * reads a file. The GUI does the FFT and plots the real response of these.
  */
+/**
+ * The same framing the real backend uses for a coefficient reply: a little
+ * endian uint32 header length, that much JSON, padding to a multiple of 8, and
+ * the samples as raw float64. See `_coefficients_response` in the backend and
+ * `unframeCoefficients` in camilladsp/eval.
+ */
+function coefficientsResponse(options: unknown, coefficients: number[]): Response {
+  // float32, as the real backend sends for a wav or raw file of that width
+  const header = new TextEncoder().encode(JSON.stringify({ options, format: "float32" }))
+  const padding = (8 - ((4 + header.length) % 8)) % 8
+  const start = 4 + header.length + padding
+  const buffer = new ArrayBuffer(start + 4 * coefficients.length)
+  new DataView(buffer).setUint32(0, header.length, true)
+  new Uint8Array(buffer, 4, header.length).set(header)
+  new Float32Array(buffer, start).set(coefficients)
+  return new Response(buffer, {
+    status: 200,
+    headers: { "Content-Type": "application/octet-stream" },
+  })
+}
+
 function makeConvCoefficients(filename: string) {
   const taps = 512
   const nameHash = Array.from(filename).reduce((acc, char) => acc + char.charCodeAt(0), 0)
@@ -735,7 +756,8 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname === "/api/convcoeffs" && method === "POST") {
     const payload = await requestJson<{ config?: { parameters?: { filename?: string } } }>(input, init)
-    return jsonResponse(makeConvCoefficients(payload.config?.parameters?.filename ?? "demo"))
+    const { options, coefficients } = makeConvCoefficients(payload.config?.parameters?.filename ?? "demo")
+    return coefficientsResponse(options, coefficients)
   }
 
   if (pathname === "/api/wavinfo" && method === "GET") {

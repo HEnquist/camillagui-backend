@@ -109,9 +109,15 @@ volume})` and `evalFilterStep(config, index, ...)` return a `ChartContent`. They
 because a Conv reading a coefficient file has to ask the backend for the coefficients, through
 `POST /api/convcoeffs`; everything else resolves without touching the network, cheaply enough to
 run on every keystroke. Resolved coefficients are cached, keyed on the Conv parameters plus
-samplerate and channels, so dragging a control next to a Conv does not refetch it. The cache
-cannot see a file being replaced under a name it already holds, so anything that changes the
-coefficient files on the backend calls `clearCoefficientCache()`.
+samplerate and channels, so dragging a control next to a Conv does not refetch it. It is bounded by
+total size rather than entry count, 64 MB, because a Values filter is a handful of bytes while a
+room correction is megabytes. The cache cannot see a file being replaced under a name it already
+holds, so anything that changes the coefficient files on the backend calls `clearCoefficientCache()`.
+
+Coefficients arrive as raw floats rather than JSON, framed as a length-prefixed header and then the
+samples, and are kept as a typed array view over those bytes. The backend sends float32 where the
+source file holds no more than that, which halves the payload for the usual coefficient file and
+loses nothing. See `unframeCoefficients`.
 
 Four test files cover it:
 

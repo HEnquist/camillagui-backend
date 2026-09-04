@@ -75,8 +75,10 @@ export interface ChartContent {
   f: number[]
   magnitude?: number[]
   phase?: number[]
-  impulse?: number[]
-  time: number[]
+  // the impulse response arrives from the backend as raw float64 and is kept
+  // as a view over those bytes, so these are typed arrays rather than lists
+  impulse?: ArrayLike<number>
+  time: ArrayLike<number>
   groupdelay?: number[]
   f_groupdelay?: number[]
 }
@@ -108,8 +110,10 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
 
   const data: ChartData<"scatter"> = { labels: [props.data.name], datasets: [] }
 
-  function make_pointlist(xvect: number[], yvect: number[], scaling_x: number, scaling_y: number) {
-    return xvect.map((x, idx) => ({
+  function make_pointlist(xvect: ArrayLike<number>, yvect: ArrayLike<number>, scaling_x: number, scaling_y: number) {
+    // Array.from, not map: xvect may be a Float64Array, whose own map would
+    // coerce these points back to numbers
+    return Array.from(xvect, (x, idx) => ({
       x: scaling_x * x,
       y: scaling_y * yvect[idx],
     }))
