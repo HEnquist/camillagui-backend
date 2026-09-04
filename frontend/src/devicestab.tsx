@@ -38,10 +38,10 @@ import {
   default_to_null,
   EnumInput,
   EnumOption,
-  ERROR_BACKGROUND_STYLE,
   ErrorBoundary,
   ErrorMessage,
   FileSelectPopup,
+  InputWithIcon,
   IntInput,
   IntOption,
   KeyValueSelectPopup,
@@ -1075,38 +1075,24 @@ function CaptureOptions(props: {
       )}
       {(capture.type === "RawFile" || capture.type === "WavFile") && (
         <>
-          <div className="setting" data-tooltip-html="Filename including path" data-tooltip-id="main-tooltip">
-            <label htmlFor="filename" className="setting-label">
-              filename
-            </label>
-            <div className="setting-input device-option-row">
-              <TextInput
-                value={capture.filename}
-                tooltip="Filename including path"
-                className="setting-input device-option-input"
-                style={errors.messageFor("filename") ? ERROR_BACKGROUND_STYLE : undefined}
-                onChange={(filename) => {
-                  if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
-                  onChange((devices) => {
-                    if (devices.capture.type === "RawFile" || devices.capture.type === "WavFile")
-                      devices.capture.filename = filename
-                  })
-                }}
-              />
-              {props.audiofilesSupported && (
-                <div className="device-option-buttons">
-                  <MdiButton
-                    icon={mdiFileSearch}
-                    tooltip="Pick a file"
-                    onClick={() => setCaptureFilePickerOpen(true)}
-                    className="setting-button"
-                    buttonSize="small"
-                  />
-                </div>
-              )}
-            </div>
-            <ErrorMessage message={errors.messageFor("filename")} />
-          </div>
+          <TextOption
+            value={capture.filename}
+            error={errors.messageFor("filename")}
+            desc="filename"
+            tooltip="Filename including path"
+            icon={
+              props.audiofilesSupported
+                ? { path: mdiFileSearch, tooltip: "Pick a file", onClick: () => setCaptureFilePickerOpen(true) }
+                : undefined
+            }
+            onChange={(filename) => {
+              if (!props.allowAbsolutePaths && (filename.includes("/") || filename.includes("\\"))) return
+              onChange((devices) => {
+                if (devices.capture.type === "RawFile" || devices.capture.type === "WavFile")
+                  devices.capture.filename = filename
+              })
+            }}
+          />
           {props.audiofilesSupported && (
             <FileSelectPopup
               open={captureFilePickerOpen}
@@ -1732,22 +1718,10 @@ function DeviceOption(props: {
         {props.desc}
       </label>
       <div className="setting-input device-option-row">
-        <TextInput
-          value={props.value}
-          tooltip="Name of device"
-          className="setting-input device-option-input"
-          onChange={props.onChange}
-        />
-        <div className="device-option-buttons">
-          <MdiButton
-            icon={mdiMagnify}
-            tooltip="Pick a device"
-            onClick={props.onButtonClick}
-            className="setting-button"
-            buttonSize="small"
-          />
-          {props.extraButtons}
-        </div>
+        <InputWithIcon icon={mdiMagnify} tooltip="Pick a device" onClick={props.onButtonClick}>
+          <TextInput value={props.value} tooltip="Name of device" onChange={props.onChange} />
+        </InputWithIcon>
+        {props.extraButtons && <div className="device-option-buttons">{props.extraButtons}</div>}
       </div>
       <ErrorMessage message={props.error} />
     </div>
@@ -1768,22 +1742,10 @@ function OptionalDeviceOption(props: {
         {props.desc}
       </label>
       <div className="setting-input device-option-row">
-        <OptionalTextInput
-          value={props.value}
-          tooltip="Name of device"
-          className="setting-input device-option-input"
-          onChange={props.onChange}
-        />
-        <div className="device-option-buttons">
-          <MdiButton
-            icon={mdiMagnify}
-            tooltip="Pick a device"
-            onClick={props.onButtonClick}
-            className="setting-button"
-            buttonSize="small"
-          />
-          {props.extraButtons}
-        </div>
+        <InputWithIcon icon={mdiMagnify} tooltip="Pick a device" onClick={props.onButtonClick}>
+          <OptionalTextInput value={props.value} tooltip="Name of device" onChange={props.onChange} />
+        </InputWithIcon>
+        {props.extraButtons && <div className="device-option-buttons">{props.extraButtons}</div>}
       </div>
       <ErrorMessage message={props.error} />
     </div>

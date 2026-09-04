@@ -552,21 +552,15 @@ export function LabelListOption(props: {
       <label htmlFor={props.desc} className="setting-label">
         {props.desc}
       </label>
-      <OptionalTextInput
-        value={props.value}
-        tooltip="Optional labels for individual channels"
-        className="setting-input"
-        style={{ width: "87%" }}
-        onChange={updateChannelLabels}
-      />
-      <MdiButton
-        icon={mdiMenuDown}
-        tooltip="Expand channel list"
-        onClick={props.onButtonClick}
-        className="setting-button"
-        style={{ width: "13%" }}
-        buttonSize="small"
-      />
+      <div className="setting-input device-option-row">
+        <InputWithIcon icon={mdiMenuDown} tooltip="Expand channel list" onClick={props.onButtonClick}>
+          <OptionalTextInput
+            value={props.value}
+            tooltip="Optional labels for individual channels"
+            onChange={updateChannelLabels}
+          />
+        </InputWithIcon>
+      </div>
       <ErrorMessage message={props.error} />
     </div>
   )
@@ -999,18 +993,30 @@ export function TextOption(props: {
   warning?: string
   desc: string
   tooltip: string
+  icon?: { path: string; tooltip: string; onClick: () => void }
   onChange: (value: string) => void
 }) {
+  const input = (
+    <TextInput
+      className={props.icon ? undefined : "setting-input"}
+      value={props.value}
+      tooltip={props.tooltip}
+      style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
+      onChange={props.onChange}
+    />
+  )
   return (
     <>
       <OptionLine desc={props.desc} tooltip={props.tooltip}>
-        <TextInput
-          className="setting-input"
-          value={props.value}
-          tooltip={props.tooltip}
-          style={props.error ? ERROR_BACKGROUND_STYLE : undefined}
-          onChange={props.onChange}
-        />
+        {props.icon ? (
+          <div className="setting-input device-option-row">
+            <InputWithIcon icon={props.icon.path} tooltip={props.icon.tooltip} onClick={props.icon.onClick}>
+              {input}
+            </InputWithIcon>
+          </div>
+        ) : (
+          input
+        )}
       </OptionLine>
       <ErrorMessage message={props.error} />
       <WarningMessage message={props.warning} />
@@ -1086,6 +1092,34 @@ export function TextInput(props: {
       style={props.style}
       onChange={(e) => props.onChange(e.target.value)}
     />
+  )
+}
+
+/**
+ * Wraps an input and places a clickable icon inside it, at the right edge.
+ * Used for the pickers that fill in the field, see `.input-with-icon` in index.css.
+ */
+export function InputWithIcon(props: { icon: string; tooltip: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <div className="input-with-icon">
+      {props.children}
+      <span
+        className="input-icon-button"
+        role="button"
+        tabIndex={0}
+        data-tooltip-html={props.tooltip}
+        data-tooltip-id="main-tooltip"
+        onClick={props.onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            props.onClick()
+          }
+        }}
+      >
+        <Icon path={props.icon} size="18px" />
+      </span>
+    </div>
   )
 }
 
