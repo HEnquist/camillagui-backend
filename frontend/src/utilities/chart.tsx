@@ -84,6 +84,7 @@ export interface ChartContent {
    * for a convolution filter, absent for anything evaluated in closed form.
    */
   phaseFloor?: number
+  /** Group delay in ms, one value per frequency in `f_groupdelay`. */
   groupdelay?: number[]
   f_groupdelay?: number[]
 }

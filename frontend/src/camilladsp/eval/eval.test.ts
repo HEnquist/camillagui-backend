@@ -13,7 +13,6 @@ import {
   intersectFilterOptions,
   logspace,
 } from "./index"
-import { calcGroupDelay } from "./unwrap"
 import { FilterOption } from "../../utilities/chart"
 import { Config, defaultConfig, Filter } from "../config"
 
@@ -236,25 +235,56 @@ describe("a phase too deep to be readable", () => {
     expect(Math.min(...result.magnitude!)).toBeLessThan(-200)
   })
 
-  it("leaves out the group delay there, which is not the plot's choice", async () => {
+  it("hides the group delay in the same places, so the two curves agree", async () => {
+    // Cosmetic now, where it used to be the thing keeping the delay honest.
+    // One value per plot frequency, so a gap is that point being too deep.
     const result = await evalFilter(windowedSinc(1000.0), { samplerate: 48000, channels: 2 })
-    const gaps = result.groupdelay!.map((d, n) => [d, n] as const).filter(([d]) => !Number.isFinite(d))
-    expect(gaps.length).toBeGreaterThan(0)
-    // group delay sits on the midpoints, so a gap means either end is too deep
-    gaps.forEach(([, n]) =>
-      expect(Math.min(result.magnitude![n], result.magnitude![n + 1])).toBeLessThan(result.phaseFloor!),
-    )
+    const blanked = result.groupdelay!.map((d, n) => n).filter((n) => !Number.isFinite(result.groupdelay![n]))
+    expect(blanked.length).toBeGreaterThan(0)
+    expect(result.f_groupdelay!.length).toBe(result.f.length)
+    result.groupdelay!.forEach((delay, n) => {
+      expect(Number.isFinite(delay)).toBe(result.magnitude![n] >= result.phaseFloor!)
+    })
   })
 
   it("does not let the unreadable region move the group delay that is readable", async () => {
-    // The point of computing it from a blanked phase. On a highpass the
-    // unreadable stretch sits below the passband, so a prediction carried up
-    // through it lands hundreds of ms out on the part anyone looks at.
+    // On a highpass the unreadable stretch sits below the passband. Reading the
+    // delay off the phase meant carrying a prediction up through it, which
+    // landed hundreds of ms out on the part anyone looks at.
     const result = await evalFilter(windowedSinc(1000.0, true), { samplerate: 48000, channels: 2 })
     const readable = result.groupdelay!.filter((d, n) => Number.isFinite(d) && result.magnitude![n] > -60)
     expect(readable.length).toBeGreaterThan(100)
     // a 1001 tap linear phase filter, plotted with its bulk delay removed
     readable.forEach((delay) => expect(Math.abs(delay)).toBeLessThan(1.0))
+  })
+
+  it("gives the same answer when the coefficients move in their last bit", async () => {
+    // The regression test for what this replaced. The stopband of an FIR is a
+    // run of nulls whose phase is aliasing hash, and the old prediction chain
+    // walked through it, so which way each 180 degree step resolved decided the
+    // passband delay. A relative 1e-16 on the coefficients, which is what a
+    // different platform's sin and cos are worth, flipped it 8 times in 20 and
+    // put a whole turn of the grid, 112 ms, into the readable part.
+    // one ulp up or down, the smallest change a coefficient can have and still
+    // be a different number
+    let seed = 0x9e3779b9
+    const jitter = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0
+      return 1.0 + Number.EPSILON * (seed % 3 === 0 ? -1 : seed % 3 === 1 ? 0 : 1)
+    }
+    for (let run = 0; run < 20; run++) {
+      const base = windowedSinc(1000.0, true).parameters!.values as number[]
+      const shaken: Filter = {
+        type: "Conv",
+        description: null,
+        parameters: { type: "Values", values: base.map((v) => v * jitter()) },
+      }
+      clearCoefficientCache()
+      const result = await evalFilter(shaken, { samplerate: 48000, channels: 2 })
+      const readable = result.groupdelay!.filter((d, n) => Number.isFinite(d) && result.magnitude![n] > -60)
+      expect(readable.length).toBeGreaterThan(100)
+      readable.forEach((delay) => expect(Math.abs(delay)).toBeLessThan(1.0))
+    }
   })
 
   it("has no floor for a filter evaluated in closed form, however far down it goes", async () => {
@@ -275,33 +305,6 @@ describe("a phase too deep to be readable", () => {
     const phase = [1.0, 2.0, 3.0]
     blankPhaseBelow(-110.0, [40.0, -100.0, -120.0], phase)
     expect(phase.map(Number.isFinite)).toEqual([true, true, false])
-  })
-
-  it("takes the group delay with it, rather than reading one off noise", () => {
-    const freq = [100.0, 200.0, 300.0, 400.0]
-    const phase = [0.0, -10.0, NaN, -30.0]
-    const result = calcGroupDelay(freq, phase)
-    expect(result.groupdelay.map(Number.isFinite)).toEqual([true, false, false])
-  })
-
-  it("does not let a blanked stretch teach the prediction anything", () => {
-    // A constant 7 ms delay on the grid the plots use, with a hole blanked out
-    // of the middle of it. By the top of the grid the phase is turning through
-    // three whole circles between neighbouring points, so the points after the
-    // hole are only right if the prediction picked up where it left off rather
-    // than learning from the hole.
-    const freq = Array.from(logspace(10.0, 22800.0, 1000))
-    const phase = freq.map((f) => {
-      const wrapped = (((-360.0 * f * 0.007 + 180.0) % 360.0) + 360.0) % 360.0
-      return wrapped - 180.0
-    })
-    for (let n = 600; n < 640; n++) phase[n] = NaN
-    const result = calcGroupDelay(freq, phase)
-    result.groupdelay.forEach((delay, n) => {
-      if (Number.isFinite(delay)) expect(delay).toBeCloseTo(7.0, 9)
-      else expect(n).toBeGreaterThanOrEqual(599)
-    })
-    expect(result.groupdelay.slice(645).every((d) => Math.abs(d - 7.0) < 1e-9)).toBe(true)
   })
 })
 

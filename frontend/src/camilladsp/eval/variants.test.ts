@@ -33,7 +33,8 @@ describe("every schema valid filter evaluates", () => {
     })
     expect(result.magnitude!.length).toBe(64)
     expect(result.phase!.length).toBe(64)
-    expect(result.groupdelay!.length).toBe(63)
+    // one value per plot point, not one per midpoint between two of them
+    expect(result.groupdelay!.length).toBe(64)
     expect(result.magnitude!.every(Number.isFinite), "magnitude is finite everywhere").toBe(true)
     expect(result.phase!.every(Number.isFinite), "phase is finite everywhere").toBe(true)
     expect(result.groupdelay!.every(Number.isFinite), "group delay is finite everywhere").toBe(true)

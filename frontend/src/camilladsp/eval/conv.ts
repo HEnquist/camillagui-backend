@@ -146,6 +146,26 @@ export function interpolatePolar(curve: ComplexCurve, xold: Float64Array, xnew: 
 }
 
 /**
+ * The transform length for an impulse response: zero padded to at least one bin
+ * per Hz, not merely to the length of the impulse response.
+ *
+ * Padding costs nothing in accuracy, it evaluates the same transform at more
+ * frequencies, and the plot needs those frequencies: its log axis puts hundreds
+ * of points below 100 Hz, and a 2000 tap filter padded only to its own length
+ * has 23 Hz bins, so the whole knee of a highpass is drawn by interpolating
+ * across it. That was worth 4.7 dB of error at the knee, falling fourfold for
+ * every doubling of the length.
+ *
+ * The cost lands where it is affordable. A filter long enough for the FFT to be
+ * expensive already resolves better than a Hz, so nothing changes for it; a
+ * short filter is padded a long way, but a 65k point transform is a few
+ * milliseconds, once, and the result is cached.
+ */
+function paddedLength(taps: number, fs: number): number {
+  return Math.max(nextPow2(taps), nextPow2(fs))
+}
+
+/**
  * The half spectrum of an impulse response, on the FFT's own linear frequency
  * grid.
  *
@@ -158,19 +178,7 @@ export function convSpectrum(
   fs: number,
   removeDelay: boolean,
 ): { freq: Float64Array; curve: ComplexCurve } {
-  // Zero padded to at least one bin per Hz, not merely to the length of the
-  // impulse response. Padding costs nothing in accuracy, it evaluates the same
-  // transform at more frequencies, and the plot needs those frequencies: its
-  // log axis puts hundreds of points below 100 Hz, and a 2000 tap filter
-  // padded only to its own length has 23 Hz bins, so the whole knee of a
-  // highpass is drawn by interpolating across it. That was worth 4.7 dB of
-  // error at the knee, falling fourfold for every doubling of the length.
-  //
-  // The cost lands where it is affordable. A filter long enough for the FFT to
-  // be expensive already resolves better than a Hz, so nothing changes for it;
-  // a short filter is padded a long way, but a 65k point transform is a few
-  // milliseconds, once, and the result is cached.
-  const npoints = Math.max(nextPow2(impulse.length), nextPow2(fs))
+  const npoints = paddedLength(impulse.length, fs)
   const re = new Float64Array(npoints)
   const im = new Float64Array(npoints)
   re.set(impulse)
@@ -220,4 +228,56 @@ export function convComplexGain(
   const curve = interpolatePolar(spectrum.curve, spectrum.freq, freq)
   if (!removeDelay) applyDelayInto(curve, findPeak(impulse) / fs, freq)
   return curve
+}
+
+/**
+ * The group delay of a convolution filter, in samples, on the plot's grid.
+ *
+ * `Re(FFT(n*h) / FFT(h))`, the identity in `groupdelay.ts`, evaluated on the
+ * FFT's own grid and interpolated onto the plot's. Two transforms of the same
+ * padded length rather than one, which is the whole cost of this: no phase is
+ * formed, nothing is unwrapped, and a wild point at a stopband null stays that
+ * one point instead of moving every point above it in frequency.
+ *
+ * Interpolating is safe here in a way it is not for phase. The delay of a
+ * linear phase filter is a constant, and interpolating a constant is lossless,
+ * which is why a symmetric FIR comes back with exactly its centre tap even
+ * where its magnitude has nulls. Where the delay genuinely varies it varies
+ * smoothly, on a grid of at most 1 Hz.
+ *
+ * `removeDelay` matches `convComplexGain`: the bulk delay taken from the peak
+ * position is a constant number of samples, so here it is a subtraction rather
+ * than a rotation.
+ */
+export function convGroupDelay(
+  impulse: ArrayLike<number>,
+  fs: number,
+  freq: ArrayLike<number>,
+  removeDelay = false,
+): Float64Array {
+  const npoints = paddedLength(impulse.length, fs)
+  const hre = new Float64Array(npoints)
+  const him = new Float64Array(npoints)
+  hre.set(impulse)
+  fftInPlace(hre, him)
+
+  // the same impulse response weighted by its own sample index
+  const gre = new Float64Array(npoints)
+  const gim = new Float64Array(npoints)
+  for (let n = 0; n < impulse.length; n++) gre[n] = n * impulse[n]
+  fftInPlace(gre, gim)
+
+  const half = npoints / 2
+  const dense = new Float64Array(half)
+  for (let n = 0; n < half; n++) {
+    const denom = hre[n] * hre[n] + him[n] * him[n]
+    dense[n] = denom === 0.0 ? NaN : (gre[n] * hre[n] + gim[n] * him[n]) / denom
+  }
+
+  const out = interpolate(dense, (fs * (half - 1)) / npoints, freq)
+  if (removeDelay) {
+    const peak = findPeak(impulse)
+    for (let n = 0; n < out.length; n++) out[n] -= peak
+  }
+  return out
 }

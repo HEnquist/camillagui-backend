@@ -7,8 +7,8 @@
  * driven from `index.ts`.
  */
 import { Filter } from "../config"
-import { evalBiquad } from "./biquad"
-import { ComplexCurve, constantCurve, multiplyInto, unitCurve, zeroCurve } from "./complex"
+import { BiquadCoefficients, biquadComplexGain, biquadGroupDelay, evalBiquad, evalBiquadGroupDelay } from "./biquad"
+import { applyDelayInto, ComplexCurve, constantCurve, multiplyInto, unitCurve, zeroCurve } from "./complex"
 import {
   GAIN_SCALE,
   GRAPHIC_EQ_FREQ_MAX,
@@ -21,6 +21,7 @@ import {
   LOUDNESS_LOW_Q,
   NPOINT_PEQ_MIN_GAIN,
 } from "./defaults"
+import { addDelayInto, rationalGroupDelay } from "./groupdelay"
 import { FilterEvalError, flag, num, numListOr, numOr, optStr, Params, peqBands, positiveNumOr } from "./params"
 
 /**
@@ -132,7 +133,16 @@ function biquadComboComplexGain(params: Params, fs: number, freq: ArrayLike<numb
   return curve
 }
 
-function loudnessComplexGain(params: Params, fs: number, volume: number, freq: ArrayLike<number>): ComplexCurve {
+function biquadComboGroupDelay(params: Params, fs: number, freq: ArrayLike<number>): Float64Array {
+  const total = new Float64Array(freq.length)
+  for (const section of biquadComboSections(params)) {
+    addDelayInto(total, evalBiquadGroupDelay(section, fs, freq))
+  }
+  return total
+}
+
+/** The two shelves of a Loudness filter, and the flat gain they sit on. */
+function loudnessDesign(params: Params, volume: number): { midGain: number; sections: Params[] } {
   const relativeVolume = volume - num(params, "reference_level")
   let relativeBoost = -relativeVolume / 20.0
   if (relativeBoost > 1.0) relativeBoost = 1.0
@@ -157,9 +167,23 @@ function loudnessComplexGain(params: Params, fs: number, volume: number, freq: A
       type: "Highshelf",
     },
   ]
+  return { midGain, sections }
+}
+
+function loudnessComplexGain(params: Params, fs: number, volume: number, freq: ArrayLike<number>): ComplexCurve {
+  const { midGain, sections } = loudnessDesign(params, volume)
   const curve = constantCurve(freq.length, midGain)
   for (const section of sections) multiplyInto(curve, evalBiquad(section, fs, freq))
   return curve
+}
+
+function loudnessGroupDelay(params: Params, fs: number, volume: number, freq: ArrayLike<number>): Float64Array {
+  // the mid gain is a flat scaling, which delays nothing
+  const total = new Float64Array(freq.length)
+  for (const section of loudnessDesign(params, volume).sections) {
+    addDelayInto(total, evalBiquadGroupDelay(section, fs, freq))
+  }
+  return total
 }
 
 function gainComplexGain(params: Params, freq: ArrayLike<number>): ComplexCurve {
@@ -190,84 +214,58 @@ function delayInSamples(params: Params, fs: number): number {
   }
 }
 
-function delayComplexGain(params: Params, fs: number, freq: ArrayLike<number>): ComplexCurve {
+/**
+ * A delay as the DSP builds it: a whole number of samples, and for a subsample
+ * delay an allpass section carrying the fraction.
+ */
+function delayDesign(params: Params, fs: number): { allpass?: BiquadCoefficients; fullSamples: number } {
   const delaySamples = delayInSamples(params, fs)
   // a delay this short cannot be resolved by the allpass, and the DSP falls
   // back to a whole number of samples
   const subsample = flag(params, "subsample") && delaySamples >= 0.1
+  if (!subsample) return { fullSamples: Math.round(delaySamples) }
 
-  let curve: ComplexCurve
-  let fullSamples: number
-  if (subsample) {
-    let full = Math.floor(delaySamples)
-    let fraction = delaySamples - full
-    let a1: number
-    let a2: number
-    let b0: number
-    let b1: number
-    let b2: number
-    if (delaySamples < 1.1) {
-      full = 0
-      fraction = delaySamples
-      a1 = (1.0 - fraction) / (1.0 + fraction)
-      a2 = 0.0
-      b0 = (1.0 - fraction) / (1.0 + fraction)
-      b1 = 1.0
-      b2 = 0.0
-    } else {
-      // the second order allpass needs a fraction of at least about one
-      // sample, so borrow whole samples from the integer part until it does
-      full -= 1.0
-      fraction += 1.0
-      if (fraction < 1.1) {
-        full -= 1.0
-        fraction += 1.0
-      }
-      const coeff1 = (2.0 * (2.0 - fraction)) / (1.0 + fraction)
-      const coeff2 = (((2.0 - fraction) / (2.0 + fraction)) * (1.0 - fraction)) / (1.0 + fraction)
-      a1 = coeff1
-      a2 = coeff2
-      b0 = coeff2
-      b1 = coeff1
-      b2 = 1.0
-    }
-    fullSamples = full
-    curve = zeroCurve(freq.length)
-    for (let n = 0; n < freq.length; n++) {
-      const w = (2 * Math.PI * freq[n]) / fs
-      const c1 = Math.cos(w)
-      const s1 = -Math.sin(w)
-      const c2 = Math.cos(2 * w)
-      const s2 = -Math.sin(2 * w)
-      const nre = b0 + b1 * c1 + b2 * c2
-      const nim = b1 * s1 + b2 * s2
-      const dre = 1.0 + a1 * c1 + a2 * c2
-      const dim = a1 * s1 + a2 * s2
-      const denom = dre * dre + dim * dim
-      curve.re[n] = (nre * dre + nim * dim) / denom
-      curve.im[n] = (nim * dre - nre * dim) / denom
-    }
-  } else {
-    fullSamples = Math.round(delaySamples)
-    curve = unitCurve(freq.length)
+  let full = Math.floor(delaySamples)
+  let fraction = delaySamples - full
+  if (delaySamples < 1.1) {
+    full = 0
+    fraction = delaySamples
+    const coeff = (1.0 - fraction) / (1.0 + fraction)
+    return { allpass: { a1: coeff, a2: 0.0, b0: coeff, b1: 1.0, b2: 0.0 }, fullSamples: full }
   }
+  // the second order allpass needs a fraction of at least about one sample, so
+  // borrow whole samples from the integer part until it does
+  full -= 1.0
+  fraction += 1.0
+  if (fraction < 1.1) {
+    full -= 1.0
+    fraction += 1.0
+  }
+  const coeff1 = (2.0 * (2.0 - fraction)) / (1.0 + fraction)
+  const coeff2 = (((2.0 - fraction) / (2.0 + fraction)) * (1.0 - fraction)) / (1.0 + fraction)
+  return { allpass: { a1: coeff1, a2: coeff2, b0: coeff2, b1: coeff1, b2: 1.0 }, fullSamples: full }
+}
 
-  const delaySeconds = fullSamples / fs
-  for (let n = 0; n < freq.length; n++) {
-    const angle = -2.0 * Math.PI * freq[n] * delaySeconds
-    const wr = Math.cos(angle)
-    const wi = Math.sin(angle)
-    const re = curve.re[n] * wr - curve.im[n] * wi
-    const im = curve.re[n] * wi + curve.im[n] * wr
-    curve.re[n] = re
-    curve.im[n] = im
-  }
+function delayComplexGain(params: Params, fs: number, freq: ArrayLike<number>): ComplexCurve {
+  const { allpass, fullSamples } = delayDesign(params, fs)
+  const curve = allpass === undefined ? unitCurve(freq.length) : biquadComplexGain(allpass, fs, freq)
+  applyDelayInto(curve, fullSamples / fs, freq)
   return curve
 }
 
+function delayGroupDelay(params: Params, fs: number, freq: ArrayLike<number>): Float64Array {
+  const { allpass, fullSamples } = delayDesign(params, fs)
+  const total = allpass === undefined ? new Float64Array(freq.length) : biquadGroupDelay(allpass, fs, freq)
+  for (let n = 0; n < total.length; n++) total[n] += fullSamples
+  return total
+}
+
+function diffEqCoefficients(params: Params): { a: number[]; b: number[] } {
+  return { a: numListOr(params, "a", [1.0]), b: numListOr(params, "b", [1.0]) }
+}
+
 function diffEqComplexGain(params: Params, fs: number, freq: ArrayLike<number>): ComplexCurve {
-  const a = numListOr(params, "a", [1.0])
-  const b = numListOr(params, "b", [1.0])
+  const { a, b } = diffEqCoefficients(params)
   const curve = zeroCurve(freq.length)
   for (let n = 0; n < freq.length; n++) {
     const w = (2 * Math.PI * freq[n]) / fs
@@ -288,6 +286,44 @@ function diffEqComplexGain(params: Params, fs: number, freq: ArrayLike<number>):
     curve.im[n] = (nim * dre - nre * dim) / denom
   }
   return curve
+}
+
+/**
+ * The group delay in samples of any filter except Conv, which needs
+ * coefficients and is taken from `convGroupDelay` instead.
+ *
+ * Every type here is a cascade of rational sections, so each one is the exact
+ * `Re(G/H)` of its own coefficients, summed along the cascade. See
+ * `groupdelay.ts` for why that is not read off the phase.
+ */
+export function groupDelaySamples(
+  filterconf: Filter,
+  fs: number,
+  volume: number,
+  freq: ArrayLike<number>,
+): Float64Array {
+  const params = (filterconf.parameters ?? {}) as Params
+  switch (filterconf.type) {
+    case "Biquad":
+      return evalBiquadGroupDelay(params, fs, freq)
+    case "BiquadCombo":
+      return biquadComboGroupDelay(params, fs, freq)
+    case "DiffEq": {
+      const { a, b } = diffEqCoefficients(params)
+      return rationalGroupDelay(b, a, fs, freq)
+    }
+    case "Delay":
+      return delayGroupDelay(params, fs, freq)
+    case "Loudness":
+      return loudnessGroupDelay(params, fs, volume, freq)
+    default:
+      // a Gain is a flat scaling, and the flat types pass audio through as it
+      // stands, so neither delays anything
+      if (filterconf.type === "Gain" || FLAT_FILTER_TYPES.includes(filterconf.type)) {
+        return new Float64Array(freq.length)
+      }
+      throw new FilterEvalError(`Unknown filter type ${filterconf.type}`)
+  }
 }
 
 /**

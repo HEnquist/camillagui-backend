@@ -15,11 +15,11 @@
  */
 import { describe, expect, it } from "vitest"
 import { Filter } from "../config"
-import { magnitudeDb, phaseDegrees } from "./complex"
-import { convComplexGain } from "./conv"
-import { complexGain } from "./filters"
+import { magnitudeDb, multiplyInto, phaseDegrees } from "./complex"
+import { convComplexGain, convGroupDelay } from "./conv"
+import { complexGain, groupDelaySamples } from "./filters"
+import { delayInMs } from "./groupdelay"
 import { logspace } from "./index"
-import { calcGroupDelay } from "./unwrap"
 
 const FS = 48000
 
@@ -36,8 +36,7 @@ function gainAt(f: Filter, freqs: number[]): number[] {
 
 /** Group delay in ms across the sweep, from the same path the plots use. */
 function groupDelay(f: Filter, freqs: number[]): number[] {
-  const curve = complexGain(f, FS, 0.0, Float64Array.from(freqs))
-  return calcGroupDelay(freqs, phaseDegrees(curve)).groupdelay
+  return delayInMs(groupDelaySamples(f, FS, 0.0, Float64Array.from(freqs)), FS)
 }
 
 const HALF_POWER_DB = 20 * Math.log10(1 / Math.SQRT2)
@@ -278,6 +277,90 @@ describe("Loudness", () => {
   })
 })
 
+describe("group delay comes from the coefficients, not from the phase", () => {
+  /**
+   * The delay in ms at one frequency, from the slope of the phase either side
+   * of it. The check the exact formula has to answer to: differentiating the
+   * phase by hand is what group delay means, and on a fine linear grid, well
+   * away from any null, doing it numerically is accurate enough to pin the
+   * closed form to several digits.
+   */
+  function slopeOfPhase(f: Filter, freq: number): number {
+    const h = 0.05
+    const [below, above] = phaseDegrees(complexGain(f, FS, 0.0, Float64Array.from([freq - h, freq + h])))
+    let step = above - below
+    // the pair straddles a wrap at most once, and never at these spacings
+    // unless the filter has a large delay in it
+    if (step > 180.0) step -= 360.0
+    else if (step < -180.0) step += 360.0
+    return (-step / (2.0 * h) / 360.0) * 1000.0
+  }
+
+  const cases: [string, Filter][] = [
+    ["Butterworth lowpass", filter("BiquadCombo", { type: "ButterworthLowpass", order: 6, freq: 800.0 })],
+    ["peaking", filter("Biquad", { type: "Peaking", freq: 1000.0, q: 4.0, gain: 8.0 })],
+    ["low shelf", filter("Biquad", { type: "Lowshelf", freq: 300.0, q: 0.7, gain: -6.0 })],
+    ["allpass", filter("Biquad", { type: "Allpass", freq: 2000.0, q: 1.5 })],
+    ["subsample delay", filter("Delay", { delay: 3.7, delay_unit: "samples", subsample: true })],
+    ["DiffEq", filter("DiffEq", { a: [1.0, -0.4, 0.2], b: [0.5, 0.3, -0.1] })],
+    ["Tilt", filter("BiquadCombo", { type: "Tilt", gain: 6.0 })],
+  ]
+
+  it.each(cases)("%s", (_name, f) => {
+    const freqs = [50.0, 200.0, 700.0, 1000.0, 3000.0, 9000.0]
+    const exact = groupDelay(f, freqs)
+    freqs.forEach((freq, n) => expect(exact[n]).toBeCloseTo(slopeOfPhase(f, freq), 6))
+  })
+
+  it("walks up to a notch without the singularity spreading", () => {
+    // The zero sits on the unit circle: the magnitude is a true null and the
+    // phase turns through 180 degrees across it. The delay either side does not
+    // turn with it, because a Notch's numerator is symmetric and contributes
+    // exactly its centre tap, one sample, however deep the null. Only the point
+    // that lands on the zero itself is lost, and it is lost to floating point
+    // rather than to the mathematics: 0/0 is a gap, not a spike.
+    const freq = 1000.0
+    const notch = filter("Biquad", { type: "Notch", freq, q: 2.0 })
+    expect(Number.isFinite(groupDelay(notch, [freq])[0])).toBe(false)
+    // a Hz either side it is the slope of the phase, as everywhere else
+    const outside = [freq - 1.0, freq + 1.0]
+    groupDelay(notch, outside).forEach((delay, n) => expect(delay).toBeCloseTo(slopeOfPhase(notch, outside[n]), 6))
+    // and it is continuous across the zero itself: a thousandth of a Hz either
+    // side of it, with the 180 degree jump in between, the two agree to what
+    // the curve genuinely changes by over that distance
+    const [justBelow, justAbove] = groupDelay(notch, [freq - 0.001, freq + 0.001])
+    expect(justBelow).toBeCloseTo(justAbove, 4)
+  })
+
+  it("adds up along a cascade", () => {
+    // Filters multiply and delays add, which is what lets a whole pipeline step
+    // be summed rather than differentiated back out of the product's phase.
+    const freqs = [100.0, 1000.0, 5000.0]
+    const one = filter("Biquad", { type: "Peaking", freq: 1000.0, q: 2.0, gain: 6.0 })
+    const two = filter("Delay", { delay: 2.0, delay_unit: "ms" })
+    const both = filter("DiffEq", { a: [1.0], b: [0.0, 0.0, 1.0] })
+    const sum = groupDelay(one, freqs).map((d, n) => d + groupDelay(two, freqs)[n] + groupDelay(both, freqs)[n])
+    const product = complexGain(one, FS, 0.0, Float64Array.from(freqs))
+    multiplyInto(product, complexGain(two, FS, 0.0, Float64Array.from(freqs)))
+    multiplyInto(product, complexGain(both, FS, 0.0, Float64Array.from(freqs)))
+    // the sum is the delay of the product, checked against the product's own phase
+    freqs.forEach((freq, n) => {
+      const h = 0.05
+      const pair = [freq - h, freq + h]
+      const curves = [one, two, both].map((f) => complexGain(f, FS, 0.0, Float64Array.from(pair)))
+      const total = curves.reduce((acc, curve) => {
+        multiplyInto(acc, curve)
+        return acc
+      })
+      const [pbelow, pabove] = phaseDegrees(total)
+      let step = pabove - pbelow
+      while (step > 180.0) step -= 360.0
+      while (step < -180.0) step += 360.0
+      expect(sum[n]).toBeCloseTo((-step / (2.0 * h) / 360.0) * 1000.0, 6)
+    })
+  })
+})
+
 describe("Conv", () => {
   // The only closed form checks the convolution path has: the FFT, the peak
   // search, the delay removal and the interpolation onto the log grid are
@@ -289,9 +372,8 @@ describe("Conv", () => {
   const FREQS = Array.from(logspace(10.0, (0.95 * FS) / 2, 1000))
 
   /** The group delay in ms of an impulse response, as a whole step plots it. */
-  function convGroupDelay(impulse: number[], removeDelay = false): number[] {
-    const curve = convComplexGain(impulse, FS, FREQS, removeDelay)
-    return calcGroupDelay(FREQS, phaseDegrees(curve)).groupdelay
+  function convDelayMs(impulse: number[], removeDelay = false): number[] {
+    return delayInMs(convGroupDelay(impulse, FS, FREQS, removeDelay), FS)
   }
 
   function impulseAt(index: number, amplitude = 1.0): number[] {
@@ -324,7 +406,7 @@ describe("Conv", () => {
     for (const n of [1, 37, 200, 1000, 20000]) {
       const impulse = impulseAt(n)
       magnitudeDb(convComplexGain(impulse, FS, FREQS)).forEach((gain) => expect(gain).toBeCloseTo(0.0, 6))
-      convGroupDelay(impulse).forEach((delay) => expect(delay).toBeCloseTo((n / FS) * 1000.0, 9))
+      convDelayMs(impulse).forEach((delay) => expect(delay).toBeCloseTo((n / FS) * 1000.0, 9))
     }
   })
 
@@ -333,13 +415,18 @@ describe("Conv", () => {
     // the peak, so the same impulse comes back with no delay at all. The
     // rotation happens on the FFT's own grid, where it cancels exactly.
     for (const n of [1, 37, 200, 500, 20000]) {
-      convGroupDelay(impulseAt(n), true).forEach((delay) => expect(delay).toBeCloseTo(0.0, 9))
+      convDelayMs(impulseAt(n), true).forEach((delay) => expect(delay).toBeCloseTo(0.0, 9))
     }
   })
 
   it("has the constant group delay of its centre tap when it is symmetric", () => {
     // A symmetric FIR is linear phase by construction, so its group delay is
     // half its length whatever its magnitude response does.
+    //
+    // At every frequency, stopband nulls included, which is the property that
+    // reading the delay off the phase could not deliver: `Re(G/H)` works out to
+    // the centre tap plus a term that is purely imaginary, so the singularity
+    // at a null lands entirely in the part this throws away.
     const taps = 257
     const centre = (taps - 1) / 2
     const cutoff = 0.15
@@ -348,16 +435,16 @@ describe("Conv", () => {
       const sinc = k === 0 ? 2 * cutoff : Math.sin(2 * Math.PI * cutoff * k) / (Math.PI * k)
       return sinc * (0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (taps - 1)))
     })
-    // in the passband only: the phase of a stopband null is not meaningful
-    const passband = FREQS.filter((f) => f < 0.5 * cutoff * FS).length
     const expected = (centre / FS) * 1000.0
-    convGroupDelay(impulse)
-      .slice(0, passband)
-      .forEach((delay) => expect(delay).toBeCloseTo(expected, 9))
+    const passband = FREQS.filter((f) => f < 0.5 * cutoff * FS).length
+    const delays = convDelayMs(impulse)
+    delays.slice(0, passband).forEach((delay) => expect(delay).toBeCloseTo(expected, 9))
+    // Across the nulls as well, where the ratio is a small number over a small
+    // number and the cancellation costs a few digits. A nanosecond of them, not
+    // the whole turns of the grid that reading it off the phase was worth.
+    delays.forEach((delay) => expect(Math.abs(delay - expected)).toBeLessThan(1e-6))
     // and the peak search finds that centre tap, so removing the delay flattens it
-    convGroupDelay(impulse, true)
-      .slice(0, passband)
-      .forEach((delay) => expect(delay).toBeCloseTo(0.0, 9))
+    convDelayMs(impulse, true).forEach((delay) => expect(Math.abs(delay)).toBeLessThan(1e-6))
   })
 
   it("matches the definition of the transform, wherever the impulse sits", () => {

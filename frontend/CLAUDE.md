@@ -13,7 +13,7 @@ npm run lint         # eslint
 npm run format       # prettier
 ```
 
-Node >= 20.19.0 required (see `.nvmrc`).
+Node >= 22 required (see `.nvmrc`, and CI runs 24.x).
 
 ## Source layout (`src/`)
 
@@ -31,9 +31,10 @@ camilladsp/                 # Domain types + status polling
     index.ts                # evalFilter / evalFilterStep, and the Conv coefficient cache
     filters.ts              # Transfer function per filter type
     biquad.ts               # Biquad coefficients for all 17 subtypes
-    conv.ts                 # FFT, peak search, polar interpolation
+    conv.ts                 # FFT, peak search, polar interpolation, Conv group delay
     complex.ts              # Elementwise complex arithmetic over Float64Arrays
-    unwrap.ts               # Phase unwrapping and group delay
+    groupdelay.ts           # Group delay from the coefficients, Re(G/H)
+    unwrap.ts               # Phase unwrapping, for interpolating a Conv's phase
     defaults.ts             # CamillaDSP's defaults for optional parameters
     params.ts               # Narrowing helpers for the untyped parameter bag
     fixtures/variants.json  # every schema-valid filter config, see below
@@ -123,10 +124,19 @@ A convolution filter's `ChartContent` carries `phaseFloor`, the level more than 
 peak where an FIR's nulls sit closer together than the plot can sample, so a drawn phase there is
 aliasing rather than phase. The chart's toolbar offers an eye button, hiding on by default,
 which appears only when the curve actually goes that deep and swaps between `mdiEyeOff` and
-`mdiEye` to show which way it is set. **The group delay is always computed
-from a blanked phase, whatever the checkbox says**, because it predicts each step from the one below
-it in frequency: letting that run through the aliased region moved the readable group delay of a
-highpass by 608 ms. The phase trace has no such coupling, which is why only it is optional.
+`mdiEye` to show which way it is set. The group delay is blanked in the same places, so the two
+curves agree about where the filter stops being readable, but nothing depends on that any more.
+
+**The group delay is not read off the phase.** It comes from the coefficients, as
+`tau = Re(G/H)` where `G` is the transform of the coefficients weighted by their own index, which
+is what `scipy.signal.group_delay` computes. Every frequency stands alone, so there is no unwrap,
+no prediction carried up the grid, and no way for a point in the aliased region to move the
+passband. A biquad is a ratio of two three tap polynomials and sums along a cascade; a Conv gets a
+second FFT, of `n*h[n]`. What this replaced predicted each phase step from the one below it, which
+worked until a stopband null resolved the other way: a change in the last bit of the coefficients,
+which is what a different platform's `sin` and `cos` are worth, moved the readable delay of a
+highpass by 112 ms in half of all runs. `eval.test.ts` pins that down by shaking the coefficients
+by one ulp.
 
 Four test files cover it:
 

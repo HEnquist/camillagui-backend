@@ -95,24 +95,23 @@ export const PHASE_NOISE_FLOOR_DB = 150.0
  * through a full circle at each one. The plot's log grid is 155 Hz per point at
  * 20 kHz, so three of those nulls fall between neighbouring points and the
  * phase is sampled far too sparsely to show what it does. What gets drawn is
- * the aliasing, a hash of values between -180 and 180, and the group delay read
- * from it is worse. The magnitude is smooth at the same frequencies and is left
- * alone.
+ * the aliasing, a hash of values between -180 and 180. The magnitude is smooth
+ * at the same frequencies and is left alone.
  *
  * Only for a convolution filter. A 4th order Butterworth highpass at 1000 Hz is
  * 240 dB down at 1 Hz, deeper than anything here, and its phase is smooth,
  * slowly varying and perfectly readable: it has no nulls to rotate through.
  * Depth alone is not the problem, density of nulls is, and only an FIR has them.
  *
- * The group delay is always computed from a blanked copy, whatever the plot is
- * set to show, because the prediction it carries forward walks through this
- * region: on a highpass, whose unreadable stretch sits below the passband, an
- * unblanked phase moved the readable group delay by as much as 608 ms. What a
- * reader may switch back on is the phase trace itself, which is drawn point by
- * point and cannot mislead its neighbours.
+ * The group delay is hidden here too, so that the two curves agree about where
+ * the filter stops being readable. That is now only a display choice: the delay
+ * is computed from the coefficients rather than read off the phase, see
+ * `groupdelay.ts`, so a value in this region is wrong about itself and about
+ * nothing else. It used to be load bearing, and an unblanked phase moved the
+ * readable group delay of a highpass by as much as 608 ms.
  *
  * Blanked points are NaN, which the plot draws as a gap in the line rather
- * than as a value, and which `calcGroupDelay` propagates and ignores.
+ * than as a value.
  */
 export function phaseNoiseFloor(magnitude: ArrayLike<number>): number {
   let peak = -Infinity
@@ -120,7 +119,7 @@ export function phaseNoiseFloor(magnitude: ArrayLike<number>): number {
   return peak - PHASE_NOISE_FLOOR_DB
 }
 
-/** Blank the phase, in place, wherever the magnitude falls below `floor`. */
+/** Blank a curve, in place, wherever the magnitude falls below `floor`. */
 export function blankPhaseBelow(floor: number, magnitude: ArrayLike<number>, phase: number[]): void {
   for (let n = 0; n < phase.length; n++) if (magnitude[n] < floor) phase[n] = NaN
 }

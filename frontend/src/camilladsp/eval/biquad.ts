@@ -3,6 +3,7 @@
  * of the GUI backend's former `backend/dsp/filters.py`.
  */
 import { ComplexCurve, zeroCurve } from "./complex"
+import { rationalGroupDelay } from "./groupdelay"
 import { FilterEvalError, flag, num, optNum, Params } from "./params"
 
 /** Normalized biquad coefficients, with a0 divided out. */
@@ -313,7 +314,25 @@ export function biquadComplexGain(coeffs: BiquadCoefficients, fs: number, freq: 
   return curve
 }
 
+/**
+ * The group delay of a biquad in samples, from its coefficients.
+ *
+ * A biquad is a ratio of two three tap polynomials, so this is `rationalGroupDelay`
+ * with nothing added. Exact at every frequency, including at a Notch's own
+ * centre where the zero sits on the unit circle: that numerator is symmetric,
+ * so its delay is exactly its centre tap, one sample, however deep the null.
+ */
+export function biquadGroupDelay(coeffs: BiquadCoefficients, fs: number, freq: ArrayLike<number>): Float64Array {
+  const { a1, a2, b0, b1, b2 } = coeffs
+  return rationalGroupDelay([b0, b1, b2], [1.0, a1, a2], fs, freq)
+}
+
 /** Build the biquad from a config and evaluate it in one step. */
 export function evalBiquad(params: Params, fs: number, freq: ArrayLike<number>): ComplexCurve {
   return biquadComplexGain(biquadCoefficients(params, fs), fs, freq)
+}
+
+/** Build the biquad from a config and take its group delay in one step. */
+export function evalBiquadGroupDelay(params: Params, fs: number, freq: ArrayLike<number>): Float64Array {
+  return biquadGroupDelay(biquadCoefficients(params, fs), fs, freq)
 }

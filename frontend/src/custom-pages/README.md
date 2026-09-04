@@ -217,7 +217,7 @@ const data = await evalFilter(config.filters["MyFilter"], {
 // data.f: number[]            - frequency axis in Hz
 // data.magnitude: number[]    - magnitude in dB at each frequency
 // data.phase: number[]        - phase in degrees
-// data.f_groupdelay: number[] - frequency axis for the group delay, one point shorter
+// data.f_groupdelay: number[] - frequency axis for the group delay, the same as data.f
 // data.groupdelay: number[]   - group delay in ms
 // data.impulse: number[]      - the impulse response, Conv filters only
 

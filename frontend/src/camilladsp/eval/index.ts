@@ -7,10 +7,10 @@
  * network at all except for Conv filters that read coefficients from a file.
  */
 import { blankPhaseBelow, magnitudeDb, multiplyInto, phaseDegrees, phaseNoiseFloor, unitCurve } from "./complex"
-import { convComplexGain } from "./conv"
-import { complexGain } from "./filters"
+import { convComplexGain, convGroupDelay } from "./conv"
+import { complexGain, groupDelaySamples } from "./filters"
+import { addDelayInto, delayInMs } from "./groupdelay"
 import { FilterEvalError, num, numList, Params } from "./params"
-import { calcGroupDelay } from "./unwrap"
 import { ChartContent, FilterOption } from "../../utilities/chart"
 import { Config, Filter } from "../config"
 
@@ -206,17 +206,17 @@ async function convCoefficients(filterconf: Filter, samplerate: number, channels
 }
 
 /**
- * The phase the group delay is read from: the unreadable stretch taken out.
+ * Hide the group delay where the phase is hidden.
  *
- * This is not the toggle the plot offers. The group delay predicts each step
- * from the one below it in frequency, so letting it run through a region of
- * aliased phase moves the readable part of the curve as well, by hundreds of
- * milliseconds on a highpass. The phase trace itself has no such coupling, so
- * that one is the reader's to show or hide.
+ * Purely so the two curves agree about where a convolution filter stops being
+ * readable. Nothing depends on it any more: the delay is computed from the
+ * coefficients, point by point, so a value in the aliased region is wrong only
+ * about itself and cannot move the passband. Before that it was load bearing,
+ * and an unblanked stretch moved the readable delay of a highpass by 608 ms.
  */
-function blankedForGroupDelay(phase: number[], magnitude: number[], floor: number | undefined): number[] {
-  if (floor === undefined) return phase
-  const blanked = [...phase]
+function blankedBelowFloor(delay: number[], magnitude: number[], floor: number | undefined): number[] {
+  if (floor === undefined) return delay
+  const blanked = [...delay]
   blankPhaseBelow(floor, magnitude, blanked)
   return blanked
 }
@@ -239,28 +239,31 @@ export async function evalFilter(filterconf: Filter, options: EvalOptions): Prom
   }
 
   let curve
+  let delaySamples
   if (filterconf.type === "Conv") {
     const conv = await convCoefficients(filterconf, samplerate, channels)
     // Convolution is the one type with an impulse response to show, and its
     // bulk delay is removed so the phase plot stays readable.
     curve = convComplexGain(conv.coefficients, samplerate, freq, true)
+    delaySamples = convGroupDelay(conv.coefficients, samplerate, freq, true)
     result.options = conv.options
     result.impulse = conv.coefficients
     result.time = Float64Array.from(conv.coefficients, (_, n) => n / samplerate)
   } else {
     curve = complexGain(filterconf, samplerate, volume, freq)
+    delaySamples = groupDelaySamples(filterconf, samplerate, volume, freq)
   }
 
   const magnitude = magnitudeDb(curve)
   const phase = phaseDegrees(curve)
   // only an FIR has a stopband full of nulls for the plot grid to alias
   const phaseFloor = filterconf.type === "Conv" ? phaseNoiseFloor(magnitude) : undefined
-  const groupdelay = calcGroupDelay(result.f, blankedForGroupDelay(phase, magnitude, phaseFloor))
   result.phaseFloor = phaseFloor
   result.magnitude = magnitude
   result.phase = phase
-  result.f_groupdelay = groupdelay.freq
-  result.groupdelay = groupdelay.groupdelay
+  // one value per plot frequency, not per midpoint between two of them
+  result.f_groupdelay = result.f
+  result.groupdelay = blankedBelowFloor(delayInMs(delaySamples, samplerate), magnitude, phaseFloor)
   return result
 }
 
@@ -302,6 +305,10 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
   const names = step !== undefined && step.type === "Filter" ? step.names : []
 
   const total = unitCurve(npoints)
+  // filters multiply, delays add: the group delay of a cascade is the sum of
+  // the group delays of its parts, so nothing has to be recovered from the
+  // phase of the product
+  const totalDelay = new Float64Array(npoints)
   const convOptions: FilterOption[][] = []
   let hasConv = false
   for (const filterName of names) {
@@ -313,17 +320,19 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
       // the bulk delay of a Conv is part of the step's response, so unlike the
       // single filter plot it is not removed here
       multiplyInto(total, convComplexGain(conv.coefficients, samplerate, freq))
+      addDelayInto(totalDelay, convGroupDelay(conv.coefficients, samplerate, freq))
       const subtype = (filterconf.parameters ?? {}).type
       if (subtype === "Raw" || subtype === "Wav") convOptions.push(conv.options)
     } else {
       multiplyInto(total, complexGain(filterconf, samplerate, volume, freq))
+      addDelayInto(totalDelay, groupDelaySamples(filterconf, samplerate, volume, freq))
     }
   }
 
   const magnitude = magnitudeDb(total)
   const phase = phaseDegrees(total)
   const phaseFloor = hasConv ? phaseNoiseFloor(magnitude) : undefined
-  const groupdelay = calcGroupDelay(freq, blankedForGroupDelay(phase, magnitude, phaseFloor))
+  const groupdelay = blankedBelowFloor(delayInMs(totalDelay, samplerate), magnitude, phaseFloor)
   return {
     name,
     samplerate,
@@ -334,7 +343,7 @@ export async function evalFilterStep(config: Config, stepIndex: number, options:
     magnitude,
     phase,
     phaseFloor,
-    f_groupdelay: groupdelay.freq,
-    groupdelay: groupdelay.groupdelay,
+    f_groupdelay: Array.from(freq),
+    groupdelay,
   }
 }
