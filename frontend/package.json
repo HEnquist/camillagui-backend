@@ -53,8 +53,8 @@
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.4",
-    "@feedthrough/core": "^0.3.0",
-    "@feedthrough/vite": "^0.3.0",
+    "@feedthrough/core": "^0.4.0",
+    "@feedthrough/vite": "^0.4.0",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@tanstack/react-table": "^8.21.3",
