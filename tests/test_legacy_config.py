@@ -203,3 +203,27 @@ def test_merge_mixer_mappings(basic_config):
             ],
         }
     )
+
+
+def test_conv_filters():
+    # Wav (and Values) convolvers have no format parameter and must not
+    # crash the migration, while Raw convolver formats get renamed.
+    config = {
+        "filters": {
+            "fir_wav": {
+                "type": "Conv",
+                "parameters": {"type": "Wav", "filename": "fir.wav", "channel": 0},
+            },
+            "fir_raw": {
+                "type": "Conv",
+                "parameters": {
+                    "type": "Raw",
+                    "filename": "fir.dat",
+                    "format": "FLOAT32LE",
+                },
+            },
+        }
+    }
+    migrate_legacy_config(config)
+    assert "format" not in config["filters"]["fir_wav"]["parameters"]
+    assert config["filters"]["fir_raw"]["parameters"]["format"] == "F32_LE"
