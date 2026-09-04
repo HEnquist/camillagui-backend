@@ -613,6 +613,19 @@ def coeff_files():
         os.remove(path)
 
 
+def _unframe_coefficients(body):
+    """Undo the framing of a /api/convcoeffs reply: header JSON, then samples."""
+    import array as _array
+    import struct as _struct
+
+    header_length = _struct.unpack("<I", body[0:4])[0]
+    header = json.loads(body[4 : 4 + header_length])
+    start = 4 + header_length + (-(4 + header_length) % 8)
+    samples = _array.array("f" if header["format"] == "float32" else "d")
+    samples.frombytes(body[start:])
+    return header, samples.tolist()
+
+
 def _conv_request(filename, samplerate=44100, channels=2):
     return {
         "config": {
@@ -634,9 +647,9 @@ async def test_convcoeffs_reads_a_raw_file(server, coeff_files):
     resp = await server.post(
         "/api/convcoeffs", json=_conv_request("convtest_44100_2.f32")
     )
-    assert resp.status == 200, await resp.text()
-    content = await resp.json()
-    assert content["coefficients"] == coeff_files
+    assert resp.status == 200
+    _header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
 
 
 async def test_convcoeffs_resolves_the_filename_tokens(server, coeff_files):
@@ -644,11 +657,11 @@ async def test_convcoeffs_resolves_the_filename_tokens(server, coeff_files):
         "/api/convcoeffs",
         json=_conv_request("convtest_$samplerate$_$channels$.f32", samplerate=48000),
     )
-    assert resp.status == 200, await resp.text()
-    content = await resp.json()
-    assert content["coefficients"] == coeff_files
+    assert resp.status == 200
+    header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
     # both files match the pattern, so the plot can offer either samplerate
-    assert content["options"] == [
+    assert header["options"] == [
         {"name": "convtest_44100_2.f32", "samplerate": 44100, "channels": 2},
         {"name": "convtest_48000_2.f32", "samplerate": 48000, "channels": 2},
     ]
@@ -667,9 +680,9 @@ async def test_convcoeffs_accepts_a_path_relative_to_the_config_dir(server, coef
     resp = await server.post(
         "/api/convcoeffs", json=_conv_request("../testfiles/convtest_44100_2.f32")
     )
-    assert resp.status == 200, await resp.text()
-    content = await resp.json()
-    assert content["coefficients"] == coeff_files
+    assert resp.status == 200
+    _header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
 
 
 async def test_convcoeffs_rejects_a_relative_path_that_escapes_the_coeff_dir(server):
@@ -682,6 +695,37 @@ async def test_convcoeffs_rejects_a_relative_path_that_escapes_the_coeff_dir(ser
 async def test_convcoeffs_reports_a_missing_file(server):
     resp = await server.post("/api/convcoeffs", json=_conv_request("nosuchfile.f32"))
     assert resp.status == 404
+
+
+async def test_convcoeffs_sends_float32_when_the_source_holds_no_more(server, coeff_files):
+    """
+    An F32_LE file cannot hold more precision than a float32, so half the bytes
+    would be zero padding. The samples must come back exactly either way.
+    """
+    resp = await server.post("/api/convcoeffs", json=_conv_request("convtest_44100_2.f32"))
+    header, coefficients = _unframe_coefficients(await resp.read())
+    assert header["format"] == "float32"
+    assert coefficients == coeff_files
+
+
+async def test_convcoeffs_sends_float64_when_the_source_holds_more(server, tmp_path):
+    """A 32 bit integer source needs more than a float32 mantissa."""
+    import struct as _struct
+
+    values = [-(2**31), -12345678, 0, 12345678, 2**31 - 1]
+    path = os.path.join(TESTFILE_DIR, "convtest_s32.raw")
+    with open(path, "wb") as f:
+        f.write(_struct.pack(f"<{len(values)}i", *values))
+    try:
+        request = _conv_request("convtest_s32.raw")
+        request["config"]["parameters"]["format"] = "S32_LE"
+        resp = await server.post("/api/convcoeffs", json=request)
+        assert resp.status == 200, await resp.text()
+        header, coefficients = _unframe_coefficients(await resp.read())
+        assert header["format"] == "float64"
+        assert coefficients == [v / 2**31 for v in values]
+    finally:
+        os.remove(path)
 
 
 async def test_convcoeffs_rejects_a_conv_that_reads_no_file(server):

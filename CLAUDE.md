@@ -91,8 +91,14 @@ properties rather than captured curves, so it does not depend on this backend ha
 - `aiohttp` — async HTTP server
 - `PyYAML` — config file parsing
 - `jsonschema` — config validation
-- `numpy` — required; `audiofileread.py` decodes coefficients with `np.fromfile` and a view-and-shift
-  trick for 24-bit, and `validate_config.diffeq_is_stable` uses `np.roots`
+
+**No numpy, and no other compiled dependency.** It was required while the filter evaluation lived
+here. Once that left, the only uses were decoding coefficient files and one pole test, and both are
+plain Python now: `audiofileread.py` reads samples through the `array` module, and
+`validate_config.diffeq_is_stable` is the Schur-Cohn test the DSP itself uses. Decoding is 2 to 3x
+slower for the 16 and 24 bit formats, worth at most 23 ms on a million taps against the 400 ms the
+same request spends encoding that list as JSON, and it is faster for the 32 bit float files that
+coefficients usually come in. Do not reintroduce it without a reason of that size.
 
 `pycamilladsp-plot` used to provide validation and filter evaluation. As of CamillaDSP 5.0 the
 validation is merged into `backend/dsp/` and the library is deprecated, so it must **not** be
