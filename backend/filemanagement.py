@@ -568,41 +568,60 @@ def _to_bare_filename(path, directory):
     return path
 
 
-def validate_config_paths(config_object, coeff_dir, audiofiles_dir):
+def validate_config_paths(config_object, coeff_dir, audiofiles_dir, config_dir=None):
     """
     Check that all file paths in the config are within their configured directories.
     Returns a list of offending paths that escape the configured dirs.
+
+    Relative coefficient paths are resolved against config_dir, and relative
+    audio paths against audiofiles_dir, which is where each of them is resolved
+    when the config is actually used.
     """
     offenders = []
     filters = config_object.get("filters") or {}
     for filt in filters.values():
         if filt.get("type") == "Conv" and filt.get("parameters", {}).get("type") in ("Raw", "Wav"):
             filename = filt["parameters"].get("filename")
-            if filename and not _path_is_safe(filename, coeff_dir):
+            if filename and not _path_is_safe(filename, coeff_dir, config_dir):
                 offenders.append(filename)
     capture = config_object.get("devices", {}).get("capture") or {}
     if capture.get("type") in ("WavFile", "RawFile"):
         filename = capture.get("filename")
-        if filename and not _path_is_safe(filename, audiofiles_dir):
+        if filename and not _path_is_safe(filename, audiofiles_dir, audiofiles_dir):
             offenders.append(filename)
     playback = config_object.get("devices", {}).get("playback") or {}
     if playback.get("type") == "File":
         filename = playback.get("filename")
-        if filename and not _path_is_safe(filename, audiofiles_dir):
+        if filename and not _path_is_safe(filename, audiofiles_dir, audiofiles_dir):
             offenders.append(filename)
     return offenders
 
 
-def _path_is_safe(path, configured_dir):
+def _path_is_safe(path, configured_dir, base_dir=None):
     """
-    A path is safe if it contains no directory separators (bare filename),
-    or if it is an absolute path resolving within configured_dir.
+    A path is safe if it ends up inside configured_dir.
+
+    A bare filename always does, since that is what it is resolved against.
+    Anything else is resolved the way the rest of the backend resolves it, a
+    relative path against base_dir and an absolute path as it stands, and then
+    has to land inside configured_dir.
+
+    Where a path points matters, not how it is written. A config in
+    ~/camilladsp/configs referring to '../coeffs/filter.raw' is the ordinary
+    CamillaDSP layout and lands in coeff_dir, so it is safe, while
+    '../../../etc/passwd' from the same config does not and is refused.
+
+    Without a base_dir a relative path cannot be resolved, so it is refused.
     """
-    if not isabs(path):
-        return ntpath.basename(path) == path
+    if ntpath.basename(path) == path:
+        return True
     if not configured_dir:
         return False
-    return is_path_in_folder(realpath(path), configured_dir)
+    if not isabs(path):
+        if not base_dir:
+            return False
+        path = join(base_dir, path)
+    return is_path_in_folder(realpath(path), realpath(configured_dir))
 
 
 def make_config_filter_paths_relative(config_object, config_dir, coeff_dir=None):

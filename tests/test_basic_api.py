@@ -659,6 +659,26 @@ async def test_convcoeffs_rejects_a_path_outside_the_coeff_dir(server):
     assert resp.status == 403
 
 
+async def test_convcoeffs_accepts_a_path_relative_to_the_config_dir(server, coeff_files):
+    """
+    The ordinary CamillaDSP layout, a config in configs/ pointing at the
+    sibling coeffs/. It lands inside coeff_dir, so it is allowed.
+    """
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("../testfiles/convtest_44100_2.f32")
+    )
+    assert resp.status == 200, await resp.text()
+    content = await resp.json()
+    assert content["coefficients"] == coeff_files
+
+
+async def test_convcoeffs_rejects_a_relative_path_that_escapes_the_coeff_dir(server):
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("../../../../../../etc/passwd")
+    )
+    assert resp.status == 403
+
+
 async def test_convcoeffs_reports_a_missing_file(server):
     resp = await server.post("/api/convcoeffs", json=_conv_request("nosuchfile.f32"))
     assert resp.status == 404
@@ -670,3 +690,12 @@ async def test_convcoeffs_rejects_a_conv_that_reads_no_file(server):
     request["config"]["parameters"] = {"type": "Values", "values": [1.0, 0.5]}
     resp = await server.post("/api/convcoeffs", json=request)
     assert resp.status == 400
+
+
+async def test_convcoeffs_rejects_a_conv_without_a_filename(server):
+    """A Raw or Wav filter with no file name yet, as a half filled in one has."""
+    for filename in ("", None):
+        request = _conv_request("unused.f32")
+        request["config"]["parameters"]["filename"] = filename
+        resp = await server.post("/api/convcoeffs", json=request)
+        assert resp.status == 400, await resp.text()

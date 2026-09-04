@@ -358,10 +358,14 @@ async def conv_coefficients(request):
             headers=HEADERS,
         )
     filename = parameters.get("filename")
-    if not request.app["allow_absolute_paths"] and filename:
+    if not filename:
+        raise web.HTTPBadRequest(
+            text="Conv filter has no coefficient file name", headers=HEADERS
+        )
+    if not request.app["allow_absolute_paths"]:
         from .filemanagement import _path_is_safe
 
-        if not _path_is_safe(filename, request.app["coeff_dir"]):
+        if not _path_is_safe(filename, request.app["coeff_dir"], request.app["config_dir"]):
             raise web.HTTPForbidden(
                 text=(
                     f"Coeff path '{filename}' is outside the configured coeff_dir. "
@@ -378,7 +382,7 @@ async def conv_coefficients(request):
     # the options come from the name as written, with the tokens still in it,
     # so they have to be collected before the tokens are replaced
     filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
-    options = filter_plot_options(filter_file_names, parameters["filename"])
+    options = filter_plot_options(filter_file_names, filename)
     replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
     try:
         # a text file gives a list and a binary one a numpy array, and only one
@@ -739,6 +743,7 @@ def _check_config_paths(request, config_object):
         config_object,
         request.app["coeff_dir"],
         request.app.get("audiofiles_dir"),
+        request.app["config_dir"],
     )
     if offenders:
         paths = ", ".join(f"'{p}'" for p in offenders)
@@ -855,7 +860,8 @@ async def get_wav_info(request):
     filename = request.query["filename"]
     if not request.app["allow_absolute_paths"]:
         from .filemanagement import _path_is_safe
-        if not _path_is_safe(filename, request.app.get("audiofiles_dir")):
+        audiofiles_dir = request.app.get("audiofiles_dir")
+        if not _path_is_safe(filename, audiofiles_dir, audiofiles_dir):
             raise web.HTTPForbidden(
                 text=(
                     f"Audio path '{filename}' is outside the configured audiofiles_dir. "

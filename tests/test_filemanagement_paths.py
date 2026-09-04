@@ -33,11 +33,32 @@ class TestPathIsSafe:
     def test_bare_filename_with_no_dir_is_safe(self):
         assert _path_is_safe("myfile.raw", None)
 
-    def test_relative_path_with_separator_is_unsafe(self):
+    def test_relative_path_with_no_base_dir_is_unsafe(self):
+        # nothing to resolve it against, so where it points is unknowable
         assert not _path_is_safe("subdir/myfile.wav", COEFF_DIR)
 
-    def test_relative_path_with_backslash_is_unsafe(self):
+    def test_relative_path_with_backslash_and_no_base_dir_is_unsafe(self):
         assert not _path_is_safe("subdir\\myfile.wav", COEFF_DIR)
+
+    def test_relative_path_from_config_dir_into_coeff_dir_is_safe(self):
+        # the ordinary CamillaDSP layout: a config in configs/ pointing at the
+        # sibling coeffs/, which is exactly where coefficients are meant to be
+        assert _path_is_safe("../coeffs/filter.raw", COEFF_DIR, CONFIG_DIR)
+
+    def test_relative_path_into_a_subfolder_of_coeff_dir_is_safe(self):
+        assert _path_is_safe("../coeffs/speaker/filter.raw", COEFF_DIR, CONFIG_DIR)
+
+    def test_relative_path_escaping_coeff_dir_is_unsafe(self):
+        assert not _path_is_safe("../../../etc/passwd", COEFF_DIR, CONFIG_DIR)
+
+    def test_relative_path_into_another_configured_dir_is_unsafe(self):
+        assert not _path_is_safe("../audiofiles/secret.wav", COEFF_DIR, CONFIG_DIR)
+
+    def test_relative_path_doubling_back_out_of_coeff_dir_is_unsafe(self):
+        assert not _path_is_safe("../coeffs/../../etc/passwd", COEFF_DIR, CONFIG_DIR)
+
+    def test_neighbour_with_the_same_prefix_is_unsafe(self):
+        assert not _path_is_safe("../coeffs-elsewhere/filter.raw", COEFF_DIR, CONFIG_DIR)
 
     def test_absolute_within_dir_is_safe(self):
         assert _path_is_safe(f"{COEFF_DIR}/myfile.wav", COEFF_DIR)
@@ -215,6 +236,15 @@ class TestValidateConfigPaths:
     def test_absolute_coeff_within_dir_is_valid(self):
         config = {"filters": {"f1": self._conv_filter(f"{COEFF_DIR}/room.wav")}}
         assert validate_config_paths(config, COEFF_DIR, AUDIO_DIR) == []
+
+    def test_relative_coeff_from_config_dir_is_valid(self):
+        config = {"filters": {"f1": self._conv_filter("../coeffs/room.wav")}}
+        assert validate_config_paths(config, COEFF_DIR, AUDIO_DIR, CONFIG_DIR) == []
+
+    def test_relative_coeff_escaping_the_coeff_dir_is_invalid(self):
+        config = {"filters": {"f1": self._conv_filter("../../../etc/passwd")}}
+        offenders = validate_config_paths(config, COEFF_DIR, AUDIO_DIR, CONFIG_DIR)
+        assert "../../../etc/passwd" in offenders
 
     def test_absolute_coeff_outside_dir_is_invalid(self):
         config = {"filters": {"f1": self._conv_filter("/etc/passwd")}}
