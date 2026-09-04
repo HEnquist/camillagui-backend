@@ -1,8 +1,8 @@
+import array
 import struct
 import csv
 import itertools
-
-import numpy as np
+import sys
 
 NUMBERFORMATS = {
     1: "int",
@@ -13,15 +13,25 @@ NUMBERFORMATS = {
 SUBFORMAT_FLOAT = (3, 0, 16, 128, 0, 0, 170, 0, 56, 155, 113)
 SUBFORMAT_INT = (1, 0, 16, 128, 0, 0, 170, 0, 56, 155, 113)
 
+def _typecode(size, kind):
+    """The array typecode for a float or signed int of the given width."""
+    for code in "bhilqf" if kind == "int" else "fd":
+        if array.array(code).itemsize == size:
+            return code
+    raise ValueError(f"No {kind} of {size} bytes on this platform")
+
+
+# Formats that map onto a machine type, so they can be read straight into an
+# array. Little endian on the wire, byte swapped below if the host is not.
 TYPES_DIRECT = {
-    "F64_LE": "<f8",
-    "F32_LE": "<f4",
-    "S16_LE": "<i2",
-    "S32_LE": "<i4",
+    "F64_LE": _typecode(8, "float"),
+    "F32_LE": _typecode(4, "float"),
+    "S16_LE": _typecode(2, "int"),
+    "S32_LE": _typecode(4, "int"),
 }
 
-# Formats numpy has no dtype for. "first" is the offset of the first of the
-# three sample bytes within each frame.
+# Formats with no machine type of their own. "first" is the offset of the first
+# of the three sample bytes within each frame.
 TYPES_INDIRECT = {
     "S24_4_RJ_LE": {"first": 0},
     "S24_4_LJ_LE": {"first": 1},
@@ -96,33 +106,53 @@ def read_text_coeffs(fname, skip_lines, read_lines):
     return values
 
 
+def _read_window(fname, skip_bytes, read_bytes):
+    """The bytes of a file that a skip and read count select, and no more."""
+    with open(fname, "rb") as f:
+        if skip_bytes:
+            f.seek(skip_bytes)
+        return f.read() if read_bytes is None else f.read(read_bytes)
+
+
 def read_binary_direct_coeffs(fname, sampleformat, skip_bytes, read_bytes):
-    """Read samples in a format numpy has a dtype for."""
-    dtype = np.dtype(TYPES_DIRECT[sampleformat])
+    """Read samples in a format that maps onto a machine type."""
+    code = TYPES_DIRECT[sampleformat]
     factor = SCALEFACTOR[sampleformat]
-    count = -1 if read_bytes is None else read_bytes // dtype.itemsize
-    values = np.fromfile(fname, dtype=dtype, count=count, offset=skip_bytes)
-    return values.astype(np.float64) / factor
+    itemsize = array.array(code).itemsize
+    data = _read_window(fname, skip_bytes, read_bytes)
+    values = array.array(code)
+    values.frombytes(data[: len(data) - len(data) % itemsize])
+    if sys.byteorder == "big":
+        values.byteswap()
+    if factor == 1.0:
+        return values.tolist()
+    return [v / factor for v in values]
 
 
 def read_binary_indirect_coeffs(fname, sampleformat, skip_bytes, read_bytes):
     """
-    Read 24-bit samples, which numpy has no dtype for.
+    Read 24-bit samples, which have no machine type of their own.
 
-    The three bytes of each sample are copied into the top three bytes of a
-    little endian int32 and shifted back down, which sign extends them. The
-    low byte is zero, so the shift is exact.
+    The three bytes of each sample are placed in the top three bytes of a
+    little endian int32, which sign extends them. That leaves every value
+    scaled up by the empty low byte, so the 256 is folded into the divisor
+    rather than shifted out, which is exact either way.
     """
     first = TYPES_INDIRECT[sampleformat]["first"]
     width = BYTESPERSAMPLE[sampleformat]
-    factor = SCALEFACTOR[sampleformat]
-    count = -1 if read_bytes is None else read_bytes
-    raw = np.fromfile(fname, dtype=np.uint8, count=count, offset=skip_bytes)
-    raw = raw[: len(raw) - len(raw) % width].reshape(-1, width)
-    padded = np.zeros((len(raw), 4), dtype=np.uint8)
-    padded[:, 1:4] = raw[:, first : first + 3]
-    values = padded.view("<i4").ravel() >> 8
-    return values.astype(np.float64) / factor
+    factor = SCALEFACTOR[sampleformat] * 256
+    code = _typecode(4, "int")
+    data = _read_window(fname, skip_bytes, read_bytes)
+    count = len(data) // width
+    packed = bytearray(4 * count)
+    packed[1::4] = data[first + 0 :: width][:count]
+    packed[2::4] = data[first + 1 :: width][:count]
+    packed[3::4] = data[first + 2 :: width][:count]
+    values = array.array(code)
+    values.frombytes(bytes(packed))
+    if sys.byteorder == "big":
+        values.byteswap()
+    return [v / factor for v in values]
 
 
 def read_wav_coeffs(fname, channel):

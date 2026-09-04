@@ -343,29 +343,6 @@ def test_v5_migrates_fivepointpeq_to_npointpeq(v4_config):
     assert set(params) == {"type", "bands"}
 
 
-def test_v5_migrated_fivepointpeq_has_the_same_response(v4_config):
-    import numpy as np
-
-    from backend.dsp.filters import Biquad, BiquadCombo
-
-    migrate_legacy_config(v4_config)
-    migrated = BiquadCombo(v4_config["filters"]["peq"]["parameters"], 48000)
-    v4_sections = [
-        Biquad({"freq": 80.0, "q": 0.7, "gain": 1.0, "type": "Lowshelf"}, 48000),
-        Biquad({"freq": 200.0, "q": 1.0, "gain": -1.0, "type": "Peaking"}, 48000),
-        Biquad({"freq": 800.0, "q": 1.0, "gain": 0.5, "type": "Peaking"}, 48000),
-        Biquad({"freq": 2400.0, "q": 1.0, "gain": -0.5, "type": "Peaking"}, 48000),
-        Biquad({"freq": 6000.0, "q": 0.7, "gain": 1.0, "type": "Highshelf"}, 48000),
-    ]
-
-    freq = np.geomspace(10.0, 20000.0, 300)
-    reference = np.ones(len(freq), dtype=complex)
-    for section in v4_sections:
-        reference = reference * section.complex_gain(freq)[1]
-
-    assert np.allclose(migrated.complex_gain(freq)[1], reference)
-
-
 def test_v5_migrates_processor_time_units(v4_config):
     migrate_legacy_config(v4_config)
     processors = v4_config["processors"]

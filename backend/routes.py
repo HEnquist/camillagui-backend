@@ -8,8 +8,7 @@ from .views import (
     download_coeffs_zip,
     download_configs_zip,
     download_audiofiles_zip,
-    eval_filter_values,
-    eval_filterstep_values,
+    conv_coefficients,
     get_events,
     get_config_at_gui_start,
     get_active_config_name,
@@ -63,8 +62,7 @@ def setup_routes(app):
     app.router.add_get("/api/getlistparam/{name}", get_list_param)
     app.router.add_post("/api/setparam/{name}", set_param)
     app.router.add_post("/api/setparamindex/{name}/{index}", set_param_index)
-    app.router.add_post("/api/evalfilter", eval_filter_values)
-    app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
+    app.router.add_post("/api/convcoeffs", conv_coefficients)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_post("/api/stop", stop_processing)

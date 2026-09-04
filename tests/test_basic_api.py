@@ -591,3 +591,155 @@ async def test_validate_config_with_default_graphic_eq_range(server):
     assert resp.status == 406
     errors = await resp.json()
     assert any("samplerate/2" in str(error) for error in errors)
+
+
+@pytest.fixture
+def coeff_files():
+    """
+    Two raw coefficient files whose names differ only in the samplerate, so the
+    $samplerate$ token and the options list both have something to work with.
+    """
+    import struct
+
+    values = [0.0, 0.25, -0.5, 1.0]
+    written = []
+    for samplerate in (44100, 48000):
+        path = os.path.join(TESTFILE_DIR, f"convtest_{samplerate}_2.f32")
+        with open(path, "wb") as f:
+            f.write(struct.pack(f"<{len(values)}f", *values))
+        written.append(path)
+    yield values
+    for path in written:
+        os.remove(path)
+
+
+def _unframe_coefficients(body):
+    """Undo the framing of a /api/convcoeffs reply: header JSON, then samples."""
+    import array as _array
+    import struct as _struct
+
+    header_length = _struct.unpack("<I", body[0:4])[0]
+    header = json.loads(body[4 : 4 + header_length])
+    start = 4 + header_length + (-(4 + header_length) % 8)
+    samples = _array.array("f" if header["format"] == "float32" else "d")
+    samples.frombytes(body[start:])
+    return header, samples.tolist()
+
+
+def _conv_request(filename, samplerate=44100, channels=2):
+    return {
+        "config": {
+            "type": "Conv",
+            "parameters": {
+                "type": "Raw",
+                "filename": filename,
+                "format": "F32_LE",
+                "skip_bytes_lines": 0,
+                "read_bytes_lines": 0,
+            },
+        },
+        "samplerate": samplerate,
+        "channels": channels,
+    }
+
+
+async def test_convcoeffs_reads_a_raw_file(server, coeff_files):
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("convtest_44100_2.f32")
+    )
+    assert resp.status == 200
+    _header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
+
+
+async def test_convcoeffs_resolves_the_filename_tokens(server, coeff_files):
+    resp = await server.post(
+        "/api/convcoeffs",
+        json=_conv_request("convtest_$samplerate$_$channels$.f32", samplerate=48000),
+    )
+    assert resp.status == 200
+    header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
+    # both files match the pattern, so the plot can offer either samplerate
+    assert header["options"] == [
+        {"name": "convtest_44100_2.f32", "samplerate": 44100, "channels": 2},
+        {"name": "convtest_48000_2.f32", "samplerate": 48000, "channels": 2},
+    ]
+
+
+async def test_convcoeffs_rejects_a_path_outside_the_coeff_dir(server):
+    resp = await server.post("/api/convcoeffs", json=_conv_request("/etc/passwd"))
+    assert resp.status == 403
+
+
+async def test_convcoeffs_accepts_a_path_relative_to_the_config_dir(server, coeff_files):
+    """
+    The ordinary CamillaDSP layout, a config in configs/ pointing at the
+    sibling coeffs/. It lands inside coeff_dir, so it is allowed.
+    """
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("../testfiles/convtest_44100_2.f32")
+    )
+    assert resp.status == 200
+    _header, coefficients = _unframe_coefficients(await resp.read())
+    assert coefficients == coeff_files
+
+
+async def test_convcoeffs_rejects_a_relative_path_that_escapes_the_coeff_dir(server):
+    resp = await server.post(
+        "/api/convcoeffs", json=_conv_request("../../../../../../etc/passwd")
+    )
+    assert resp.status == 403
+
+
+async def test_convcoeffs_reports_a_missing_file(server):
+    resp = await server.post("/api/convcoeffs", json=_conv_request("nosuchfile.f32"))
+    assert resp.status == 404
+
+
+async def test_convcoeffs_sends_float32_when_the_source_holds_no_more(server, coeff_files):
+    """
+    An F32_LE file cannot hold more precision than a float32, so half the bytes
+    would be zero padding. The samples must come back exactly either way.
+    """
+    resp = await server.post("/api/convcoeffs", json=_conv_request("convtest_44100_2.f32"))
+    header, coefficients = _unframe_coefficients(await resp.read())
+    assert header["format"] == "float32"
+    assert coefficients == coeff_files
+
+
+async def test_convcoeffs_sends_float64_when_the_source_holds_more(server, tmp_path):
+    """A 32 bit integer source needs more than a float32 mantissa."""
+    import struct as _struct
+
+    values = [-(2**31), -12345678, 0, 12345678, 2**31 - 1]
+    path = os.path.join(TESTFILE_DIR, "convtest_s32.raw")
+    with open(path, "wb") as f:
+        f.write(_struct.pack(f"<{len(values)}i", *values))
+    try:
+        request = _conv_request("convtest_s32.raw")
+        request["config"]["parameters"]["format"] = "S32_LE"
+        resp = await server.post("/api/convcoeffs", json=request)
+        assert resp.status == 200, await resp.text()
+        header, coefficients = _unframe_coefficients(await resp.read())
+        assert header["format"] == "float64"
+        assert coefficients == [v / 2**31 for v in values]
+    finally:
+        os.remove(path)
+
+
+async def test_convcoeffs_rejects_a_conv_that_reads_no_file(server):
+    """Dummy and Values are built by the frontend and must never come here."""
+    request = _conv_request("unused.f32")
+    request["config"]["parameters"] = {"type": "Values", "values": [1.0, 0.5]}
+    resp = await server.post("/api/convcoeffs", json=request)
+    assert resp.status == 400
+
+
+async def test_convcoeffs_rejects_a_conv_without_a_filename(server):
+    """A Raw or Wav filter with no file name yet, as a half filled in one has."""
+    for filename in ("", None):
+        request = _conv_request("unused.f32")
+        request["config"]["parameters"]["filename"] = filename
+        resp = await server.post("/api/convcoeffs", json=request)
+        assert resp.status == 400, await resp.text()

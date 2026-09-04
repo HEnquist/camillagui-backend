@@ -128,8 +128,16 @@ This is provided to enable uploading of coefficients and config files from the g
 
 ### File path security
 
-By default (`allow_absolute_paths: false`), the GUI only accepts bare filenames for coefficient files and audio files.
-Bare filenames are resolved against `coeff_dir` and `audiofiles_dir` respectively.
+By default (`allow_absolute_paths: false`), a coefficient or audio file must end up inside `coeff_dir`
+or `audiofiles_dir` respectively. What matters is where a path points, not how it is written:
+
+- A bare filename is resolved against `coeff_dir` or `audiofiles_dir`, so it is always accepted.
+- A relative path is resolved the way CamillaDSP resolves it, coefficient paths against the directory
+  the config is in and audio paths against `audiofiles_dir`. A config in `configs/` referring to
+  `../coeffs/filter.raw` is therefore accepted, since it lands in `coeff_dir`, while
+  `../../../etc/passwd` is not.
+- An absolute path is accepted only if it is inside the configured directory.
+
 Config files on disk always store absolute paths so that CamillaDSP can use them at startup without the GUI.
 
 This prevents anyone with GUI access from reading arbitrary files from the filesystem via the coefficient
@@ -138,8 +146,8 @@ and write to any location the DSP process has write access to.
 The risk is especially serious if the CamillaDSP process runs with elevated privileges — running it as root
 is strongly discouraged and should be avoided. A dedicated low-privilege user account is the right approach.
 
-**Upgrading from an older version:** if your configs reference coefficient or audio files using absolute paths,
-the GUI will reject them until you either:
+**Upgrading from an older version:** if your configs reference coefficient or audio files that sit outside
+the configured directories, the GUI will reject them until you either:
 - Move the files into `coeff_dir` / `audiofiles_dir` and use bare filenames (recommended), or
 - Set `allow_absolute_paths: true` in `camillagui.yml` to restore the previous behaviour
 

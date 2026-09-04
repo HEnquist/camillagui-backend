@@ -37,17 +37,36 @@ backend/
   legacy_config_import.py        # Migrates old config formats to current version
   convolver_config_import.py     # Imports Convolver project configs
   eqapo_config_import.py         # Imports EqAPO configs
-  dsp/                           # Config validation + filter evaluation
+  dsp/                           # Config validation
     validate_config.py           # CamillaValidator — schema + semantic validation
-    eval_filterconfig.py         # eval_filter / eval_filterstep
-    filters.py                   # Filter implementations for evaluation
     defaults.py                  # CamillaDSP's defaults for optional parameters
     audiofileread.py             # wav header + coefficient file reading
     schemas/                     # JSON schemas for every config section
 
+tools/
+  dump_filter_variants.py        # Exports every schema-valid filter to the frontend's test fixture
+
 tests/                           # pytest test suite
 build/                           # Place compiled frontend files here before bundling
 ```
+
+## Filter evaluation lives in the frontend
+
+There is no DSP in this backend. Filter transfer functions are evaluated in the browser, in
+`camillagui/src/camilladsp/eval/`, which is both faster (the GUI is usually browsed from a laptop
+while the backend runs on an SBC) and one implementation instead of two. The backend keeps only
+what needs a server: `POST /api/convcoeffs` resolves a Conv filter's path, applies the
+`$samplerate$` and `$channels$` tokens, and returns the decoded coefficients.
+
+**The one thing to watch:** the JSON schemas are here, in Python, while the evaluator is over
+there, in TypeScript. `tools/dump_filter_variants.py` exports every schema-valid filter config to
+`camillagui/src/camilladsp/eval/fixtures/variants.json`, and the frontend's `variants.test.ts`
+evaluates all of them. **When you change a filter schema, re-run that tool and commit the result**,
+or the evaluator gets a new parameter with nothing testing it. `tests/test_eval_validated_configs.py`
+fails until you do.
+
+The numbers themselves are covered by `properties.test.ts` over there, which asserts closed-form
+properties rather than captured curves, so it does not depend on this backend having been right.
 
 ## Key API routes (from routes.py)
 
@@ -59,8 +78,7 @@ build/                           # Place compiled frontend files here before bun
 | POST | `/api/setconfig` | Push config to DSP |
 | GET | `/api/getconfigfile` | Config file from disk |
 | POST | `/api/saveconfigfile` | Save config to disk |
-| POST | `/api/evalfilter` | Filter frequency response via `backend.dsp` |
-| POST | `/api/evalfilterstep` | Filter step response |
+| POST | `/api/convcoeffs` | Coefficients of a file-backed Conv filter, for the frontend to evaluate |
 | GET | `/api/storedconfigs` | List config files |
 | POST | `/api/storeconfigs` | Upload config files |
 | GET | `/api/guiconfig` | Serve gui-config.yml as JSON |
@@ -73,10 +91,18 @@ build/                           # Place compiled frontend files here before bun
 - `aiohttp` — async HTTP server
 - `PyYAML` — config file parsing
 - `jsonschema` — config validation
-- `numpy` — required; `backend/dsp/` evaluates filters as numpy arrays throughout
 
-`pycamilladsp-plot` used to provide validation and filter evaluation. As of CamillaDSP 5.0 it is
-merged into `backend/dsp/` and deprecated as a separate library, so it must **not** be installed.
+**No numpy, and no other compiled dependency.** It was required while the filter evaluation lived
+here. Once that left, the only uses were decoding coefficient files and one pole test, and both are
+plain Python now: `audiofileread.py` reads samples through the `array` module, and
+`validate_config.diffeq_is_stable` is the Schur-Cohn test the DSP itself uses. Decoding is 2 to 3x
+slower for the 16 and 24 bit formats, worth at most 23 ms on a million taps against the 400 ms the
+same request spends encoding that list as JSON, and it is faster for the 32 bit float files that
+coefficients usually come in. Do not reintroduce it without a reason of that size.
+
+`pycamilladsp-plot` used to provide validation and filter evaluation. As of CamillaDSP 5.0 the
+validation is merged into `backend/dsp/` and the library is deprecated, so it must **not** be
+installed. The evaluation went to the frontend instead, see above.
 
 ## Talking to CamillaDSP
 

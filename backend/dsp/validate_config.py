@@ -9,13 +9,61 @@ from importlib import resources
 from jsonschema import Draft7Validator, validators
 
 from .audiofileread import read_wav_header, read_text_coeffs
-from .filters import diffeq_is_stable
 from .defaults import (
     GRAPHIC_EQ_FREQ_MAX,
     GRAPHIC_EQ_FREQ_MIN,
     LOUDNESS_HIGH_FREQ,
     LOUDNESS_LOW_FREQ,
 )
+
+
+def diffeq_is_stable(a):
+    """
+    True if the 'a' coefficients of a DiffEq give a stable filter, meaning every
+    pole is strictly inside the unit circle.
+
+    This is the Schur-Cohn step-down test, and it is a 1:1 Python version of
+    the Rust: `poles_inside_unit_circle` in CamillaDSP's src/filters/diffeq.rs,
+    same loop, same bounds, same arithmetic, so the GUI reaches its verdict the
+    way the DSP reaches its own rather than by an equivalent-looking route.
+    Keep it that way if the Rust changes.
+
+    The two guards come from that function's caller in the same Rust file,
+    which rejects a leading zero and then divides through by a[0], because
+    `poles_inside_unit_circle` documents that it needs a0 to be unity. They are
+    inline here so that this function is safe to call on any coefficient list.
+
+    One cosmetic difference. The Rust leaves coeffs[0] untouched in the inner
+    loop, `.take(order).skip(1)`, while the comprehension below recomputes it as
+    (1 - k*k) / (1 - k*k). That is exactly 1.0, the value the Rust leaves there,
+    so the two produce identical numbers.
+
+    It walks the polynomial down one order at a time: the last coefficient of a
+    monic polynomial is the product of its roots, so a value of 1 or more puts a
+    root outside the unit circle, and the step-down removes one root while
+    preserving that property for the rest.
+
+    An empty or absent list means the CamillaDSP default of a single unity
+    coefficient, which is a stable FIR filter.
+    """
+    # len(), not a truth test, so any sequence works
+    if a is None or len(a) == 0:
+        return True
+    coeffs = [float(v) for v in a]
+    if coeffs[0] == 0.0:
+        return False
+    coeffs = [v / coeffs[0] for v in coeffs]
+    for order in range(len(coeffs) - 1, 0, -1):
+        reflection = coeffs[order]
+        if abs(reflection) >= 1.0:
+            return False
+        scale = 1.0 - reflection * reflection
+        previous = coeffs
+        coeffs = [
+            (previous[n] - reflection * previous[order - n]) / scale
+            for n in range(order)
+        ]
+    return True
 
 
 def _load_schema(name):

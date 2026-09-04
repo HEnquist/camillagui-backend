@@ -1,5 +1,9 @@
+import array
+import json
 import logging
 import asyncio
+import struct
+import sys
 import threading
 import time
 import traceback
@@ -8,8 +12,7 @@ from os.path import basename, expanduser, isfile, join
 import yaml
 from aiohttp import web
 from camilladsp import CamillaError
-from backend.dsp import eval_filter, eval_filterstep
-from backend.dsp.audiofileread import read_wav_header
+from backend.dsp.audiofileread import read_coeffs, read_wav_header
 
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
@@ -42,11 +45,7 @@ from .filemanagement import (
     zip_of_files,
     zip_response,
 )
-from .filters import (
-    defaults_for_filter,
-    filter_plot_options,
-    pipeline_step_plot_options,
-)
+from .filters import defaults_for_filter, filter_plot_options
 from .legacy_config_import import (
     CURRENT_VERSION,
     identify_version,
@@ -341,83 +340,110 @@ async def set_param_index(request):
     return web.Response(text="OK", headers=HEADERS)
 
 
-async def eval_filter_values(request):
-    """
-    Evaluate a filter. Returns values for plotting.
-    """
-    content = await request.json()
-    config_dir = request.app["config_dir"]
-    config = content["config"]
-    if not request.app["allow_absolute_paths"]:
-        filename = config.get("parameters", {}).get("filename")
-        if filename:
-            from .filemanagement import _path_is_safe
-            if not _path_is_safe(filename, request.app["coeff_dir"]):
-                raise web.HTTPForbidden(
-                    text=(
-                        f"Coeff path '{filename}' is outside the configured coeff_dir. "
-                        "Set allow_absolute_paths: true in camillagui.yml to allow this."
-                    ),
-                    headers=HEADERS,
-                )
-    convert_filter_path(config, lambda path: coeff_path_to_absolute(path, config_dir, request.app["coeff_dir"]))
-    channels = content["channels"]
-    samplerate = content["samplerate"]
-    volume = content.get("volume", 0.0)
-    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
-    if "filename" in config["parameters"]:
-        filename = config["parameters"]["filename"]
-        options = filter_plot_options(filter_file_names, filename)
+# Source formats that hold no more precision than a float32 does, so sending
+# one is exact rather than a compromise. F64_LE and S32_LE hold more, and a
+# TEXT file can say anything at all, so those go out as float64.
+FLOAT32_EXACT_FORMATS = frozenset(
+    {"F32_LE", "S16_LE", "S24_3_LE", "S24_4_RJ_LE", "S24_4_LJ_LE"}
+)
+
+
+def _wire_typecode(parameters):
+    """Four bytes per sample where that loses nothing, eight where it would."""
+    if parameters.get("type") == "Wav":
+        info = read_wav_header(parameters["filename"])
+        sampleformat = info.get("sampleformat") if info else None
     else:
-        options = []
-    replace_tokens_in_filter_config(config, samplerate, channels)
-    try:
-        data = eval_filter(
-            config,
-            name=(content["name"]),
-            samplerate=samplerate,
-            npoints=1000,
-            volume=volume,
-        )
-        data["channels"] = channels
-        data["options"] = options
-        return web.json_response(data, headers=HEADERS)
-    except FileNotFoundError as e:
-        raise web.HTTPNotFound(text="Filter coefficient file not found") from e
-    except Exception as e:
-        raise web.HTTPBadRequest(text=str(e))
+        sampleformat = parameters.get("format")
+    return "f" if sampleformat in FLOAT32_EXACT_FORMATS else "d"
 
 
-async def eval_filterstep_values(request):
+def _coefficients_response(options, coefficients, typecode="d"):
     """
-    Evaluate a filter step consisting of one or several filters. Returns values for plotting.
+    Frame a coefficient set for the wire.
+
+    Not JSON. A million taps is 21.8 MB of decimal text that costs 390 ms to
+    format here and another 37 ms to parse in the browser, where the same
+    samples as raw floats are 8.4 MB or less, 19 ms to write, and free to read:
+    the frontend takes a typed array view straight over the bytes.
+
+    The frame is a little endian uint32 giving the length of a JSON header,
+    that header, padding to the next multiple of 8, and then the samples. The
+    padding is what lets the view be taken in place, since a Float64Array needs
+    an offset it can divide by 8. The header carries what is small enough to
+    stay JSON: the samplerate and channel options, and which width the samples
+    are in.
+
+    Compression was measured and dropped. On a real 590k tap file, gzip at
+    level 1 took the float32 payload from 2.36 MB to 1.29 MB for another 26 ms,
+    and on a dense float64 response it bought 4 percent for 200 ms. Choosing
+    the width by what the source can hold gets the same halving for nothing.
+    """
+    width = "float32" if typecode == "f" else "float64"
+    header = json.dumps({"options": options, "format": width}).encode("utf-8")
+    padding = -(4 + len(header)) % 8
+    samples = array.array(typecode, coefficients)
+    if sys.byteorder == "big":
+        samples.byteswap()
+    body = struct.pack("<I", len(header)) + header + bytes(padding) + samples.tobytes()
+    return web.Response(
+        body=body, content_type="application/octet-stream", headers=HEADERS
+    )
+
+
+async def conv_coefficients(request):
+    """
+    Read the coefficients of a Conv filter that gets them from a file, and
+    report which samplerate and channel count variants of that file exist.
+
+    The GUI evaluates filters itself, so this does no DSP. It exists because
+    only the server can reach the filesystem: it resolves the path, applies the
+    $samplerate$ and $channels$ tokens, and decodes the samples.
+
+    The Dummy and Values subtypes carry their coefficients in the config, so
+    the GUI builds those itself and they never come here.
+
+    The reply is framed binary rather than JSON, see `_coefficients_response`.
     """
     content = await request.json()
     config = content["config"]
-    step_index = content["index"]
-    config_dir = request.app["config_dir"]
-    if not request.app["allow_absolute_paths"]:
-        _check_config_paths(request, config)
-    samplerate = content["samplerate"]
-    channels = content["channels"]
-    config["devices"]["samplerate"] = samplerate
-    config["devices"]["capture"]["channels"] = channels
-    plot_config = make_config_filter_paths_absolute(config, config_dir, request.app["coeff_dir"])
-    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
-    options = pipeline_step_plot_options(filter_file_names, config, step_index)
-    for _, filt in plot_config.get("filters", {}).items():
-        replace_tokens_in_filter_config(filt, samplerate, channels)
-    try:
-        data = eval_filterstep(
-            plot_config,
-            step_index,
-            name=f"Filterstep {step_index}",
-            npoints=1000,
-            volume=content.get("volume", 0.0),
+    parameters = config["parameters"]
+    if parameters.get("type") not in ("Raw", "Wav"):
+        raise web.HTTPBadRequest(
+            text=f"Conv subtype '{parameters.get('type')}' reads no coefficient file",
+            headers=HEADERS,
         )
-        data["channels"] = channels
-        data["options"] = options
-        return web.json_response(data, headers=HEADERS)
+    filename = parameters.get("filename")
+    if not filename:
+        raise web.HTTPBadRequest(
+            text="Conv filter has no coefficient file name", headers=HEADERS
+        )
+    if not request.app["allow_absolute_paths"]:
+        from .filemanagement import _path_is_safe
+
+        if not _path_is_safe(filename, request.app["coeff_dir"], request.app["config_dir"]):
+            raise web.HTTPForbidden(
+                text=(
+                    f"Coeff path '{filename}' is outside the configured coeff_dir. "
+                    "Set allow_absolute_paths: true in camillagui.yml to allow this."
+                ),
+                headers=HEADERS,
+            )
+    convert_filter_path(
+        config,
+        lambda path: coeff_path_to_absolute(
+            path, request.app["config_dir"], request.app["coeff_dir"]
+        ),
+    )
+    # the options come from the name as written, with the tokens still in it,
+    # so they have to be collected before the tokens are replaced
+    filter_file_names = list_of_filenames_in_directory(request.app["coeff_dir"])
+    options = filter_plot_options(filter_file_names, filename)
+    replace_tokens_in_filter_config(config, content["samplerate"], content["channels"])
+    try:
+        return _coefficients_response(
+            options, read_coeffs(parameters), _wire_typecode(parameters)
+        )
     except FileNotFoundError as e:
         raise web.HTTPNotFound(text="Filter coefficient file not found") from e
     except Exception as e:
@@ -770,6 +796,7 @@ def _check_config_paths(request, config_object):
         config_object,
         request.app["coeff_dir"],
         request.app.get("audiofiles_dir"),
+        request.app["config_dir"],
     )
     if offenders:
         paths = ", ".join(f"'{p}'" for p in offenders)
@@ -886,7 +913,8 @@ async def get_wav_info(request):
     filename = request.query["filename"]
     if not request.app["allow_absolute_paths"]:
         from .filemanagement import _path_is_safe
-        if not _path_is_safe(filename, request.app.get("audiofiles_dir")):
+        audiofiles_dir = request.app.get("audiofiles_dir")
+        if not _path_is_safe(filename, audiofiles_dir, audiofiles_dir):
             raise web.HTTPForbidden(
                 text=(
                     f"Audio path '{filename}' is outside the configured audiofiles_dir. "

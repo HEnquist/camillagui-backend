@@ -1,6 +1,5 @@
 import struct
 
-import numpy as np
 import pytest
 
 from backend.dsp.audiofileread import read_raw_coeffs, read_wav_header
@@ -72,26 +71,26 @@ def test_rejects_a_file_that_is_not_wav(tmp_path):
     assert read_wav_header(path) is None
 
 
-VALUES = np.linspace(-0.9, 0.9, 501)
+VALUES = [-0.9 + 1.8 * n / 500 for n in range(501)]
 
 
 def _write_raw(path, fmt):
     if fmt in ("F64_LE", "F32_LE", "S16_LE", "S32_LE"):
-        dtype, scale = {
-            "F64_LE": ("<f8", 1.0), "F32_LE": ("<f4", 1.0),
-            "S16_LE": ("<i2", 2**15), "S32_LE": ("<i4", 2**31),
+        code, scale = {
+            "F64_LE": ("d", 1.0), "F32_LE": ("f", 1.0),
+            "S16_LE": ("h", 2**15), "S32_LE": ("i", 2**31),
         }[fmt]
-        (VALUES * scale).astype(dtype).tofile(str(path))
+        samples = VALUES if scale == 1.0 else [int(v * scale) for v in VALUES]
+        path.write_bytes(struct.pack(f"<{len(samples)}{code}", *samples))
         return path
-    packed = (VALUES * (2**23 - 1)).astype("<i4").view(np.uint8).reshape(-1, 4)
+    # 24 bit, written as the low three bytes of a little endian int32
+    packed = [struct.pack("<i", int(v * (2**23 - 1))) for v in VALUES]
     if fmt == "S24_3_LE":
-        path.write_bytes(packed[:, :3].tobytes())
+        path.write_bytes(b"".join(sample[:3] for sample in packed))
     elif fmt == "S24_4_RJ_LE":
-        path.write_bytes(packed.tobytes())
+        path.write_bytes(b"".join(packed))
     else:  # S24_4_LJ_LE
-        lj = np.zeros((len(packed), 4), dtype=np.uint8)
-        lj[:, 1:4] = packed[:, :3]
-        path.write_bytes(lj.tobytes())
+        path.write_bytes(b"".join(b"\x00" + sample[:3] for sample in packed))
     return path
 
 
@@ -104,7 +103,7 @@ def _write_raw(path, fmt):
 def test_raw_coefficients_round_trip(tmp_path, fmt, tolerance):
     values = read_raw_coeffs(str(_write_raw(tmp_path / f"c_{fmt}.raw", fmt)), fmt)
     assert len(values) == len(VALUES)
-    assert np.abs(np.asarray(values) - VALUES).max() < tolerance
+    assert max(abs(got - want) for got, want in zip(values, VALUES)) < tolerance
 
 
 def test_24_bit_samples_sign_extend(tmp_path):
@@ -113,14 +112,13 @@ def test_24_bit_samples_sign_extend(tmp_path):
     down, so a negative sample has to come out negative.
     """
     # exact sample codes, including both extremes of the 24-bit range
-    codes = np.array([-(2**23), -1000, -1, 0, 1, 1000, 2**23 - 1], dtype="<i4")
-    expected = codes.astype(np.float64) / 2**23
-    packed = codes.view(np.uint8).reshape(-1, 4)
+    codes = [-(2**23), -1000, -1, 0, 1, 1000, 2**23 - 1]
+    expected = [code / 2**23 for code in codes]
     path = tmp_path / "neg.raw"
-    path.write_bytes(packed[:, :3].tobytes())
-    values = np.asarray(read_raw_coeffs(str(path), "S24_3_LE"))
-    assert np.array_equal(values, expected)
-    assert (values[:3] < 0).all()
+    path.write_bytes(b"".join(struct.pack("<i", code)[:3] for code in codes))
+    values = read_raw_coeffs(str(path), "S24_3_LE")
+    assert values == expected
+    assert all(value < 0 for value in values[:3])
     assert values[0] == -1.0
 
 
@@ -128,4 +126,4 @@ def test_skip_and_read_counts_are_still_in_bytes(tmp_path):
     path = _write_raw(tmp_path / "skip.raw", "F32_LE")
     values = read_raw_coeffs(str(path), "F32_LE", skip_nbr=40, read_nbr=80)
     assert len(values) == 20
-    assert np.allclose(np.asarray(values), VALUES[10:30], atol=1e-6)
+    assert max(abs(got - want) for got, want in zip(values, VALUES[10:30])) < 1e-6
