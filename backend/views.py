@@ -9,6 +9,7 @@ from aiohttp import web
 from camilladsp import CamillaError
 from camilladsp_plot import eval_filter, eval_filterstep
 from camilladsp_plot.audiofileread import read_wav_header
+from camilladsp_plot.crossover import pipeline_latency
 
 from .convolver_config_import import ConvolverConfig
 from .eqapo_config_import import EqAPO
@@ -330,6 +331,22 @@ async def eval_filterstep_values(request):
         raise web.HTTPNotFound(text="Filter coefficient file not found") from e
     except Exception as e:
         raise web.HTTPBadRequest(text=str(e))
+
+
+async def crossover_latency(request):
+    """
+    Latency added by the crossover filters of a config, per filter,
+    per output channel before alignment, and in total. All values in samples.
+    """
+    content = await request.json()
+    config = content["config"]
+    samplerate = content.get("samplerate", config["devices"]["samplerate"])
+    try:
+        data = pipeline_latency(config, samplerate=samplerate)
+    except Exception as e:
+        raise web.HTTPBadRequest(text=str(e))
+    data["total_ms"] = 1000.0 * data["total"] / samplerate
+    return web.json_response(data, headers=HEADERS)
 
 
 async def get_config(request):

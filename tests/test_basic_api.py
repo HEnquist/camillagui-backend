@@ -413,3 +413,24 @@ async def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(serve
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
+
+
+@pytest.mark.asyncio
+async def test_crossover_latency(server):
+    config = {
+        "devices": {"samplerate": 48000, "capture": {"channels": 2}},
+        "filters": {
+            "lp": {
+                "type": "Crossover",
+                "parameters": {"type": "Lowpass", "freq": 80.0, "slope": 48},
+            },
+        },
+        "pipeline": [{"type": "Filter", "channels": [0], "names": ["lp"]}],
+    }
+    resp = await server.post("/api/crossoverlatency", json={"config": config})
+    assert resp.status == 200
+    data = await resp.json()
+    assert data["filters"] == {"lp": 2795}
+    assert data["channels"] == [2795, 0]
+    assert data["total"] == 2795
+    assert abs(data["total_ms"] - 2795 / 48.0) < 1e-9

@@ -2,6 +2,7 @@ from .settings import BASEPATH
 from .statics import NoCacheStaticResource
 from .views import (
     config_to_yml,
+    crossover_latency,
     delete_coeffs,
     delete_configs,
     download_coeffs_zip,
@@ -54,6 +55,7 @@ def setup_routes(app):
     app.router.add_post("/api/setparamindex/{name}/{index}", set_param_index)
     app.router.add_post("/api/evalfilter", eval_filter_values)
     app.router.add_post("/api/evalfilterstep", eval_filterstep_values)
+    app.router.add_post("/api/crossoverlatency", crossover_latency)
     app.router.add_get("/api/getconfig", get_config)
     app.router.add_post("/api/setconfig", set_config)
     app.router.add_post("/api/stop", stop_processing)
