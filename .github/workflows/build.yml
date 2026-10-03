@@ -16,6 +16,16 @@ jobs:
         FE_TAG=$(sed -n 's/camillagui_tag: \(.*\)$/\1/p' release_automation/versions.yml)
         echo "fe_tag=$FE_TAG"
         echo "fe_tag=$FE_TAG" >> "$GITHUB_OUTPUT"
+    - name: Check that a release is built from release tags
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        for key in camillagui_tag pycamilladsp_tag; do
+          ref=$(sed -n "s/^$key: \(.*\)$/\1/p" release_automation/versions.yml)
+          if ! echo "$ref" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::$key in versions.yml is '$ref', a release needs a vX.Y.Z tag"
+            exit 1
+          fi
+        done
 
   build_fe:
     runs-on: ubuntu-latest
@@ -29,7 +39,7 @@ jobs:
     - name: Build and publish
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
     - run: npm install
     - run: npm run build
     - name: Upload build

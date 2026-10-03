@@ -1,3 +1,6 @@
----
-camillagui_tag: v4.1.0
-pycamilladsp_tag: v4.0.0
+# Git refs of the frontend and pycamilladsp that CI builds and tests against.
+# Between releases these name the development branches, so CI exercises the
+# versions that will ship together. Set them to the release tags (vX.Y.Z)
+# before tagging a backend release, the release build refuses anything else.
+camillagui_tag: next5
+pycamilladsp_tag: next5
