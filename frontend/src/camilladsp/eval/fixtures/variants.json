@@ -1,0 +1,1199 @@
+{
+ "generated_by": "camillagui-backend/tools/dump_filter_variants.py",
+ "volume": -45.0,
+ "variants": [
+  {
+   "id": "Biquad-Lowpass-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Lowpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Lowpass-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Lowpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Highpass-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Highpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Highpass-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Highpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Bandpass-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Bandpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Bandpass-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Bandpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Bandpass-required+bandwidth",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Bandpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Bandpass-required+bandwidth-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Bandpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Notch-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Notch"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Notch-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Notch"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Notch-required+bandwidth",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Notch"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Notch-required+bandwidth-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Notch"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-GeneralNotch-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_p": 2000.0,
+     "freq_z": 1000.0,
+     "q_p": 2.0,
+     "type": "GeneralNotch"
+    }
+   }
+  },
+  {
+   "id": "Biquad-GeneralNotch-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_p": 2000.0,
+     "freq_z": 1000.0,
+     "q_p": 2.0,
+     "type": "GeneralNotch",
+     "normalize_at_dc": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-GeneralNotch-all",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_p": 2000.0,
+     "q_p": 2.0,
+     "freq_z": 1000.0,
+     "normalize_at_dc": false,
+     "type": "GeneralNotch"
+    }
+   }
+  },
+  {
+   "id": "Biquad-GeneralNotch-all-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_p": 2000.0,
+     "q_p": 2.0,
+     "freq_z": 1000.0,
+     "normalize_at_dc": false,
+     "type": "GeneralNotch"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Allpass-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Allpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Allpass-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "q": 1.0,
+     "type": "Allpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Allpass-required+bandwidth",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Allpass"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Allpass-required+bandwidth-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "bandwidth": 1.0,
+     "type": "Allpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-LowpassFO-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "LowpassFO"
+    }
+   }
+  },
+  {
+   "id": "Biquad-LowpassFO-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "LowpassFO"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-HighpassFO-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "HighpassFO"
+    }
+   }
+  },
+  {
+   "id": "Biquad-HighpassFO-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "HighpassFO"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-AllpassFO-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "AllpassFO"
+    }
+   }
+  },
+  {
+   "id": "Biquad-AllpassFO-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "type": "AllpassFO"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Peaking-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Peaking"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Peaking-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Peaking"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Peaking-required+bandwidth",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "bandwidth": 1.0,
+     "type": "Peaking"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Peaking-required+bandwidth-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "bandwidth": 1.0,
+     "type": "Peaking"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Lowshelf-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Lowshelf"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Lowshelf-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Lowshelf"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Lowshelf-required+slope",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "slope": 6.0,
+     "type": "Lowshelf"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Lowshelf-required+slope-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "slope": 6.0,
+     "type": "Lowshelf"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Highshelf-required+q",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Highshelf"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Highshelf-required+q-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "q": 1.0,
+     "type": "Highshelf"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Highshelf-required+slope",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "slope": 6.0,
+     "type": "Highshelf"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Highshelf-required+slope-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "slope": 6.0,
+     "type": "Highshelf"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-LowshelfFO-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "type": "LowshelfFO"
+    }
+   }
+  },
+  {
+   "id": "Biquad-LowshelfFO-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "type": "LowshelfFO"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-HighshelfFO-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "type": "HighshelfFO"
+    }
+   }
+  },
+  {
+   "id": "Biquad-HighshelfFO-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq": 1000.0,
+     "gain": 3.0,
+     "type": "HighshelfFO"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-LinkwitzTransform-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_act": 60.0,
+     "q_act": 0.7,
+     "freq_target": 30.0,
+     "q_target": 0.8,
+     "type": "LinkwitzTransform"
+    }
+   }
+  },
+  {
+   "id": "Biquad-LinkwitzTransform-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "freq_act": 60.0,
+     "q_act": 0.7,
+     "freq_target": 30.0,
+     "q_target": 0.8,
+     "type": "LinkwitzTransform"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Biquad-Free-required",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "a1": -0.2,
+     "a2": 0.1,
+     "b0": 0.9,
+     "b1": 0.1,
+     "b2": -0.05,
+     "type": "Free"
+    }
+   }
+  },
+  {
+   "id": "Biquad-Free-required-defaults",
+   "filter": {
+    "type": "Biquad",
+    "parameters": {
+     "a1": -0.2,
+     "a2": 0.1,
+     "b0": 0.9,
+     "b1": 0.1,
+     "b2": -0.05,
+     "type": "Free"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-ButterworthHighpass-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "ButterworthHighpass"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-ButterworthHighpass-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "ButterworthHighpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-ButterworthLowpass-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "ButterworthLowpass"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-ButterworthLowpass-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "ButterworthLowpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-LinkwitzRileyHighpass-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "LinkwitzRileyHighpass"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-LinkwitzRileyHighpass-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "LinkwitzRileyHighpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-LinkwitzRileyLowpass-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "LinkwitzRileyLowpass"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-LinkwitzRileyLowpass-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq": 1000.0,
+     "order": 4,
+     "type": "LinkwitzRileyLowpass"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-Tilt-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "gain": 3.0,
+     "type": "Tilt"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-Tilt-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "gain": 3.0,
+     "type": "Tilt"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-NPointPeq-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "bands": [
+      {
+       "freq": 100.0,
+       "q": 0.7,
+       "gain": 3.0
+      },
+      {
+       "freq": 1000.0,
+       "q": 1.0,
+       "gain": -2.0
+      },
+      {
+       "freq": 8000.0,
+       "q": 0.7,
+       "gain": 3.0
+      }
+     ],
+     "type": "NPointPeq"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-NPointPeq-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "bands": [
+      {
+       "freq": 100.0,
+       "q": 0.7,
+       "gain": 3.0
+      },
+      {
+       "freq": 1000.0,
+       "q": 1.0,
+       "gain": -2.0
+      },
+      {
+       "freq": 8000.0,
+       "q": 0.7,
+       "gain": 3.0
+      }
+     ],
+     "type": "NPointPeq"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-GraphicEqualizer-required",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "gains": [
+      0.0,
+      3.0,
+      0.0
+     ],
+     "type": "GraphicEqualizer"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-GraphicEqualizer-required-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "gains": [
+      0.0,
+      3.0,
+      0.0
+     ],
+     "type": "GraphicEqualizer",
+     "freq_min": null,
+     "freq_max": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "BiquadCombo-GraphicEqualizer-all",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq_min": 20.0,
+     "freq_max": 20000.0,
+     "gains": [
+      0.0,
+      3.0,
+      0.0
+     ],
+     "type": "GraphicEqualizer"
+    }
+   }
+  },
+  {
+   "id": "BiquadCombo-GraphicEqualizer-all-defaults",
+   "filter": {
+    "type": "BiquadCombo",
+    "parameters": {
+     "freq_min": 20.0,
+     "freq_max": 20000.0,
+     "gains": [
+      0.0,
+      3.0,
+      0.0
+     ],
+     "type": "GraphicEqualizer"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Conv-Values-required",
+   "filter": {
+    "type": "Conv",
+    "parameters": {
+     "values": [
+      1.0,
+      0.5
+     ],
+     "type": "Values"
+    }
+   }
+  },
+  {
+   "id": "Conv-Values-required-defaults",
+   "filter": {
+    "type": "Conv",
+    "parameters": {
+     "values": [
+      1.0,
+      0.5
+     ],
+     "type": "Values"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Conv-Dummy-required",
+   "filter": {
+    "type": "Conv",
+    "parameters": {
+     "length": 1024,
+     "type": "Dummy"
+    }
+   }
+  },
+  {
+   "id": "Conv-Dummy-required-defaults",
+   "filter": {
+    "type": "Conv",
+    "parameters": {
+     "length": 1024,
+     "type": "Dummy"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Dither-Flat-required",
+   "filter": {
+    "type": "Dither",
+    "parameters": {
+     "amplitude": 0.5,
+     "bits": 16,
+     "type": "Flat"
+    }
+   }
+  },
+  {
+   "id": "Dither-Flat-required-defaults",
+   "filter": {
+    "type": "Dither",
+    "parameters": {
+     "amplitude": 0.5,
+     "bits": 16,
+     "type": "Flat"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Gain-None-required",
+   "filter": {
+    "type": "Gain",
+    "parameters": {
+     "gain": 3.0
+    }
+   }
+  },
+  {
+   "id": "Gain-None-required-defaults",
+   "filter": {
+    "type": "Gain",
+    "parameters": {
+     "gain": 3.0,
+     "inverted": null,
+     "mute": null,
+     "scale": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Gain-None-all",
+   "filter": {
+    "type": "Gain",
+    "parameters": {
+     "gain": 3.0,
+     "inverted": false,
+     "mute": false,
+     "scale": "dB"
+    }
+   }
+  },
+  {
+   "id": "Gain-None-all-defaults",
+   "filter": {
+    "type": "Gain",
+    "parameters": {
+     "gain": 3.0,
+     "inverted": false,
+     "mute": false,
+     "scale": "dB"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Delay-None-required",
+   "filter": {
+    "type": "Delay",
+    "parameters": {
+     "delay": 3.0,
+     "delay_unit": "ms"
+    }
+   }
+  },
+  {
+   "id": "Delay-None-required-defaults",
+   "filter": {
+    "type": "Delay",
+    "parameters": {
+     "delay": 3.0,
+     "delay_unit": "ms",
+     "subsample": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Delay-None-all",
+   "filter": {
+    "type": "Delay",
+    "parameters": {
+     "delay": 3.0,
+     "delay_unit": "ms",
+     "subsample": false
+    }
+   }
+  },
+  {
+   "id": "Delay-None-all-defaults",
+   "filter": {
+    "type": "Delay",
+    "parameters": {
+     "delay": 3.0,
+     "delay_unit": "ms",
+     "subsample": false
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Volume-None-required",
+   "filter": {
+    "type": "Volume",
+    "parameters": {
+     "fader": "Aux1"
+    }
+   }
+  },
+  {
+   "id": "Volume-None-required-defaults",
+   "filter": {
+    "type": "Volume",
+    "parameters": {
+     "fader": "Aux1",
+     "ramp_time_ms": null,
+     "limit": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Volume-None-all",
+   "filter": {
+    "type": "Volume",
+    "parameters": {
+     "ramp_time_ms": 400.0,
+     "limit": -10.0,
+     "fader": "Aux1"
+    }
+   }
+  },
+  {
+   "id": "Volume-None-all-defaults",
+   "filter": {
+    "type": "Volume",
+    "parameters": {
+     "ramp_time_ms": 400.0,
+     "limit": -10.0,
+     "fader": "Aux1"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Loudness-None-required",
+   "filter": {
+    "type": "Loudness",
+    "parameters": {
+     "reference_level": -25.0
+    }
+   }
+  },
+  {
+   "id": "Loudness-None-required-defaults",
+   "filter": {
+    "type": "Loudness",
+    "parameters": {
+     "reference_level": -25.0,
+     "high_boost": null,
+     "low_boost": null,
+     "high_freq": null,
+     "low_freq": null,
+     "high_q": null,
+     "low_q": null,
+     "fader": null,
+     "attenuate_mid": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Loudness-None-all",
+   "filter": {
+    "type": "Loudness",
+    "parameters": {
+     "reference_level": -25.0,
+     "high_boost": 10.0,
+     "low_boost": 10.0,
+     "high_freq": 3500.0,
+     "low_freq": 70.0,
+     "high_q": 0.7,
+     "low_q": 0.7,
+     "fader": "Aux1",
+     "attenuate_mid": false
+    }
+   }
+  },
+  {
+   "id": "Loudness-None-all-defaults",
+   "filter": {
+    "type": "Loudness",
+    "parameters": {
+     "reference_level": -25.0,
+     "high_boost": 10.0,
+     "low_boost": 10.0,
+     "high_freq": 3500.0,
+     "low_freq": 70.0,
+     "high_q": 0.7,
+     "low_q": 0.7,
+     "fader": "Aux1",
+     "attenuate_mid": false
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Clipper-None-required",
+   "filter": {
+    "type": "Clipper",
+    "parameters": {}
+   }
+  },
+  {
+   "id": "Clipper-None-required-defaults",
+   "filter": {
+    "type": "Clipper",
+    "parameters": {
+     "soft_clip": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "Clipper-None-all",
+   "filter": {
+    "type": "Clipper",
+    "parameters": {
+     "clip_limit": -3.0,
+     "soft_clip": false
+    }
+   }
+  },
+  {
+   "id": "Clipper-None-all-defaults",
+   "filter": {
+    "type": "Clipper",
+    "parameters": {
+     "clip_limit": -3.0,
+     "soft_clip": false
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "LookaheadLimiter-None-required",
+   "filter": {
+    "type": "LookaheadLimiter",
+    "parameters": {
+     "attack": 1.0,
+     "attack_unit": "ms",
+     "release": 100.0,
+     "release_unit": "ms"
+    }
+   }
+  },
+  {
+   "id": "LookaheadLimiter-None-required-defaults",
+   "filter": {
+    "type": "LookaheadLimiter",
+    "parameters": {
+     "attack": 1.0,
+     "attack_unit": "ms",
+     "release": 100.0,
+     "release_unit": "ms",
+     "limit": 0.0
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "LookaheadLimiter-None-all",
+   "filter": {
+    "type": "LookaheadLimiter",
+    "parameters": {
+     "limit": -10.0,
+     "attack": 1.0,
+     "attack_unit": "ms",
+     "release": 100.0,
+     "release_unit": "ms"
+    }
+   }
+  },
+  {
+   "id": "LookaheadLimiter-None-all-defaults",
+   "filter": {
+    "type": "LookaheadLimiter",
+    "parameters": {
+     "limit": -10.0,
+     "attack": 1.0,
+     "attack_unit": "ms",
+     "release": 100.0,
+     "release_unit": "ms"
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "DiffEq-None-required",
+   "filter": {
+    "type": "DiffEq",
+    "parameters": {}
+   }
+  },
+  {
+   "id": "DiffEq-None-required-defaults",
+   "filter": {
+    "type": "DiffEq",
+    "parameters": {
+     "a": null,
+     "b": null
+    },
+    "description": null
+   }
+  },
+  {
+   "id": "DiffEq-None-all",
+   "filter": {
+    "type": "DiffEq",
+    "parameters": {
+     "a": [
+      1.0,
+      -0.1
+     ],
+     "b": [
+      1.0,
+      0.2
+     ]
+    }
+   }
+  },
+  {
+   "id": "DiffEq-None-all-defaults",
+   "filter": {
+    "type": "DiffEq",
+    "parameters": {
+     "a": [
+      1.0,
+      -0.1
+     ],
+     "b": [
+      1.0,
+      0.2
+     ]
+    },
+    "description": null
+   }
+  }
+ ]
+}

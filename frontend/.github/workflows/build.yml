@@ -1,0 +1,26 @@
+name: npm build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build and publish
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24.x'
+    - run: npm install
+    - run: npm run build
+    - name: ESLint
+      run: npm run lint
+    - name: Run tests
+      run: npm test -- run
+    - name: Upload build
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path: build
+
+
