@@ -60,12 +60,24 @@ def path_of_audiofile(request, wav_name):
     return file_in_folder(wav_folder, wav_name)
 
 
+def require_directory(folder):
+    """
+    Refuse to write into a directory that does not exist, with a message that
+    says so, rather than failing on the first open() with a bare FileNotFoundError.
+    """
+    if not os.path.isdir(folder):
+        raise web.HTTPInternalServerError(
+            text=f"The directory {folder} does not exist. Create it and try again."
+        )
+
+
 async def store_files(folder, request, allowed_extensions=None):
     """
     Write a set of files (raw data) to disk.
     If allowed_extensions is given (e.g. {".wav"}), files with other
     extensions are skipped.
     """
+    require_directory(folder)
     data = await request.post()
     i = 0
     skipped = 0
@@ -97,8 +109,11 @@ def list_of_files_in_directory(
 ):
     """
     Return a list of files (name and modification date) in a folder.
+    A folder that does not exist has no files, the backend warned about it at startup.
     """
 
+    if not os.path.isdir(folder):
+        return []
     files_list = []
     for file in os.listdir(folder):
         file_data = _get_file_data(

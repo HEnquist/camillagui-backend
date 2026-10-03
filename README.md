@@ -21,13 +21,14 @@ for a linux system running an AMD or Intel cpu.
 Uncompress the archive to a directory of your choice.
 A suggestion is to create a directory named `camilladsp`
 in you home directory, and place the `camillagui_backend` in it.
-Also create directories named `configs` and `coeffs` in the `camilladsp` directory.
+Also create directories named `configs`, `coeffs` and `audiofiles` in the `camilladsp` directory.
+The gui starts without them, but warns, and has nowhere to store those files until they exist.
 
 ### Configuring the bundled gui
 The gui configuration is stored in the bundle,
 at `camillagui_backend/_internal/config/camillagui.yml`.
 See [Configuration](#configuration) for an explanation of the options.
-The default confuguration uses the `configs` and `coeffs` directories
+The default configuration uses the `configs`, `coeffs` and `audiofiles` directories
 created in the previous step, but these locations can be changed by
 editing the configuration file.
 

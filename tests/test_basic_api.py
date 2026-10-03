@@ -375,6 +375,39 @@ async def test_upload_and_delete(server, upload, delete, getfile):
     assert resp.status == 404
 
 
+async def test_missing_directories_warn_instead_of_stopping_the_backend(
+    aiohttp_client, mock_camillaclient, tmp_path, caplog
+):
+    missing = {
+        "config_dir": str(tmp_path / "configs"),
+        "coeff_dir": str(tmp_path / "coeffs"),
+        "audiofiles_dir": str(tmp_path / "audiofiles"),
+    }
+    with patch("camilladsp.CamillaClient", mock_camillaclient):
+        app = main.build_app({**server_config, **missing})
+    for setting, path in missing.items():
+        assert f"The directory {path}, set as {setting}, does not exist" in caplog.text
+    client = await aiohttp_client(app)
+
+    for listing in ("/api/storedconfigs", "/api/storedcoeffs", "/api/storedaudiofiles"):
+        resp = await client.get(listing)
+        assert resp.status == 200, listing
+        assert await resp.json() == [], listing
+
+    for upload, setting in (
+        ("/api/uploadconfigs", "config_dir"),
+        ("/api/uploadcoeffs", "coeff_dir"),
+        ("/api/uploadaudiofiles", "audiofiles_dir"),
+    ):
+        data = FormData()
+        data.add_field("file0", b"data", filename="file.txt")
+        resp = await client.post(upload, data=data)
+        assert resp.status == 500, upload
+        assert await resp.text() == (
+            f"The directory {missing[setting]} does not exist. Create it and try again."
+        )
+
+
 async def test_startup_config_online(server):
     resp = await server.get("/api/getstartconfig")
     assert resp.status == 200

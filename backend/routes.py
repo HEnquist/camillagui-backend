@@ -1,3 +1,6 @@
+import logging
+import os
+
 from .settings import BASEPATH
 from .statics import NoCacheStaticResource
 from .views import (
@@ -123,7 +126,26 @@ def setup_static_routes(app):
             "/gui", BASEPATH / "build", file_endings=(".html", ".css")
         )
     )
-    app.router.add_static("/config/", path=app["config_dir"])
-    app.router.add_static("/coeff/", path=app["coeff_dir"])
+    _add_static_if_present(app, "/config/", app["config_dir"], "config_dir")
+    _add_static_if_present(app, "/coeff/", app["coeff_dir"], "coeff_dir")
     if app["audiofiles_dir"]:
-        app.router.add_static("/audiofiles/", path=app["audiofiles_dir"])
+        _add_static_if_present(app, "/audiofiles/", app["audiofiles_dir"], "audiofiles_dir")
+
+
+def _add_static_if_present(app, prefix, path, setting):
+    """
+    Serve a directory, or warn and carry on if it does not exist.
+
+    aiohttp refuses to serve a missing directory, which used to stop the backend
+    from starting at all. Without it the GUI still works, it just has no files
+    of that kind to list or download until the directory is created.
+    """
+    if os.path.isdir(path):
+        app.router.add_static(prefix, path=path)
+    else:
+        logging.warning(
+            "The directory %s, set as %s, does not exist. Create it and restart the "
+            "backend to use it.",
+            path,
+            setting,
+        )

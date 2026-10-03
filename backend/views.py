@@ -38,6 +38,7 @@ from .filemanagement import (
     rename_config_or_return_error,
     rename_audiofile_or_return_error,
     replace_tokens_in_filter_config,
+    require_directory,
     save_config_to_yaml_file,
     set_path_as_active_config,
     store_files,
@@ -968,6 +969,7 @@ async def store_configs(request):
     paths to bare filenames so uploaded configs from other systems work safely.
     """
     folder = request.app["config_dir"]
+    require_directory(folder)
     data = await request.post()
     saved = 0
     i = 0
