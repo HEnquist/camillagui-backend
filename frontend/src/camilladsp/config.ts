@@ -1019,6 +1019,7 @@ export type CaptureDevice =
       node_description: string | null
       node_group_name: string | null
       autoconnect_to: string | null
+      loopback: boolean | null
       labels: (string | null)[] | null
     }
   | {

@@ -649,6 +649,7 @@ function CaptureOptions(props: {
       node_description: null,
       node_group_name: null,
       autoconnect_to: null,
+      loopback: null,
       labels: null,
     },
     Wasapi: {
@@ -1212,6 +1213,19 @@ function CaptureOptions(props: {
               onChange((devices) => {
                 if (devices.capture.type === "PipeWire") {
                   devices.capture.autoconnect_to = autoconnect_to
+                }
+              })
+            }
+          />
+          <OptionalBoolOption
+            value={capture.loopback}
+            error={errors.messageFor("loopback")}
+            desc="loopback"
+            tooltip="Capture from the output of a sink instead of from a source. This also lets autoconnect_to name a sink."
+            onChange={(loopback) =>
+              onChange((devices) => {
+                if (devices.capture.type === "PipeWire") {
+                  devices.capture.loopback = loopback
                 }
               })
             }
