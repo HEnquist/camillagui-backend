@@ -33,10 +33,7 @@ import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
 import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
 
-const customPageModules = import.meta.glob<{ default: CustomPageComponent }>(
-  "./custom-pages/*.tsx",
-  { eager: true },
-)
+const customPageModules = import.meta.glob<{ default: CustomPageComponent }>("./custom-pages/*.tsx", { eager: true })
 const customPages = Object.values(customPageModules)
   .map((m) => m.default)
   .filter((page) => page.enabled !== false)

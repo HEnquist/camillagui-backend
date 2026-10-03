@@ -15,19 +15,44 @@ function ConfigSummary({ config }: CustomPageProps) {
         <Box title="Devices">
           <table>
             <tbody>
-              <tr><td>Samplerate</td><td>{config.devices.samplerate} Hz</td></tr>
-              <tr><td>Capture</td><td>{capture.type}, {captureChannels} ch</td></tr>
-              <tr><td>Playback</td><td>{config.devices.playback.type}, {config.devices.playback.channels} ch</td></tr>
+              <tr>
+                <td>Samplerate</td>
+                <td>{config.devices.samplerate} Hz</td>
+              </tr>
+              <tr>
+                <td>Capture</td>
+                <td>
+                  {capture.type}, {captureChannels} ch
+                </td>
+              </tr>
+              <tr>
+                <td>Playback</td>
+                <td>
+                  {config.devices.playback.type}, {config.devices.playback.channels} ch
+                </td>
+              </tr>
             </tbody>
           </table>
         </Box>
         <Box title="Pipeline items">
           <table>
             <tbody>
-              <tr><td>Filters</td><td>{filterCount}</td></tr>
-              <tr><td>Mixers</td><td>{mixerCount}</td></tr>
-              <tr><td>Processors</td><td>{processorCount}</td></tr>
-              <tr><td>Pipeline steps</td><td>{config.pipeline?.length ?? 0}</td></tr>
+              <tr>
+                <td>Filters</td>
+                <td>{filterCount}</td>
+              </tr>
+              <tr>
+                <td>Mixers</td>
+                <td>{mixerCount}</td>
+              </tr>
+              <tr>
+                <td>Processors</td>
+                <td>{processorCount}</td>
+              </tr>
+              <tr>
+                <td>Pipeline steps</td>
+                <td>{config.pipeline?.length ?? 0}</td>
+              </tr>
             </tbody>
           </table>
         </Box>
