@@ -49,7 +49,7 @@
       },
       "sinc_len": {
         "type": "integer",
-        "minimum": 0,
+        "exclusiveMinimum": 0,
         "multipleOf": 8
       },
       "oversampling_factor": {
@@ -82,6 +82,7 @@
           "null"
         ],
         "exclusiveMinimum": 0.0,
+        "maximum": 1.0,
         "default": null
       }
     },

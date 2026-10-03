@@ -67,7 +67,7 @@ def test_devices_validation_enforces_target_level_limit_for_non_alsa_playback():
 
 # === ASIO Rules ===
 
-def test_devices_validation_rejects_asio_duplex_with_different_devices():
+def test_devices_validation_accepts_asio_with_different_devices_and_resampler():
     config = _base_config()
     config["devices"]["capture"] = {
         "type": "Asio",
@@ -81,12 +81,11 @@ def test_devices_validation_rejects_asio_duplex_with_different_devices():
         "channels": 2,
         "format": "S16_LE",
     }
+    config["devices"]["resampler"] = {"type": "Synchronous"}
 
     errors, _warnings, _validator = _validate(config)
 
-    assert "ASIO must use the same device for capture and playback" in _error_messages(
-        errors
-    )
+    assert errors == []
 
 
 def test_devices_validation_rejects_asio_duplex_with_resampler():
@@ -107,7 +106,9 @@ def test_devices_validation_rejects_asio_duplex_with_resampler():
 
     errors, _warnings, _validator = _validate(config)
 
-    assert "Full duplex ASIO does not allow resampling" in _error_messages(errors)
+    assert "Full duplex ASIO on a single device does not allow resampling" in _error_messages(
+        errors
+    )
 
 
 def test_devices_validation_accepts_asio_duplex_same_device_without_resampler():
@@ -340,6 +341,21 @@ def test_devices_validation_accepts_capture_pipewire_type():
     config["devices"]["capture"] = {
         "type": "PipeWire",
         "channels": 2,
+    }
+
+    errors, warnings, _validator = _validate(config)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_devices_validation_accepts_pipewire_capture_loopback():
+    config = _base_config()
+    config["devices"]["capture"] = {
+        "type": "PipeWire",
+        "channels": 2,
+        "autoconnect_to": "some_sink",
+        "loopback": True,
     }
 
     errors, warnings, _validator = _validate(config)
@@ -635,3 +651,68 @@ def test_devices_validation_rejects_unknown_resampler_type():
     errors, _warnings, _validator = _validate(config)
 
     assert errors != []
+
+
+def _free_async_sinc(**overrides):
+    resampler = {
+        "type": "AsyncSinc",
+        "sinc_len": 128,
+        "oversampling_factor": 256,
+        "interpolation": "Cubic",
+        "window": "Blackman2",
+        "f_cutoff": 0.95,
+    }
+    resampler.update(overrides)
+    return resampler
+
+
+def test_devices_validation_accepts_free_async_sinc():
+    config = _base_config()
+    config["devices"]["resampler"] = _free_async_sinc()
+
+    errors, warnings, _validator = _validate(config)
+
+    assert errors == []
+    assert warnings == []
+
+
+def test_devices_validation_rejects_zero_sinc_len():
+    config = _base_config()
+    config["devices"]["resampler"] = _free_async_sinc(sinc_len=0)
+
+    errors, _warnings, _validator = _validate(config)
+
+    assert [path for path, _message in errors] == [["devices", "resampler", "sinc_len"]]
+
+
+def test_devices_validation_checks_f_cutoff_range():
+    for f_cutoff, valid in ((1.0, True), (1.01, False), (0.0, False)):
+        config = _base_config()
+        config["devices"]["resampler"] = _free_async_sinc(f_cutoff=f_cutoff)
+
+        errors, _warnings, _validator = _validate(config)
+
+        assert (errors == []) == valid, f_cutoff
+
+
+def test_devices_validation_oversampling_minimum_follows_interpolation():
+    for interpolation, minimum in (("Nearest", 1), ("Linear", 1), ("Quadratic", 2), ("Cubic", 3)):
+        config = _base_config()
+        config["devices"]["resampler"] = _free_async_sinc(
+            interpolation=interpolation, oversampling_factor=minimum
+        )
+        errors, _warnings, _validator = _validate(config)
+        assert errors == [], interpolation
+
+        if minimum > 1:
+            config = _base_config()
+            config["devices"]["resampler"] = _free_async_sinc(
+                interpolation=interpolation, oversampling_factor=minimum - 1
+            )
+            errors, _warnings, _validator = _validate(config)
+            assert errors == [
+                (
+                    ["devices", "resampler", "oversampling_factor"],
+                    f"oversampling_factor must be at least {minimum} for {interpolation} interpolation",
+                )
+            ]

@@ -89,6 +89,10 @@
         "type": ["string", "null"],
         "default": null
       },
+      "loopback": {
+        "type": ["boolean", "null"],
+        "default": null
+      },
       "labels": {
         "type": ["array", "null"],
         "items": {

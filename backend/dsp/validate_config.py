@@ -14,7 +14,10 @@ from .defaults import (
     GRAPHIC_EQ_FREQ_MIN,
     LOUDNESS_HIGH_FREQ,
     LOUDNESS_LOW_FREQ,
+    VOLUME_LIMIT,
+    VOLUME_RAMP_TIME_MS,
 )
+
 
 
 def diffeq_is_stable(a):
@@ -111,6 +114,25 @@ PROCESSOR_SCHEMAS = {
     "LookaheadLimiter": lookaheadlimiter_schema,
 }
 
+
+def _is_finite_number(checker, instance):
+    """
+    CamillaDSP accepts no NaN or infinity anywhere in a config, and YAML can
+    spell both (`.nan`, `.inf`). Range keywords cannot catch them, since every
+    comparison against NaN is false and an infinity passes any one-sided bound,
+    so they are made to fail the `number` type itself. That applies to every
+    number field in every schema, including fields added later.
+    """
+    if not Draft7Validator.TYPE_CHECKER.is_type(instance, "number"):
+        return False
+    return not isinstance(instance, float) or math.isfinite(instance)
+
+
+FiniteDraft7Validator = validators.extend(
+    Draft7Validator,
+    type_checker=Draft7Validator.TYPE_CHECKER.redefine("number", _is_finite_number),
+)
+
 # https://python-jsonschema.readthedocs.io/en/latest/faq/#why-doesn-t-my-schema-that-has-a-default-property-actually-set-the-default-on-my-instance
 
 
@@ -141,7 +163,7 @@ class CamillaValidator:
     def __init__(self):
         self.config = None
         self.overrides = None
-        self.validator = extend_with_default(Draft7Validator)
+        self.validator = extend_with_default(FiniteDraft7Validator)
 
         self.capture_schemas = deepcopy(capture_schemas)
         self.playback_schemas = deepcopy(playback_schemas)
@@ -559,6 +581,44 @@ class CamillaValidator:
             path = ["pipeline"]
             self.errorlist.append((path, msg))
 
+        self.validate_fader_settings()
+
+    def validate_fader_settings(self):
+        """
+        Volume filters on the same fader must agree on its ramp time and limit,
+        since these belong to the fader. Mirrors `collect_fader_settings` in
+        CamillaDSP's src/fader.rs: only active filter steps count, the first
+        filter on a fader sets it, and only the first conflict is reported.
+        """
+        filters = self.config.get("filters") or {}
+        first_on_fader = {}
+        for idx, step in enumerate(self.value_or_default(("pipeline",))):
+            if step["type"] != "Filter" or step.get("bypassed") or step.get("channels") == []:
+                continue
+            for subidx, name_with_tokens in enumerate(step["names"]):
+                name = self.replace_tokens_in_string(name_with_tokens)
+                filt = filters.get(name)
+                if filt is None or filt["type"] != "Volume":
+                    continue
+                params = filt["parameters"]
+                ramp_time = params.get("ramp_time_ms")
+                limit = params.get("limit")
+                settings = (
+                    VOLUME_RAMP_TIME_MS if ramp_time is None else ramp_time,
+                    VOLUME_LIMIT if limit is None else limit,
+                )
+                fader = params["fader"]
+                if fader not in first_on_fader:
+                    first_on_fader[fader] = (name, settings)
+                elif first_on_fader[fader][1] != settings:
+                    first = first_on_fader[fader][0]
+                    msg = (
+                        f"Volume filters '{first}' and '{name}' use the same fader {fader}, "
+                        "but have different ramp_time_ms or limit"
+                    )
+                    self.errorlist.append((["pipeline", idx, "names", subidx], msg))
+                    return
+
     def validate_mixers(self):
         for mixname, mixer_config in self.value_or_default(("mixers",)).items():
             chan_in = mixer_config["channels"]["in"]
@@ -883,25 +943,39 @@ class CamillaValidator:
                     )
                 )
 
-        # Checks for ASIO
+        # Checks for ASIO. Capture and playback on the same device share one driver
+        # instance and one sample rate, so there is nothing to resample between.
+        # Two different devices are independent and resample like any other pair.
         if self.config["devices"]["capture"]["type"] == "Asio" and self.config["devices"]["playback"]["type"] == "Asio":
-            if self.config["devices"]["capture"]["device"] != self.config["devices"]["playback"]["device"]:
-                self.errorlist.append(
-                    (
-                        ["devices", "playback", "device"],
-                        "ASIO must use the same device for capture and playback",
-                    )
-                )
-            if self.config["devices"].get("resampler") is not None:
+            if (
+                self.config["devices"]["capture"]["device"] == self.config["devices"]["playback"]["device"]
+                and self.config["devices"].get("resampler") is not None
+            ):
                 self.errorlist.append(
                     (
                         ["devices", "resampler", "type"],
-                        "Full duplex ASIO does not allow resampling",
+                        "Full duplex ASIO on a single device does not allow resampling",
+                    )
+                )
+        resampler = self.config["devices"].get("resampler")
+        # Rubato fits a polynomial through neighbouring sincs, which needs a table
+        # of at least one less than the number of points it fits.
+        if (
+            resampler is not None
+            and resampler["type"] == "AsyncSinc"
+            and "profile" not in resampler
+        ):
+            interpolation = resampler["interpolation"]
+            min_oversampling = {"Quadratic": 2, "Cubic": 3}.get(interpolation, 1)
+            if resampler["oversampling_factor"] < min_oversampling:
+                self.errorlist.append(
+                    (
+                        ["devices", "resampler", "oversampling_factor"],
+                        f"oversampling_factor must be at least {min_oversampling} for {interpolation} interpolation",
                     )
                 )
         # The Slip resampler only handles ratios close to 1.0, so it cannot
         # convert between different capture and playback rates.
-        resampler = self.config["devices"].get("resampler")
         if resampler is not None and resampler["type"] == "Slip":
             samplerate = self.config["devices"]["samplerate"]
             capture_samplerate = self.config["devices"].get("capture_samplerate")

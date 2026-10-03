@@ -146,6 +146,96 @@ def test_pipeline_validation_rejects_processor_wrong_channel_count():
     )
 
 
+def test_pipeline_validation_rejects_compressor_factor_zero():
+    for factor, valid in ((0.5, True), (0.0, False)):
+        config = _base_config()
+        config["processors"]["compress"] = {
+            "type": "Compressor",
+            "parameters": {
+                "channels": 2,
+                "attack": 0.01,
+                "attack_unit": "s",
+                "release": 0.1,
+                "release_unit": "s",
+                "threshold": -10.0,
+                "factor": factor,
+            },
+        }
+        config["pipeline"].append({"type": "Processor", "name": "compress"})
+
+        errors, _warnings = _validate(config)
+
+        assert (errors == []) == valid, factor
+
+
+# === Fader Rules ===
+
+def _volume(fader="Aux1", **parameters):
+    return {"type": "Volume", "parameters": {"fader": fader, **parameters}}
+
+
+def _with_volumes(*filters, step_overrides=None):
+    config = _base_config()
+    names = []
+    for idx, filt in enumerate(filters):
+        name = f"vol{idx}"
+        config["filters"][name] = filt
+        names.append(name)
+    step = {"type": "Filter", "channels": [0, 1], "names": names}
+    step.update(step_overrides or {})
+    config["pipeline"] = [step]
+    return config
+
+
+def test_pipeline_validation_rejects_volume_filters_disagreeing_on_a_fader():
+    config = _with_volumes(_volume(ramp_time_ms=200.0), _volume(ramp_time_ms=300.0))
+
+    errors, _warnings = _validate(config)
+
+    assert errors == [
+        (
+            ["pipeline", 0, "names", 1],
+            "Volume filters 'vol0' and 'vol1' use the same fader Aux1, "
+            "but have different ramp_time_ms or limit",
+        )
+    ]
+
+
+def test_pipeline_validation_rejects_volume_filters_disagreeing_on_limit():
+    config = _with_volumes(_volume(limit=0.0), _volume(limit=-10.0))
+
+    errors, _warnings = _validate(config)
+
+    assert len(errors) == 1
+
+
+def test_pipeline_validation_accepts_volume_filters_on_different_faders():
+    config = _with_volumes(_volume("Aux1", limit=0.0), _volume("Aux2", limit=-10.0))
+
+    errors, _warnings = _validate(config)
+
+    assert errors == []
+
+
+def test_pipeline_validation_volume_default_equals_explicit_default():
+    config = _with_volumes(_volume(), _volume(ramp_time_ms=400.0, limit=50.0))
+
+    errors, _warnings = _validate(config)
+
+    assert errors == []
+
+
+def test_pipeline_validation_volume_check_skips_inactive_steps():
+    for overrides in ({"bypassed": True}, {"channels": []}):
+        config = _with_volumes(
+            _volume(ramp_time_ms=200.0), _volume(ramp_time_ms=300.0), step_overrides=overrides
+        )
+
+        errors, _warnings = _validate(config)
+
+        assert errors == [], overrides
+
+
 # === Pipeline Output Rules ===
 
 def test_pipeline_validation_rejects_output_channel_mismatch():

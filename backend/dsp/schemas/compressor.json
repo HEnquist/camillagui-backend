@@ -61,7 +61,7 @@
     },
     "factor": {
       "type": "number",
-      "minimum": 0.0
+      "exclusiveMinimum": 0.0
     },
     "makeup_gain": {
       "type": [

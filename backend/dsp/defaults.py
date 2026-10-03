@@ -18,3 +18,7 @@ GRAPHIC_EQ_FREQ_MAX = 20000.0
 # LoudnessParameters::high_freq / low_freq, the shelf corner frequencies in Hz
 LOUDNESS_HIGH_FREQ = 3500.0
 LOUDNESS_LOW_FREQ = 70.0
+
+# VolumeParameters::ramp_time_ms / limit
+VOLUME_RAMP_TIME_MS = 400.0
+VOLUME_LIMIT = 50.0
