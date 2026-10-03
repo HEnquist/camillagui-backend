@@ -451,6 +451,43 @@ async def test_translate_convolver(server):
     assert content["devices"]["samplerate"] == 96000
 
 
+NONFINITE_CONFIG = dedent(
+    """
+    devices:
+      samplerate: 44100
+      chunksize: 1024
+      capture: {type: Stdin, channels: 2, format: S16_LE}
+      playback: {type: Stdout, channels: 2, format: S16_LE}
+    filters:
+      gain: {type: Gain, parameters: {gain: .nan}}
+      fir: {type: Conv, parameters: {type: Values, values: [1.0, -.inf]}}
+    """
+)
+NONFINITE_MESSAGE = (
+    "The config contains NaN or infinity, which CamillaDSP does not accept: "
+    "filters/gain/parameters/gain, filters/fir/parameters/values/1"
+)
+
+
+@pytest.mark.parametrize("endpoint", ["/api/ymltojson", "/api/ymlconfigtojsonconfig"])
+async def test_yaml_with_nonfinite_values_is_refused_not_sent_as_bad_json(server, endpoint):
+    resp = await server.post(endpoint, data=NONFINITE_CONFIG)
+    assert resp.status == 400
+    assert await resp.text() == NONFINITE_MESSAGE
+
+
+async def test_config_file_with_nonfinite_values_is_refused(server):
+    path = os.path.join(TESTFILE_DIR, "nonfinite_tmp.yml")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(NONFINITE_CONFIG)
+    try:
+        resp = await server.get("/api/getconfigfile", params={"name": "nonfinite_tmp.yml"})
+    finally:
+        os.remove(path)
+    assert resp.status == 400
+    assert await resp.text() == NONFINITE_MESSAGE
+
+
 async def test_get_config_file_with_migration_bypasses_file_validation(server):
     server.app["VALIDATOR"].validate_file = MagicMock(
         side_effect=camilladsp.CamillaError("strict file validation failed")

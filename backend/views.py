@@ -2,6 +2,7 @@ import array
 import json
 import logging
 import asyncio
+import math
 import struct
 import sys
 import threading
@@ -67,6 +68,40 @@ OFFLINE_CACHE = {
     "description": None,
 }
 HEADERS = {"Cache-Control": "no-store"}
+
+
+def _nonfinite_paths(value, path=()):
+    """Paths of every NaN or infinite float in a parsed config, joined with '/'."""
+    if isinstance(value, float):
+        return [] if math.isfinite(value) else ["/".join(str(p) for p in path)]
+    if isinstance(value, dict):
+        items = value.items()
+    elif isinstance(value, list):
+        items = enumerate(value)
+    else:
+        return []
+    return [found for key, item in items for found in _nonfinite_paths(item, path + (key,))]
+
+
+def _config_json_response(config_object, data=None):
+    """
+    Send a config parsed from YAML to the frontend, as `data` if given.
+
+    YAML can spell NaN and infinity (`.nan`, `.inf`), and `json.dumps` would
+    write them as bare `NaN` / `Infinity`, which is not JSON, so the browser
+    would fail to parse the response instead of showing anything useful.
+    CamillaDSP accepts neither, so refuse the config and name the fields.
+    """
+    data = config_object if data is None else data
+    try:
+        body = json.dumps(data, allow_nan=False)
+    except ValueError:
+        fields = ", ".join(_nonfinite_paths(config_object))
+        raise web.HTTPBadRequest(
+            text=f"The config contains NaN or infinity, which CamillaDSP does not accept: {fields}",
+            headers=HEADERS,
+        )
+    return web.json_response(text=body, headers=HEADERS)
 
 
 def _get_cached_device_capabilities(cache, cache_key, backend, device_name):
@@ -528,7 +563,7 @@ async def get_default_config_file(request):
         logging.error("Failed to get default config file")
         traceback.print_exc()
         raise web.HTTPInternalServerError(text=str(e))
-    return web.json_response(config_object, headers=HEADERS)
+    return _config_json_response(config_object)
 
 
 def _read_config_file_for_startup(request, config_path, config_dir):
@@ -647,7 +682,7 @@ async def get_config_at_gui_start(request):
         request, candidates, config_dir
     )
     if data is not None:
-        return web.json_response(data, headers=HEADERS)
+        return _config_json_response(data["config"], data)
 
     if first_error is not None:
         raise web.HTTPInternalServerError(text=first_error)
@@ -745,7 +780,7 @@ async def get_config_file(request):
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
     except (KeyError, TypeError, ValueError) as e:
         raise web.HTTPBadRequest(text=str(e), headers=HEADERS)
-    return web.json_response(config_object, headers=HEADERS)
+    return _config_json_response(config_object)
 
 
 async def save_config_file(request):
@@ -844,7 +879,7 @@ async def parse_and_validate_yml_config_to_json(request):
     validator = request.app["VALIDATOR"]
     validator.validate_yamlstring(config_yaml)
     config = validator.get_config()
-    return web.json_response(config, headers=HEADERS)
+    return _config_json_response(config)
 
 
 async def yaml_to_json(request):
@@ -856,7 +891,7 @@ async def yaml_to_json(request):
     config_yaml = await request.text()
     loaded = yaml.safe_load(config_yaml)
     migrate_legacy_config(loaded)
-    return web.json_response(loaded, headers=HEADERS)
+    return _config_json_response(loaded)
 
 
 async def translate_convolver_to_json(request):
