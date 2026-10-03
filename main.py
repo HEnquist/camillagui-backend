@@ -11,7 +11,6 @@ from backend.eventstream import LevelEventStream, SpectrumEventStream
 from backend.routes import setup_routes, setup_static_routes
 from backend.settings import CONFIG_PATH, get_config
 from backend.version import VERSION
-from backend.views import version_string
 
 LOG_LEVELS = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]
 
@@ -55,8 +54,8 @@ def build_app(backend_config):
         backend_config["camilla_host"], backend_config["camilla_port"]
     )
     app["STATUSCACHE"] = {
-        "backend_version": version_string(VERSION),
-        "py_cdsp_version": version_string(app["CAMILLA"].versions.library()),
+        "backend_version": VERSION,
+        "py_cdsp_version": app["CAMILLA"].versions.library(),
         "capturesignalrms": [],
         "capturesignalpeak": [],
         "playbacksignalrms": [],

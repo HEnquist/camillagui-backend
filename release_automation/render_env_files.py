@@ -10,7 +10,7 @@ script_dir = os.path.dirname(__file__)
 with open(os.path.join(script_dir, "versions.yml")) as f:
     versions = yaml.safe_load(f)
 
-versions["backend_version"] = ".".join(str(v) for v in VERSION)
+versions["backend_version"] = VERSION
 
 environment = Environment(
     loader=FileSystemLoader(os.path.join(script_dir, "templates/"))

@@ -163,7 +163,7 @@ def _reconnect(cdsp, cache, validator):
     while not done:
         try:
             cdsp.connect()
-            cache["cdsp_version"] = version_string(cdsp.versions.camilladsp())
+            cache["cdsp_version"] = cdsp.versions.camilladsp()
             # Update backends
             backends = cdsp.general.supported_device_types()
             cache["backends"] = backends
@@ -262,13 +262,6 @@ async def get_events(request):
     finally:
         stream.remove_client(queue)
     return response
-
-
-def version_string(version_array):
-    """
-    Build a version string from a list of parts.
-    """
-    return f"{version_array[0]}.{version_array[1]}.{version_array[2]}"
 
 
 async def get_param(request):
