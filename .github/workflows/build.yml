@@ -4,49 +4,41 @@ on: [push]
 
 jobs:
 
-  read_fe_tag:
+  check_release_refs:
     runs-on: ubuntu-latest
-    outputs:
-      fe_tag: ${{ steps.fe_tag_step.outputs.fe_tag }}
     steps:
     - uses: actions/checkout@v4
-    - name: Get CamillaGUI tag from versions.yml
-      id: fe_tag_step
-      run: |
-        FE_TAG=$(sed -n 's/camillagui_tag: \(.*\)$/\1/p' release_automation/versions.yml)
-        echo "fe_tag=$FE_TAG"
-        echo "fe_tag=$FE_TAG" >> "$GITHUB_OUTPUT"
-    - name: Check that a release is built from release tags
+    - name: Check that a release is built from a pycamilladsp release tag
       if: startsWith(github.ref, 'refs/tags/')
       run: |
-        for key in camillagui_tag pycamilladsp_tag; do
-          ref=$(sed -n "s/^$key: \(.*\)$/\1/p" release_automation/versions.yml)
-          if ! echo "$ref" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
-            echo "::error::$key in versions.yml is '$ref', a release needs a vX.Y.Z or vX.Y.Z-suffix tag"
-            exit 1
-          fi
-        done
+        ref=$(sed -n "s/^pycamilladsp_tag: \(.*\)$/\1/p" release_automation/versions.yml)
+        if ! echo "$ref" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+          echo "::error::pycamilladsp_tag in versions.yml is '$ref', a release needs a vX.Y.Z or vX.Y.Z-suffix tag"
+          exit 1
+        fi
 
   build_fe:
     runs-on: ubuntu-latest
-    needs: read_fe_tag
+    needs: check_release_refs
+    defaults:
+      run:
+        working-directory: frontend
     steps:
     - uses: actions/checkout@v4
-      name: Check out frontend ${{ needs.read_fe_tag.outputs.fe_tag }}
-      with:
-        repository: HEnquist/camillagui
-        ref: ${{ needs.read_fe_tag.outputs.fe_tag }}
-    - name: Build and publish
-      uses: actions/setup-node@v4
+    - uses: actions/setup-node@v4
       with:
         node-version: '24'
-    - run: npm install
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+    - run: npm ci
+    - run: npm run lint
+    - run: npm test -- run
     - run: npm run build
     - name: Upload build
       uses: actions/upload-artifact@v4
       with:
         name: build
-        path: build
+        path: frontend/build
 
   build_and_test_be:
     runs-on: ubuntu-latest
@@ -63,19 +55,15 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install jinja2 PyYAML
 
-    - name: Rename original pyproject.toml
-      run: mv pyproject.toml pyproject.toml.orig
-
-    - name: Render scripts from templates
-      run: python -Bm release_automation.render_env_files
-
-    - name: Rename rendered pyproject.toml and restore original
+    # The distribution is assembled in dist/ from an explicit list, so nothing
+    # else in the repository can end up in it.
+    - name: Render requirements, conda env and pyproject into dist
       run: |
-        mv pyproject.toml pyproject.toml.rendered
-        mv pyproject.toml.orig pyproject.toml
+        mkdir dist
+        python -Bm release_automation.render_env_files dist
 
     - name: Install requirements
-      run: python -m pip install -r requirements.txt
+      run: python -m pip install -r dist/requirements.txt
 
     - name: Set up pytest
       run: python -m pip install pytest-aiohttp
@@ -83,29 +71,24 @@ jobs:
     - name: Run python tests
       run: python -Bm pytest
 
-    - name: Replace original pyproject.toml with rendered
-      run: |
-        rm pyproject.toml
-        mv pyproject.toml.rendered pyproject.toml
+    - name: Copy the backend into dist
+      run: cp -r main.py backend config README.md LICENSE.txt dist/
 
-    - name: Clean up
-      run: |
-        rm -rf release_automation
-        rm -rf tests
-
-    - name: Download frontend
+    - name: Download frontend into dist
       uses: actions/download-artifact@v4
+      with:
+        name: build
+        path: dist/build
 
     - name: Create zip
-      run: zip -r camillagui.zip *
+      working-directory: dist
+      run: zip -r ../camillagui.zip .
 
     - name: Upload all as artifact
       uses: actions/upload-artifact@v4
       with:
         name: camillagui-backend
-        path: |
-          .
-          !.git*
+        path: dist
 
     - name: Upload binaries to release
       if: contains(github.ref, 'refs/tags/')

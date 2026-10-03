@@ -281,14 +281,14 @@ evtSource.addEventListener("state", (e) => {
 
 Most custom pages will not need this — they work entirely with the existing API. But if you need
 to compute something the backend doesn't expose (like the crossover frequency response across all
-channels at once), you need to add an endpoint to `camillagui-backend/`.
+channels at once), you need to add an endpoint to the backend, at the repository root.
 
-1. Add a handler function in `camillagui-backend/backend/routes.py` (or a new file imported
-   there).
+1. Add a handler function in `backend/views.py` (or a new file imported in `backend/routes.py`).
 2. Register it with `app.router.add_get("/api/mycustom", my_handler)` in the `setup_routes`
-   function in `routes.py`.
-3. The backend can use `pycamilladsp` to call the running DSP, or `pycamilladsp_plot` to evaluate
-   filters and mixers — both are already installed in the backend's virtual environment.
+   function in `backend/routes.py`.
+3. The backend can use `pycamilladsp` to call the running DSP. Filter evaluation runs in the
+   browser, so import `evalFilter` from `camilladsp/eval` in the page itself rather than adding an
+   endpoint for it.
 
 ## Available UI components
 

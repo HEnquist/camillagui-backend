@@ -2,7 +2,7 @@
  * Every filter config the schemas allow must evaluate.
  *
  * The schemas live in the backend, in Python, while the evaluator lives here.
- * `camillagui-backend/tools/dump_filter_variants.py` exports one config per
+ * `tools/dump_filter_variants.py` at the repository root exports one config per
  * schema variant so that the two stay coupled: a new filter parameter shows up
  * here as a new variant, and this test fails if the evaluator does not handle
  * it. The backend's `test_eval_validated_configs.py` fails if the export is

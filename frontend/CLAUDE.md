@@ -1,6 +1,8 @@
-# camillagui — React frontend
+# frontend — React frontend of CamillaGUI
 
-React 19 + TypeScript SPA built with Vite. Targets CamillaDSP 5.0.x.
+React 19 + TypeScript SPA built with Vite. Targets CamillaDSP 5.0.x. Lives in `frontend/` of the
+camillagui-backend repository, next to the backend it talks to; it was a separate repository
+(HEnquist/camillagui) until 5.0, and its history came along.
 
 ## Dev commands (run from this directory)
 
@@ -93,7 +95,7 @@ utilities/
 
 ## API
 
-All requests go to `/api/*` (proxied to the backend in dev). See `camillagui-backend/backend/routes.py` for the full list.
+All requests go to `/api/*` (proxied to the backend in dev). See `../backend/routes.py` for the full list.
 
 Key endpoints used by the frontend:
 - `GET /api/guiconfig` — GuiConfig JSON
@@ -150,10 +152,10 @@ Four test files cover it:
 - `filters.test.ts` covers the behaviour of each type: band roles, defaults, null handling, unknown
   types raising rather than being dropped.
 - `variants.test.ts` evaluates every filter config the backend's JSON schemas allow, from
-  `fixtures/variants.json`, written by `camillagui-backend/tools/dump_filter_variants.py`. **The
-  schemas are in Python and the evaluator is in TypeScript**, so this is the only thing keeping
-  them coupled: when a filter schema changes, re-run that tool and commit the result. The backend's
-  `test_eval_validated_configs.py` fails until you do.
+  `fixtures/variants.json`, written by `../tools/dump_filter_variants.py`. **The schemas are in
+  Python and the evaluator is in TypeScript**, so this is the only thing keeping them coupled:
+  when a filter schema changes, re-run that tool and commit the result in the same commit. The
+  backend's `test_eval_validated_configs.py` fails until you do.
 - `eval.test.ts` covers the plumbing rather than the numbers: the coefficient cache, combining a
   whole pipeline step, and the samplerate and channel options a step offers.
 

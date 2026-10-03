@@ -1,6 +1,12 @@
-# camillagui-backend — Python/aiohttp backend
+# camillagui-backend — the CamillaGUI backend and frontend
 
 AIOHTTP web server that bridges the React frontend to a running CamillaDSP instance via WebSocket. Targets CamillaDSP 5.0.x.
+
+The frontend lives in `frontend/`, with its own `frontend/CLAUDE.md`. It was a separate repository
+(HEnquist/camillagui) until 5.0; it was merged in with its full history, every old commit rewritten
+to sit under `frontend/`, so `git log` and `git blame` work on its files without `--follow`. One
+CI workflow builds and tests both, and the backend's bundles ship the frontend built from the same
+commit, so there is no frontend version to pin any more.
 
 ## Run commands (from this directory)
 
@@ -14,6 +20,11 @@ python main.py
 
 # Tests
 pytest tests/
+
+# Frontend: dev server on :5173 proxying /api to :5005, see frontend/CLAUDE.md
+cd frontend && npm ci && npm run dev
+# Build it for the backend to serve, which expects it in build/
+cd frontend && npm run build && rm -rf ../build/* && cp -r build/* ../build/
 ```
 
 ## Source layout
@@ -48,25 +59,27 @@ tools/
 
 tests/                           # pytest test suite
 build/                           # Place compiled frontend files here before bundling
+frontend/                        # The React frontend, see frontend/CLAUDE.md
 ```
 
 ## Filter evaluation lives in the frontend
 
 There is no DSP in this backend. Filter transfer functions are evaluated in the browser, in
-`camillagui/src/camilladsp/eval/`, which is both faster (the GUI is usually browsed from a laptop
+`frontend/src/camilladsp/eval/`, which is both faster (the GUI is usually browsed from a laptop
 while the backend runs on an SBC) and one implementation instead of two. The backend keeps only
 what needs a server: `POST /api/convcoeffs` resolves a Conv filter's path, applies the
 `$samplerate$` and `$channels$` tokens, and returns the decoded coefficients.
 
-**The one thing to watch:** the JSON schemas are here, in Python, while the evaluator is over
-there, in TypeScript. `tools/dump_filter_variants.py` exports every schema-valid filter config to
-`camillagui/src/camilladsp/eval/fixtures/variants.json`, and the frontend's `variants.test.ts`
-evaluates all of them. **When you change a filter schema, re-run that tool and commit the result**,
-or the evaluator gets a new parameter with nothing testing it. `tests/test_eval_validated_configs.py`
-fails until you do.
+**The one thing to watch:** the JSON schemas are here, in Python, while the evaluator is in
+TypeScript. `tools/dump_filter_variants.py` exports every schema-valid filter config to
+`frontend/src/camilladsp/eval/fixtures/variants.json`, and the frontend's `variants.test.ts`
+evaluates all of them. **When you change a filter schema, re-run that tool and commit the result
+with the schema change**, or the evaluator gets a new parameter with nothing testing it.
+`tests/test_eval_validated_configs.py` fails until you do.
 
-The numbers themselves are covered by `properties.test.ts` over there, which asserts closed-form
-properties rather than captured curves, so it does not depend on this backend having been right.
+The numbers themselves are covered by `properties.test.ts` in the frontend, which asserts
+closed-form properties rather than captured curves, so it does not depend on this backend having
+been right.
 
 ## Key API routes (from routes.py)
 

@@ -15,18 +15,12 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 
 from dump_filter_variants import DEFAULT_OUTPUT, build_variants  # noqa: E402
 
 
 def test_exported_variants_match_the_schemas():
-    if not DEFAULT_OUTPUT.is_file():
-        pytest.skip(
-            f"no frontend checkout at {DEFAULT_OUTPUT}, nothing to compare against"
-        )
     exported = json.loads(DEFAULT_OUTPUT.read_text())
     current = build_variants()
     assert exported == current, (

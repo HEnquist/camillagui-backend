@@ -8,7 +8,7 @@ the real values, and this module is where they are written down. Keep them in
 step with the accessor defaults in CamillaDSP's `src/config/mod.rs`.
 
 Filter evaluation needs more of these than the validator does. It runs in the
-browser now, and its copy lives in `camillagui/src/camilladsp/eval/defaults.ts`.
+browser now, and its copy lives in `frontend/src/camilladsp/eval/defaults.ts`.
 """
 
 # GraphicEqualizerParameters::freq_min / freq_max

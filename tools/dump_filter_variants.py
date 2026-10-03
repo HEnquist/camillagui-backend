@@ -29,10 +29,9 @@ from backend.dsp.validate_config import CamillaValidator  # noqa: E402
 
 SCHEMA_DIR = Path(__file__).parent.parent / "backend" / "dsp" / "schemas"
 
-# Assumes the two repos are checked out side by side.
 DEFAULT_OUTPUT = (
-    Path(__file__).parent.parent.parent
-    / "camillagui"
+    Path(__file__).parent.parent
+    / "frontend"
     / "src"
     / "camilladsp"
     / "eval"
@@ -183,7 +182,7 @@ def build_variants():
             }
         )
     return {
-        "generated_by": "camillagui-backend/tools/dump_filter_variants.py",
+        "generated_by": "tools/dump_filter_variants.py",
         "volume": VOLUME,
         "variants": variants,
     }

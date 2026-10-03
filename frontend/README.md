@@ -3,9 +3,8 @@ CamillaGUI frontend
 
 This is the frontend of  CamillaGUI, the part that runs in the browser and handles the actual interface.
 
-The backend is located here: https://github.com/HEnquist/camillagui-backend
-
-For instructions on how to set the gui up, see the readme for the backend.
+The backend is in the parent directory of this one.
+For instructions on how to set the gui up, see the readme there.
 
 ## Dependencies
 The gui is based on the [React](https://react.dev/) framework.

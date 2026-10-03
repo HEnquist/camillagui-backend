@@ -29,6 +29,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Check out selected ref
         uses: actions/checkout@v4
@@ -43,6 +46,7 @@ jobs:
         with:
           node-version: '24.x'
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -56,7 +60,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: frontend/build
 
   deploy:
     needs: build
