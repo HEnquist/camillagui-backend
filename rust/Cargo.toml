@@ -1,11 +1,15 @@
 [package]
 name = "camillagui"
-version = "0.1.0"
+version = "5.0.0-beta.1"
 edition = "2024"
 
 [dependencies]
-axum = "0.8.9"
-camilladsp-config = { version = "5.0.0", path = "../../../../rust/camilladsp/camilladsp-config" }
+axum = { version = "0.8.9", features = ["multipart"] }
+# From git until camilladsp-config is published with CamillaDSP 5.0. To build
+# against a local checkout instead, put this in rust/.cargo/config.toml:
+# [patch."https://github.com/HEnquist/camilladsp"]
+# camilladsp-config = { path = "/path/to/camilladsp/camilladsp-config" }
+camilladsp-config = { version = "5.0.0", git = "https://github.com/HEnquist/camilladsp", branch = "config_crate", features = ["pipewire-backend"] }
 clap = { version = "4.6.7", features = ["derive"] }
 env_logger = "0.11.11"
 futures-util = "0.3.34"
@@ -13,10 +17,16 @@ log = "0.4.34"
 rust-embed = { version = "8.12.0", features = ["mime-guess"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "fs", "process"] }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
 tokio-tungstenite = "0.30.0"
+tower-http = { version = "0.6", features = ["fs"] }
+waveadapter = "0.3.0"
 yaml_serde = "0.10.3"
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tempfile = "3"
 
 [profile.release]
 strip = true

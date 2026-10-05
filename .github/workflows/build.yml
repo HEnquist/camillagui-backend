@@ -1,25 +1,11 @@
-name: npm build
+name: Build
 
 on: [push]
 
 jobs:
 
-  check_release_refs:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Check that a release is built from a pycamilladsp release tag
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        ref=$(sed -n "s/^pycamilladsp_tag: \(.*\)$/\1/p" release_automation/versions.yml)
-        if ! echo "$ref" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
-          echo "::error::pycamilladsp_tag in versions.yml is '$ref', a release needs a vX.Y.Z or vX.Y.Z-suffix tag"
-          exit 1
-        fi
-
   build_fe:
     runs-on: ubuntu-latest
-    needs: check_release_refs
     defaults:
       run:
         working-directory: frontend
@@ -40,180 +26,139 @@ jobs:
         name: build
         path: frontend/build
 
-  build_and_test_be:
+  test_be:
     runs-on: ubuntu-latest
     needs: build_fe
     steps:
     - uses: actions/checkout@v4
+
+    # The backend embeds the frontend, so it is needed to build it at all.
+    - name: Download frontend build
+      uses: actions/download-artifact@v4
+      with:
+        name: build
+        path: frontend/build
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt
+
+    - name: Check formatting
+      working-directory: rust
+      run: cargo fmt --check
+
+    - name: Clippy
+      working-directory: rust
+      run: cargo clippy --all-targets -- -D warnings
+
+    - name: Unit tests
+      working-directory: rust
+      run: cargo test
+
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
-    - name: Install template render dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install jinja2 PyYAML
+    - name: Install API test dependencies
+      run: python -m pip install pytest aiohttp PyYAML
 
-    # The distribution is assembled in dist/ from an explicit list, so nothing
-    # else in the repository can end up in it.
-    - name: Render requirements, conda env and pyproject into dist
-      run: |
-        mkdir dist
-        python -Bm release_automation.render_env_files dist
+    - name: API tests
+      env:
+        API_TEST_BACKENDS: rust
+      run: python -m pytest rust/api_tests
 
-    - name: Install requirements
-      run: python -m pip install -r dist/requirements.txt
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    needs: test_be
+    strategy:
+      matrix:
+        include:
+          # Every Linux binary is static, linked against musl by zig, so it
+          # runs on any distribution whatever its glibc. There are no C
+          # dependencies, so one runner builds them all.
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            asset: camillagui_linux_amd64.tar.gz
+            zig: true
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            asset: camillagui_linux_aarch64.tar.gz
+            zig: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
+            asset: camillagui_linux_armv7.tar.gz
+            zig: true
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: camillagui_windows_amd64.zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: camillagui_macos_aarch64.tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset: camillagui_macos_intel.tar.gz
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v4
 
-    - name: Set up pytest
-      run: python -m pip install pytest-aiohttp
-
-    - name: Run python tests
-      run: python -Bm pytest
-
-    - name: Copy the backend into dist
-      run: cp -r main.py backend config README.md LICENSE.txt dist/
-
-    - name: Download frontend into dist
+    - name: Download frontend build
       uses: actions/download-artifact@v4
       with:
         name: build
-        path: dist/build
+        path: frontend/build
 
-    - name: Create zip
-      working-directory: dist
-      run: zip -r ../camillagui.zip .
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
 
-    - name: Upload all as artifact
+    - name: Install zig and cargo-zigbuild
+      if: matrix.zig
+      run: python3 -m pip install cargo-zigbuild
+
+    - name: Build with zig
+      if: matrix.zig
+      working-directory: rust
+      run: cargo zigbuild --release --target ${{ matrix.target }}
+
+    - name: Build
+      if: ${{ !matrix.zig }}
+      working-directory: rust
+      run: cargo build --release --target ${{ matrix.target }}
+
+    # A release is the binary, with the default settings in config/ next to
+    # it, and a copy of the stylesheet there to edit, which the backend serves
+    # in place of the one built in.
+    - name: Package
+      run: |
+        mkdir -p package/config
+        cp config/camillagui.yml config/gui-config.yml frontend/build/css-variables.css package/config/
+        cp rust/target/${{ matrix.target }}/release/camillagui* package/
+        rm -f package/camillagui.d package/camillagui.pdb
+        if [[ "${{ matrix.asset }}" == *.zip ]]; then
+          (cd package && 7z a ../${{ matrix.asset }} .)
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          tar -zcvf ${{ matrix.asset }} -C package .
+        else
+          tar -zcvf ${{ matrix.asset }} -C package . --owner=0 --group=0 --numeric-owner
+        fi
+
+    - name: Upload as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: camillagui-backend
-        path: dist
+        name: ${{ matrix.asset }}
+        path: ${{ matrix.asset }}
 
-    - name: Upload binaries to release
+    - name: Upload to release
       if: contains(github.ref, 'refs/tags/')
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: camillagui.zip
-        asset_name: camillagui.zip
+        file: ${{ matrix.asset }}
+        asset_name: ${{ matrix.asset }}
         tag: ${{ github.ref }}
-
-  pyinstaller_native:
-    name: Bundle for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            asset_name: bundle_linux_amd64.tar.gz
-            filename: bundle.tar.gz
-          - os: ubuntu-22.04-arm
-            asset_name: bundle_linux_aarch64.tar.gz
-            filename: bundle.tar.gz
-          - os: windows-latest
-            asset_name: bundle_windows_amd64.zip
-            filename: bundle.zip
-          - os: macos-latest
-            asset_name: bundle_macos_aarch64.tar.gz
-            filename: bundle.tar.gz
-          - os: macos-15-intel
-            asset_name: bundle_macos_intel.tar.gz
-            filename: bundle.tar.gz
-    needs: build_and_test_be
-    steps:
-    - name: Download complete distribution
-      uses: actions/download-artifact@v4
-      with:
-        name: camillagui-backend
-
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-
-    - run: pip install -r requirements.txt
-      name: Install backend dependencies
-
-    - run: pip install pyinstaller
-      name: Install pyinstaller
-
-    - name: Bundle app with pyinstaller
-      run: pyinstaller ./main.py --add-data ./config/:config --add-data ./build/:build --add-data ./backend/dsp/schemas/:backend/dsp/schemas --name camillagui_backend
-
-    - name: Compress as zip
-      if: ${{ contains(matrix.os, 'windows') }}
-      run: powershell Compress-Archive ./dist/camillagui_backend ${{ matrix.filename }}
-    - name: Compress as tar.gz
-      if: ${{ contains(matrix.os, 'macos') }}
-      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend
-    - name: Compress as tar.gz
-      if: ${{ contains(matrix.os, 'ubuntu') }}
-      run: tar -zcvf ${{ matrix.filename }} -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
-
-    - name: Upload bundle as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.asset_name }}
-        path: ${{ matrix.filename }}
-
-    - name: Upload bundle to release
-      if: contains(github.ref, 'refs/tags/')
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ${{ matrix.filename }}
-        asset_name: ${{ matrix.asset_name }}
-        tag: ${{ github.ref }}
-
-  pyinstaller_qemu:
-    runs-on: ubuntu-22.04
-    needs: build_and_test_be
-    name: Bundle for ${{ matrix.arch }}
-
-    strategy:
-      matrix:
-        include:
-          - arch: armv7
-          - arch: armv6
-    steps:
-      - name: Download complete distribution
-        uses: actions/download-artifact@v4
-        with:
-          name: camillagui-backend
-      - uses: uraimo/run-on-arch-action@v2
-        name: Build artifact
-        id: build
-        with:
-          arch: ${{ matrix.arch }}
-          distro: bookworm
-
-          # Mount the artifacts directory as /artifacts in the container
-          dockerRunArgs: |
-            --volume "${PWD}:/cdsp"
-          install: |
-            apt update -y
-            apt install git python3 python3-pip python3-venv python3-dev curl make gcc build-essential binutils pkg-config -y
-          run: |
-            python3 -m venv ./venv
-            ./venv/bin/python3 -m pip config set global.extra-index-url https://www.piwheels.org/simple
-            ./venv/bin/python3 -m pip install -r requirements.txt
-            ./venv/bin/python3 -m pip install pyinstaller
-            ./venv/bin/python3 -m PyInstaller /cdsp/main.py --distpath /cdsp/dist --add-data ./config/:config --add-data ./build/:build --add-data ./backend/dsp/schemas/:backend/dsp/schemas --name camillagui_backend
-
-      - name: Compress as tar.gz
-        run: tar -zcvf bundle.tar.gz -C ./dist camillagui_backend --owner=0 --group=0 --numeric-owner
-
-      - name: Upload bundle as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle_linux_${{ matrix.arch }}
-          path: bundle.tar.gz
-
-      - name: Upload bundle to release
-        if: contains(github.ref, 'refs/tags/')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bundle.tar.gz
-          asset_name: bundle_linux_${{ matrix.arch }}.tar.gz
-          tag: ${{ github.ref }}

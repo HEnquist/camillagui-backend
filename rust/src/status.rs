@@ -1,31 +1,50 @@
-//! `GET /api/status`, the counterpart of `get_status` in `backend/views.py`.
+//! The status sent to the frontend by `GET /api/status`, kept as a JSON
+//! object with the same keys as the Python backend's `STATUSCACHE`.
 
-use crate::cdsp::{CdspClient, CdspError};
+use crate::camilla::{CamillaClient, DspError, to_json};
+use crate::validate::DeviceTypeLists;
 use serde_json::{Map, Value, json};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// How often the slower changing values are refreshed.
 const SLOW_REFRESH: Duration = Duration::from_secs(1);
 
-const OFFLINE_STATUS: &str = "Offline";
-const OFFLINE_VERSION: &str = "(offline)";
+/// The common sample rates a measured capture rate is rounded to.
+const STANDARD_RATES: [usize; 15] = [
+    8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000,
+    705600, 768000,
+];
 
-/// The status sent to the frontend, kept as a JSON object with the same keys as
-/// the Python backend's `STATUSCACHE`.
+/// The nearest standard rate, if the measured one is within 4% of it.
+fn nearest_standard_rate(rate: usize) -> Option<usize> {
+    let rate_f = rate as f64;
+    let lowest = STANDARD_RATES[0] as f64;
+    let highest = STANDARD_RATES[STANDARD_RATES.len() - 1] as f64;
+    if !(0.96 * lowest < rate_f && rate_f < 1.04 * highest) {
+        return None;
+    }
+    let nearest = *STANDARD_RATES
+        .iter()
+        .min_by_key(|standard| standard.abs_diff(rate))?;
+    let ratio = rate_f / nearest as f64;
+    (0.96 < ratio && ratio < 1.04).then_some(nearest)
+}
+
 pub struct StatusCache {
     values: Mutex<Map<String, Value>>,
     last_refresh: Mutex<Option<Instant>>,
+    /// Whether the last status query reached CamillaDSP.
+    online: AtomicBool,
+    /// The device types the connected CamillaDSP supports, once known.
+    device_types: Mutex<Option<DeviceTypeLists>>,
 }
 
 impl StatusCache {
     pub fn new() -> Self {
-        let mut values = Map::new();
         let initial = json!({
             "backend_version": env!("CARGO_PKG_VERSION"),
-            // There is no pycamilladsp any more. Report the config crate the
-            // validation comes from in its place, until the frontend drops the field.
-            "py_cdsp_version": format!("camilladsp-config {}", camilladsp_config_version()),
             "capturesignalrms": [],
             "capturesignalpeak": [],
             "playbacksignalrms": [],
@@ -37,21 +56,21 @@ impl StatusCache {
             "capture_device_capabilities": {},
             "labels": {"playback": null, "capture": null},
         });
-        if let Value::Object(initial) = initial {
-            values.extend(initial);
-        }
         let cache = StatusCache {
-            values: Mutex::new(values),
+            values: Mutex::new(Map::new()),
             last_refresh: Mutex::new(None),
+            online: AtomicBool::new(false),
+            device_types: Mutex::new(None),
         };
+        cache.merge(initial);
         cache.set_offline();
         cache
     }
 
     fn set_offline(&self) {
-        let offline = json!({
-            "cdsp_status": OFFLINE_STATUS,
-            "cdsp_version": OFFLINE_VERSION,
+        self.merge(json!({
+            "cdsp_status": "Offline",
+            "cdsp_version": "(offline)",
             "capturerate": null,
             "rateadjust": null,
             "bufferlevel": null,
@@ -60,43 +79,85 @@ impl StatusCache {
             "resamplerload": null,
             "title": null,
             "description": null,
-        });
-        self.merge(offline);
+        }));
         *self.last_refresh.lock().unwrap() = None;
+        self.online.store(false, Ordering::Relaxed);
     }
 
-    fn merge(&self, update: Value) {
+    pub fn merge(&self, update: Value) {
         if let Value::Object(update) = update {
             self.values.lock().unwrap().extend(update);
         }
     }
 
-    pub fn update_levels(&self, levels: &Value) {
-        self.merge(levels.clone());
+    pub fn get(&self, key: &str) -> Value {
+        self.values
+            .lock()
+            .unwrap()
+            .get(key)
+            .cloned()
+            .unwrap_or(Value::Null)
     }
 
-    fn snapshot(&self) -> Value {
+    pub fn snapshot(&self) -> Value {
         Value::Object(self.values.lock().unwrap().clone())
     }
 
+    pub fn device_types(&self) -> Option<DeviceTypeLists> {
+        self.device_types.lock().unwrap().clone()
+    }
+
+    /// Store a value under `cache_key`, then `group`, then `name`.
+    pub fn store_nested(&self, cache_key: &str, group: &str, name: &str, value: Value) {
+        let mut values = self.values.lock().unwrap();
+        let outer = values.entry(cache_key).or_insert_with(|| json!({}));
+        if !outer.is_object() {
+            *outer = json!({});
+        }
+        let inner = outer
+            .as_object_mut()
+            .expect("an object")
+            .entry(group)
+            .or_insert_with(|| json!({}));
+        if !inner.is_object() {
+            *inner = json!({});
+        }
+        inner
+            .as_object_mut()
+            .expect("an object")
+            .insert(name.to_string(), value);
+    }
+
+    /// The value under `cache_key`, then `group`, then `name`, if there is one.
+    pub fn get_nested(&self, cache_key: &str, group: &str, name: &str) -> Option<Value> {
+        let values = self.values.lock().unwrap();
+        values.get(cache_key)?.get(group)?.get(name).cloned()
+    }
+
     /// Ask CamillaDSP for its state, and once a second for everything else.
-    pub async fn refresh(&self, cdsp: &CdspClient) -> Value {
-        match self.query_all(cdsp).await {
-            Ok(()) => {}
-            Err(err) => {
-                log::debug!("Status query failed: {err}");
-                self.set_offline();
-            }
+    pub async fn refresh(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Value {
+        if let Err(err) = self.query_all(camilla).await {
+            log::debug!("Status query failed: {err}");
+            self.set_offline();
         }
         self.snapshot()
     }
 
-    async fn query_all(&self, cdsp: &CdspClient) -> Result<(), CdspError> {
-        let state = cdsp.query("GetState").await?;
-        // pycamilladsp turns the state into an enum, and the backend sent its
-        // name, so the frontend gets "RUNNING" rather than "Running".
-        let state = state.as_str().unwrap_or("").to_uppercase();
-        self.merge(json!({"cdsp_status": state}));
+    async fn query_all(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
+        let state = match camilla.state().await {
+            Ok(state) => state,
+            Err(DspError::Command { message, .. }) => {
+                log::warn!("CamillaDSP did not give its state: {message}");
+                return Ok(());
+            }
+            Err(err) => return Err(err),
+        };
+        // The Python backend sent the name of pycamilladsp's enum, so the
+        // frontend gets "RUNNING" rather than "Running".
+        self.merge(json!({"cdsp_status": state.to_string()}));
+        if !self.online.swap(true, Ordering::Relaxed) {
+            self.on_reconnect(camilla).await?;
+        }
         let due = match *self.last_refresh.lock().unwrap() {
             Some(last) => last.elapsed() > SLOW_REFRESH,
             None => true,
@@ -105,37 +166,92 @@ impl StatusCache {
             return Ok(());
         }
         *self.last_refresh.lock().unwrap() = Some(Instant::now());
+        let capture_rate = value(camilla.capture_rate().await)?.and_then(nearest_standard_rate);
         let update = json!({
-            "cdsp_version": value(cdsp, "GetVersion").await?,
-            "capturerate": value(cdsp, "GetCaptureRate").await?,
-            "rateadjust": value(cdsp, "GetRateAdjust").await?,
-            "bufferlevel": value(cdsp, "GetBufferLevel").await?,
-            "clippedsamples": value(cdsp, "GetClippedSamples").await?,
-            "processingload": value(cdsp, "GetProcessingLoad").await?,
-            "resamplerload": value(cdsp, "GetResamplerLoad").await?,
-            "labels": value(cdsp, "GetChannelLabels").await?,
-            "title": value(cdsp, "GetConfigTitle").await?,
-            "description": value(cdsp, "GetConfigDescription").await?,
+            "capturerate": capture_rate,
+            "rateadjust": to_json(&value(camilla.rate_adjust().await)?),
+            "bufferlevel": value(camilla.buffer_level().await)?,
+            "clippedsamples": value(camilla.clipped_samples().await)?,
+            "processingload": to_json(&value(camilla.processing_load().await)?),
+            "resamplerload": to_json(&value(camilla.resampler_load().await)?),
+            "labels": value(camilla.channel_labels().await)?,
+            "title": value(camilla.config_title().await)?,
+            "description": value(camilla.config_description().await)?,
         });
         self.merge(update);
         Ok(())
+    }
+
+    /// Read what does not change while CamillaDSP runs: its version, and the
+    /// device types and devices it has. The device lists can be slow to make,
+    /// so they are fetched in the background.
+    async fn on_reconnect(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
+        let version = camilla.version().await?;
+        self.merge(json!({"cdsp_version": version}));
+        let cache = self.clone();
+        let camilla = camilla.clone();
+        tokio::spawn(async move {
+            if let Err(err) = cache.refresh_devices(&camilla).await {
+                log::debug!("Could not read the device lists: {err}");
+            }
+        });
+        Ok(())
+    }
+
+    async fn refresh_devices(&self, camilla: &CamillaClient) -> Result<(), DspError> {
+        let (playback_types, capture_types) = camilla.supported_device_types().await?;
+        log::debug!("Updated backends: {playback_types:?}, {capture_types:?}");
+        self.merge(json!({"backends": [playback_types, capture_types]}));
+        *self.device_types.lock().unwrap() = Some(DeviceTypeLists {
+            playback: playback_types.clone(),
+            capture: capture_types.clone(),
+        });
+        for backend in &playback_types {
+            let devices = camilla.playback_devices(backend).await?;
+            log::debug!("Updated {backend} playback devices: {devices:?}");
+            self.store_list("playback_devices", backend, devices);
+        }
+        for backend in &capture_types {
+            let devices = camilla.capture_devices(backend).await?;
+            log::debug!("Updated {backend} capture devices: {devices:?}");
+            self.store_list("capture_devices", backend, devices);
+        }
+        Ok(())
+    }
+
+    pub fn store_list(&self, cache_key: &str, backend: &str, devices: Vec<(String, String)>) {
+        let mut values = self.values.lock().unwrap();
+        let entry = values.entry(cache_key).or_insert_with(|| json!({}));
+        if let Some(map) = entry.as_object_mut() {
+            map.insert(backend.to_string(), json!(devices));
+        }
     }
 }
 
 /// A value that CamillaDSP declines to give, for example with no config
 /// loaded, is shown as missing. Only a lost connection means offline.
-async fn value(cdsp: &CdspClient, command: &str) -> Result<Value, CdspError> {
-    match cdsp.query(command).await {
-        Err(CdspError::Command(err)) => {
-            log::debug!("{command} failed: {err}");
-            Ok(Value::Null)
+fn value<T>(result: Result<T, DspError>) -> Result<Option<T>, DspError> {
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(DspError::Command { result, message }) => {
+            log::debug!("Status query failed with {result}: {message}");
+            Ok(None)
         }
-        other => other,
+        Err(err) => Err(err),
     }
 }
 
-fn camilladsp_config_version() -> &'static str {
-    // Cargo gives no direct way to read a dependency's version, and this is
-    // only for display, so it is kept in step with Cargo.toml by hand.
-    "5.0.0"
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capture_rate_is_rounded_to_a_standard_rate() {
+        assert_eq!(nearest_standard_rate(44100), Some(44100));
+        assert_eq!(nearest_standard_rate(44300), Some(44100));
+        assert_eq!(nearest_standard_rate(47900), Some(48000));
+        assert_eq!(nearest_standard_rate(0), None);
+        assert_eq!(nearest_standard_rate(60000), None);
+        assert_eq!(nearest_standard_rate(1_000_000), None);
+    }
 }

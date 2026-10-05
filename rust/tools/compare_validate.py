@@ -1,4 +1,11 @@
-"""Post the same configs to the Python (5005) and Rust (5006) /api/validateconfig and compare."""
+"""
+Post the same configs to the Python and Rust /api/validateconfig and compare.
+
+By default the backends are expected on 5005 (Python) and 5006 (Rust). With
+--start, both are started against fake CamillaDSPs by the API test harness in
+../api_tests, which says Alsa is supported, so the Alsa configs are checked as
+they are rather than swapped for stdio.
+"""
 
 import copy
 import glob
@@ -66,7 +73,7 @@ def corpus():
             print(f"skip {name}: {err}")
             continue
         if isinstance(config, dict):
-            yield os.path.relpath(name, HOME), without_alsa(config)
+            yield os.path.relpath(name, HOME), config if "--start" in sys.argv else without_alsa(config)
 
     base = {
         "devices": {
@@ -130,11 +137,37 @@ def corpus():
     yield mutated("several problems", several)
 
 
+def start_backends():
+    """Start both backends against fake CamillaDSPs, with the API test harness."""
+    import tempfile
+
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "api_tests"))
+    from conftest import Backend
+
+    root = tempfile.mkdtemp()
+    return Backend("python", os.path.join(root, "python")), Backend("rust", os.path.join(root, "rust"))
+
+
 def main():
+    if "--start" in sys.argv:
+        python, rust = start_backends()
+        ports = (python.port, rust.port)
+    else:
+        python = rust = None
+        ports = (5005, 5006)
+    try:
+        return compare(*ports)
+    finally:
+        for backend in (python, rust):
+            if backend is not None:
+                backend.stop()
+
+
+def compare(python_port, rust_port):
     verdict_diffs = 0
     for label, config in corpus():
-        py = summary(*post(5005, config))
-        rs = summary(*post(5006, config))
+        py = summary(*post(python_port, config))
+        rs = summary(*post(rust_port, config))
         same_verdict = py[0] == rs[0]
         verdict_diffs += not same_verdict
         mark = "  " if same_verdict else "!!"

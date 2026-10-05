@@ -715,7 +715,6 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
         ? Number((6 + Math.sin(Date.now() / 1100) * 2 + Math.random() * 1.5).toFixed(1))
         : "",
       cdsp_version: "demo-3.0.0",
-      py_cdsp_version: "demo-1.0.0",
       backend_version: "demo-backend",
       labels,
       title: state.currentConfig.title,

@@ -1,0 +1,441 @@
+//! File paths in configs: resolving them against the configured folders,
+//! making them GUI friendly again, and refusing the ones that point elsewhere.
+
+use serde_json::Value;
+use std::path::{Component, Path, PathBuf};
+
+/// Lexical normalization, like Python's `os.path.normpath`.
+pub fn normalize(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                // `/..` is `/`
+                Some(Component::RootDir | Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
+            other => out.push(other),
+        }
+    }
+    if out.as_os_str().is_empty() {
+        out.push(".");
+    }
+    out
+}
+
+/// Resolve symlinks like `os.path.realpath`: the part of the path that exists
+/// is canonicalized, and the rest is appended as it is written.
+pub fn realpath(path: &Path) -> PathBuf {
+    let path = normalize(&std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf()));
+    let mut existing = path.as_path();
+    let mut rest = Vec::new();
+    loop {
+        if let Ok(canonical) = std::fs::canonicalize(existing) {
+            let mut result = canonical;
+            for part in rest.iter().rev() {
+                result.push(part);
+            }
+            return normalize(&result);
+        }
+        match (existing.parent(), existing.file_name()) {
+            (Some(parent), Some(name)) => {
+                rest.push(name.to_os_string());
+                existing = parent;
+            }
+            _ => return path,
+        }
+    }
+}
+
+/// Whether `path` is `folder` or inside it, comparing whole components.
+pub fn is_path_in_folder(path: &Path, folder: &Path) -> bool {
+    path.starts_with(folder)
+}
+
+/// The last part of a path, splitting on both `/` and `\` whatever the
+/// platform, like `ntpath.basename`. Configs can come from Windows machines.
+pub fn nt_basename(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
+}
+
+/// A file name with no folder in it.
+pub fn is_bare(path: &str) -> bool {
+    nt_basename(path) == path
+}
+
+/// The last component of a path, like `os.path.basename`.
+pub fn basename(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// A path relative to `base`, like `os.path.relpath`, for two absolute paths.
+pub fn relpath(path: &Path, base: &Path) -> PathBuf {
+    let path = normalize(path);
+    let base = normalize(base);
+    let path_parts: Vec<_> = path.components().collect();
+    let base_parts: Vec<_> = base.components().collect();
+    let common = path_parts
+        .iter()
+        .zip(&base_parts)
+        .take_while(|(a, b)| a == b)
+        .count();
+    let mut out = PathBuf::new();
+    for _ in common..base_parts.len() {
+        out.push("..");
+    }
+    for part in &path_parts[common..] {
+        out.push(part);
+    }
+    if out.as_os_str().is_empty() {
+        out.push(".");
+    }
+    out
+}
+
+/// Join a folder and a plain file name, refusing anything with a separator in it.
+pub fn file_in_folder(folder: &Path, filename: &str) -> Result<PathBuf, String> {
+    if filename.contains('/') || filename.contains('\\') {
+        return Err("Filename may not contain any slashes/backslashes".to_string());
+    }
+    Ok(normalize(&folder.join(filename)))
+}
+
+/// Make a path absolute against `base`, leaving an absolute one as it is.
+pub fn make_absolute(path: &str, base: &Path) -> String {
+    if Path::new(path).is_absolute() {
+        path.to_string()
+    } else {
+        to_string(&normalize(&base.join(path)))
+    }
+}
+
+pub fn to_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+/// Resolve a coefficient path: a bare file name is looked up in coeff_dir,
+/// any other relative path in config_dir.
+pub fn coeff_path_to_absolute(path: &str, config_dir: &Path, coeff_dir: &Path) -> String {
+    if Path::new(path).is_absolute() {
+        return path.to_string();
+    }
+    let base = if is_bare(path) { coeff_dir } else { config_dir };
+    to_string(&normalize(&base.join(path)))
+}
+
+/// The other way: a file in coeff_dir becomes a bare name, anything else a
+/// path relative to config_dir.
+pub fn coeff_path_to_relative(path: &str, config_dir: &Path, coeff_dir: &Path) -> String {
+    if !Path::new(path).is_absolute() {
+        return path.to_string();
+    }
+    if is_path_in_folder(Path::new(path), coeff_dir) {
+        return basename(path);
+    }
+    to_string(&relpath(Path::new(path), config_dir))
+}
+
+/// A path is safe if it ends up inside configured_dir.
+///
+/// A bare file name always does, since that is what it is resolved against.
+/// Anything else is resolved the way the rest of the backend resolves it, a
+/// relative path against base_dir and an absolute path as it stands, and then
+/// has to land inside configured_dir. Where a path points matters, not how it
+/// is written: a config in `~/camilladsp/configs` referring to
+/// `../coeffs/filter.raw` is the ordinary layout and lands in coeff_dir, while
+/// `../../../etc/passwd` does not and is refused. Without a base_dir a relative
+/// path cannot be resolved, so it is refused.
+pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<&Path>) -> bool {
+    if is_bare(path) {
+        return true;
+    }
+    let Some(configured_dir) = configured_dir else {
+        return false;
+    };
+    let resolved = if Path::new(path).is_absolute() {
+        PathBuf::from(path)
+    } else {
+        match base_dir {
+            Some(base) => base.join(path),
+            None => return false,
+        }
+    };
+    is_path_in_folder(&realpath(&resolved), &realpath(configured_dir))
+}
+
+/// Reduce a path to a bare file name if it is inside `directory`.
+fn to_bare_filename(path: &str, directory: &Path) -> String {
+    if !Path::new(path).is_absolute() {
+        return basename(path);
+    }
+    let canonical = realpath(Path::new(path));
+    if is_path_in_folder(&canonical, &realpath(directory)) {
+        return canonical
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+    }
+    path.to_string()
+}
+
+fn str_of<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
+    value.get(key).and_then(Value::as_str)
+}
+
+/// Whether a filter reads its coefficients from a file.
+pub fn is_file_conv(filter: &Value) -> bool {
+    str_of(filter, "type") == Some("Conv")
+        && matches!(
+            filter.get("parameters").and_then(|p| str_of(p, "type")),
+            Some("Raw" | "Wav")
+        )
+}
+
+/// Apply a conversion to the coefficient file path of a filter.
+pub fn convert_filter_path(filter: &mut Value, conversion: &impl Fn(&str) -> String) {
+    if !is_file_conv(filter) {
+        return;
+    }
+    if let Some(Value::String(filename)) = filter["parameters"].get_mut("filename")
+        && !filename.is_empty()
+    {
+        *filename = conversion(filename);
+    }
+}
+
+/// Apply a conversion to every coefficient file path of a config.
+pub fn convert_config_filter_paths(config: &mut Value, conversion: impl Fn(&str) -> String) {
+    if let Some(filters) = config.get_mut("filters").and_then(Value::as_object_mut) {
+        for filter in filters.values_mut() {
+            convert_filter_path(filter, &conversion);
+        }
+    }
+}
+
+pub fn make_config_filter_paths_absolute(config: &mut Value, config_dir: &Path, coeff_dir: &Path) {
+    convert_config_filter_paths(config, |path| {
+        coeff_path_to_absolute(path, config_dir, coeff_dir)
+    });
+}
+
+pub fn make_config_filter_paths_relative(config: &mut Value, config_dir: &Path, coeff_dir: &Path) {
+    convert_config_filter_paths(config, |path| {
+        coeff_path_to_relative(path, config_dir, coeff_dir)
+    });
+}
+
+/// The capture device, if it reads from a file.
+fn capture_file_device(config: &mut Value) -> Option<&mut Value> {
+    let capture = config.get_mut("devices")?.get_mut("capture")?;
+    matches!(str_of(capture, "type"), Some("WavFile" | "RawFile")).then_some(capture)
+}
+
+/// The playback device, if it writes to a file.
+fn playback_file_device(config: &mut Value) -> Option<&mut Value> {
+    let playback = config.get_mut("devices")?.get_mut("playback")?;
+    (str_of(playback, "type") == Some("File")).then_some(playback)
+}
+
+fn convert_device_filename(device: Option<&mut Value>, conversion: impl Fn(&str) -> String) {
+    if let Some(Value::String(filename)) = device.and_then(|d| d.get_mut("filename"))
+        && !filename.is_empty()
+    {
+        *filename = conversion(filename);
+    }
+}
+
+/// Resolve relative capture and playback file names against audiofiles_dir.
+pub fn make_audio_file_paths_absolute(config: &mut Value, audiofiles_dir: Option<&Path>) {
+    let Some(dir) = audiofiles_dir else {
+        return;
+    };
+    convert_device_filename(capture_file_device(config), |path| make_absolute(path, dir));
+    convert_device_filename(playback_file_device(config), |path| {
+        make_absolute(path, dir)
+    });
+}
+
+/// Show capture and playback files inside audiofiles_dir as bare names.
+pub fn make_audio_file_paths_bare(config: &mut Value, audiofiles_dir: Option<&Path>) {
+    let Some(dir) = audiofiles_dir else {
+        return;
+    };
+    convert_device_filename(capture_file_device(config), |path| {
+        to_bare_filename(path, dir)
+    });
+    convert_device_filename(playback_file_device(config), |path| {
+        to_bare_filename(path, dir)
+    });
+}
+
+/// Reduce every coefficient and audio file path to a bare file name. Used for
+/// configs uploaded from elsewhere, where the folders they came from mean nothing.
+pub fn strip_config_paths_to_bare_filenames(config: &mut Value) {
+    convert_config_filter_paths(config, |path| nt_basename(path).to_string());
+    convert_device_filename(capture_file_device(config), |path| {
+        nt_basename(path).to_string()
+    });
+    convert_device_filename(playback_file_device(config), |path| {
+        nt_basename(path).to_string()
+    });
+}
+
+/// The file paths in a config that point outside their configured folders.
+///
+/// Relative coefficient paths are resolved against config_dir, and relative
+/// audio paths against audiofiles_dir, which is where each of them is resolved
+/// when the config is actually used.
+pub fn paths_outside_folders(
+    config: &Value,
+    coeff_dir: &Path,
+    audiofiles_dir: Option<&Path>,
+    config_dir: &Path,
+) -> Vec<String> {
+    let mut offenders = Vec::new();
+    if let Some(filters) = config.get("filters").and_then(Value::as_object) {
+        for filter in filters.values() {
+            if !is_file_conv(filter) {
+                continue;
+            }
+            if let Some(filename) = str_of(&filter["parameters"], "filename")
+                && !filename.is_empty()
+                && !path_is_safe(filename, Some(coeff_dir), Some(config_dir))
+            {
+                offenders.push(filename.to_string());
+            }
+        }
+    }
+    let devices = config.get("devices");
+    let device = |side: &str, types: &[&str]| {
+        devices
+            .and_then(|d| d.get(side))
+            .filter(|d| str_of(d, "type").is_some_and(|t| types.contains(&t)))
+    };
+    for device in [
+        device("capture", &["WavFile", "RawFile"]),
+        device("playback", &["File"]),
+    ] {
+        if let Some(filename) = device.and_then(|d| str_of(d, "filename"))
+            && !filename.is_empty()
+            && !path_is_safe(filename, audiofiles_dir, audiofiles_dir)
+        {
+            offenders.push(filename.to_string());
+        }
+    }
+    offenders
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn normalizes_like_normpath() {
+        assert_eq!(
+            normalize(Path::new("/a/b/../c/./d")),
+            PathBuf::from("/a/c/d")
+        );
+        assert_eq!(normalize(Path::new("/../a")), PathBuf::from("/a"));
+        assert_eq!(normalize(Path::new("a/../../b")), PathBuf::from("../b"));
+    }
+
+    #[test]
+    fn coeff_paths_round_trip() {
+        let config_dir = Path::new("/c/configs");
+        let coeff_dir = Path::new("/c/coeffs");
+        assert_eq!(
+            coeff_path_to_absolute("fir.wav", config_dir, coeff_dir),
+            "/c/coeffs/fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_absolute("../coeffs/sub/fir.wav", config_dir, coeff_dir),
+            "/c/coeffs/sub/fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_absolute("/abs/fir.wav", config_dir, coeff_dir),
+            "/abs/fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_relative("/c/coeffs/fir.wav", config_dir, coeff_dir),
+            "fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_relative("/c/other/fir.wav", config_dir, coeff_dir),
+            "../other/fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_relative("x/fir.wav", config_dir, coeff_dir),
+            "x/fir.wav"
+        );
+    }
+
+    #[test]
+    fn folder_check_compares_components() {
+        assert!(is_path_in_folder(Path::new("/a/b/c"), Path::new("/a/b")));
+        assert!(!is_path_in_folder(Path::new("/a/bc"), Path::new("/a/b")));
+    }
+
+    #[test]
+    fn unsafe_paths_are_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let configs = dir.path().join("configs");
+        let coeffs = dir.path().join("coeffs");
+        std::fs::create_dir_all(&configs).unwrap();
+        std::fs::create_dir_all(&coeffs).unwrap();
+        assert!(path_is_safe("f.raw", Some(&coeffs), Some(&configs)));
+        assert!(path_is_safe(
+            "../coeffs/f.raw",
+            Some(&coeffs),
+            Some(&configs)
+        ));
+        assert!(!path_is_safe(
+            "../../../etc/passwd",
+            Some(&coeffs),
+            Some(&configs)
+        ));
+        assert!(!path_is_safe("/etc/passwd", Some(&coeffs), Some(&configs)));
+        assert!(!path_is_safe("sub/f.raw", None, Some(&configs)));
+        let config = json!({
+            "filters": {
+                "a": {"type": "Conv", "parameters": {"type": "Raw", "filename": "/etc/passwd"}},
+                "b": {"type": "Conv", "parameters": {"type": "Wav", "filename": "ok.wav"}},
+            },
+            "devices": {"capture": {"type": "WavFile", "filename": "/tmp/x.wav"}},
+        });
+        assert_eq!(
+            paths_outside_folders(&config, &coeffs, None, &configs),
+            vec!["/etc/passwd", "/tmp/x.wav"]
+        );
+    }
+
+    #[test]
+    fn uploaded_configs_get_bare_names() {
+        let mut config = json!({
+            "filters": {"a": {"type": "Conv", "parameters": {"type": "Raw", "filename": "C:\\x\\f.raw"}}},
+            "devices": {"playback": {"type": "File", "filename": "/home/u/out.wav"}},
+        });
+        strip_config_paths_to_bare_filenames(&mut config);
+        assert_eq!(config["filters"]["a"]["parameters"]["filename"], "f.raw");
+        assert_eq!(config["devices"]["playback"]["filename"], "out.wav");
+    }
+
+    #[test]
+    fn relpath_walks_up() {
+        assert_eq!(
+            relpath(Path::new("/a/b/c"), Path::new("/a/d")),
+            PathBuf::from("../b/c")
+        );
+        assert_eq!(
+            relpath(Path::new("/a"), Path::new("/a")),
+            PathBuf::from(".")
+        );
+    }
+}

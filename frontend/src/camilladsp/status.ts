@@ -79,7 +79,6 @@ function offlineStatus(): Status {
     processingload: "",
     resamplerload: "",
     cdsp_version: "",
-    py_cdsp_version: "",
     backend_version: "",
     labels: { playback: null, capture: null },
     title: null,

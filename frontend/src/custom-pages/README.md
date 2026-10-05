@@ -281,14 +281,15 @@ evtSource.addEventListener("state", (e) => {
 
 Most custom pages will not need this — they work entirely with the existing API. But if you need
 to compute something the backend doesn't expose (like the crossover frequency response across all
-channels at once), you need to add an endpoint to the backend, at the repository root.
+channels at once), you need to add an endpoint to the backend, in `rust/`.
 
-1. Add a handler function in `backend/views.py` (or a new file imported in `backend/routes.py`).
-2. Register it with `app.router.add_get("/api/mycustom", my_handler)` in the `setup_routes`
-   function in `backend/routes.py`.
-3. The backend can use `pycamilladsp` to call the running DSP. Filter evaluation runs in the
-   browser, so import `evalFilter` from `camilladsp/eval` in the page itself rather than adding an
-   endpoint for it.
+1. Add a handler function in `rust/src/api.rs` (or a new module).
+2. Register it with `.route("/mycustom", get(api::my_handler))` in `api_routes` in
+   `rust/src/main.rs`. The routes there are nested under `/api`.
+3. The handler can call the running DSP through `app.camilla`, the `CamillaClient` in
+   `rust/src/camilla.rs`. Filter evaluation runs in the browser, so import `evalFilter` from
+   `camilladsp/eval` in the page itself rather than adding an endpoint for it.
+4. Rebuild the backend, `cargo build --release` in `rust/`.
 
 ## Available UI components
 
