@@ -122,6 +122,16 @@ impl EqApo {
         let mut params = Map::new();
         params.insert("type".into(), json!(camilla_type));
         let mut rest = &tokens[2..];
+        // A slope in dB per octave right after the type, as in "LS 6dB" or "LSC 12 dB".
+        let (slope, used) = parse_slope(rest);
+        rest = &rest[used..];
+        if let Some(slope) = slope {
+            if is_shelf(camilla_type) {
+                params.insert("slope".into(), json!(slope));
+            } else {
+                log::warn!("Ignoring slope for filter of type {ftype}");
+            }
+        }
         while let Some(first) = rest.first() {
             let (key, value, used) = match *first {
                 "Fc" if unit_is(rest.get(2), "hz") => ("freq", rest.get(1), 3),
@@ -145,7 +155,7 @@ impl EqApo {
             params.insert(key.into(), parse_number(value));
             rest = &rest[used.min(rest.len())..];
         }
-        apply_default_width(camilla_type, &mut params);
+        apply_width(ftype, camilla_type, &mut params);
         Some(params)
     }
 
@@ -328,17 +338,79 @@ impl EqApo {
     }
 }
 
-/// Give a filter the width EqAPO uses when the line leaves it out, from
-/// `BiQuadFilterFactory.cpp` in EqAPO. CamillaDSP has no such defaults.
-/// Peaking filters get nothing, EqAPO refuses those without a width too.
-fn apply_default_width(camilla_type: &str, params: &mut Map<String, Value>) {
-    if matches!(camilla_type, "Lowshelf" | "Highshelf") {
-        // EqAPO ignores a bandwidth for shelves.
-        params.remove("bandwidth");
+fn is_shelf(camilla_type: &str) -> bool {
+    matches!(camilla_type, "Lowshelf" | "Highshelf")
+}
+
+/// A slope at the start of the parameters, `6dB` or `6 dB`, and how many
+/// tokens it took.
+fn parse_slope(tokens: &[&str]) -> (Option<f64>, usize) {
+    let number = |text: &str| text.parse::<f64>().ok();
+    match tokens {
+        [first, ..] if first.ends_with("dB") => match number(&first[..first.len() - 2]) {
+            Some(slope) => (Some(slope), 1),
+            None => (None, 0),
+        },
+        [first, "dB", ..] => match number(first) {
+            Some(slope) => (Some(slope), 2),
+            None => (None, 0),
+        },
+        _ => (None, 0),
     }
-    if params.contains_key("q") || params.contains_key("bandwidth") {
+}
+
+/// Settle the width of a filter the way EqAPO does, see
+/// `BiQuadFilterFactory.cpp` and `BiQuadFilter.cpp` in EqAPO.
+fn apply_width(eqapo_type: &str, camilla_type: &str, params: &mut Map<String, Value>) {
+    if is_shelf(camilla_type) {
+        // EqAPO ignores a bandwidth for shelves, and a slope wins over a Q.
+        params.remove("bandwidth");
+        if params.contains_key("slope") {
+            params.remove("q");
+        }
+    }
+    let has_width = ["q", "bandwidth", "slope"]
+        .iter()
+        .any(|key| params.contains_key(*key));
+    if !has_width {
+        apply_default_width(camilla_type, params);
+    } else if is_shelf(camilla_type) && !eqapo_type.ends_with('C') {
+        corner_to_center(camilla_type == "Lowshelf", params);
+    }
+}
+
+/// LS and HS take the corner frequency of the shelf, where LSC, HSC and
+/// CamillaDSP take the centre. EqAPO moves it to the centre before building
+/// the same biquad that CamillaDSP builds, with a factor it gives as
+/// "frequency adjustment for DCX2496": `10^(|gain| / (80 S))`, half the
+/// `|gain| / (12 S)` octaves that the shelf takes to rise at 12 S dB per
+/// octave. A Q is first turned into the shelf slope S, by the inverse of the
+/// RBJ cookbook relation between the two.
+fn corner_to_center(low: bool, params: &mut Map<String, Value>) {
+    let number = |key: &str| params.get(key).and_then(Value::as_f64);
+    let (Some(freq), Some(gain)) = (number("freq"), number("gain")) else {
+        return;
+    };
+    let s = match (number("slope"), number("q")) {
+        (Some(slope), _) => slope / 12.0,
+        (None, Some(q)) => {
+            let a = 10f64.powf(gain / 40.0);
+            1.0 / ((1.0 / (q * q) - 2.0) / (a + 1.0 / a) + 1.0)
+        }
+        _ => return,
+    };
+    if !(s.is_finite() && s > 0.0) {
         return;
     }
+    let factor = 10f64.powf(gain.abs() / 80.0 / s);
+    let center = if low { freq * factor } else { freq / factor };
+    params.insert("freq".into(), json!(center));
+}
+
+/// The width EqAPO uses when the line leaves it out. CamillaDSP has no such
+/// defaults. Peaking filters get nothing, EqAPO refuses those without a width
+/// too. Without a width EqAPO also leaves the frequency of a shelf as it is.
+fn apply_default_width(camilla_type: &str, params: &mut Map<String, Value>) {
     match camilla_type {
         "Lowpass" | "Highpass" | "Bandpass" => {
             params.insert("q".into(), json!(std::f64::consts::FRAC_1_SQRT_2));
@@ -471,6 +543,42 @@ Filter: ON  NO       Fc     50 Hz
         assert!(
             params("Filter: ON PK Fc 50 Hz Gain 1 dB")
                 .get("q")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn shelf_corner_frequencies_become_centres() {
+        let params = |line: &str| {
+            let mut eqapo = EqApo::new(2);
+            eqapo.parse_line(line);
+            eqapo.filters["Filter_1"]["parameters"].clone()
+        };
+        let freq = |line: &str| params(line)["freq"].as_f64().unwrap();
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
+        // Reference values from EqAPO's formulas, computed separately.
+        assert!(close(
+            freq("Filter: ON LS Fc 100 Hz Gain 6 dB Q 0.707"),
+            118.85607092583747
+        ));
+        assert!(close(
+            freq("Filter: ON HS Fc 1000 Hz Gain -6 dB Q 0.707"),
+            841.3537417234406
+        ));
+        // 12 dB at 6 dB per octave takes two octaves, so the centre is an octave up.
+        let six_db = params("Filter: ON LS 6dB Fc 100 Hz Gain 12 dB");
+        assert_eq!(six_db["slope"], 6.0);
+        assert!(close(six_db["freq"].as_f64().unwrap(), 199.52623149688796));
+        // The C variants and the default width keep the frequency.
+        assert_eq!(freq("Filter: ON LSC Fc 100 Hz Gain 6 dB Q 0.707"), 100.0);
+        let lsc = params("Filter: ON LSC 12 dB Fc 100 Hz Gain 6 dB Q 0.5");
+        assert_eq!((lsc["slope"].clone(), lsc.get("q")), (json!(12.0), None));
+        assert_eq!(lsc["freq"], 100.0);
+        assert_eq!(freq("Filter: ON LS Fc 100 Hz Gain 6 dB"), 100.0);
+        // Only shelves take a slope, EqAPO ignores it for the rest.
+        assert!(
+            params("Filter: ON PK 6dB Fc 100 Hz Gain 1 dB Q 2")
+                .get("slope")
                 .is_none()
         );
     }
