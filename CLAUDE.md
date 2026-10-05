@@ -8,8 +8,8 @@ The web GUI for CamillaDSP. Targets CamillaDSP 5.0.x.
 - `frontend/` is the React frontend, with its own `frontend/CLAUDE.md`. It was a separate
   repository (HEnquist/camillagui) until 5.0, merged in with its full history, every old commit
   rewritten to sit under `frontend/`, so `git log` and `git blame` work without `--follow`.
-- The Python backend (`main.py`, `backend/`, `tests/`) is still in the tree as the reference for
-  the parity tests, but it is no longer built, tested in CI or released. Do not develop it further.
+- The Python backend it replaced was removed after the port. Check out a commit before
+  "Remove the Python backend" to run the parity tests against it.
 
 ## Run commands
 
@@ -26,11 +26,8 @@ cargo clippy --all-targets -- -D warnings
 # Frontend dev server on :5173, proxying /api to :5005, see frontend/CLAUDE.md
 cd frontend && npm run dev
 
-# Black-box API tests against the backend process and a fake CamillaDSP (from the repo root).
-# With both backends, they also compare the Rust and Python responses directly.
-API_TEST_BACKENDS=rust .venv/bin/python -m pytest rust/api_tests
-.venv/bin/python -m pytest rust/api_tests        # rust and python
-.venv/bin/python rust/tools/compare_validate.py --start   # validation verdicts over a corpus
+# Black-box API tests against the backend process and a fake CamillaDSP (from the repo root)
+.venv/bin/python -m pytest rust/api_tests
 ```
 
 ## Source layout (rust/src)
@@ -52,6 +49,7 @@ coeffs.rs      /api/convcoeffs framing, coefficient defaults, $samplerate$ optio
 wav.rs         wav headers
 yaml.rs        YAML to JSON values, with NaN/infinity detection
 gui.rs         the embedded frontend, and the css-variables.css override
+filter_variants.rs  tests only: the frontend's filter fixture against camilladsp-config
 ```
 
 `config/` holds the default `camillagui.yml` and `gui-config.yml`. A release ships them in
@@ -60,11 +58,10 @@ of `css-variables.css` that is served in place of the embedded one.
 
 ## The API must not change
 
-The frontend is unchanged by the port, so every `/api` response keeps the Python backend's
+The frontend was unchanged by the port, so every `/api` response keeps the old Python backend's
 shape, down to quirks like `getparam/mute` answering `True`/`False` and status values with the
-pycamilladsp names (`RUNNING`). The API tests in `rust/api_tests` hold both backends to the same
-behaviour, and `test_parity.py` diffs their responses. When changing a response on purpose,
-change the test and say why there.
+pycamilladsp names (`RUNNING`). The API tests in `rust/api_tests` pin that behaviour. When
+changing a response on purpose, change the test and say why there.
 
 Two things to keep in mind:
 - serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.
@@ -92,6 +89,7 @@ Filter transfer functions are evaluated in the browser, in `frontend/src/camilla
 backend only resolves a Conv filter's file, applies the `$samplerate$` and `$channels$` tokens,
 and returns the samples, framed as binary rather than JSON (see `coeffs::frame_coefficients`).
 
-`tools/dump_filter_variants.py` exports every schema-valid filter config to
-`frontend/src/camilladsp/eval/fixtures/variants.json` for the frontend's `variants.test.ts`. It
-still reads the Python backend's JSON schemas in `backend/dsp/schemas/`.
+`frontend/src/camilladsp/eval/fixtures/variants.json` holds a case for every filter type,
+subtype and optional parameter, for the frontend's `variants.test.ts`. It is edited by hand.
+`rust/src/filter_variants.rs` destructures every filter type without `..`, so anything new in
+camilladsp-config fails to compile there, and its tests fail until the fixture covers it.

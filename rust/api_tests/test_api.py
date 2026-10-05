@@ -1,6 +1,5 @@
 """
-The API tests of tests/test_basic_api.py, over HTTP against real backend
-processes, plus the endpoints that suite did not reach.
+The API tests, over HTTP against the real backend process.
 """
 
 import array
@@ -93,9 +92,8 @@ def test_events_stream_levels(server):
     request = urllib.request.Request(f"http://127.0.0.1:{server.port}/api/events")
     with urllib.request.urlopen(request, timeout=10) as stream:
         assert stream.headers["Content-Type"].startswith("text/event-stream")
-        if server.kind == "rust":
-            # So that nginx passes the events on as they come.
-            assert stream.headers["X-Accel-Buffering"] == "no"
+        # So that nginx passes the events on as they come.
+        assert stream.headers["X-Accel-Buffering"] == "no"
         deadline = time.time() + 5
         event = None
         while time.time() < deadline:
@@ -169,16 +167,12 @@ def test_all_get_endpoints_ok(server, endpoint, parameters):
 
 
 def test_gui_index_redirects(server):
-    if server.kind == "python":
-        pytest.skip("The Python backend serves the frontend from build/, empty in a checkout")
     resp = server.get("/")
     assert resp.status == 200
     assert b"<html" in resp.body.lower()
 
 
 def test_style_override(server):
-    if server.kind == "python":
-        pytest.skip("The Python backend serves the stylesheet from build/")
     embedded = server.get("/gui/css-variables.css")
     assert embedded.status == 200
     override = server.root / "css-variables.css"
@@ -304,7 +298,7 @@ def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_b
         "coeff_dir": str(tmp_path / "coeffs-missing"),
         "audiofiles_dir": str(tmp_path / "audiofiles-missing"),
     }
-    backend = make_backend(server.kind, missing)
+    backend = make_backend(missing)
     log = (backend.root / "backend.log").read_text()
     for setting, path in missing.items():
         assert f"The directory {path}, set as {setting}, does not exist" in log
@@ -324,11 +318,9 @@ def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_b
         assert resp.text == f"The directory {missing[setting]} does not exist. Create it and try again."
 
 
-def test_refuses_to_start_with_ssl_settings(server, make_backend):
-    if server.kind == "python":
-        pytest.skip("The Python backend serves HTTPS itself")
+def test_refuses_to_start_with_ssl_settings(make_backend):
     with pytest.raises(RuntimeError, match="exited"):
-        make_backend(server.kind, {"ssl_certificate": "/some/cert.pem"})
+        make_backend({"ssl_certificate": "/some/cert.pem"})
 
 
 def test_audiofiles_need_a_folder(server):
@@ -459,8 +451,6 @@ def test_translate_eqapo(server):
 
 
 def test_translate_eqapo_gives_valid_filters(server):
-    if server.kind == "python":
-        pytest.skip("The Python backend writes Conv filters with type 'wav'")
     text = "Filter: ON LS Fc 300 Hz Gain 5 dB\nFilter: ON HP Fc 30 Hz\nConvolution: L.wav\n"
     filters = server.post("/api/eqapotojson", params={"channels": 2}, data=text).json()["filters"]
     config = {

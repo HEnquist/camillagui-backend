@@ -1,16 +1,15 @@
 /**
- * Every filter config the schemas allow must evaluate.
+ * Every kind of filter config CamillaDSP accepts must evaluate.
  *
- * The schemas live in the backend, in Python, while the evaluator lives here.
- * `tools/dump_filter_variants.py` at the repository root exports one config per
- * schema variant so that the two stay coupled: a new filter parameter shows up
- * here as a new variant, and this test fails if the evaluator does not handle
- * it. The backend's `test_eval_validated_configs.py` fails if the export is
- * stale, so neither side can drift on its own.
+ * The filter types live in camilladsp-config, in Rust, while the evaluator
+ * lives here. `fixtures/variants.json` holds a case for every filter type,
+ * subtype and optional parameter, and the backend's `rust/src/filter_variants.rs`
+ * fails when camilladsp-config gains one the fixture does not cover, so a new
+ * filter parameter has to show up here, and this test fails if the evaluator
+ * does not handle it.
  *
- * Each variant appears twice, as the user writes it and again after the
- * validator has filled in the schema defaults, which is where optional
- * parameters turn into explicit nulls.
+ * Each variant appears twice, as the user writes it and again as the backend
+ * sends it, with every optional parameter filled in, mostly as explicit nulls.
  *
  * This checks that the evaluator copes, not what it computes. The numbers are
  * covered by properties.test.ts.

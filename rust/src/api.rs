@@ -1,5 +1,5 @@
-//! The `/api` handlers, the counterpart of `backend/views.py`. The responses
-//! are the same as the Python backend's, so the frontend does not change.
+//! The `/api` handlers. The responses are the same as the old Python
+//! backend's, so the frontend did not change with the port.
 
 use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::events::{Publisher, SpectrumStream, SubscribeError};

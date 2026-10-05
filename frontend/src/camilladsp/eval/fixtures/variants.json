@@ -1,5 +1,5 @@
 {
- "generated_by": "tools/dump_filter_variants.py",
+ "maintained_by": "hand, checked against camilladsp-config by rust/src/filter_variants.rs",
  "volume": -45.0,
  "variants": [
   {
@@ -1065,7 +1065,8 @@
    "filter": {
     "type": "Clipper",
     "parameters": {
-     "soft_clip": null
+     "soft_clip": null,
+     "clip_limit": 0.0
     },
     "description": null
    }

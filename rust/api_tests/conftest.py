@@ -1,11 +1,9 @@
 """
-Black-box API tests that run against the real backend processes.
+Black-box API tests that run against the real backend process.
 
-Each backend is started as a subprocess with its own copy of the test files
-and its own fake CamillaDSP, so the same tests can run against the Rust and
-the Python backend and show where they differ. Pick the backends with
-API_TEST_BACKENDS, a comma separated list, "rust,python" by default. The Rust
-backend is built with cargo first unless CAMILLAGUI_BIN points at a binary.
+The backend is started as a subprocess with its own copy of the test files and
+its own fake CamillaDSP. It is built with cargo first unless CAMILLAGUI_BIN
+points at a binary.
 
 Run from the repository root with the backend's venv:
 
@@ -32,8 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from fake_camilladsp import FakeCamillaDSP  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-TESTFILES = REPO / "tests" / "testfiles"
-BACKENDS = [b.strip() for b in os.environ.get("API_TEST_BACKENDS", "rust,python").split(",") if b.strip()]
+TESTFILES = Path(__file__).parent / "testfiles"
 
 
 def free_port():
@@ -67,8 +64,7 @@ def rust_binary():
 class Backend:
     """A backend process, its folders and the fake CamillaDSP it talks to."""
 
-    def __init__(self, kind, root, overrides=None):
-        self.kind = kind
+    def __init__(self, root, overrides=None):
         self.root = Path(root)
         self.config_dir = self.root / "configs"
         shutil.copytree(TESTFILES, self.config_dir)
@@ -100,10 +96,7 @@ class Backend:
         settings_path = self.root / "camillagui.yml"
         settings_path.write_text(yaml.dump(settings))
         self.reset_statefile()
-        if kind == "rust":
-            command = [rust_binary(), "-c", str(settings_path)]
-        else:
-            command = [sys.executable, str(REPO / "main.py"), "-c", str(settings_path)]
+        command = [rust_binary(), "-c", str(settings_path)]
         self.log = open(self.root / "backend.log", "w")
         self.process = subprocess.Popen(command, cwd=REPO, stdout=self.log, stderr=subprocess.STDOUT)
         self.wait_until_ready()
@@ -117,7 +110,7 @@ class Backend:
         deadline = time.time() + 20
         while time.time() < deadline:
             if self.process.poll() is not None:
-                raise RuntimeError(f"{self.kind} backend exited, see {self.root / 'backend.log'}")
+                raise RuntimeError(f"Backend exited, see {self.root / 'backend.log'}")
             try:
                 status = self.get("/api/status").json()
                 if status["cdsp_status"] != "Offline" and self.get("/api/backends").json():
@@ -125,7 +118,7 @@ class Backend:
             except (urllib.error.URLError, ConnectionError, json.JSONDecodeError):
                 pass
             time.sleep(0.1)
-        raise RuntimeError(f"{self.kind} backend did not come up")
+        raise RuntimeError("Backend did not come up")
 
     def wait_for_backends(self, expected):
         """Wait until the backend has read the device types after reconnecting."""
@@ -135,7 +128,7 @@ class Backend:
             if self.get("/api/backends").json() == expected:
                 return
             time.sleep(0.1)
-        raise RuntimeError(f"{self.kind} backend did not read the device types")
+        raise RuntimeError("Backend did not read the device types")
 
     def reset(self):
         was_offline = not self.fake.state["online"]
@@ -188,9 +181,9 @@ class Backend:
         )
 
 
-@pytest.fixture(scope="session", params=BACKENDS)
-def backend_session(request, tmp_path_factory):
-    backend = Backend(request.param, tmp_path_factory.mktemp(request.param))
+@pytest.fixture(scope="session")
+def backend_session(tmp_path_factory):
+    backend = Backend(tmp_path_factory.mktemp("backend"))
     yield backend
     backend.stop()
 
@@ -206,22 +199,11 @@ def make_backend(tmp_path):
     """Start a separate backend with some settings changed."""
     started = []
 
-    def make(kind, overrides):
-        backend = Backend(kind, tmp_path / f"{kind}-{len(started)}", overrides)
+    def make(overrides):
+        backend = Backend(tmp_path / f"backend-{len(started)}", overrides)
         started.append(backend)
         return backend
 
     yield make
     for backend in started:
-        backend.stop()
-
-
-@pytest.fixture(scope="session")
-def both_backends(tmp_path_factory):
-    """One of each, for comparing their responses directly."""
-    if set(BACKENDS) != {"rust", "python"}:
-        pytest.skip("Comparing needs both backends")
-    backends = {kind: Backend(kind, tmp_path_factory.mktemp(f"cmp-{kind}")) for kind in ("rust", "python")}
-    yield backends
-    for backend in backends.values():
         backend.stop()

@@ -378,7 +378,7 @@ cd rust && cargo test
 The API tests in `rust/api_tests` run the backend as a separate process against a fake CamillaDSP,
 and need Python with `pytest`, `aiohttp` and `PyYAML`:
 ```sh
-API_TEST_BACKENDS=rust python -m pytest rust/api_tests
+python -m pytest rust/api_tests
 ```
 
 ## Contributing

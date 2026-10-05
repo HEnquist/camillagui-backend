@@ -9,6 +9,8 @@ mod convolver;
 mod eqapo;
 mod events;
 mod files;
+#[cfg(test)]
+mod filter_variants;
 mod gui;
 mod legacy;
 mod paths;

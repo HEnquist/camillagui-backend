@@ -95,7 +95,7 @@ utilities/
 
 ## API
 
-All requests go to `/api/*` (proxied to the backend in dev). See `../backend/routes.py` for the full list.
+All requests go to `/api/*` (proxied to the backend in dev). See `../rust/src/main.rs` for the full list.
 
 Key endpoints used by the frontend:
 - `GET /api/guiconfig` — GuiConfig JSON
@@ -151,11 +151,11 @@ Four test files cover it:
   fails on wrongness rather than on change, so fixing a bug turns it green.
 - `filters.test.ts` covers the behaviour of each type: band roles, defaults, null handling, unknown
   types raising rather than being dropped.
-- `variants.test.ts` evaluates every filter config the backend's JSON schemas allow, from
-  `fixtures/variants.json`, written by `../tools/dump_filter_variants.py`. **The schemas are in
-  Python and the evaluator is in TypeScript**, so this is the only thing keeping them coupled:
-  when a filter schema changes, re-run that tool and commit the result in the same commit. The
-  backend's `test_eval_validated_configs.py` fails until you do.
+- `variants.test.ts` evaluates a case for every filter type, subtype and optional parameter, from
+  `fixtures/variants.json`. **The filter types are in Rust (camilladsp-config) and the evaluator
+  is in TypeScript**, so this is the only thing keeping them coupled. The fixture is edited by
+  hand, and the backend's `rust/src/filter_variants.rs` fails to compile or fails its tests when
+  camilladsp-config has something the fixture does not cover.
 - `eval.test.ts` covers the plumbing rather than the numbers: the coefficient cache, combining a
   whole pipeline step, and the samplerate and channel options a step offers.
 

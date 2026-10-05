@@ -65,8 +65,6 @@ jobs:
       run: python -m pip install pytest aiohttp PyYAML
 
     - name: API tests
-      env:
-        API_TEST_BACKENDS: rust
       run: python -m pytest rust/api_tests
 
   build:
