@@ -46,8 +46,6 @@ camilla_host: "0.0.0.0"
 camilla_port: 1234
 bind_address: "0.0.0.0"
 port: 5005
-ssl_certificate: null (*)
-ssl_private_key: null (*)
 gui_config_file: null (*)
 config_dir: "~/camilladsp/configs"
 coeff_dir: "~/camilladsp/coeffs"
@@ -77,20 +75,47 @@ This makes the gui available on all networks the system is connected to, which m
 Make sure to change the `bind_address` if you want it to be reachable only on specific
 network interface(s) and/or to set your firewall to block external (internet) access to this backend.
 
-The `ssl_certificate` and `ssl_private_key` options are used to configure SSL, to enable HTTPS.
-Both a certificate and a private key are required.
-The values for `ssl_certificate` and `ssl_private_key` should then be
-the paths to the files containing the certificate and key.
-It's also possible to keep both certificate and key in a single file.
-In that case, provide only `ssl_certificate`.
-See the [Python ssl documentation](https://docs.python.org/3/library/ssl.html#ssl-certificates)
-for more info on certificates.
+### HTTPS
+The backend serves plain HTTP. For HTTPS, put a reverse proxy such as nginx or Caddy in front of it,
+and set `bind_address: "127.0.0.1"` so that the backend itself is only reachable through the proxy.
+
+The `ssl_certificate` and `ssl_private_key` options of earlier versions are gone.
+The backend refuses to start if they are set, rather than quietly serving plain HTTP.
+
+With [Caddy](https://caddyserver.com), this is a complete `Caddyfile`.
+`tls internal` makes Caddy create its own certificate authority and certificate:
+```
+camilladsp.local {
+    tls internal
+    reverse_proxy 127.0.0.1:5005
+}
+```
+
+With nginx, and a certificate and key of your own:
+```nginx
+server {
+    listen 443 ssl;
+    server_name camilladsp.local;
+    ssl_certificate     /path/to/my_certificate.crt;
+    ssl_certificate_key /path/to/my_private_key.key;
+    # Uploaded wav and coefficient files can be large
+    client_max_body_size 1g;
+
+    location / {
+        proxy_pass http://127.0.0.1:5005;
+        proxy_set_header Host $host;
+    }
+}
+```
+The level meters use a server-sent event stream.
+The backend tells nginx not to buffer it, so no further settings are needed for that.
 
 To generate a self-signed certificate and key pair, use openssl:
 ```sh
 openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout my_private_key.key -out my_certificate.crt
 ```
 
+### Folders
 The settings for config_dir and coeff_dir point to two folders where the backend has permissions to write files.
 This is provided to enable uploading of coefficients and config files from the gui.
 

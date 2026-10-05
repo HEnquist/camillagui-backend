@@ -16,6 +16,8 @@ pub struct Settings {
     pub bind_address: String,
     #[serde(default = "default_port")]
     pub port: u16,
+    /// HTTPS is left to a reverse proxy. These are only read so that the
+    /// backend can refuse to start when they are set, see `main`.
     #[serde(default)]
     pub ssl_certificate: Option<PathBuf>,
     #[serde(default)]

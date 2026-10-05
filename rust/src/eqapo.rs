@@ -145,6 +145,7 @@ impl EqApo {
             params.insert(key.into(), parse_number(value));
             rest = &rest[used.min(rest.len())..];
         }
+        apply_default_width(camilla_type, &mut params);
         Some(params)
     }
 
@@ -243,10 +244,9 @@ impl EqApo {
                     "Filter" => self
                         .parse_filter_params(params)
                         .map(|p| json!({"type": "Biquad", "parameters": p})),
-                    // The lowercase "wav" is what the Python backend produced.
                     "Convolution" => Some(json!({
                         "type": "Conv",
-                        "parameters": {"filename": params.trim(), "type": "wav"},
+                        "parameters": {"filename": params.trim(), "type": "Wav"},
                     })),
                     "Preamp" => Self::parse_preamp(params),
                     _ => Self::parse_delay(params),
@@ -328,6 +328,33 @@ impl EqApo {
     }
 }
 
+/// Give a filter the width EqAPO uses when the line leaves it out, from
+/// `BiQuadFilterFactory.cpp` in EqAPO. CamillaDSP has no such defaults.
+/// Peaking filters get nothing, EqAPO refuses those without a width too.
+fn apply_default_width(camilla_type: &str, params: &mut Map<String, Value>) {
+    if matches!(camilla_type, "Lowshelf" | "Highshelf") {
+        // EqAPO ignores a bandwidth for shelves.
+        params.remove("bandwidth");
+    }
+    if params.contains_key("q") || params.contains_key("bandwidth") {
+        return;
+    }
+    match camilla_type {
+        "Lowpass" | "Highpass" | "Bandpass" => {
+            params.insert("q".into(), json!(std::f64::consts::FRAC_1_SQRT_2));
+        }
+        // EqAPO's shelf slope S of 0.9, which CamillaDSP gives in dB per
+        // octave with 12 dB as S = 1.
+        "Lowshelf" | "Highshelf" => {
+            params.insert("slope".into(), json!(0.9 * 12.0));
+        }
+        "Notch" => {
+            params.insert("q".into(), json!(30.0));
+        }
+        _ => {}
+    }
+}
+
 fn unit_is(token: Option<&&str>, unit: &str) -> bool {
     token.is_some_and(|t| t.to_lowercase() == unit)
 }
@@ -397,8 +424,8 @@ Filter: ON  NO       Fc     50 Hz
             conf,
             json!({
                 "filters": {
-                    "Convolution_1": {"type": "Conv", "parameters": {"filename": "L.wav", "type": "wav"}, "description": "Convolution: L.wav"},
-                    "Convolution_2": {"type": "Conv", "parameters": {"filename": "R.wav", "type": "wav"}, "description": "Convolution: R.wav"},
+                    "Convolution_1": {"type": "Conv", "parameters": {"filename": "L.wav", "type": "Wav"}, "description": "Convolution: L.wav"},
+                    "Convolution_2": {"type": "Conv", "parameters": {"filename": "R.wav", "type": "Wav"}, "description": "Convolution: R.wav"},
                 },
                 "mixers": {},
                 "pipeline": [
@@ -406,6 +433,45 @@ Filter: ON  NO       Fc     50 Hz
                     {"type": "Filter", "names": ["Convolution_2"], "description": "Channel: R", "channels": [1]},
                 ],
             })
+        );
+    }
+
+    #[test]
+    fn filters_are_valid_for_camilladsp() {
+        let text = format!("{EXAMPLE}\nConvolution: L.wav\nDelay: 2.5 ms\n");
+        let conf = EqApo::new(2).translate(&text);
+        let filters = conf["filters"].as_object().unwrap();
+        assert_eq!(filters.len(), 10);
+        for (name, filter) in filters {
+            let parsed =
+                serde_json::from_value::<camilladsp_config::config::Filter>(filter.clone());
+            assert!(parsed.is_ok(), "{name}: {filter} {parsed:?}");
+        }
+    }
+
+    #[test]
+    fn widths_default_like_eqapo() {
+        let params = |line: &str| {
+            let mut eqapo = EqApo::new(2);
+            eqapo.parse_line(line);
+            eqapo.filters["Filter_1"]["parameters"].clone()
+        };
+        assert_eq!(params("Filter: ON LS Fc 300 Hz Gain 5 dB")["slope"], 10.8);
+        assert_eq!(
+            params("Filter: ON HSC Fc 3000 Hz Gain 2 dB Q 0.7")["q"],
+            0.7
+        );
+        assert!(
+            params("Filter: ON HS Fc 3000 Hz Gain 2 dB BW Oct 1")
+                .get("bandwidth")
+                .is_none()
+        );
+        assert_eq!(params("Filter: ON NO Fc 50 Hz")["q"], 30.0);
+        assert_eq!(params("Filter: ON BP Fc 50 Hz Q 2")["q"], 2.0);
+        assert!(
+            params("Filter: ON PK Fc 50 Hz Gain 1 dB")
+                .get("q")
+                .is_none()
         );
     }
 
@@ -419,8 +485,8 @@ Filter: ON  NO       Fc     50 Hz
             conf,
             json!({
                 "filters": {
-                    "Filter_1": {"type": "Biquad", "parameters": {"type": "Lowpass", "freq": 2000.0}, "description": "Filter  1: ON  LP       Fc     2000 Hz"},
-                    "Filter_2": {"type": "Biquad", "parameters": {"type": "Highpass", "freq": 2000.0}, "description": "Filter  2: ON  HP       Fc     2000 Hz"},
+                    "Filter_1": {"type": "Biquad", "parameters": {"type": "Lowpass", "freq": 2000.0, "q": std::f64::consts::FRAC_1_SQRT_2}, "description": "Filter  1: ON  LP       Fc     2000 Hz"},
+                    "Filter_2": {"type": "Biquad", "parameters": {"type": "Highpass", "freq": 2000.0, "q": std::f64::consts::FRAC_1_SQRT_2}, "description": "Filter  2: ON  HP       Fc     2000 Hz"},
                 },
                 "mixers": {
                     "Copy_1": {

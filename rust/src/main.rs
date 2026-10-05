@@ -155,9 +155,14 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    if settings.ssl_certificate.is_some() {
+    if settings.ssl_certificate.is_some() || settings.ssl_private_key.is_some() {
         // Serving plain HTTP when HTTPS was asked for would be worse than not starting.
-        eprintln!("ssl_certificate is set, but this build has no HTTPS support.");
+        eprintln!(
+            "HTTPS is no longer built into the backend, use a reverse proxy such as nginx or Caddy \
+             for it, see \"HTTPS\" in the README. Then remove ssl_certificate and ssl_private_key \
+             from {}.",
+            config_path.display()
+        );
         std::process::exit(1);
     }
 

@@ -93,6 +93,9 @@ def test_events_stream_levels(server):
     request = urllib.request.Request(f"http://127.0.0.1:{server.port}/api/events")
     with urllib.request.urlopen(request, timeout=10) as stream:
         assert stream.headers["Content-Type"].startswith("text/event-stream")
+        if server.kind == "rust":
+            # So that nginx passes the events on as they come.
+            assert stream.headers["X-Accel-Buffering"] == "no"
         deadline = time.time() + 5
         event = None
         while time.time() < deadline:
@@ -321,6 +324,13 @@ def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_b
         assert resp.text == f"The directory {missing[setting]} does not exist. Create it and try again."
 
 
+def test_refuses_to_start_with_ssl_settings(server, make_backend):
+    if server.kind == "python":
+        pytest.skip("The Python backend serves HTTPS itself")
+    with pytest.raises(RuntimeError, match="exited"):
+        make_backend(server.kind, {"ssl_certificate": "/some/cert.pem"})
+
+
 def test_audiofiles_need_a_folder(server):
     assert server.get("/api/storedaudiofiles").status == 404
 
@@ -446,6 +456,22 @@ def test_translate_eqapo(server):
         "q": 10.0,
     }
     assert content["pipeline"][1]["channels"] == [0]
+
+
+def test_translate_eqapo_gives_valid_filters(server):
+    if server.kind == "python":
+        pytest.skip("The Python backend writes Conv filters with type 'wav'")
+    text = "Filter: ON LS Fc 300 Hz Gain 5 dB\nFilter: ON HP Fc 30 Hz\nConvolution: L.wav\n"
+    filters = server.post("/api/eqapotojson", params={"channels": 2}, data=text).json()["filters"]
+    config = {
+        "devices": server.get("/api/getconfig").json()["devices"],
+        "filters": filters,
+        "pipeline": [{"type": "Filter", "channels": [0], "names": sorted(filters)}],
+    }
+    resp = server.post("/api/validateconfig", json_body=config)
+    # The wav file does not exist, which is only a warning. Anything else is a real problem.
+    issues = resp.json() if resp.status == 406 else []
+    assert [issue for issue in issues if issue[2] == "error"] == []
 
 
 def test_translate_eqapo_bad(server):

@@ -154,10 +154,13 @@ pub async fn get_events(State(app): Shared) -> ApiResult {
         return Err(unavailable("Event stream is disabled"));
     }
     let mut response = app.publisher.subscribe().into_response();
-    response.headers_mut().insert(
+    let headers = response.headers_mut();
+    headers.insert(
         header::ACCESS_CONTROL_ALLOW_ORIGIN,
         HeaderValue::from_static("*"),
     );
+    // Tells nginx not to buffer the stream, which would hold the events back.
+    headers.insert("x-accel-buffering", HeaderValue::from_static("no"));
     Ok(response)
 }
 
