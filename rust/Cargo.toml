@@ -1,0 +1,29 @@
+[package]
+name = "camillagui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.9"
+camilladsp-config = { version = "5.0.0", path = "../../../../rust/camilladsp/camilladsp-config" }
+clap = { version = "4.6.7", features = ["derive"] }
+env_logger = "0.11.11"
+futures-util = "0.3.34"
+log = "0.4.34"
+rust-embed = { version = "8.12.0", features = ["mime-guess"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
+tokio-stream = { version = "0.1.19", features = ["sync"] }
+tokio-tungstenite = "0.30.0"
+yaml_serde = "0.10.3"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[features]
+# Accept configs for camilladsp's test-only dummy devices.
+dummy-backend = ["camilladsp-config/dummy-backend"]
