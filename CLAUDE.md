@@ -53,8 +53,9 @@ filter_variants.rs  tests only: the frontend's filter fixture against camilladsp
 ```
 
 `config/` holds the default `camillagui.yml` and `gui-config.yml`. A release ships them in
-`config/` next to the binary, which is where the binary looks by default, together with a copy
-of `css-variables.css` that is served in place of the embedded one.
+`config/` next to the binary, which is where the binary looks by default. A
+`css-variables.css` placed there by the user is served in place of the embedded one; the
+release does not ship one, so an upgrade always brings the current stylesheet.
 
 ## The API must not change
 

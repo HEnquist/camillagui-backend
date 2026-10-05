@@ -32,6 +32,8 @@ created above, but these locations can be changed by editing the file.
 
 Upgrading from 4.x: the backend no longer needs Python.
 The settings file has the same format, so an existing `camillagui.yml` can be copied over.
+A customized `build/css-variables.css` can be copied to `config/css-variables.css`,
+see [Styling the GUI](#styling-the-gui).
 
 
 ## Configuration
@@ -218,7 +220,7 @@ As an example, read a filename from a text file: `on_get_active_config: "cat myc
 
 ## Customizing the GUI
 Some functionality of the GUI can be customized by editing `config/gui-config.yml`.
-The styling can be customized by editing `config/css-variables.css`.
+The styling can be customized with a `config/css-variables.css`, see [Styling the GUI](#styling-the-gui).
 
 ### GUI title
 Change the GUI title by setting `page_title`.
@@ -294,10 +296,18 @@ hide_multithreading: false
 ```
 
 ### Styling the GUI
-The UI can be styled by editing `config/css-variables.css`.
-Further instructions on how to do this, or switch back to the brighter black/white UI, can be found there.
-The backend serves this file in place of the stylesheet built into it.
-Delete it to go back to the built-in one, which is also the way to pick up a newer version after an upgrade.
+The stylesheet is built into the backend, and the release does not include a copy.
+To restyle the UI, save the built-in one as `config/css-variables.css` and edit it there.
+With the GUI running, download it from `http://<host>:5005/gui/css-variables.css`, for example:
+```sh
+curl -o config/css-variables.css http://localhost:5005/gui/css-variables.css
+```
+The backend serves this file in place of the built-in one whenever it exists.
+Further instructions on how to edit it, or switch back to the brighter black/white UI,
+can be found in the file itself.
+Delete it to go back to the built-in one.
+After an upgrade, a customized file keeps being used,
+so compare it with the new built-in one to pick up any new variables.
 
 ### Other GUI Options
 Changes to the currently edited config can be applied automatically, but this behavior is disabled by default.

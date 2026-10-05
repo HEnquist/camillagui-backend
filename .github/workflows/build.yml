@@ -130,12 +130,12 @@ jobs:
       run: cargo build --release --target ${{ matrix.target }}
 
     # A release is the binary, with the default settings in config/ next to
-    # it, and a copy of the stylesheet there to edit, which the backend serves
-    # in place of the one built in.
+    # it. The stylesheet is built in; a css-variables.css the user puts in
+    # config/ is served in its place.
     - name: Package
       run: |
         mkdir -p package/config
-        cp config/camillagui.yml config/gui-config.yml frontend/build/css-variables.css package/config/
+        cp config/camillagui.yml config/gui-config.yml package/config/
         cp rust/target/${{ matrix.target }}/release/camillagui* package/
         rm -f package/camillagui.d package/camillagui.pdb
         if [[ "${{ matrix.asset }}" == *.zip ]]; then
