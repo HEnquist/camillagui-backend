@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
-import { Config, defaultConfig, WavInfo } from "../camilladsp/config"
 import { Schemas } from "../api/client"
+import { completeConfig, Config, defaultConfig, WavInfo } from "../camilladsp/config"
 import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { FileInfo } from "../utilities/files"
@@ -525,53 +525,43 @@ function makeAudioFileInfo(name: string): FileInfo {
   }
 }
 
-function parseBooleanString(value: string) {
-  return value.trim().toLowerCase() === "true"
-}
-
 function cloneConfig(config: Config) {
   return structuredClone(config)
 }
 
-function handleSetParam(pathname: string, value: string) {
-  const parts = pathname.split("/").filter(Boolean)
-  const name = parts[2]
-  if (name === "volume") {
-    state.volume = Number(value)
-    state.faders[0] = { ...state.faders[0], volume: state.volume }
-    appendLog(`main volume set to ${state.volume.toFixed(1)} dB`)
-    persistState()
-    return textResponse("OK")
-  }
-  if (name === "mute") {
-    state.mute = parseBooleanString(value)
-    state.faders[0] = { ...state.faders[0], mute: state.mute }
-    appendLog(`main mute set to ${state.mute}`)
-    persistState()
-    return textResponse("OK")
-  }
-  return textResponse("Unknown parameter", 404)
+function errorResponse(message: string, status: number) {
+  const body: Schemas["ErrorBody"] = { message }
+  return jsonResponse(body, status)
 }
 
-function handleSetIndexedParam(pathname: string, value: string) {
-  const parts = pathname.split("/").filter(Boolean)
-  const name = parts[2]
-  const index = Number(parts[3])
+function noContent() {
+  return new Response(null, { status: 204 })
+}
+
+/** Set a fader, 0 being the main volume. */
+function setFader(index: number, change: Partial<Schemas["Fader"]>) {
   const target = state.faders[index]
-  if (!target) return textResponse("Invalid fader index", 404)
-  if (name === "volume") {
-    target.volume = Number(value)
-    appendLog(`aux fader ${index} volume set to ${target.volume.toFixed(1)} dB`)
-    persistState()
-    return textResponse("OK")
+  if (!target) return errorResponse("Invalid fader index", 400)
+  Object.assign(target, change)
+  if (index === 0) {
+    state.volume = target.volume
+    state.mute = target.mute
   }
-  if (name === "mute") {
-    target.mute = parseBooleanString(value)
-    appendLog(`aux fader ${index} mute set to ${target.mute}`)
-    persistState()
-    return textResponse("OK")
-  }
-  return textResponse("Unknown parameter", 404)
+  const name = index === 0 ? "main" : `aux fader ${index}`
+  if (change.volume !== undefined) appendLog(`${name} volume set to ${target.volume.toFixed(1)} dB`)
+  if (change.mute !== undefined) appendLog(`${name} mute set to ${target.mute}`)
+  persistState()
+  return noContent()
+}
+
+/** The index in a `/api/param/faders/{index}/...` path. */
+function faderIndex(pathname: string) {
+  return Number(pathname.split("/")[4])
+}
+
+/** What the import endpoints send: the sections there are, with the optional fields filled in. */
+function demoFragment(filters: Record<string, Schemas["Filter"]>): Schemas["ConfigFragment"] {
+  return { filters }
 }
 
 function makeWavInfo(): WavInfo {
@@ -601,15 +591,17 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const config = activeName && state.storedConfigs[activeName] ? state.storedConfigs[activeName] : state.currentConfig
     state.currentConfig = cloneConfig(config)
     persistState()
-    return jsonResponse({
+    const startConfig: Schemas["StartConfig"] = {
       configFileName: activeName,
       config: demoStripAudioPaths(cloneConfig(config)),
       source: activeName ? "active" : "dsp",
-    })
+    }
+    return jsonResponse(startConfig)
   }
 
   if (pathname === "/api/getactiveconfigfilename" && method === "GET") {
-    return jsonResponse({ configFileName: state.activeConfigFileName })
+    const active: Schemas["ActiveConfigFile"] = { configFileName: state.activeConfigFileName }
+    return jsonResponse(active)
   }
 
   if (pathname === "/api/getconfig" && method === "GET") {
@@ -617,46 +609,44 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/setconfig" && method === "POST") {
-    const payload = await requestJson<{ filename?: string; config: Config }>(input, init)
-    const offenders = demoPathsAreValid(payload.config)
+    const { config } = await requestJson<Schemas["ConfigBody"]>(input, init)
+    const offenders = demoPathsAreValid(completeConfig(config))
     if (offenders.length > 0) {
-      return textResponse(
+      return errorResponse(
         `Paths outside configured directories: ${offenders.join(", ")}. Set allow_absolute_paths: true to allow this.`,
         403,
       )
     }
-    state.currentConfig = cloneConfig(payload.config)
+    state.currentConfig = cloneConfig(completeConfig(config))
     state.processingStopped = false
-    if (payload.filename) {
-      state.activeConfigFileName = payload.filename
-    }
-    appendLog(`applied config${payload.filename ? ` ${payload.filename}` : ""}`)
+    appendLog("applied config")
     persistState()
-    return textResponse("OK")
+    return noContent()
   }
 
   if (pathname === "/api/saveconfigfile" && method === "POST") {
-    const payload = await requestJson<{ filename: string; config: Config }>(input, init)
-    const offenders = demoPathsAreValid(payload.config)
+    const payload = await requestJson<Schemas["SaveConfigBody"]>(input, init)
+    const config = completeConfig(payload.config)
+    const offenders = demoPathsAreValid(config)
     if (offenders.length > 0) {
-      return textResponse(
+      return errorResponse(
         `Paths outside configured directories: ${offenders.join(", ")}. Set allow_absolute_paths: true to allow this.`,
         403,
       )
     }
-    const configToStore = demoResolveAudioPaths(cloneConfig(payload.config))
-    state.currentConfig = cloneConfig(payload.config)
+    const configToStore = demoResolveAudioPaths(cloneConfig(config))
+    state.currentConfig = cloneConfig(config)
     state.storedConfigs[payload.filename] = configToStore
     state.activeConfigFileName = payload.filename
     touchConfigFile(payload.filename)
     appendLog(`saved config ${payload.filename}`)
     persistState()
-    return textResponse("OK")
+    return noContent()
   }
 
   if (pathname === "/api/getconfigfile" && method === "GET") {
     const name = url.searchParams.get("name")
-    if (!name || !state.storedConfigs[name]) return textResponse("Config file not found", 404)
+    if (!name || !state.storedConfigs[name]) return errorResponse(`Config file '${name}' not found.`, 404)
     return jsonResponse(demoStripAudioPaths(cloneConfig(state.storedConfigs[name])))
   }
 
@@ -665,13 +655,13 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/setactiveconfigfile" && method === "POST") {
-    const payload = await requestJson<{ name: string }>(input, init)
-    if (!state.storedConfigs[payload.name]) return textResponse("Config file not found", 404)
-    state.activeConfigFileName = payload.name
-    state.currentConfig = cloneConfig(state.storedConfigs[payload.name])
-    appendLog(`activated config ${payload.name}`)
+    const { name } = await requestJson<Schemas["ActiveConfigBody"]>(input, init)
+    if (!state.storedConfigs[name]) return errorResponse(`Config file '${name}' not found.`, 404)
+    state.activeConfigFileName = name
+    state.currentConfig = cloneConfig(state.storedConfigs[name])
+    appendLog(`activated config ${name}`)
     persistState()
-    return textResponse("OK")
+    return noContent()
   }
 
   if (pathname === "/api/status" && method === "GET") {
@@ -701,35 +691,45 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     return jsonResponse(status)
   }
 
-  if (pathname === "/api/getparam/volume" && method === "GET") {
-    return textResponse(state.volume.toString())
+  if (pathname === "/api/param/volume" && method === "GET") {
+    return jsonResponse(state.volume)
   }
 
-  if (pathname === "/api/getparam/mute" && method === "GET") {
-    return textResponse(state.mute ? "True" : "False")
+  if (pathname === "/api/param/volume" && method === "POST") {
+    return setFader(0, { volume: await requestJson<number>(input, init) })
   }
 
-  if (pathname === "/api/getparamjson/faders" && method === "GET") {
-    return jsonResponse(state.faders)
+  if (pathname === "/api/param/mute" && method === "GET") {
+    return jsonResponse(state.mute)
   }
 
-  if (pathname.startsWith("/api/setparam/") && method === "POST") {
-    return handleSetParam(pathname, await requestText(input, init))
+  if (pathname === "/api/param/mute" && method === "POST") {
+    return setFader(0, { mute: await requestJson<boolean>(input, init) })
   }
 
-  if (pathname.startsWith("/api/setparamindex/") && method === "POST") {
-    return handleSetIndexedParam(pathname, await requestText(input, init))
+  if (pathname === "/api/param/faders" && method === "GET") {
+    const faders: Schemas["Fader"][] = state.faders
+    return jsonResponse(faders)
+  }
+
+  if (/^\/api\/param\/faders\/\d+\/volume$/.test(pathname) && method === "POST") {
+    return setFader(faderIndex(pathname), { volume: await requestJson<number>(input, init) })
+  }
+
+  if (/^\/api\/param\/faders\/\d+\/mute$/.test(pathname) && method === "POST") {
+    return setFader(faderIndex(pathname), { mute: await requestJson<boolean>(input, init) })
   }
 
   if (pathname === "/api/stop" && method === "POST") {
     state.processingStopped = true
     appendLog("processing stopped")
     persistState()
-    return textResponse("OK")
+    return noContent()
   }
 
   if (pathname === "/api/validateconfig" && method === "POST") {
-    return textResponse("OK")
+    const issues: Schemas["ValidationIssue"][] = []
+    return jsonResponse(issues)
   }
 
   if (pathname === "/api/convcoeffs" && method === "POST") {
@@ -826,7 +826,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/renameconfig" && method === "POST") {
     const source = url.searchParams.get("source")
     const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedConfigs[source]) return textResponse("Config file not found", 404)
+    if (!source || !target || !state.storedConfigs[source]) return errorResponse("Config file not found", 404)
     state.storedConfigs[target] = state.storedConfigs[source]
     delete state.storedConfigs[source]
     state.storedConfigMeta[target] = state.storedConfigMeta[source] ?? { lastModified: Math.floor(Date.now() / 1000) }
@@ -840,7 +840,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/renamecoeff" && method === "POST") {
     const source = url.searchParams.get("source")
     const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedCoeffs[source]) return textResponse("Coeff file not found", 404)
+    if (!source || !target || !state.storedCoeffs[source]) return errorResponse("Coeff file not found", 404)
     state.storedCoeffs[target] = state.storedCoeffs[source]
     delete state.storedCoeffs[source]
     appendLog(`renamed coeff ${source} to ${target}`)
@@ -885,8 +885,8 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/renameaudiofile" && method === "POST") {
     const source = url.searchParams.get("source")
     const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedAudioFiles[source]) return textResponse("Audio file not found", 404)
-    if (state.storedAudioFiles[target]) return textResponse(`File ${target} already exists`, 400)
+    if (!source || !target || !state.storedAudioFiles[source]) return errorResponse("Audio file not found", 404)
+    if (state.storedAudioFiles[target]) return errorResponse(`File ${target} already exists`, 400)
     state.storedAudioFiles[target] = state.storedAudioFiles[source]
     delete state.storedAudioFiles[source]
     appendLog(`renamed wav ${source} to ${target}`)
@@ -963,10 +963,10 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const backend = pathname.split("/").at(-1) ?? ""
     const device = url.searchParams.get("device") ?? "default"
     if (!isKnownDemoDevice(backend, device)) {
-      return textResponse("device not found", 400)
+      return errorResponse("device not found", 400)
     }
     if (isBusyDemoDevice(device)) {
-      return textResponse("device busy", 400)
+      return errorResponse("device busy", 400)
     }
     const backendFormats = demoFormatsForBackend(backend)
     const highRateCapabilities = demoHighRateSamplerates(backendFormats)
@@ -997,10 +997,10 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const backend = pathname.split("/").at(-1) ?? ""
     const device = url.searchParams.get("device") ?? "default"
     if (!isKnownDemoDevice(backend, device)) {
-      return textResponse("device not found", 400)
+      return errorResponse("device not found", 400)
     }
     if (isBusyDemoDevice(device)) {
-      return textResponse("device busy", 400)
+      return errorResponse("device busy", 400)
     }
     const backendFormats = demoFormatsForBackend(backend)
     const highRateCapabilities = demoHighRateSamplerates(backendFormats)
@@ -1028,45 +1028,37 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/ymltojson" && method === "POST") {
-    const parsed = parseYaml(await requestText(input, init))
-    return textResponse(JSON.stringify(parsed ?? {}))
+    const { text } = await requestJson<Schemas["ImportText"]>(input, init)
+    // Taken as it is, without the backend's checks, migration and filled in optional fields.
+    const fragment = (parseYaml(text) ?? {}) as Schemas["ConfigFragment"]
+    return jsonResponse(fragment)
   }
 
   if (pathname === "/api/convolvertojson" && method === "POST") {
-    return textResponse(
-      JSON.stringify({
-        filters: {
-          ImportedConvolver: {
-            type: "Conv",
-            parameters: {
-              type: "Wav",
-              filename: "demo-room.wav",
-            },
-          },
+    return jsonResponse(
+      demoFragment({
+        ImportedConvolver: {
+          type: "Conv",
+          description: null,
+          parameters: { type: "Wav", filename: "demo-room.wav", channel: null },
         },
       }),
     )
   }
 
   if (pathname === "/api/eqapotojson" && method === "POST") {
-    return textResponse(
-      JSON.stringify({
-        filters: {
-          ImportedEqApo: {
-            type: "Biquad",
-            parameters: {
-              type: "Peaking",
-              freq: 1000,
-              q: 0.707,
-              gain: 3,
-            },
-          },
+    return jsonResponse(
+      demoFragment({
+        ImportedEqApo: {
+          type: "Biquad",
+          description: null,
+          parameters: { type: "Peaking", freq: 1000, q: 0.707, gain: 3 },
         },
       }),
     )
   }
 
-  return textResponse(`No demo handler for ${method} ${pathname}`, 404)
+  return errorResponse(`No demo handler for ${method} ${pathname}`, 404)
 }
 
 type ChannelState = {

@@ -1,27 +1,33 @@
-//! The `/api` handlers. The responses are the same as the old Python
-//! backend's, so the frontend did not change with the port.
+//! The `/api` handlers. The typed ones are in the OpenAPI spec; the rest still
+//! answer what the old Python backend did, until they are typed too.
 
 use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::events::{self, SubscribeError};
+use crate::extract::{Json, Path as UrlPath, Query};
 use crate::files::{self, ConfigContext, Details};
 use crate::paths::{self, file_in_folder};
 use crate::settings::{self, Settings};
 use crate::status::Status;
 use crate::status::StatusCache;
-use crate::validate::{self, DeviceTypes};
+use crate::validate::{self, DeviceTypes, Severity, ValidationIssue};
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
 use axum::body::Bytes;
-use axum::extract::{Multipart, Path as UrlPath, Query, State};
+use axum::extract::{Multipart, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
+use camilladsp_config::config::{
+    Configuration, Filter, Mixer, PathElement, PipelineStep, Processor,
+};
 use camilladsp_config::protocol::{
-    SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
+    Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
 };
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use utoipa::{IntoParams, ToSchema};
 
 pub struct AppState {
     pub settings: Settings,
@@ -47,19 +53,38 @@ type Shared = State<Arc<AppState>>;
 
 const NO_STORE: (header::HeaderName, &str) = (header::CACHE_CONTROL, "no-store");
 
-/// An error response: a status and a plain text message.
+/// The body of every error response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorBody {
+    /// What went wrong, to show to the user.
+    pub message: String,
+    /// When CamillaDSP refused a command, the name of its error, for example
+    /// `ProcessingNotRunningError`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<String>,
+}
+
+/// An error response: a status, and an `ErrorBody`.
 #[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
-    text: String,
+    body: ErrorBody,
 }
 
 impl ApiError {
-    pub fn new(status: StatusCode, text: impl Into<String>) -> Self {
+    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
         ApiError {
             status,
-            text: text.into(),
+            body: ErrorBody {
+                message: message.into(),
+                result: None,
+            },
         }
+    }
+
+    fn with_result(mut self, result: String) -> Self {
+        self.body.result = Some(result);
+        self
     }
 }
 
@@ -81,15 +106,17 @@ fn unavailable(text: impl Into<String>) -> ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status, [NO_STORE], self.text).into_response()
+        (self.status, [NO_STORE], axum::Json(self.body)).into_response()
     }
 }
 
-/// Talking to CamillaDSP failed. pycamilladsp raised these into the Python
-/// handlers, which did not catch them, so they ended up as 500.
+/// Talking to CamillaDSP failed: it could not be reached, or it refused.
 impl From<DspError> for ApiError {
     fn from(err: DspError) -> Self {
-        internal(err.to_string())
+        match err {
+            DspError::Io(message) => unavailable(message),
+            DspError::Command { result, message } => internal(message).with_result(result),
+        }
     }
 }
 
@@ -107,8 +134,12 @@ fn ok() -> ApiResult {
     Ok(text_response("OK"))
 }
 
-/// Parse a JSON body. The frontend does not always send a content type, and
-/// the Python backend did not ask for one, so this does not either.
+fn no_content() -> ApiResult {
+    Ok((StatusCode::NO_CONTENT, [NO_STORE]).into_response())
+}
+
+/// Parse a JSON body of an endpoint that is not typed yet. The frontend does
+/// not send a content type to those, so this does not ask for one.
 fn parse_body<T: DeserializeOwned>(body: &Bytes) -> Result<T, ApiError> {
     serde_json::from_slice(body).map_err(|err| bad_request(format!("Invalid request body: {err}")))
 }
@@ -127,15 +158,6 @@ async fn blocking<T: Send + 'static>(
     tokio::task::spawn_blocking(work)
         .await
         .map_err(|err| internal(err.to_string()))?
-}
-
-/// Send a config parsed from YAML, refusing it if it had NaN or infinity in
-/// it. JSON cannot carry those, and CamillaDSP accepts neither.
-fn config_json_response(parsed_nonfinite: &[String], data: Value) -> ApiResult {
-    if !parsed_nonfinite.is_empty() {
-        return Err(bad_request(yaml::nonfinite_message(parsed_nonfinite)));
-    }
-    Ok(json_response(data))
 }
 
 // ── Status and events ──────────────────────────────────────────────────────
@@ -163,7 +185,7 @@ pub async fn get_status(State(app): Shared) -> Response {
     responses(
         (status = 200, content_type = "text/event-stream", body = StateUpdate,
             description = "A `state` event with the current state, then one for each change"),
-        (status = 503, description = "CamillaDSP cannot be reached"),
+        (status = 503, description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
 pub async fn get_state(State(app): Shared) -> ApiResult {
@@ -181,7 +203,7 @@ pub async fn get_state(State(app): Shared) -> ApiResult {
         (status = 200, content_type = "text/event-stream", body = VuLevels,
             description = "A `levels` event for each update from CamillaDSP"),
         (status = 503, description = "CamillaDSP cannot be reached, or the level stream is \
-            disabled in the settings"),
+            disabled in the settings", body = ErrorBody),
     )
 )]
 pub async fn get_levels(State(app): Shared) -> ApiResult {
@@ -209,8 +231,9 @@ pub async fn get_levels(State(app): Shared) -> ApiResult {
     responses(
         (status = 200, content_type = "text/event-stream", body = SpectrumData,
             description = "A `spectrum` event for each update from CamillaDSP"),
-        (status = 503, description = "Processing is not running, CamillaDSP cannot be reached, \
-            or the level stream is disabled in the settings"),
+        (status = 503, description = "Processing is not running (with the result \
+            `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is \
+            disabled in the settings", body = ErrorBody),
     )
 )]
 pub async fn get_spectrum(
@@ -236,131 +259,121 @@ fn event_stream_response(stream: Result<impl IntoResponse, SubscribeError>) -> A
             headers.insert("x-accel-buffering", HeaderValue::from_static("no"));
             Ok(response)
         }
-        Err(SubscribeError::ProcessingNotRunning) => Ok((
-            StatusCode::SERVICE_UNAVAILABLE,
-            [NO_STORE],
-            axum::Json(json!({"result": "ProcessingNotRunningError"})),
-        )
-            .into_response()),
+        Err(SubscribeError::ProcessingNotRunning) => Err(unavailable("Processing is not running")
+            .with_result("ProcessingNotRunningError".to_string())),
         Err(SubscribeError::Other(message)) => Err(unavailable(message)),
     }
 }
 
-// ── Parameters ─────────────────────────────────────────────────────────────
+// ── Volume and faders ──────────────────────────────────────────────────────
 
-/// A float the way Python's `str` writes it, with a `.0` on whole numbers.
-/// CamillaDSP sends f32 values as their shortest decimal text, which is what
-/// Python read and printed, so an f32 is printed as an f32 and not widened.
-fn py_float(value: impl std::fmt::Debug) -> String {
-    format!("{value:?}")
+/// The main volume, in dB.
+#[utoipa::path(
+    get,
+    path = "/param/volume",
+    responses(
+        (status = 200, body = f32),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn get_volume(State(app): Shared) -> ApiResult {
+    Ok(json_response(app.camilla.volume().await?))
 }
 
-/// An f32 as the f64 Python got from parsing its shortest decimal text.
-fn as_python_f64(value: f32) -> f64 {
-    format!("{value:?}").parse().unwrap_or(f64::from(value))
+/// Set the main volume, in dB.
+#[utoipa::path(
+    post,
+    path = "/param/volume",
+    request_body = f32,
+    responses(
+        (status = 204, description = "Set"),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn set_volume(State(app): Shared, Json(volume): Json<f32>) -> ApiResult {
+    app.camilla.set_volume(volume).await?;
+    no_content()
 }
 
-fn py_bool(value: bool) -> &'static str {
-    if value { "True" } else { "False" }
+/// Whether the main volume is muted.
+#[utoipa::path(
+    get,
+    path = "/param/mute",
+    responses(
+        (status = 200, body = bool),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn get_mute(State(app): Shared) -> ApiResult {
+    Ok(json_response(app.camilla.mute().await?))
 }
 
-pub async fn get_param(State(app): Shared, UrlPath(name): UrlPath<String>) -> ApiResult {
-    let camilla = &app.camilla;
-    let text = match name.as_str() {
-        "volume" => py_float(camilla.volume().await?),
-        "mute" => py_bool(camilla.mute().await?).to_string(),
-        "signalrange" => py_float(camilla.signal_range().await?),
-        "signalrangedb" => {
-            let range = as_python_f64(camilla.signal_range().await?);
-            if range > 0.0 {
-                py_float(20.0 * (range / 2.0).log10())
-            } else {
-                "-1000".to_string()
-            }
-        }
-        "capturerateraw" => camilla.capture_rate().await?.to_string(),
-        "updateinterval" => camilla.update_interval().await?.to_string(),
-        "configname" => camilla
-            .config_file_path()
-            .await?
-            .unwrap_or_else(|| "None".to_string()),
-        "configraw" => camilla.config_yaml().await?,
-        "processingload" => py_float(camilla.processing_load().await?),
-        "resamplerload" => py_float(camilla.resampler_load().await?),
-        _ => return Err(not_found(format!("Unknown parameter {name}"))),
-    };
-    Ok(text_response(text))
+/// Mute or unmute the main volume.
+#[utoipa::path(
+    post,
+    path = "/param/mute",
+    request_body = bool,
+    responses(
+        (status = 204, description = "Set"),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn set_mute(State(app): Shared, Json(mute): Json<bool>) -> ApiResult {
+    app.camilla.set_mute(mute).await?;
+    no_content()
 }
 
-pub async fn get_param_json(State(app): Shared, UrlPath(name): UrlPath<String>) -> ApiResult {
-    match name.as_str() {
-        "faders" => Ok(json_response(app.camilla.faders().await?)),
-        _ => Err(not_found(format!("Unknown parameter {name}"))),
-    }
+/// Every fader, the main volume first, then the aux faders from 1 up.
+#[utoipa::path(
+    get,
+    path = "/param/faders",
+    responses(
+        (status = 200, body = Vec<Fader>),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn get_faders(State(app): Shared) -> ApiResult {
+    Ok(json_response(app.camilla.faders().await?))
 }
 
-pub async fn get_list_param(State(app): Shared, UrlPath(name): UrlPath<String>) -> ApiResult {
-    let result = match name.as_str() {
-        "capturesignalpeak" => to_json(&app.camilla.capture_signal_peak().await?),
-        "playbacksignalpeak" => to_json(&app.camilla.playback_signal_peak().await?),
-        // What the Python backend sent for anything else.
-        _ => json!("[]"),
-    };
-    Ok(json_response(result))
-}
-
-fn parse_bool(value: &str) -> Result<bool, ApiError> {
-    match value.to_lowercase().as_str() {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(bad_request(format!("Invalid boolean value {value}"))),
-    }
-}
-
-fn parse_number<T: std::str::FromStr>(value: &str) -> Result<T, ApiError> {
-    value
-        .trim()
-        .parse()
-        .map_err(|_| bad_request(format!("Invalid value {value}")))
-}
-
-pub async fn set_param(
+/// Set the volume of a fader, in dB.
+#[utoipa::path(
+    post,
+    path = "/param/faders/{index}/volume",
+    params(("index" = usize, Path, description = "The fader, 0 for the main volume")),
+    request_body = f32,
+    responses(
+        (status = 204, description = "Set"),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn set_fader_volume(
     State(app): Shared,
-    UrlPath(name): UrlPath<String>,
-    value: String,
+    UrlPath(index): UrlPath<usize>,
+    Json(volume): Json<f32>,
 ) -> ApiResult {
-    let camilla = &app.camilla;
-    match name.as_str() {
-        "volume" => camilla.set_volume(parse_number(&value)?).await?,
-        "mute" => camilla.set_mute(parse_bool(&value)?).await?,
-        "updateinterval" => camilla.set_update_interval(parse_number(&value)?).await?,
-        "configname" => camilla.set_config_file_path(value).await?,
-        "configraw" => camilla.set_config_yaml(value).await?,
-        _ => {}
-    }
-    ok()
+    app.camilla.set_fader_volume(index, volume).await?;
+    no_content()
 }
 
-pub async fn set_param_index(
+/// Mute or unmute a fader.
+#[utoipa::path(
+    post,
+    path = "/param/faders/{index}/mute",
+    params(("index" = usize, Path, description = "The fader, 0 for the main volume")),
+    request_body = bool,
+    responses(
+        (status = 204, description = "Set"),
+        (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
+    )
+)]
+pub async fn set_fader_mute(
     State(app): Shared,
-    UrlPath((name, index)): UrlPath<(String, String)>,
-    value: String,
+    UrlPath(index): UrlPath<usize>,
+    Json(mute): Json<bool>,
 ) -> ApiResult {
-    let index: usize = parse_number(&index)?;
-    match name.as_str() {
-        "volume" => {
-            app.camilla
-                .set_fader_volume(index, parse_number(&value)?)
-                .await?
-        }
-        "mute" => {
-            app.camilla
-                .set_fader_mute(index, parse_bool(&value)?)
-                .await?
-        }
-        _ => {}
-    }
-    ok()
+    app.camilla.set_fader_mute(index, mute).await?;
+    no_content()
 }
 
 // ── Coefficients ───────────────────────────────────────────────────────────
@@ -464,6 +477,16 @@ pub async fn get_defaults_for_coeffs(
 
 // ── The active config ──────────────────────────────────────────────────────
 
+/// The config CamillaDSP runs, with the file paths as CamillaDSP has them.
+#[utoipa::path(
+    get,
+    path = "/getconfig",
+    responses(
+        (status = 200, body = Option<Configuration>, description = "The config, null if CamillaDSP has none"),
+        (status = "default", description = "CamillaDSP cannot be reached, or sent a config the GUI \
+            cannot read", body = ErrorBody),
+    )
+)]
 pub async fn get_config(State(app): Shared) -> ApiResult {
     Ok(json_response(app.camilla.config().await?))
 }
@@ -506,53 +529,83 @@ fn with_absolute_paths(app: &AppState, mut config: Value) -> Value {
     config
 }
 
-#[derive(serde::Deserialize)]
-struct ConfigBody {
-    config: Value,
+/// A config from the frontend made ready for CamillaDSP, with every file path
+/// absolute. Refused if it has paths outside the configured folders, unless
+/// absolute paths are allowed.
+fn config_for_dsp(app: &AppState, config: &Configuration) -> Result<Value, ApiError> {
+    let config = to_json(config);
+    check_config_paths(app, &config)?;
+    Ok(with_absolute_paths(app, config))
 }
 
-pub async fn set_config(State(app): Shared, body: Bytes) -> ApiResult {
-    let ConfigBody { config } = parse_body(&body)?;
-    check_config_paths(&app, &config)?;
-    let config = with_absolute_paths(&app, config);
+#[derive(Deserialize, ToSchema)]
+pub struct ConfigBody {
+    /// With the file paths as the GUI has them, relative to the configured folders.
+    config: Configuration,
+}
+
+/// Apply a config.
+#[utoipa::path(
+    post,
+    path = "/setconfig",
+    request_body = ConfigBody,
+    responses(
+        (status = 204, description = "Applied"),
+        (status = 403, description = "The config has paths outside the configured folders", body = ErrorBody),
+        (status = 422, description = "The body is not a config, or CamillaDSP refused it", body = ErrorBody),
+        (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
+    )
+)]
+pub async fn set_config(State(app): Shared, Json(body): Json<ConfigBody>) -> ApiResult {
+    let config = config_for_dsp(&app, &body.config)?;
     match app.camilla.set_config(&config).await {
-        Ok(()) => ok(),
-        Err(DspError::Command { message, .. }) => {
-            Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, message))
+        Ok(()) => no_content(),
+        Err(DspError::Command { result, message }) => {
+            Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, message).with_result(result))
         }
-        // CamillaDSP is not there, so at least tell what it would have said.
-        Err(DspError::Io(_)) => {
-            let types = app.device_types();
-            let issues = blocking(move || Ok(validate::validate(config, &types))).await?;
-            if issues.is_empty() {
-                ok()
-            } else {
-                Ok(json_response(issues))
-            }
-        }
-    }
-}
-
-pub async fn stop_processing(State(app): Shared) -> ApiResult {
-    match app.camilla.stop().await {
-        Ok(()) => ok(),
-        Err(err @ DspError::Command { .. }) => Err(bad_request(err.to_string())),
         Err(err) => Err(err.into()),
     }
 }
 
-pub async fn validate_config(State(app): Shared, body: Bytes) -> ApiResult {
-    let config: Value = parse_body(&body)?;
+/// Stop processing.
+#[utoipa::path(
+    post,
+    path = "/stop",
+    responses(
+        (status = 204, description = "Stopped"),
+        (status = 400, description = "CamillaDSP refused", body = ErrorBody),
+        (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
+    )
+)]
+pub async fn stop_processing(State(app): Shared) -> ApiResult {
+    match app.camilla.stop().await {
+        Ok(()) => no_content(),
+        Err(DspError::Command { result, message }) => Err(bad_request(message).with_result(result)),
+        Err(err) => Err(err.into()),
+    }
+}
+
+/// Check a config without applying it, with the file paths as the GUI has
+/// them.
+///
+/// The body is meant to be a config, but any JSON is taken, since a config
+/// that does not parse is reported as an issue like any other.
+#[utoipa::path(
+    post,
+    path = "/validateconfig",
+    request_body = Configuration,
+    responses(
+        (status = 200, body = Vec<ValidationIssue>, description = "Every issue, none if the config is valid"),
+        (status = "default", description = "The body is not JSON", body = ErrorBody),
+    )
+)]
+pub async fn validate_config(State(app): Shared, Json(config): Json<Value>) -> ApiResult {
     let config = with_absolute_paths(&app, config);
     let types = app.device_types();
     // Validation reads every coefficient file, which can take a while.
     let issues = blocking(move || Ok(validate::validate(config, &types))).await?;
-    if issues.is_empty() {
-        log::debug!("Validated config, ok");
-        return ok();
-    }
-    log::debug!("Config has errors: {issues:?}");
-    Ok((StatusCode::NOT_ACCEPTABLE, [NO_STORE], axum::Json(issues)).into_response())
+    log::debug!("Validated config: {issues:?}");
+    Ok(json_response(issues))
 }
 
 // ── Config files ───────────────────────────────────────────────────────────
@@ -560,64 +613,104 @@ pub async fn validate_config(State(app): Shared, body: Bytes) -> ApiResult {
 enum ReadError {
     NotFound,
     Unreadable(String),
-    Yaml(String),
-}
-
-/// A config file as the GUI wants it: optional fields filled in, coefficient
-/// files in coeff_dir as bare names and the rest relative to config_dir, and
-/// audio files in audiofiles_dir as bare names.
-fn read_config_for_gui(app: &AppState, path: &Path) -> Result<yaml::Parsed, ReadError> {
-    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
-        std::io::ErrorKind::NotFound => ReadError::NotFound,
-        _ => ReadError::Unreadable(err.to_string()),
-    })?;
-    let parsed = yaml::parse(&text).map_err(|err| ReadError::Yaml(err.to_string()))?;
-    let mut config = validate::with_defaults(parsed.value);
-    paths::make_config_filter_paths_relative(
-        &mut config,
-        &app.settings.config_dir,
-        &app.settings.coeff_dir,
-    );
-    paths::make_audio_file_paths_bare(&mut config, app.audiofiles_dir());
-    Ok(yaml::Parsed {
-        value: config,
-        nonfinite: parsed.nonfinite,
-    })
+    /// Not YAML, or not a config the GUI can use.
+    Invalid(String),
 }
 
 impl ReadError {
     fn message(&self) -> String {
         match self {
             ReadError::NotFound => "File not found".to_string(),
-            ReadError::Unreadable(msg) | ReadError::Yaml(msg) => msg.clone(),
+            ReadError::Unreadable(msg) | ReadError::Invalid(msg) => msg.clone(),
+        }
+    }
+
+    /// The error response for a file the frontend asked for by name.
+    fn for_file(self, name: &str) -> ApiError {
+        match self {
+            ReadError::NotFound => not_found(format!("Config file '{name}' not found.")),
+            ReadError::Unreadable(msg) => {
+                bad_request(format!("Unable to read config file '{name}': {msg}"))
+            }
+            ReadError::Invalid(msg) => bad_request(msg),
         }
     }
 }
 
+fn read_yaml_file(path: &Path) -> Result<yaml::Parsed, ReadError> {
+    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
+        std::io::ErrorKind::NotFound => ReadError::NotFound,
+        _ => ReadError::Unreadable(err.to_string()),
+    })?;
+    yaml::parse(&text).map_err(|err| ReadError::Invalid(err.to_string()))
+}
+
+/// Refuse YAML that had NaN or infinity in it. JSON cannot carry those, and
+/// CamillaDSP accepts neither.
+fn check_finite(parsed: &yaml::Parsed) -> Result<(), String> {
+    if parsed.nonfinite.is_empty() {
+        Ok(())
+    } else {
+        Err(yaml::nonfinite_message(&parsed.nonfinite))
+    }
+}
+
+/// A config read from a file, as the GUI wants it: optional fields filled in,
+/// coefficient files in coeff_dir as bare names and the rest relative to
+/// config_dir, and audio files in audiofiles_dir as bare names.
+fn config_for_gui(app: &AppState, parsed: yaml::Parsed) -> Result<Configuration, String> {
+    check_finite(&parsed)?;
+    let mut config = parsed.value;
+    paths::make_config_filter_paths_relative(
+        &mut config,
+        &app.settings.config_dir,
+        &app.settings.coeff_dir,
+    );
+    paths::make_audio_file_paths_bare(&mut config, app.audiofiles_dir());
+    validate::parse(config)
+}
+
+fn read_config_for_gui(app: &AppState, path: &Path) -> Result<Configuration, ReadError> {
+    config_for_gui(app, read_yaml_file(path)?).map_err(ReadError::Invalid)
+}
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct ConfigFileQuery {
+    /// The file name, in config_dir.
+    name: String,
+    /// Bring a config for an older CamillaDSP up to date.
+    #[serde(default)]
+    #[param(required = false)]
+    migrate: bool,
+}
+
+/// A config file, with the file paths relative to the configured folders.
+#[utoipa::path(
+    get,
+    path = "/getconfigfile",
+    params(ConfigFileQuery),
+    responses(
+        (status = 200, body = Configuration),
+        (status = 400, description = "The file is not a config the GUI can use, or could not be \
+            migrated", body = ErrorBody),
+        (status = 404, description = "There is no such file", body = ErrorBody),
+    )
+)]
 pub async fn get_config_file(
     State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
+    Query(query): Query<ConfigFileQuery>,
 ) -> ApiResult {
-    let name = query_param(&query, "name")?.to_string();
-    let migrate = matches!(
-        query.get("migrate").map(|m| m.to_lowercase()).as_deref(),
-        Some("true" | "1" | "yes")
-    );
+    let ConfigFileQuery { name, migrate } = query;
     let path = file_in_folder(&app.settings.config_dir, &name).map_err(bad_request)?;
     let types = app.device_types();
     blocking(move || {
-        let parsed = if migrate {
+        let config = if migrate {
             read_and_migrate(&app, &path, &name, &types)?
         } else {
-            read_config_for_gui(&app, &path).map_err(|err| match err {
-                ReadError::NotFound => not_found(format!("Config file '{name}' not found.")),
-                ReadError::Unreadable(msg) => {
-                    bad_request(format!("Unable to read config file '{name}': {msg}"))
-                }
-                ReadError::Yaml(msg) => bad_request(msg),
-            })?
+            read_config_for_gui(&app, &path).map_err(|err| err.for_file(&name))?
         };
-        config_json_response(&parsed.nonfinite, parsed.value)
+        Ok(json_response(config))
     })
     .await
 }
@@ -628,12 +721,9 @@ fn read_and_migrate(
     path: &Path,
     name: &str,
     types: &DeviceTypes,
-) -> Result<yaml::Parsed, ApiError> {
-    let text = std::fs::read_to_string(path).map_err(|err| match err.kind() {
-        std::io::ErrorKind::NotFound => not_found(format!("Config file '{name}' not found.")),
-        _ => bad_request(format!("Unable to read config file '{name}': {err}")),
-    })?;
-    let parsed = yaml::parse(&text).map_err(|err| bad_request(err.to_string()))?;
+) -> Result<Configuration, ApiError> {
+    let parsed = read_yaml_file(path).map_err(|err| err.for_file(name))?;
+    check_finite(&parsed).map_err(bad_request)?;
     let mut config = parsed.value;
     if !config.is_object() {
         return Err(bad_request(
@@ -650,15 +740,14 @@ fn read_and_migrate(
     let issues = validate::validate(with_absolute_paths(app, config.clone()), types);
     let blocking_errors: Vec<String> = issues
         .iter()
-        .filter(|issue| issue[2] == "error")
+        .filter(|issue| issue.severity == Severity::Error)
         .map(|issue| {
-            let location: Vec<String> = issue[0]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|p| match p {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
+            let location: Vec<String> = issue
+                .path
+                .iter()
+                .map(|element| match element {
+                    PathElement::Key(key) => key.clone(),
+                    PathElement::Index(index) => index.to_string(),
                 })
                 .collect();
             let location = if location.is_empty() {
@@ -666,7 +755,7 @@ fn read_and_migrate(
             } else {
                 location.join("/")
             };
-            format!("- {location}: {}", issue[1].as_str().unwrap_or_default())
+            format!("- {location}: {}", issue.message)
         })
         .collect();
     if !blocking_errors.is_empty() {
@@ -676,88 +765,170 @@ fn read_and_migrate(
         )));
     }
     paths::make_audio_file_paths_bare(&mut config, app.audiofiles_dir());
-    Ok(yaml::Parsed {
-        value: config,
-        nonfinite: parsed.nonfinite,
-    })
+    validate::parse(config).map_err(bad_request)
 }
 
+/// The default config file, `default_config` in the settings, with the file
+/// paths relative to the configured folders.
+#[utoipa::path(
+    get,
+    path = "/getdefaultconfigfile",
+    responses(
+        (status = 200, body = Configuration),
+        (status = 404, description = "No default config is set, or the file is missing", body = ErrorBody),
+        (status = 500, description = "The file is not a config the GUI can use", body = ErrorBody),
+    )
+)]
 pub async fn get_default_config_file(State(app): Shared) -> ApiResult {
     let Some(path) = app.settings.default_config.clone().filter(|p| p.is_file()) else {
         return Err(not_found("No default config"));
     };
     blocking(move || {
-        let parsed = read_config_for_gui(&app, &path).map_err(|err| {
+        let config = read_config_for_gui(&app, &path).map_err(|err| {
             log::error!(
                 "Failed to get default config file, error: {}",
                 err.message()
             );
             internal(err.message())
         })?;
-        config_json_response(&parsed.nonfinite, parsed.value)
+        Ok(json_response(config))
     })
     .await
 }
 
-#[derive(serde::Deserialize)]
-struct SaveBody {
-    config: Value,
+#[derive(Deserialize, ToSchema)]
+pub struct SaveConfigBody {
+    /// With the file paths as the GUI has them, relative to the configured folders.
+    config: Configuration,
+    /// The file name, in config_dir.
     filename: String,
 }
 
 /// Save a config to a file in config_dir, with absolute paths so that
 /// CamillaDSP can use it at startup without the GUI.
-pub async fn save_config_file(State(app): Shared, body: Bytes) -> ApiResult {
-    let SaveBody { config, filename } = parse_body(&body)?;
-    check_config_paths(&app, &config)?;
-    let config = with_absolute_paths(&app, config);
+#[utoipa::path(
+    post,
+    path = "/saveconfigfile",
+    request_body = SaveConfigBody,
+    responses(
+        (status = 204, description = "Saved"),
+        (status = 400, description = "The file name is not valid", body = ErrorBody),
+        (status = 403, description = "The config has paths outside the configured folders", body = ErrorBody),
+        (status = "default", description = "The file could not be written", body = ErrorBody),
+    )
+)]
+pub async fn save_config_file(State(app): Shared, Json(body): Json<SaveConfigBody>) -> ApiResult {
+    let SaveConfigBody { config, filename } = body;
+    let config = config_for_dsp(&app, &config)?;
     let path = file_in_folder(&app.settings.config_dir, &filename).map_err(bad_request)?;
     std::fs::write(&path, yaml::dump(&config))
         .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
-    ok()
+    no_content()
 }
 
-pub async fn config_to_yml(body: Bytes) -> ApiResult {
-    let content: Value = parse_body(&body)?;
-    Ok(text_response(yaml::dump(&content)))
+// ── Imports ────────────────────────────────────────────────────────────────
+
+/// Part of a config, as an import gives it: any of the sections, with any of
+/// the device settings.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ConfigFragment {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Any of the device settings. They are not checked, since an import may
+    /// have only some of them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub devices: Option<HashMap<String, Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mixers: Option<HashMap<String, Mixer>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filters: Option<HashMap<String, Filter>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processors: Option<HashMap<String, Processor>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pipeline: Option<Vec<PipelineStep>>,
 }
 
-/// Parse a YAML config and send it as JSON with its optional fields filled in.
-pub async fn parse_and_validate_yml_config_to_json(text: String) -> ApiResult {
-    match yaml::parse(&text) {
-        Ok(parsed) => {
-            let config = validate::with_defaults(parsed.value);
-            config_json_response(&parsed.nonfinite, config)
-        }
-        // The Python backend sent null for a config it could not parse.
-        Err(_) => Ok(json_response(Value::Null)),
+impl ConfigFragment {
+    /// Parse a fragment, with the optional fields filled in, or say where it
+    /// went wrong.
+    fn parse(value: Value) -> Result<Self, String> {
+        serde_path_to_error::deserialize(value).map_err(|err| {
+            let path = err.path().to_string();
+            if path == "." {
+                err.into_inner().to_string()
+            } else {
+                format!("{path}: {}", err.into_inner())
+            }
+        })
     }
 }
 
-/// Parse YAML, which may be just part of a config, migrating it from older
-/// versions of CamillaDSP if needed.
-pub async fn yaml_to_json(text: String) -> ApiResult {
-    let parsed = yaml::parse(&text).map_err(|err| bad_request(err.to_string()))?;
+#[derive(Deserialize, ToSchema)]
+pub struct ImportText {
+    /// The text of the file to import from.
+    text: String,
+}
+
+/// Read a YAML file to import from, which may be just part of a config,
+/// migrating it from older versions of CamillaDSP if needed.
+#[utoipa::path(
+    post,
+    path = "/ymltojson",
+    request_body = ImportText,
+    responses(
+        (status = 200, body = ConfigFragment),
+        (status = 400, description = "The text is not YAML, or not part of a config", body = ErrorBody),
+    )
+)]
+pub async fn yaml_to_json(Json(body): Json<ImportText>) -> ApiResult {
+    let parsed = yaml::parse(&body.text).map_err(|err| bad_request(err.to_string()))?;
+    check_finite(&parsed).map_err(bad_request)?;
     let mut loaded = parsed.value;
     legacy::migrate_legacy_config(&mut loaded);
-    config_json_response(&parsed.nonfinite, loaded)
+    let fragment = ConfigFragment::parse(loaded).map_err(bad_request)?;
+    Ok(json_response(fragment))
 }
 
-pub async fn translate_convolver_to_json(text: String) -> ApiResult {
-    let translated = convolver::translate(&text).map_err(bad_request)?;
-    Ok(json_response(translated))
+/// Translate a Convolver config.
+#[utoipa::path(
+    post,
+    path = "/convolvertojson",
+    request_body = ImportText,
+    responses(
+        (status = 200, body = ConfigFragment),
+        (status = 400, description = "The text is not a Convolver config", body = ErrorBody),
+    )
+)]
+pub async fn translate_convolver_to_json(Json(body): Json<ImportText>) -> ApiResult {
+    let translated = convolver::translate(&body.text).map_err(bad_request)?;
+    let fragment = ConfigFragment::parse(translated).map_err(internal)?;
+    Ok(json_response(fragment))
 }
 
-pub async fn translate_eqapo_to_json(
-    Query(query): Query<HashMap<String, String>>,
+#[derive(Deserialize, ToSchema)]
+pub struct EqApoImport {
+    /// The text of the Equalizer APO config.
     text: String,
-) -> ApiResult {
-    let channels: i64 = query
-        .get("channels")
-        .ok_or_else(|| bad_request("Missing required query parameter 'channels'"))?
-        .parse()
-        .map_err(|err| bad_request(format!("Invalid channel count: {err}")))?;
-    Ok(json_response(eqapo::EqApo::new(channels).translate(&text)))
+    /// The number of channels, which decides what the channel names map to.
+    channels: i64,
+}
+
+/// Translate an Equalizer APO config.
+#[utoipa::path(
+    post,
+    path = "/eqapotojson",
+    request_body = EqApoImport,
+    responses(
+        (status = 200, body = ConfigFragment),
+        (status = "default", description = "The body is not valid", body = ErrorBody),
+    )
+)]
+pub async fn translate_eqapo_to_json(Json(body): Json<EqApoImport>) -> ApiResult {
+    let translated = eqapo::EqApo::new(body.channels).translate(&body.text);
+    let fragment = ConfigFragment::parse(translated).map_err(internal)?;
+    Ok(json_response(fragment))
 }
 
 // ── Startup and the active config file ─────────────────────────────────────
@@ -854,47 +1025,105 @@ async fn set_active_config_path(app: &AppState, path: &str) -> Result<(), ApiErr
     Ok(())
 }
 
-pub async fn get_active_config_name(State(app): Shared) -> Response {
-    let name = active_config_name(&app).await;
-    json_response(json!({"configFileName": name}))
+#[derive(Serialize, ToSchema)]
+pub struct ActiveConfigFile {
+    /// The file name of the active config, null when there is none, or it is
+    /// not in config_dir.
+    #[serde(rename = "configFileName")]
+    #[schema(required)]
+    config_file_name: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
-struct NameBody {
+/// The active config file, the one CamillaDSP loads when it starts.
+#[utoipa::path(
+    get,
+    path = "/getactiveconfigfilename",
+    responses((status = 200, body = ActiveConfigFile))
+)]
+pub async fn get_active_config_name(State(app): Shared) -> Response {
+    let config_file_name = active_config_name(&app).await;
+    json_response(ActiveConfigFile { config_file_name })
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct ActiveConfigBody {
+    /// The file name, in config_dir.
     name: String,
 }
 
-pub async fn set_active_config_name(State(app): Shared, body: Bytes) -> ApiResult {
-    let NameBody { name } = parse_body(&body)?;
-    let path = file_in_folder(&app.settings.config_dir, &name).map_err(bad_request)?;
+/// Make a config file the active one, the one CamillaDSP loads when it
+/// starts.
+#[utoipa::path(
+    post,
+    path = "/setactiveconfigfile",
+    request_body = ActiveConfigBody,
+    responses(
+        (status = 204, description = "Set"),
+        (status = 400, description = "The file name is not valid", body = ErrorBody),
+        (status = "default", description = "CamillaDSP refused", body = ErrorBody),
+    )
+)]
+pub async fn set_active_config_name(
+    State(app): Shared,
+    Json(body): Json<ActiveConfigBody>,
+) -> ApiResult {
+    let path = file_in_folder(&app.settings.config_dir, &body.name).map_err(bad_request)?;
     set_active_config_path(&app, &paths::to_string(&path)).await?;
-    ok()
+    no_content()
+}
+
+/// Where the config the GUI starts with came from.
+#[derive(Clone, Copy, Serialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum ConfigSource {
+    /// The config CamillaDSP runs.
+    Dsp,
+    /// The active config file.
+    Active,
+    /// The default config file.
+    Default,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct StartConfig {
+    pub config: Configuration,
+    pub source: ConfigSource,
+    /// The file the config came from, null if it is not known.
+    #[serde(rename = "configFileName")]
+    #[schema(required)]
+    pub config_file_name: Option<String>,
 }
 
 /// The config to load into the GUI when it starts: the one in CamillaDSP if
 /// there is one, otherwise the active config file, otherwise the default one.
+#[utoipa::path(
+    get,
+    path = "/getstartconfig",
+    responses(
+        (status = 200, body = StartConfig),
+        (status = 404, description = "There is no config to start with", body = ErrorBody),
+        (status = 500, description = "No config file could be read", body = ErrorBody),
+    )
+)]
 pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
-    let dsp_config = app.camilla.config().await.ok().filter(|c| !c.is_null());
-    if let Some(config) = dsp_config {
-        if legacy::identify_version(&config) == Some(legacy::CURRENT_VERSION) {
-            let mut name = active_config_name(&app).await;
-            if name.is_none() {
-                name = app
-                    .camilla
-                    .config_file_path()
-                    .await
-                    .ok()
-                    .flatten()
-                    .map(|path| paths::basename(&path))
-                    .filter(|n| !n.is_empty());
-            }
-            let mut data = json!({"config": config, "source": "dsp"});
-            if let Some(name) = name {
-                data["configFileName"] = json!(name);
-            }
-            return Ok(json_response(data));
+    // An unreadable config is logged by the client.
+    if let Ok(Some(config)) = app.camilla.config().await {
+        let mut name = active_config_name(&app).await;
+        if name.is_none() {
+            name = app
+                .camilla
+                .config_file_path()
+                .await
+                .ok()
+                .flatten()
+                .map(|path| paths::basename(&path))
+                .filter(|n| !n.is_empty());
         }
-        log::warn!("Ignoring startup config from DSP, not valid for current GUI version");
+        return Ok(json_response(StartConfig {
+            config,
+            source: ConfigSource::Dsp,
+            config_file_name: name,
+        }));
     }
 
     let settings = &app.settings;
@@ -902,12 +1131,12 @@ pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
     if let Some(active) = active_config_name(&app).await {
         let path = settings.config_dir.join(&active);
         if path.is_file() {
-            candidates.push((path, "active", active));
+            candidates.push((path, ConfigSource::Active, active));
         }
     }
     if let Some(default) = settings.default_config.as_ref().filter(|p| p.is_file()) {
         let name = paths::basename(&paths::to_string(default));
-        candidates.push((default.clone(), "default", name));
+        candidates.push((default.clone(), ConfigSource::Default, name));
     }
     if candidates.is_empty() {
         return Err(not_found("No active or default config"));
@@ -915,7 +1144,15 @@ pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
     blocking(move || {
         let mut first_error = None;
         for (path, source, name) in candidates {
-            match read_config_for_gui(&app, &path) {
+            let config = read_yaml_file(&path).and_then(|parsed| {
+                if legacy::identify_version(&parsed.value) != Some(legacy::CURRENT_VERSION) {
+                    return Ok(None);
+                }
+                config_for_gui(&app, parsed)
+                    .map(Some)
+                    .map_err(ReadError::Invalid)
+            });
+            match config {
                 Err(err) => {
                     log::error!(
                         "Failed to get startup config from file {}, error: {}",
@@ -924,15 +1161,14 @@ pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
                     );
                     first_error.get_or_insert(err.message());
                 }
-                Ok(parsed) => {
-                    if legacy::identify_version(&parsed.value) == Some(legacy::CURRENT_VERSION) {
-                        let data = json!({
-                            "configFileName": name,
-                            "config": parsed.value,
-                            "source": source,
-                        });
-                        return config_json_response(&parsed.nonfinite, data);
-                    }
+                Ok(Some(config)) => {
+                    return Ok(json_response(StartConfig {
+                        config,
+                        source,
+                        config_file_name: Some(name),
+                    }));
+                }
+                Ok(None) => {
                     log::warn!("Ignoring startup config {name}, not valid for current GUI version");
                 }
             }
@@ -1285,17 +1521,5 @@ pub async fn get_backends(State(app): Shared) -> Response {
     match app.status.device_types() {
         Some(types) => json_response([types.playback, types.capture]),
         None => json_response(json!([])),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn floats_print_like_python() {
-        assert_eq!(py_float(-20.0f32), "-20.0");
-        assert_eq!(py_float(0.2f32), "0.2");
-        assert_eq!(as_python_f64(0.2f32), 0.2f64);
     }
 }

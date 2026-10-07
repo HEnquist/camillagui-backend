@@ -2,7 +2,7 @@
 //! deleting and zipping their files.
 
 use crate::paths::file_in_folder;
-use crate::validate::{self, DeviceTypes};
+use crate::validate::{self, DeviceTypes, ValidationIssue};
 use crate::{legacy, paths, wav, yaml};
 use serde_json::{Map, Value, json};
 use std::io::Write;
@@ -91,7 +91,7 @@ pub fn list_file_names(folder: &Path) -> Vec<String> {
 }
 
 fn single_error(message: &str) -> Value {
-    json!([[[], message, "error"]])
+    json!([ValidationIssue::error(message)])
 }
 
 fn config_file_details(path: &Path, data: &mut Map<String, Value>, context: &ConfigContext) {
@@ -158,7 +158,7 @@ fn config_file_details(path: &Path, data: &mut Map<String, Value>, context: &Con
             let valid = !validate::has_errors(&issues);
             data.insert("valid".into(), json!(valid));
             if !issues.is_empty() {
-                data.insert("errors".into(), Value::Array(issues));
+                data.insert("errors".into(), json!(issues));
             }
         }
         Some(older) => {
@@ -386,11 +386,11 @@ mod tests {
         assert_eq!(eqapo["version"], Value::Null);
         assert_eq!(eqapo["valid"], false);
         assert_eq!(
-            eqapo["errors"][0][1],
+            eqapo["errors"][0]["message"],
             "This does not appear to be a CamillaDSP config file."
         );
         assert!(
-            get("broken.yml")["errors"][0][1]
+            get("broken.yml")["errors"][0]["message"]
                 .as_str()
                 .unwrap()
                 .contains("YAML syntax error on line")

@@ -4,6 +4,7 @@ import { mdiVolumeOff, mdiChevronDown } from "@mdi/js"
 import { Range } from "immutable"
 import { throttle, DebouncedFuncLeading } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
+import { api, Schemas } from "../api/client"
 import { GuiConfig } from "../guiconfig"
 import { Box, MdiButton } from "../utilities/ui-components"
 
@@ -18,10 +19,7 @@ type State = {
   visible: boolean
 }
 
-export interface Fader {
-  volume: number
-  mute: boolean
-}
+export type Fader = Schemas["Fader"]
 
 let auxFadersVisible = false
 
@@ -58,11 +56,10 @@ export class FadersPoller {
       return
     }
     try {
-      const fadersreq = fetch("/api/getparamjson/faders")
-      const faders = (await (await fadersreq).json()) as Fader[]
+      const { data: faders } = await api.GET("/api/param/faders")
       // Only update if the timer hasn't been restarted
       // while we were reading the volume and mute settings.
-      if (this.timerId === undefined) {
+      if (faders && this.timerId === undefined) {
         this.onUpdate(faders.slice(1))
       }
     } catch (err) {
@@ -181,19 +178,12 @@ export class AuxFadersBox extends React.Component<Props, State> {
 
   private async setDspFaders(faders: Fader[], prevFaders: Fader[]) {
     for (const [idx, fader] of faders.entries()) {
+      const path = { index: idx + 1 }
       if (Math.round(fader.volume * 10) !== Math.round(prevFaders[idx].volume * 10)) {
-        await fetch("/api/setparamindex/volume/" + (idx + 1), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain; charset=us-ascii" },
-          body: fader.volume.toString(),
-        })
+        await api.POST("/api/param/faders/{index}/volume", { params: { path }, body: fader.volume })
       }
       if (fader.mute !== prevFaders[idx].mute) {
-        await fetch("/api/setparamindex/mute/" + (idx + 1), {
-          method: "POST",
-          headers: { "Content-Type": "text/plain; charset=us-ascii" },
-          body: fader.mute.toString(),
-        })
+        await api.POST("/api/param/faders/{index}/mute", { params: { path }, body: fader.mute })
       }
     }
   }

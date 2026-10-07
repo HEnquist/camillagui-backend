@@ -1,6 +1,7 @@
 //! A client for CamillaDSP's websocket API, using the protocol types from
 //! camilladsp-config so the messages are exactly the ones the DSP itself uses.
 
+use camilladsp_config::config::{self, Configuration};
 use camilladsp_config::protocol::{
     AudioDeviceDescriptor, ChannelLabels, Fader, ProcessingState, StopReason, WsCommand, WsReply,
     WsResult,
@@ -384,41 +385,6 @@ impl CamillaClient {
         )
     }
 
-    pub async fn signal_range(&self) -> Result<f32, DspError> {
-        value_of!(
-            self.request(WsCommand::GetSignalRange).await?,
-            GetSignalRange
-        )
-    }
-
-    pub async fn capture_signal_peak(&self) -> Result<Vec<f32>, DspError> {
-        value_of!(
-            self.request(WsCommand::GetCaptureSignalPeak).await?,
-            GetCaptureSignalPeak
-        )
-    }
-
-    pub async fn playback_signal_peak(&self) -> Result<Vec<f32>, DspError> {
-        value_of!(
-            self.request(WsCommand::GetPlaybackSignalPeak).await?,
-            GetPlaybackSignalPeak
-        )
-    }
-
-    pub async fn update_interval(&self) -> Result<usize, DspError> {
-        value_of!(
-            self.request(WsCommand::GetUpdateInterval).await?,
-            GetUpdateInterval
-        )
-    }
-
-    pub async fn set_update_interval(&self, value: usize) -> Result<(), DspError> {
-        result_of!(
-            self.request(WsCommand::SetUpdateInterval { value }).await?,
-            SetUpdateInterval
-        )
-    }
-
     pub async fn config_file_path(&self) -> Result<Option<String>, DspError> {
         value_of!(
             self.request(WsCommand::GetConfigFilePath).await?,
@@ -440,22 +406,23 @@ impl CamillaClient {
         )
     }
 
-    /// The active config as YAML, `null` if there is none.
-    pub async fn config_yaml(&self) -> Result<String, DspError> {
-        value_of!(self.request(WsCommand::GetConfig).await?, GetConfig)
-    }
-
-    pub async fn set_config_yaml(&self, value: String) -> Result<(), DspError> {
-        result_of!(
-            self.request(WsCommand::SetConfig { value }).await?,
-            SetConfig
-        )
-    }
-
-    /// The active config, `Null` if there is none.
-    pub async fn config(&self) -> Result<serde_json::Value, DspError> {
+    /// The active config, `None` if there is none.
+    pub async fn config(&self) -> Result<Option<Configuration>, DspError> {
         let json = value_of!(self.request(WsCommand::GetConfigJson).await?, GetConfigJson)?;
-        serde_json::from_str(&json).map_err(io_error)
+        if json.trim() == "null" {
+            return Ok(None);
+        }
+        let mut deserializer = serde_json::Deserializer::from_str(&json);
+        config::deserialize_config(&mut deserializer)
+            .map(Some)
+            .map_err(|issue| {
+                let message = format!(
+                    "CamillaDSP sent a config the GUI cannot read, {}",
+                    crate::validate::describe(&issue)
+                );
+                log::warn!("{message}");
+                DspError::Io(message)
+            })
     }
 
     pub async fn set_config(&self, config: &serde_json::Value) -> Result<(), DspError> {

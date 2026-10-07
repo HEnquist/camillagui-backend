@@ -4,6 +4,131 @@
  */
 
 export interface paths {
+  "/api/convolvertojson": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Translate a Convolver config. */
+    post: operations["translate_convolver_to_json"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/eqapotojson": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Translate an Equalizer APO config. */
+    post: operations["translate_eqapo_to_json"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/getactiveconfigfilename": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The active config file, the one CamillaDSP loads when it starts. */
+    get: operations["get_active_config_name"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/getconfig": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The config CamillaDSP runs, with the file paths as CamillaDSP has them. */
+    get: operations["get_config"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/getconfigfile": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** A config file, with the file paths relative to the configured folders. */
+    get: operations["get_config_file"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/getdefaultconfigfile": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The default config file, `default_config` in the settings, with the file
+     *     paths relative to the configured folders.
+     */
+    get: operations["get_default_config_file"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/getstartconfig": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The config to load into the GUI when it starts: the one in CamillaDSP if
+     *     there is one, otherwise the active config file, otherwise the default one.
+     */
+    get: operations["get_config_at_gui_start"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/levels": {
     parameters: {
       query?: never
@@ -19,6 +144,150 @@ export interface paths {
     get: operations["get_levels"]
     put?: never
     post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/param/faders": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Every fader, the main volume first, then the aux faders from 1 up. */
+    get: operations["get_faders"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/param/faders/{index}/mute": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Mute or unmute a fader. */
+    post: operations["set_fader_mute"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/param/faders/{index}/volume": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Set the volume of a fader, in dB. */
+    post: operations["set_fader_volume"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/param/mute": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Whether the main volume is muted. */
+    get: operations["get_mute"]
+    put?: never
+    /** Mute or unmute the main volume. */
+    post: operations["set_mute"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/param/volume": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The main volume, in dB. */
+    get: operations["get_volume"]
+    put?: never
+    /** Set the main volume, in dB. */
+    post: operations["set_volume"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/saveconfigfile": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Save a config to a file in config_dir, with absolute paths so that
+     *     CamillaDSP can use it at startup without the GUI.
+     */
+    post: operations["save_config_file"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/setactiveconfigfile": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Make a config file the active one, the one CamillaDSP loads when it
+     *     starts.
+     */
+    post: operations["set_active_config_name"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/setconfig": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Apply a config. */
+    post: operations["set_config"]
     delete?: never
     options?: never
     head?: never
@@ -88,10 +357,80 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/stop": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stop processing. */
+    post: operations["stop_processing"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/validateconfig": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Check a config without applying it, with the file paths as the GUI has
+     *     them.
+     * @description The body is meant to be a config, but any JSON is taken, since a config
+     *     that does not parse is reported as an issue like any other.
+     */
+    post: operations["validate_config"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/ymltojson": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Read a YAML file to import from, which may be just part of a config,
+     *     migrating it from older versions of CamillaDSP if needed.
+     */
+    post: operations["yaml_to_json"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    ActiveConfigBody: {
+      /** @description The file name, in config_dir. */
+      name: string
+    }
+    ActiveConfigFile: {
+      /**
+       * @description The file name of the active config, null when there is none, or it is
+       *     not in config_dir.
+       */
+      configFileName: string | null
+    }
     /** @enum {string} */
     AlsaSampleFormat: "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"
     /** @enum {string} */
@@ -395,6 +734,40 @@ export interface components {
       soft_clip?: boolean | null
       threshold: components["schemas"]["FiniteF64"]
     }
+    ConfigBody: {
+      /** @description With the file paths as the GUI has them, relative to the configured folders. */
+      config: components["schemas"]["Configuration"]
+    }
+    /**
+     * @description Part of a config, as an import gives it: any of the sections, with any of
+     *     the device settings.
+     */
+    ConfigFragment: {
+      description?: string | null
+      /**
+       * @description Any of the device settings. They are not checked, since an import may
+       *     have only some of them.
+       */
+      devices?: {
+        [key: string]: unknown
+      } | null
+      filters?: {
+        [key: string]: components["schemas"]["Filter"]
+      } | null
+      mixers?: {
+        [key: string]: components["schemas"]["Mixer"]
+      } | null
+      pipeline?: components["schemas"]["PipelineStep"][] | null
+      processors?: {
+        [key: string]: components["schemas"]["Processor"]
+      } | null
+      title?: string | null
+    }
+    /**
+     * @description Where the config the GUI starts with came from.
+     * @enum {string}
+     */
+    ConfigSource: "dsp" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
       description?: string | null
@@ -597,6 +970,35 @@ export interface components {
           /** @enum {string} */
           type: "ShibataLow192"
         }
+    EqApoImport: {
+      /**
+       * Format: int64
+       * @description The number of channels, which decides what the channel names map to.
+       */
+      channels: number
+      /** @description The text of the Equalizer APO config. */
+      text: string
+    }
+    /** @description The body of every error response. */
+    ErrorBody: {
+      /** @description What went wrong, to show to the user. */
+      message: string
+      /**
+       * @description When CamillaDSP refused a command, the name of its error, for example
+       *     `ProcessingNotRunningError`.
+       */
+      result?: string | null
+    }
+    /** @description Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`]. */
+    Fader: {
+      /** @description Whether the fader is muted. */
+      mute: boolean
+      /**
+       * Format: float
+       * @description Current volume in dB.
+       */
+      volume: number
+    }
     /**
      * @description Sample format used for coefficient files; extends [`BinarySampleFormat`] with a plain-text variant.
      * @enum {string}
@@ -699,6 +1101,10 @@ export interface components {
       freq_min?: components["schemas"]["FiniteF32"] | null
       gains: components["schemas"]["FiniteF32"][]
     }
+    ImportText: {
+      /** @description The text of the file to import from. */
+      text: string
+    }
     LookaheadLimiterParameters: {
       attack: components["schemas"]["FiniteF64"]
       attack_unit: components["schemas"]["TimeUnit"]
@@ -783,6 +1189,13 @@ export interface components {
           bandwidth: components["schemas"]["FiniteF64"]
           freq: components["schemas"]["FiniteF64"]
         }
+    /**
+     * @description One step on the way to the value an issue is about: a map key or a list index.
+     *
+     *     Serialized untagged, so a path comes out as a plain list such as
+     *     `["pipeline", 2, "names", 0]`.
+     */
+    PathElement: string | number
     /** @description Peaking filter width specified either as a Q factor or a bandwidth in octaves. */
     PeakingWidth:
       | {
@@ -977,6 +1390,17 @@ export interface components {
           /** @enum {string} */
           type: "Slip"
         }
+    SaveConfigBody: {
+      /** @description With the file paths as the GUI has them, relative to the configured folders. */
+      config: components["schemas"]["Configuration"]
+      /** @description The file name, in config_dir. */
+      filename: string
+    }
+    /**
+     * @description How much an issue matters to the GUI.
+     * @enum {string}
+     */
+    Severity: "error" | "warning"
     /** @description Shelf steepness specified either as a Q factor or a slope in dB/octave. */
     ShelfSteepness:
       | {
@@ -1014,6 +1438,12 @@ export interface components {
       frequencies: number[]
       /** @description Per-bin peak magnitude in dBFS (0 dBFS = full-scale sine wave). */
       magnitudes: number[]
+    }
+    StartConfig: {
+      config: components["schemas"]["Configuration"]
+      /** @description The file the config came from, null if it is not known. */
+      configFileName: string | null
+      source: components["schemas"]["ConfigSource"]
     }
     /** @description Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`]. */
     StateUpdate: {
@@ -1085,6 +1515,16 @@ export interface components {
      * @enum {string}
      */
     TimeUnit: "us" | "ms" | "s" | "samples"
+    /** @description A problem with a config. */
+    ValidationIssue: {
+      message: string
+      /**
+       * @description Where in the config, as keys and list indices from the top. Empty for
+       *     the config as a whole.
+       */
+      path: components["schemas"]["PathElement"][]
+      severity: components["schemas"]["Severity"]
+    }
     /**
      * @description Which aux fader a Volume filter is linked to (faders 1–4; the main fader is always 0).
      * @enum {string}
@@ -1118,6 +1558,234 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  translate_convolver_to_json: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImportText"]
+      }
+    }
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ConfigFragment"]
+        }
+      }
+      /** @description The text is not a Convolver config */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  translate_eqapo_to_json: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EqApoImport"]
+      }
+    }
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ConfigFragment"]
+        }
+      }
+      /** @description The body is not valid */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_active_config_name: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ActiveConfigFile"]
+        }
+      }
+    }
+  }
+  get_config: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description The config, null if CamillaDSP has none */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["Configuration"] | null
+        }
+      }
+      /** @description CamillaDSP cannot be reached, or sent a config the GUI cannot read */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_config_file: {
+    parameters: {
+      query: {
+        /** @description The file name, in config_dir. */
+        name: string
+        /** @description Bring a config for an older CamillaDSP up to date. */
+        migrate?: boolean
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["Configuration"]
+        }
+      }
+      /** @description The file is not a config the GUI can use, or could not be migrated */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description There is no such file */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_default_config_file: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["Configuration"]
+        }
+      }
+      /** @description No default config is set, or the file is missing */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The file is not a config the GUI can use */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_config_at_gui_start: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["StartConfig"]
+        }
+      }
+      /** @description There is no config to start with */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description No config file could be read */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
   get_levels: {
     parameters: {
       query?: never
@@ -1141,7 +1809,361 @@ export interface operations {
         headers: {
           [name: string]: unknown
         }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_faders: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["Fader"][]
+        }
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_fader_mute: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description The fader, 0 for the main volume */
+        index: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "text/plain": boolean
+      }
+    }
+    responses: {
+      /** @description Set */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
         content?: never
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_fader_volume: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        /** @description The fader, 0 for the main volume */
+        index: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "text/plain": number
+      }
+    }
+    responses: {
+      /** @description Set */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_mute: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "text/plain": boolean
+        }
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_mute: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "text/plain": boolean
+      }
+    }
+    responses: {
+      /** @description Set */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_volume: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "text/plain": number
+        }
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_volume: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "text/plain": number
+      }
+    }
+    responses: {
+      /** @description Set */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  save_config_file: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveConfigBody"]
+      }
+    }
+    responses: {
+      /** @description Saved */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The file name is not valid */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The config has paths outside the configured folders */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The file could not be written */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_active_config_name: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ActiveConfigBody"]
+      }
+    }
+    responses: {
+      /** @description Set */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The file name is not valid */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_config: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConfigBody"]
+      }
+    }
+    responses: {
+      /** @description Applied */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The config has paths outside the configured folders */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The body is not a config, or CamillaDSP refused it */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
       }
     }
   }
@@ -1176,12 +2198,14 @@ export interface operations {
           "text/event-stream": components["schemas"]["SpectrumData"]
         }
       }
-      /** @description Processing is not running, CamillaDSP cannot be reached, or the level stream is disabled in the settings */
+      /** @description Processing is not running (with the result `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is disabled in the settings */
       503: {
         headers: {
           [name: string]: unknown
         }
-        content?: never
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
       }
     }
   }
@@ -1208,7 +2232,9 @@ export interface operations {
         headers: {
           [name: string]: unknown
         }
-        content?: never
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
       }
     }
   }
@@ -1227,6 +2253,107 @@ export interface operations {
         }
         content: {
           "application/json": components["schemas"]["Status"]
+        }
+      }
+    }
+  }
+  stop_processing: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Stopped */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description CamillaDSP refused */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  validate_config: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Configuration"]
+      }
+    }
+    responses: {
+      /** @description Every issue, none if the config is valid */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ValidationIssue"][]
+        }
+      }
+      /** @description The body is not JSON */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  yaml_to_json: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImportText"]
+      }
+    }
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ConfigFragment"]
+        }
+      }
+      /** @description The text is not YAML, or not part of a config */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
         }
       }
     }

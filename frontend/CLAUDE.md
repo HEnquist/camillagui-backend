@@ -105,18 +105,24 @@ All requests go to `/api/*` (proxied to the backend in dev). See `../rust/src/ma
 The typed endpoints are in the backend's OpenAPI spec, and `src/api/schema.ts` is generated from
 it by openapi-typescript. Call them through `api` in `src/api/client.ts` (openapi-fetch), so tsc
 checks the path, parameters, body and response. The demo backend uses the same generated types.
-The rest are still plain `fetch` until they are typed in the backend.
+The rest are still plain `fetch` until they are typed in the backend. Every error, typed or not,
+is a JSON `ErrorBody` with a `message`: use `errorMessage` after an `api` call and
+`responseErrorMessage` after a plain `fetch`, both in `src/api/client.ts`.
 
 The config types in `camilladsp/config.ts` are the generated ones from camilladsp-config, wrapped
 in `Complete<>`, since the backend sends every optional field (as null) and the GUI always writes
 them all. The filter and processor editors and the evaluator handle parameters by name, so they
-work on `LooseFilter` and `LooseProcessor`, which every `Filter` and `Processor` is.
+work on `LooseFilter` and `LooseProcessor`, which every `Filter` and `Processor` is. A config
+that comes from the backend goes through `completeConfig`, which says so to tsc.
 
 Key endpoints used by the frontend:
 - `GET /api/guiconfig` — GuiConfig JSON
 - `GET /api/getconfig` — current CamillaDSP config as JSON
-- `POST /api/setconfig` — push config to running DSP `{filename, config}`
+- `POST /api/setconfig` — push config to running DSP `{config}`
 - `POST /api/saveconfigfile` — save config to disk `{filename, config}`
+- `POST /api/validateconfig` — the config's issues, `{path, message, severity}`, none if valid
+- `GET` and `POST /api/param/volume` and `/api/param/mute`, `GET /api/param/faders`,
+  `POST /api/param/faders/{index}/volume` and `.../mute` — the volume and the faders
 - `GET /api/levels` — SSE stream of VU levels, CamillaDSP's VuLevels as they came
 - `GET /api/spectrum?side=...&n_bins=...` — SSE stream of spectra, CamillaDSP's SpectrumData
 - `GET /api/state` — SSE stream of the processing state, CamillaDSP's StateUpdate, starting with

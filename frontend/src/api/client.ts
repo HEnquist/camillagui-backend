@@ -15,6 +15,26 @@ export type QueryOf<Path extends keyof paths> = paths[Path] extends {
   ? Query
   : never
 
+/**
+ * The message of a failed call. The backend sends every error as an `ErrorBody`, so the status
+ * is only a fallback, for an error that did not come from the backend.
+ */
+export function errorMessage(error: Schemas["ErrorBody"] | undefined, response: Response): string {
+  return error?.message ?? `${response.status} ${response.statusText}`
+}
+
+/** The message of a failed call that is not made through `api`. */
+export async function responseErrorMessage(response: Response): Promise<string> {
+  const text = await response.text()
+  try {
+    const body = JSON.parse(text) as Partial<Schemas["ErrorBody"]>
+    if (typeof body.message === "string") return body.message
+  } catch {
+    // Not JSON, so not from the backend.
+  }
+  return text || `${response.status} ${response.statusText}`
+}
+
 export const api = createClient<paths>({
   // The client makes a Request, which outside a browser, as in the tests, needs a full URL.
   baseUrl: globalThis.location?.origin,

@@ -11,7 +11,8 @@ import isEqual from "lodash/isEqual"
 import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
-import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
+import { api, errorMessage } from "./api/client"
+import { completeConfig, Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
@@ -117,19 +118,18 @@ class CamillaConfig extends React.Component<
   }
 
   private async fetchConfig() {
-    const conf_req = await fetch("/api/getconfig")
-    if (!conf_req.ok) {
-      const errorMessage = await conf_req.text()
-      this.setState({ message: errorMessage })
-      throw new Error(errorMessage)
+    const { data: config, error, response } = await api.GET("/api/getconfig")
+    if (error) {
+      const message = errorMessage(error, response)
+      this.setState({ message })
+      throw new Error(message)
     }
-    const config = await conf_req.json()
     if (config)
       this.setState({
         unsavedChanges: false,
         unappliedChanges: false,
         message: "OK",
-        undoRedo: new UndoRedo(config),
+        undoRedo: new UndoRedo(completeConfig(config)),
       })
     else this.setState({ message: "No config received" })
   }
@@ -173,36 +173,27 @@ class CamillaConfig extends React.Component<
   }
 
   private async applyConfig(): Promise<void> {
-    this.applyConfigRequest(this.state.currentConfigFile, this.state.undoRedo.current())
+    this.applyConfigRequest(this.state.undoRedo.current())
   }
 
-  private async applyConfigRequest(filename: string | undefined, config: Config): Promise<void> {
-    const conf_req = await fetch("/api/setconfig", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filename: filename,
-        config: config,
-      }),
-    })
-    const message = await conf_req.text()
+  private async applyConfigRequest(config: Config): Promise<void> {
+    const { error, response } = await api.POST("/api/setconfig", { body: { config } })
+    const message = error ? errorMessage(error, response) : "OK"
     this.setState({ message: message, unappliedChanges: false })
-    if (!conf_req.ok) throw new Error(message)
+    if (error) throw new Error(message)
   }
 
   private async saveConfig() {
     if (this.state.currentConfigFile) {
-      const conf_req = await fetch("/api/saveconfigfile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { error, response } = await api.POST("/api/saveconfigfile", {
+        body: {
           filename: this.state.currentConfigFile,
           config: this.state.undoRedo.current(),
-        }),
+        },
       })
-      const message = await conf_req.text()
+      const message = error ? errorMessage(error, response) : "OK"
       this.setState({ message: message, unsavedChanges: false })
-      if (!conf_req.ok) throw new Error(message)
+      if (error) throw new Error(message)
     }
   }
 
@@ -253,7 +244,7 @@ class CamillaConfig extends React.Component<
             config={this.state.undoRedo.current()}
             setConfig={(filename, config) => {
               this.setCurrentConfig(filename, config)
-              this.applyConfigRequest(filename, config)
+              this.applyConfigRequest(config)
             }}
             updateConfig={(update) => this.updateConfig(update, true)}
             switchToNormalView={() => this.setViewMode("normal")}
@@ -402,7 +393,7 @@ class CamillaConfig extends React.Component<
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
                 this.setCurrentConfig(filename, config)
-                this.applyConfigRequest(filename, config)
+                this.applyConfigRequest(config)
               }}
               updateConfig={(update) => this.updateConfig(update, true)}
               shortcutSections={this.state.guiConfig.custom_shortcuts}

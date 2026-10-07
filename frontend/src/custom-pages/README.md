@@ -189,9 +189,9 @@ const res = await fetch("/api/status")
 const status = await res.json()
 // status.cdsp_online: boolean, whether the backend reaches CamillaDSP
 
-// Live parameter value (e.g. current volume)
-const res = await fetch("/api/getparam/volume.level")
-const value = await res.json()  // number
+// The current main volume in dB, through the typed client in src/api/client.ts
+import { api } from "../api/client"
+const { data: volume } = await api.GET("/api/param/volume")  // number
 
 // All stored config files
 const res = await fetch("/api/storedconfigs")
@@ -233,30 +233,23 @@ It returns a promise because a Conv filter reading a coefficient file has to ask
 the coefficients. Everything else resolves without touching the network, so it is cheap enough to
 call on every render.
 
-### POST /api/setparam/{name}
+### POST /api/param/volume, /api/param/mute, /api/param/faders/{index}/...
 
-Set a live parameter on the running DSP without changing the full config. Useful for real-time
-controls like volume. The value is sent as the request body.
+Set the volume or mute on the running DSP without changing the full config. Useful for real-time
+controls. The value is the JSON body.
 
 ```ts
-await fetch("/api/setparam/volume.level", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(-10),   // value as JSON
-})
+await api.POST("/api/param/volume", { body: -10 })
+await api.POST("/api/param/faders/{index}/mute", { params: { path: { index: 1 } }, body: true })
 ```
 
 ### POST /api/validateconfig
 
-Validate a config object without applying it. Returns an error string or empty string.
+Validate a config object without applying it. Returns every issue, none if the config is valid.
 
 ```ts
-const res = await fetch("/api/validateconfig", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(config),
-})
-const errorMessage = await res.text()  // "" means valid
+const { data: issues } = await api.POST("/api/validateconfig", { body: config })
+// issues: { path: (string | number)[], message: string, severity: "error" | "warning" }[]
 ```
 
 ### SSE: GET /api/levels

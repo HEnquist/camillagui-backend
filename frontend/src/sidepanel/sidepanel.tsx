@@ -7,6 +7,7 @@ import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
 import { VolumeBox } from "./volumebox"
+import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
 import { defaultStatus, isBackendOnline, isCdspOnline, isCdspRunning, Status, StatusPoller } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
@@ -271,21 +272,14 @@ export class SidePanel extends React.Component<
   }
 
   private async fetchDSPConfig() {
-    const conf_req = await fetch("/api/getconfig")
-    if (!conf_req.ok) {
-      const errorMessage = await conf_req.text()
-      throw new Error(errorMessage)
-    }
-    const config = await conf_req.json()
-    return config
+    const { data, error, response } = await api.GET("/api/getconfig")
+    if (error) throw new Error(errorMessage(error, response))
+    return data
   }
 
   private async stopProcessing() {
-    const stop_req = await fetch("/api/stop", { method: "POST" })
-    if (!stop_req.ok) {
-      const errorMessage = await stop_req.text()
-      throw new Error(errorMessage)
-    }
+    const { error, response } = await api.POST("/api/stop")
+    if (error) throw new Error(errorMessage(error, response))
   }
 
   private async compareConfig() {

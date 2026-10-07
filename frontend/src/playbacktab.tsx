@@ -2,6 +2,7 @@ import React, { Component } from "react"
 import { mdiAlertCircle, mdiCheck, mdiOpenInApp, mdiPlay } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { cloneDeep, isEqual } from "lodash"
+import { api, errorMessage, responseErrorMessage } from "./api/client"
 import { CaptureDevice, Config, CURRENT_CONFIG_VERSION, Mixer, PlaybackDevice } from "./camilladsp/config"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import {
@@ -198,7 +199,7 @@ class WavFileTable extends Component<
         this.showSuccess(newName, "rename")
         this.update()
       } else {
-        this.showErrorMessage(filename, "rename", await response.text())
+        this.showErrorMessage(filename, "rename", await responseErrorMessage(response))
       }
     } catch (e) {
       this.showErrorMessage(filename, "rename", (e as Error).message)
@@ -240,15 +241,11 @@ class WavFileTable extends Component<
         samplerate: wav.samplerate,
         channels: wav.channels,
       })
-      const response = await fetch("/api/setconfig", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: null, config: modified }),
-      })
-      if (response.ok) {
+      const { error, response } = await api.POST("/api/setconfig", { body: { config: modified } })
+      if (!error) {
         this.showSuccess(wav.name, "play")
       } else {
-        this.showErrorMessage(wav.name, "play", await response.text())
+        this.showErrorMessage(wav.name, "play", errorMessage(error, response))
       }
     } catch (e) {
       this.showErrorMessage(wav.name, "play", (e as Error).message)

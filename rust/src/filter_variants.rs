@@ -5,7 +5,7 @@
 //! user writes it and with the `-defaults` suffix as this backend sends it,
 //! with every optional field filled in. These tests check the fixture against
 //! the filter types:
-//! - every case parses, and its `-defaults` twin is what `with_defaults` makes,
+//! - every case parses, and its `-defaults` twin is what parsing it makes,
 //! - every filter type and subtype has a case,
 //! - every optional parameter is set in at least one case.
 //!
@@ -13,7 +13,8 @@
 //! `parameters` below fail to compile. Add it there, then add cases to the
 //! fixture until these tests pass, and run the frontend tests.
 
-use crate::validate::with_defaults;
+use crate::camilla::to_json;
+use crate::validate;
 use camilladsp_config::config::{
     BiquadComboParameters, BiquadParameters, ClipperParameters, ConvParameters, DelayParameters,
     DiffEqParameters, DitherParameters, Filter, GainParameters, GeneralNotchParams,
@@ -362,7 +363,7 @@ fn every_case_parses_and_defaults_match() {
         let defaults = by_id
             .get(format!("{}-defaults", case.id).as_str())
             .unwrap_or_else(|| panic!("{} has no -defaults twin", case.id));
-        // with_defaults works on whole configs, so wrap the filter in one.
+        // Configs are parsed whole, so wrap the filter in one.
         let config = |filter: &Value| {
             json!({
                 "devices": {
@@ -374,7 +375,8 @@ fn every_case_parses_and_defaults_match() {
                 "filters": {"f": filter},
             })
         };
-        let filled = &with_defaults(config(&case.filter))["filters"]["f"];
+        let parsed = validate::parse(config(&case.filter)).expect("the case parses");
+        let filled = &to_json(&parsed)["filters"]["f"];
         if *filled != defaults.filter {
             wrong.push(format!("{}-defaults should be {filled}", case.id));
         }

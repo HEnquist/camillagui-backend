@@ -8,6 +8,7 @@ mod coeffs;
 mod convolver;
 mod eqapo;
 mod events;
+mod extract;
 mod files;
 #[cfg(test)]
 mod filter_variants;
@@ -55,29 +56,26 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
         .routes(routes!(api::get_status))
         .routes(routes!(api::get_state))
         .routes(routes!(api::get_spectrum))
+        .routes(routes!(api::get_volume, api::set_volume))
+        .routes(routes!(api::get_mute, api::set_mute))
+        .routes(routes!(api::get_faders))
+        .routes(routes!(api::set_fader_volume))
+        .routes(routes!(api::set_fader_mute))
+        .routes(routes!(api::get_config))
+        .routes(routes!(api::set_config))
+        .routes(routes!(api::stop_processing))
+        .routes(routes!(api::validate_config))
+        .routes(routes!(api::get_config_at_gui_start))
+        .routes(routes!(api::get_active_config_name))
+        .routes(routes!(api::set_active_config_name))
+        .routes(routes!(api::get_default_config_file))
+        .routes(routes!(api::get_config_file))
+        .routes(routes!(api::save_config_file))
+        .routes(routes!(api::yaml_to_json))
+        .routes(routes!(api::translate_convolver_to_json))
+        .routes(routes!(api::translate_eqapo_to_json))
         .route("/openapi.json", get(openapi::get_spec))
-        .route("/getparam/{name}", get(api::get_param))
-        .route("/getparamjson/{name}", get(api::get_param_json))
-        .route("/getlistparam/{name}", get(api::get_list_param))
-        .route("/setparam/{name}", post(api::set_param))
-        .route("/setparamindex/{name}/{index}", post(api::set_param_index))
         .route("/convcoeffs", post(api::conv_coefficients))
-        .route("/getconfig", get(api::get_config))
-        .route("/setconfig", post(api::set_config))
-        .route("/stop", post(api::stop_processing))
-        .route("/getstartconfig", get(api::get_config_at_gui_start))
-        .route("/getactiveconfigfilename", get(api::get_active_config_name))
-        .route("/getdefaultconfigfile", get(api::get_default_config_file))
-        .route("/setactiveconfigfile", post(api::set_active_config_name))
-        .route("/configtoyml", post(api::config_to_yml))
-        .route(
-            "/ymlconfigtojsonconfig",
-            post(api::parse_and_validate_yml_config_to_json),
-        )
-        .route("/ymltojson", post(api::yaml_to_json))
-        .route("/convolvertojson", post(api::translate_convolver_to_json))
-        .route("/eqapotojson", post(api::translate_eqapo_to_json))
-        .route("/validateconfig", post(api::validate_config))
         .route("/wavinfo", get(api::get_wav_info))
         .route("/storedconfigs", get(api::get_stored_configs))
         .route("/storedcoeffs", get(api::get_stored_coeffs))
@@ -96,8 +94,6 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
         .route("/downloadcoeffszip", post(api::download_coeffs_zip))
         .route("/downloadaudiofileszip", post(api::download_audiofiles_zip))
         .route("/guiconfig", get(api::get_gui_config))
-        .route("/getconfigfile", get(api::get_config_file))
-        .route("/saveconfigfile", post(api::save_config_file))
         .route("/logfile", get(api::get_log_file))
         .route("/capturedevices/{backend}", get(api::get_capture_devices))
         .route("/playbackdevices/{backend}", get(api::get_playback_devices))

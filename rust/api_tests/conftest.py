@@ -136,7 +136,7 @@ class Backend:
         deadline = time.time() + 10
         while time.time() < deadline:
             online = self.get("/api/status").json()["cdsp_online"]
-            reachable = self.get("/api/getparam/volume").status == 200
+            reachable = self.get("/api/param/volume").status == 200
             if online and reachable and self.get("/api/backends").json() == expected:
                 return
             time.sleep(0.1)

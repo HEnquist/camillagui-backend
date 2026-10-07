@@ -1,6 +1,7 @@
-import { Config } from "../camilladsp/config"
+import { api, errorMessage, responseErrorMessage, Schemas } from "../api/client"
+import { completeConfig, Config } from "../camilladsp/config"
 
-export type ValidationIssue = [string[], string, "error" | "warning"]
+export type ValidationIssue = Schemas["ValidationIssue"]
 
 export interface FileInfo {
   name: string
@@ -56,50 +57,42 @@ export function fileNamesOf(files: FileInfo[]): string[] {
   return files.map((f) => f.name)
 }
 
+async function loadConfigFile(name: string, migrate: boolean, onNotOk: (reason: string) => void): Promise<Config> {
+  const { data, error, response } = await api.GET("/api/getconfigfile", { params: { query: { name, migrate } } })
+  if (data) return completeConfig(data)
+  const reason = errorMessage(error, response)
+  onNotOk(reason)
+  throw new Error(reason)
+}
+
 export function loadConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}`).then(async (response) => {
-    if (response.ok) return response.json()
-    const reason = await response.text()
-    onNotOk(reason)
-    throw new Error(reason)
-  })
+  return loadConfigFile(name, false, onNotOk)
 }
 
 export function loadMigratedConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return fetch(`/api/getconfigfile?name=${encodeURIComponent(name)}&migrate=TRUE`).then(async (response) => {
-    if (response.ok) return response.json()
-    const reason = await response.text()
-    onNotOk(reason)
-    throw new Error(reason)
-  })
+  return loadConfigFile(name, true, onNotOk)
 }
 
-export function loadDefaultConfigJson(): Promise<Response> {
-  return fetch(`/api/getdefaultconfigfile`)
+export async function loadDefaultConfigJson(): Promise<Config> {
+  const { data, error, response } = await api.GET("/api/getdefaultconfigfile")
+  if (data) return completeConfig(data)
+  throw new Error(errorMessage(error, response))
 }
 
-export function loadStartupConfig(): Promise<{
+export async function loadStartupConfig(): Promise<{
   configFileName: string | null
   config: Config
-  source: string
+  source: Schemas["ConfigSource"]
 }> {
-  return fetch("/api/getstartconfig").then((response) => {
-    if (!response.ok) {
-      throw Error(response.statusText)
-    }
-    return response.json()
-  })
+  const { data, error, response } = await api.GET("/api/getstartconfig")
+  if (data) return { ...data, config: completeConfig(data.config) }
+  throw new Error(errorMessage(error, response))
 }
 
-export function loadActiveConfigFilename(): Promise<{
-  configFileName: string | null
-}> {
-  return fetch("/api/getactiveconfigfilename").then((response) => {
-    if (!response.ok) {
-      throw Error(response.statusText)
-    }
-    return response.json()
-  })
+export async function loadActiveConfigFilename(): Promise<Schemas["ActiveConfigFile"]> {
+  const { data, response } = await api.GET("/api/getactiveconfigfilename")
+  if (data) return data
+  throw new Error(`${response.status} ${response.statusText}`)
 }
 
 export function download(filename: string, blob: Blob) {
@@ -115,7 +108,7 @@ export function download(filename: string, blob: Blob) {
 export async function downloadFromUrl(filename: string, url: string) {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(await response.text())
+    throw new Error(await responseErrorMessage(response))
   }
   download(filename, await response.blob())
 }
@@ -145,8 +138,8 @@ export async function doUpload(
   }
 }
 
-export function issueSeverity(issue: ValidationIssue): "error" | "warning" {
-  return issue[2]
+export function issueSeverity(issue: ValidationIssue): Schemas["Severity"] {
+  return issue.severity
 }
 
 export function hasWarningIssues(errors: ValidationIssue[] | null | undefined): boolean {
@@ -165,11 +158,11 @@ export function fileStatusDesc(errors: ValidationIssue[] | null | undefined): st
   const formatIssues = (title: string, issues: ValidationIssue[]) => {
     let desc = title
     for (const issue of issues) {
-      let path = issue[0].join("/")
+      let path = issue.path.join("/")
       if (path) {
         path = path + " : "
       }
-      desc = desc + "<br>" + path + issue[1]
+      desc = desc + "<br>" + path + issue.message
     }
     return desc
   }

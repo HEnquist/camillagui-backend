@@ -816,6 +816,11 @@ export const CURRENT_CONFIG_VERSION = 4
 export type Config = Complete<Schemas["Configuration"]>
 export type Devices = Config["devices"]
 
+/** A config the backend sent, which has every optional field, as null when it is unset. */
+export function completeConfig(config: Schemas["Configuration"]): Config {
+  return config as Config
+}
+
 export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous" | "Slip"
 export type AsyncSincProfile = "VeryFast" | "Fast" | "Balanced" | "Accurate" | "Free"
 export const AsyncSincProfiles: AsyncSincProfile[] = ["VeryFast", "Fast", "Balanced", "Accurate", "Free"]

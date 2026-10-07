@@ -11,6 +11,7 @@ import { convComplexGain, convGroupDelay } from "./conv"
 import { complexGain, groupDelaySamples } from "./filters"
 import { addDelayInto, delayInMs } from "./groupdelay"
 import { FilterEvalError, num, numList, Params } from "./params"
+import { responseErrorMessage } from "../../api/client"
 import { ChartContent, FilterOption } from "../../utilities/chart"
 import { Config, LooseFilter } from "../config"
 
@@ -167,7 +168,7 @@ async function fetchConvCoefficients(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ config: filterconf, samplerate, channels }),
     })
-    if (!response.ok) throw new FilterEvalError(await response.text())
+    if (!response.ok) throw new FilterEvalError(await responseErrorMessage(response))
     return unframeCoefficients(await response.arrayBuffer())
   })()
   const entry: CacheEntry = { coefficients: pending, bytes: 0 }

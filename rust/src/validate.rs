@@ -1,7 +1,9 @@
 //! Config validation, with camilladsp's own code.
 
 use camilladsp_config::config::{self, Configuration, Issue, IssueKind, PathElement};
-use serde_json::{Value, json};
+use serde::Serialize;
+use serde_json::Value;
+use utoipa::ToSchema;
 
 /// Which device types a config may use.
 ///
@@ -103,27 +105,66 @@ impl DeviceTypes {
     }
 }
 
-/// How the GUI treats each kind of issue.
-fn severity(kind: IssueKind) -> &'static str {
-    match kind {
-        // A config can be edited before its coefficient files are uploaded, so
-        // the GUI only warns about a missing file. CamillaDSP itself refuses it.
-        IssueKind::MissingFile => "warning",
-        IssueKind::Invalid | IssueKind::Unsupported => "error",
+/// How much an issue matters to the GUI.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Severity {
+    /// CamillaDSP would refuse the config.
+    Error,
+    /// The config can be edited and saved as it is, but needs attention.
+    Warning,
+}
+
+/// A problem with a config.
+#[derive(Clone, Debug, Serialize, ToSchema)]
+pub struct ValidationIssue {
+    /// Where in the config, as keys and list indices from the top. Empty for
+    /// the config as a whole.
+    pub path: Vec<PathElement>,
+    pub message: String,
+    pub severity: Severity,
+}
+
+impl ValidationIssue {
+    /// An error about the config as a whole.
+    pub fn error(message: impl Into<String>) -> Self {
+        ValidationIssue {
+            path: Vec::new(),
+            message: message.into(),
+            severity: Severity::Error,
+        }
     }
 }
 
-/// An issue as `[path, message, severity]`, the shape the frontend's `Errors` reads.
-fn issue_to_json(issue: &Issue) -> Value {
-    let path: Vec<Value> = issue
-        .path
-        .iter()
-        .map(|element| match element {
-            PathElement::Key(key) => json!(key),
-            PathElement::Index(index) => json!(index),
-        })
-        .collect();
-    json!([path, issue.message, severity(issue.kind)])
+impl From<Issue> for ValidationIssue {
+    fn from(issue: Issue) -> Self {
+        let severity = match issue.kind {
+            // A config can be edited before its coefficient files are uploaded,
+            // so the GUI only warns about a missing file. CamillaDSP refuses it.
+            IssueKind::MissingFile => Severity::Warning,
+            IssueKind::Invalid | IssueKind::Unsupported => Severity::Error,
+        };
+        ValidationIssue {
+            path: issue.path,
+            message: issue.message,
+            severity,
+        }
+    }
+}
+
+/// An issue as one line of text, with its path in front.
+pub fn describe(issue: &Issue) -> String {
+    if issue.path.is_empty() {
+        issue.message.clone()
+    } else {
+        format!("{}: {}", config::format_path(&issue.path), issue.message)
+    }
+}
+
+/// Parse a config, with every optional field filled in as CamillaDSP reads
+/// it, or say where it went wrong.
+pub fn parse(config: Value) -> Result<Configuration, String> {
+    config::deserialize_config(config).map_err(|issue| describe(&issue))
 }
 
 /// Validate a config whose file paths are already absolute. Returns every
@@ -132,10 +173,10 @@ fn issue_to_json(issue: &Issue) -> Value {
 /// Unlike CamillaDSP, this also checks the filters, mixers and processors
 /// that the pipeline does not use, since a config editor wants to hear about
 /// those too.
-pub fn validate(config: Value, device_types: &DeviceTypes) -> Vec<Value> {
+pub fn validate(config: Value, device_types: &DeviceTypes) -> Vec<ValidationIssue> {
     let mut conf = match config::deserialize_config(config) {
         Ok(conf) => conf,
-        Err(issue) => return vec![issue_to_json(&issue)],
+        Err(issue) => return vec![issue.into()],
     };
     let mut issues = match config::validate_config(&mut conf, None) {
         Ok(_impulses) => Vec::new(),
@@ -145,27 +186,18 @@ pub fn validate(config: Value, device_types: &DeviceTypes) -> Vec<Value> {
         issues.extend(unused.into_vec());
     }
     device_types.apply(&conf, &mut issues);
-    issues.iter().map(issue_to_json).collect()
+    issues.into_iter().map(ValidationIssue::from).collect()
 }
 
 /// Whether any of the issues stops the config from running.
-pub fn has_errors(issues: &[Value]) -> bool {
-    issues.iter().any(|issue| issue[2] == "error")
-}
-
-/// The config as CamillaDSP reads it, with every optional field filled in,
-/// like the Python backend's schema validation did. A config that does not
-/// deserialize is returned unchanged, so that it can still be edited.
-pub fn with_defaults(config: Value) -> Value {
-    match config::deserialize_config(&config) {
-        Ok(conf) => serde_json::to_value(&conf).unwrap_or(config),
-        Err(_) => config,
-    }
+pub fn has_errors(issues: &[ValidationIssue]) -> bool {
+    issues.iter().any(|issue| issue.severity == Severity::Error)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use std::path::Path;
 
     fn devices(capture_type: &str) -> Value {
@@ -202,24 +234,30 @@ mod tests {
             Path::new("/tmp"),
         );
         let issues = validate(config, &DeviceTypes::default());
-        let has = |path: Value, severity: &str| {
+        let has = |path: Value, severity: Severity| {
             issues
                 .iter()
-                .any(|issue| issue[0] == path && issue[2] == severity)
+                .any(|issue| json!(issue.path) == path && issue.severity == severity)
         };
         assert!(
-            has(json!(["filters", "lp", "parameters", "freq"]), "error"),
+            has(
+                json!(["filters", "lp", "parameters", "freq"]),
+                Severity::Error
+            ),
             "{issues:#?}"
         );
         assert!(
             has(
                 json!(["filters", "fir", "parameters", "filename"]),
-                "warning"
+                Severity::Warning
             ),
             "{issues:#?}"
         );
         assert!(
-            has(json!(["filters", "unused", "parameters", "freq"]), "error"),
+            has(
+                json!(["filters", "unused", "parameters", "freq"]),
+                Severity::Error
+            ),
             "{issues:#?}"
         );
         assert!(has_errors(&issues));
@@ -235,10 +273,10 @@ mod tests {
             }),
             ..Default::default()
         };
-        let type_issue = |issues: &[Value]| {
+        let type_issue = |issues: &[ValidationIssue]| {
             issues
                 .iter()
-                .any(|issue| issue[0] == json!(["devices", "capture", "type"]))
+                .any(|issue| json!(issue.path) == json!(["devices", "capture", "type"]))
         };
         // Wasapi only parses at all where camilladsp-config says it exists, so
         // a Linux or macOS build reports it as unsupported, unless the DSP has it.
@@ -264,16 +302,17 @@ mod tests {
     }
 
     #[test]
-    fn defaults_are_filled_in() {
+    fn parsing_fills_in_defaults_or_says_where_it_failed() {
         let config = json!({"devices": devices("Stdin")});
-        let filled = with_defaults(config);
+        let parsed = crate::camilla::to_json(&parse(config).unwrap());
         assert!(
-            filled["devices"]
+            parsed["devices"]
                 .as_object()
                 .unwrap()
                 .contains_key("queuelimit")
         );
         let broken = json!({"devices": {"samplerate": "fast"}});
-        assert_eq!(with_defaults(broken.clone()), broken);
+        let message = parse(broken).unwrap_err();
+        assert!(message.starts_with("devices"), "{message}");
     }
 }

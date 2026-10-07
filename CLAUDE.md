@@ -37,6 +37,7 @@ cd frontend && npm run dev
 ```
 main.rs        routes, startup, the file folders as static files
 api.rs         the /api handlers, the counterpart of the old views.py
+extract.rs     axum's Json, Query and Path, with rejections as JSON error bodies
 openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check test
 camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_config::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
@@ -65,8 +66,12 @@ release does not ship one, so an upgrade always brings the current stylesheet.
 `/api` exists for this frontend only, it is not a public API. Change it freely when that makes
 the GUI simpler or cheaper, and change the frontend, the demo backend
 (`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `rust/api_tests` with it.
-Most responses still have the old Python backend's shape, down to quirks like `getparam/mute`
-answering `True`/`False`, only because the port kept the frontend unchanged.
+An endpoint the frontend does not call is deleted rather than kept. The untyped endpoints still
+have the old Python backend's shape, only because the port kept the frontend unchanged.
+
+Every error is a JSON `ErrorBody`: a `message`, and `result` when CamillaDSP refused a command.
+That holds for the untyped endpoints too, and for requests that do not parse, since the
+extractors in `extract.rs` turn axum's rejections into the same body.
 
 The API is being typed (session D of the plan in HEnquist/notes `gui/rust_backend_plan.md`).
 A typed handler has `#[utoipa::path]` and is registered with `routes!` in `main.rs`, which puts
@@ -85,7 +90,13 @@ cd frontend && npm run generate-api                                # rewrite src
 Two things to keep in mind:
 - serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.
   Anything CamillaDSP sends as f32 goes through `camilla::to_json`, which keeps the short form.
-- POST bodies are parsed from raw bytes, since the frontend does not always send a content type.
+- A typed endpoint takes `Json<T>` from `extract.rs`, which needs `Content-Type:
+  application/json` (openapi-fetch always sends it). The untyped ones still parse raw bytes,
+  since the frontend's plain `fetch` calls to them do not always send a content type.
+- Configs go in and out as camilladsp-config's `Configuration`. The path rewriting in `paths.rs`
+  still works on JSON values, so a config is turned into one with `camilla::to_json` and parsed
+  back with `validate::parse`. Validation takes any JSON, since a config that does not parse is
+  reported as an issue like any other.
 
 ## camilladsp-config
 

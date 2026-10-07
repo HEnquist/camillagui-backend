@@ -10,6 +10,7 @@ import camillalogo from "./sidepanel/camilladsp.svg"
 import { CdspStateBox } from "./sidepanel/cdspstatebox"
 import { VolumeBox } from "./sidepanel/volumebox"
 import { SpectrumBox } from "./spectrumbox"
+import { loadActiveConfigFilename } from "./utilities/files"
 import { MdiButton } from "./utilities/ui-components"
 
 export function DashboardView(props: {
@@ -27,15 +28,8 @@ export function DashboardView(props: {
   React.useEffect(() => {
     if (!cdspOnline) return
     let cancelled = false
-    fetch("/api/getactiveconfigfilename")
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(await response.text())
-        }
-        const json = await response.json()
-        return (json.configFileName as string | null) ?? null
-      })
-      .then((configFileName) => {
+    loadActiveConfigFilename()
+      .then(({ configFileName }) => {
         if (!cancelled) setDspConfigFileName(configFileName)
       })
       .catch((error) => {

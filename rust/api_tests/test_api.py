@@ -21,55 +21,42 @@ import yaml
 
 
 def test_read_volume(server):
-    resp = server.get("/api/getparam/volume")
+    resp = server.get("/api/param/volume")
     assert resp.status == 200
     assert resp.text == "-20.0"
 
 
 def test_read_mute(server):
-    assert server.get("/api/getparam/mute").text == "False"
+    assert server.get("/api/param/mute").json() is False
     server.fake.state["mute"] = True
-    assert server.get("/api/getparam/mute").text == "True"
-
-
-@pytest.mark.parametrize(
-    "name, expected",
-    [
-        ("signalrange", "1.5"),
-        ("updateinterval", "100"),
-        ("processingload", "0.5"),
-        ("resamplerload", "0.2"),
-    ],
-)
-def test_read_params(server, name, expected):
-    resp = server.get(f"/api/getparam/{name}")
-    assert resp.status == 200
-    assert resp.text == expected
-
-
-def test_unknown_param(server):
-    assert server.get("/api/getparam/nonsense").status == 404
+    assert server.get("/api/param/mute").json() is True
 
 
 def test_set_volume_and_mute(server):
-    assert server.post("/api/setparam/volume", data="-12.5").status == 200
+    assert server.post("/api/param/volume", json_body=-12.5).status == 204
     assert server.fake.state["volume"] == -12.5
-    assert server.post("/api/setparam/mute", data="true").status == 200
+    assert server.post("/api/param/mute", json_body=True).status == 204
     assert server.fake.state["mute"] is True
-    assert server.post("/api/setparam/mute", data="maybe").status == 400
+    resp = server.post("/api/param/mute", json_body="maybe")
+    assert resp.status == 422
+    assert "message" in resp.json()
 
 
 def test_faders(server):
-    assert server.get("/api/getparamjson/faders").json()[0] == {"volume": -20.0, "mute": False}
-    assert server.post("/api/setparamindex/volume/2", data="-6").status == 200
-    assert server.post("/api/setparamindex/mute/2", data="True").status == 200
+    assert server.get("/api/param/faders").json()[0] == {"volume": -20.0, "mute": False}
+    assert server.post("/api/param/faders/2/volume", json_body=-6).status == 204
+    assert server.post("/api/param/faders/2/mute", json_body=True).status == 204
     assert server.fake.state["faders"][2] == {"volume": -6.0, "mute": True}
 
 
-def test_read_peaks(server):
-    resp = server.get("/api/getlistparam/capturesignalpeak")
-    assert resp.status == 200
-    assert resp.json() == [-2.0, -3.0]
+def test_errors_are_json(server):
+    resp = server.post("/api/param/faders/x/mute", json_body=True)
+    assert resp.status == 400
+    assert set(resp.json()) == {"message"}
+    server.fake.go_offline()
+    resp = server.get("/api/param/volume")
+    assert resp.status == 503
+    assert resp.json()["message"]
 
 
 def test_read_status(server):
@@ -124,7 +111,7 @@ def test_status_rereads_the_version_after_a_restart_it_did_not_see(server):
     server.fake.state["version"] = "5.0.1"
     server.fake.state["online"] = True
     deadline = time.time() + 5
-    while server.get("/api/getparam/volume").status != 200:
+    while server.get("/api/param/volume").status != 200:
         assert time.time() < deadline
     while server.get("/api/status").json()["cdsp_version"] != "5.0.1":
         assert time.time() < deadline
@@ -280,12 +267,12 @@ def test_spectrum_needs_processing(server):
     with pytest.raises(urllib.error.HTTPError) as error:
         urllib.request.urlopen(spectrum_url(server), timeout=10)
     assert error.value.code == 503
-    assert json.loads(error.value.read()) == {"result": "ProcessingNotRunningError"}
+    assert json.loads(error.value.read())["result"] == "ProcessingNotRunningError"
 
 
 def test_stop_processing(server):
     resp = server.post("/api/stop")
-    assert resp.status == 200
+    assert resp.status == 204
     assert len(server.fake.commands("Stop")) == 1
 
 
@@ -293,8 +280,8 @@ def test_stop_processing(server):
     "endpoint, parameters",
     [
         ("/api/status", None),
-        ("/api/getparam/mute", None),
-        ("/api/getlistparam/playbacksignalpeak", None),
+        ("/api/param/mute", None),
+        ("/api/param/faders", None),
         ("/api/getconfig", None),
         ("/api/getstartconfig", None),
         ("/api/getdefaultconfigfile", None),
@@ -371,7 +358,7 @@ def test_playback_device_capabilities_returns_cached_on_error(server):
 def test_capture_device_capabilities_forwards_error_without_cache(server):
     resp = server.get("/api/capturedevicecapabilities/Alsa", params={"device": "missing"})
     assert resp.status == 400
-    assert resp.text == "device not found"
+    assert resp.json()["message"] == "device not found"
 
 
 def test_capabilities_need_a_device(server):
@@ -425,7 +412,7 @@ def test_rename(server):
     try:
         resp = server.post("/api/renamecoeff", params={"source": "rename_a.txt", "target": "config.yml"})
         assert resp.status == 400
-        assert resp.text == "File config.yml already exists"
+        assert resp.json()["message"] == "File config.yml already exists"
         resp = server.post("/api/renamecoeff", params={"source": "rename_a.txt", "target": "rename_b.txt"})
         assert resp.status == 200
         assert server.get("/coeff/rename_b.txt").body == b"1"
@@ -476,7 +463,8 @@ def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_b
     ):
         resp = backend.upload(upload, "file.txt", b"data")
         assert resp.status == 500, upload
-        assert resp.text == f"The directory {missing[setting]} does not exist. Create it and try again."
+        message = resp.json()["message"]
+        assert message == f"The directory {missing[setting]} does not exist. Create it and try again."
 
 
 def test_refuses_to_start_with_ssl_settings(make_backend):
@@ -498,7 +486,7 @@ def test_get_config(server):
 def test_set_config(server):
     config = server.get("/api/getconfigfile", params={"name": "config2.yml"}).json()
     resp = server.post("/api/setconfig", json_body={"config": config})
-    assert resp.status == 200, resp.text
+    assert resp.status == 204, resp.text
     assert server.fake.state["config"]["devices"]["samplerate"] == 48000
 
 
@@ -506,7 +494,20 @@ def test_set_config_refused(server):
     server.fake.state["reject_config"] = "something is wrong"
     resp = server.post("/api/setconfig", json_body={"config": server.get("/api/getconfig").json()})
     assert resp.status == 422
-    assert resp.text == "something is wrong"
+    assert resp.json() == {"message": "something is wrong", "result": "ConfigValidationError"}
+
+
+def test_set_config_needs_a_config(server):
+    resp = server.post("/api/setconfig", json_body={"config": {"devices": {"samplerate": "fast"}}})
+    assert resp.status == 422
+    assert "devices" in resp.json()["message"]
+    assert server.fake.commands("SetConfigJson") == []
+
+
+def test_set_config_offline(server):
+    config = server.get("/api/getconfig").json()
+    server.fake.go_offline()
+    assert server.post("/api/setconfig", json_body={"config": config}).status == 503
 
 
 def test_set_config_refuses_paths_outside_the_folders(server):
@@ -522,7 +523,7 @@ def test_save_config_file(server):
     config["title"] = "Saved"
     try:
         resp = server.post("/api/saveconfigfile", json_body={"config": config, "filename": "saved.yml"})
-        assert resp.status == 200
+        assert resp.status == 204
         saved = yaml.safe_load((server.config_dir / "saved.yml").read_text())
         assert saved["title"] == "Saved"
         assert saved["devices"]["samplerate"] == 48000
@@ -533,7 +534,7 @@ def test_save_config_file(server):
 def test_set_active_config_file_offline_updates_the_statefile(server):
     server.fake.go_offline()
     resp = server.post("/api/setactiveconfigfile", json_body={"name": "config.yml"})
-    assert resp.status == 200
+    assert resp.status == 204
     state = yaml.safe_load(server.statefile.read_text())
     assert state["config_path"] == str(server.config_dir / "config.yml")
     assert server.get("/api/getactiveconfigfilename").json() == {"configFileName": "config.yml"}
@@ -599,53 +600,66 @@ Filter  2: ON  PEQ      Fc     100 Hz  Gain   1.0 dB  BW Oct 0.167
 
 
 def test_translate_eqapo(server):
-    resp = server.post("/api/eqapotojson", params={"channels": 2}, data=EQAPO_EXAMPLE)
+    resp = server.post("/api/eqapotojson", json_body={"text": EQAPO_EXAMPLE, "channels": 2})
     assert resp.status == 200
     content = resp.json()
-    assert content["filters"]["Filter_1"]["parameters"] == {
+    parameters = content["filters"]["Filter_1"]["parameters"]
+    assert {key: value for key, value in parameters.items() if value is not None} == {
         "type": "Peaking",
         "freq": 50.0,
         "gain": -3.0,
         "q": 10.0,
     }
     assert content["pipeline"][1]["channels"] == [0]
+    assert "devices" not in content
 
 
 def test_translate_eqapo_gives_valid_filters(server):
     text = "Filter: ON LS Fc 300 Hz Gain 5 dB\nFilter: ON HP Fc 30 Hz\nConvolution: L.wav\n"
-    filters = server.post("/api/eqapotojson", params={"channels": 2}, data=text).json()["filters"]
+    filters = server.post("/api/eqapotojson", json_body={"text": text, "channels": 2}).json()["filters"]
     config = {
         "devices": server.get("/api/getconfig").json()["devices"],
         "filters": filters,
         "pipeline": [{"type": "Filter", "channels": [0], "names": sorted(filters)}],
     }
     resp = server.post("/api/validateconfig", json_body=config)
+    assert resp.status == 200
     # The wav file does not exist, which is only a warning. Anything else is a real problem.
-    issues = resp.json() if resp.status == 406 else []
-    assert [issue for issue in issues if issue[2] == "error"] == []
+    assert [issue for issue in resp.json() if issue["severity"] == "error"] == []
 
 
-def test_translate_eqapo_bad(server):
-    assert server.post("/api/eqapotojson", data="blank").status == 400
+def test_translate_eqapo_needs_the_channels(server):
+    assert server.post("/api/eqapotojson", json_body={"text": "blank"}).status == 422
 
 
 def test_translate_convolver(server):
-    resp = server.post("/api/convolvertojson", data="96000 1 2 0\n0\n0")
+    resp = server.post("/api/convolvertojson", json_body={"text": "96000 1 2 0\n0\n0"})
     assert resp.status == 200
     content = resp.json()
     assert content["devices"]["samplerate"] == 96000
 
 
-def test_config_to_yml(server):
-    resp = server.post("/api/configtoyml", json_body={"devices": {"samplerate": 44100}})
-    assert resp.status == 200
-    assert yaml.safe_load(resp.text) == {"devices": {"samplerate": 44100}}
-
-
 def test_yml_to_json_migrates(server):
-    resp = server.post("/api/ymltojson", data="filters:\n  lim: {type: Limiter, parameters: {clip_limit: -3}}\n")
+    text = "filters:\n  lim: {type: Limiter, parameters: {clip_limit: -3}}\n"
+    resp = server.post("/api/ymltojson", json_body={"text": text})
     assert resp.status == 200
-    assert resp.json()["filters"]["lim"]["type"] == "Clipper"
+    # Only the sections it has, and the optional fields filled in.
+    assert resp.json() == {
+        "filters": {
+            "lim": {
+                "type": "Clipper",
+                "description": None,
+                "parameters": {"clip_limit": -3.0, "soft_clip": None},
+            }
+        }
+    }
+
+
+def test_yml_to_json_says_what_is_wrong(server):
+    text = "filters:\n  lim: {type: Gain, parameters: {gain: loud}}\n"
+    resp = server.post("/api/ymltojson", json_body={"text": text})
+    assert resp.status == 400
+    assert resp.json()["message"].startswith("filters.lim")
 
 
 NONFINITE_CONFIG = dedent(
@@ -666,11 +680,10 @@ NONFINITE_MESSAGE = (
 )
 
 
-@pytest.mark.parametrize("endpoint", ["/api/ymltojson", "/api/ymlconfigtojsonconfig"])
-def test_yaml_with_nonfinite_values_is_refused_not_sent_as_bad_json(server, endpoint):
-    resp = server.post(endpoint, data=NONFINITE_CONFIG)
+def test_yaml_with_nonfinite_values_is_refused_not_sent_as_bad_json(server):
+    resp = server.post("/api/ymltojson", json_body={"text": NONFINITE_CONFIG})
     assert resp.status == 400
-    assert resp.text == NONFINITE_MESSAGE
+    assert resp.json()["message"] == NONFINITE_MESSAGE
 
 
 def test_config_file_with_nonfinite_values_is_refused(server):
@@ -680,13 +693,23 @@ def test_config_file_with_nonfinite_values_is_refused(server):
     finally:
         (server.config_dir / "nonfinite_tmp.yml").unlink()
     assert resp.status == 400
-    assert resp.text == NONFINITE_MESSAGE
+    assert resp.json()["message"] == NONFINITE_MESSAGE
 
 
 def test_get_config_file_missing(server):
     resp = server.get("/api/getconfigfile", params={"name": "nosuchfile.yml"})
     assert resp.status == 404
-    assert resp.text == "Config file 'nosuchfile.yml' not found."
+    assert resp.json()["message"] == "Config file 'nosuchfile.yml' not found."
+
+
+def test_get_config_file_that_is_not_a_config(server):
+    (server.config_dir / "broken_tmp.yml").write_text("devices: {samplerate: fast}\n")
+    try:
+        resp = server.get("/api/getconfigfile", params={"name": "broken_tmp.yml"})
+    finally:
+        (server.config_dir / "broken_tmp.yml").unlink()
+    assert resp.status == 400
+    assert resp.json()["message"].startswith("devices")
 
 
 def test_get_config_file_with_migration(server):
@@ -702,7 +725,7 @@ def test_get_config_file_with_migration(server):
     }
     (server.config_dir / "legacy_tmp.yml").write_text(yaml.dump(legacy))
     try:
-        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml", "migrate": "TRUE"})
+        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml", "migrate": "true"})
     finally:
         (server.config_dir / "legacy_tmp.yml").unlink()
     assert resp.status == 200, resp.text
@@ -745,8 +768,8 @@ def test_stored_configs_missing_file_is_only_a_warning(server):
         (server.config_dir / "missingfile_tmp.yml").unlink()
     config_file = next(item for item in content if item["name"] == "missingfile_tmp.yml")
     assert config_file["valid"] is True
-    assert config_file["errors"][0][0] == ["filters", "conv", "parameters", "filename"]
-    assert config_file["errors"][0][2] == "warning"
+    assert config_file["errors"][0]["path"] == ["filters", "conv", "parameters", "filename"]
+    assert config_file["errors"][0]["severity"] == "warning"
 
 
 def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
@@ -764,7 +787,7 @@ def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
     config_file = next(item for item in files if item["name"] == "eqapo_like.yml")
     assert config_file["version"] is None
     assert config_file["valid"] is False
-    assert config_file["errors"][0][1] == "This does not appear to be a CamillaDSP config file."
+    assert config_file["errors"][0]["message"] == "This does not appear to be a CamillaDSP config file."
 
 
 GRAPHIC_EQ_CONFIG = {
@@ -787,21 +810,30 @@ GRAPHIC_EQ_CONFIG = {
 def test_validate_config_with_default_graphic_eq_range(server):
     resp = server.post("/api/validateconfig", json_body=GRAPHIC_EQ_CONFIG)
     assert resp.status == 200, resp.text
-    assert resp.text == "OK"
+    assert resp.json() == []
 
     # 32 kHz cannot fit the default 20000 Hz upper band, and CamillaDSP
     # rejects that rather than clamping, so the GUI has to report it.
     config = json.loads(json.dumps(GRAPHIC_EQ_CONFIG))
     config["devices"]["samplerate"] = 32000
     resp = server.post("/api/validateconfig", json_body=config)
-    assert resp.status == 406
+    assert resp.status == 200
     errors = resp.json()
     assert any("samplerate/2" in str(error) or "Nyquist" in str(error) for error in errors), errors
 
 
-def test_validate_config_without_content_type(server):
+def test_validate_config_that_does_not_parse(server):
+    resp = server.post("/api/validateconfig", json_body={"devices": {"samplerate": "fast"}})
+    assert resp.status == 200
+    [issue] = resp.json()
+    assert issue["path"] == ["devices", "samplerate"]
+    assert issue["severity"] == "error"
+
+
+def test_validate_config_needs_a_content_type(server):
     resp = server.post("/api/validateconfig", data=json.dumps(GRAPHIC_EQ_CONFIG))
-    assert resp.status == 200, resp.text
+    assert resp.status == 415
+    assert "message" in resp.json()
 
 
 def test_validate_config_reports_device_types_the_dsp_lacks(server):
@@ -812,8 +844,8 @@ def test_validate_config_reports_device_types_the_dsp_lacks(server):
     server.fake.state["online"] = True
     server.wait_for_backends([["Stdout"], ["Alsa"]])
     resp = server.post("/api/validateconfig", json_body=GRAPHIC_EQ_CONFIG)
-    assert resp.status == 406
-    assert any(error[0] == ["devices", "capture", "type"] for error in resp.json())
+    assert resp.status == 200
+    assert any(issue["path"] == ["devices", "capture", "type"] for issue in resp.json())
     # Offline again, so the next reset reconnects and reads the usual types.
     server.fake.go_offline()
 

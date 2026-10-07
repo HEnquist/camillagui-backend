@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import "./index.css"
 import { mdiFileSearch, mdiMagnify, mdiTune } from "@mdi/js"
 import { Range } from "immutable"
+import { responseErrorMessage } from "./api/client"
 import {
   AlsaFormat,
   AsioFormat,
@@ -762,7 +763,7 @@ function CaptureOptions(props: {
     fetch("/api/capturedevicecapabilities/" + capture.type + "?device=" + encodeURIComponent(capture.device))
       .then(async (response) => {
         if (!response.ok) {
-          const message = await response.text()
+          const message = await responseErrorMessage(response)
           throw new Error(message || "Failed to load capture device capabilities")
         }
         return response.json()
@@ -1376,7 +1377,7 @@ function PlaybackOptions(props: {
     fetch("/api/playbackdevicecapabilities/" + playback.type + "?device=" + encodeURIComponent(playback.device))
       .then(async (response) => {
         if (!response.ok) {
-          const message = await response.text()
+          const message = await responseErrorMessage(response)
           throw new Error(message || "Failed to load playback device capabilities")
         }
         return response.json()

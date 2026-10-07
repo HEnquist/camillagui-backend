@@ -3,6 +3,7 @@
    We allow the 'any' type here since it is difficult to avoid. */
 
 import { cloneDeep, isArray, isEqual, isObject, isString } from "lodash"
+import { api, Schemas } from "../api/client"
 import { Config, Devices, Pipeline, PipelineStep } from "../camilladsp/config"
 import { isComplexObject } from "../utilities/common"
 
@@ -156,15 +157,17 @@ export async function importedYamlConfigAsJson(files: FileList): Promise<Importe
   return localYamlConfigAsJson(content)
 }
 
+/**
+ * What an import sent by the backend holds: only the sections it has, with the optional fields
+ * filled in, and any of the device settings.
+ */
+function importedConfig(fragment: Schemas["ConfigFragment"]): ImportedConfig {
+  return fragment as ImportedConfig
+}
+
 export async function localYamlConfigAsJson(content: string): Promise<ImportedConfig> {
-  const response = await fetch("/api/ymltojson", {
-    method: "POST",
-    body: content,
-  })
-  if (response.ok) {
-    const text = await response.text()
-    return JSON.parse(text) as ImportedConfig
-  }
+  const { data } = await api.POST("/api/ymltojson", { body: { text: content } })
+  if (data) return importedConfig(data)
   throw new Error("Could not extract filters from file")
 }
 
@@ -182,26 +185,14 @@ function fileContent(files: FileList): Promise<string> {
 
 export async function importedConvolverConfigAsJson(files: FileList): Promise<ImportedConfig> {
   const content = await fileContent(files)
-  const response = await fetch("/api/convolvertojson", {
-    method: "POST",
-    body: content,
-  })
-  if (response.ok) {
-    const text = await response.text()
-    return JSON.parse(text) as ImportedConfig
-  }
+  const { data } = await api.POST("/api/convolvertojson", { body: { text: content } })
+  if (data) return importedConfig(data)
   throw new Error("Could not extract filters from file")
 }
 
 export async function importedEqAPOConfigAsJson(files: FileList, channels: number): Promise<ImportedConfig> {
   const content = await fileContent(files)
-  const response = await fetch("/api/eqapotojson?channels=" + channels, {
-    method: "POST",
-    body: content,
-  })
-  if (response.ok) {
-    const text = await response.text()
-    return JSON.parse(text) as ImportedConfig
-  }
+  const { data } = await api.POST("/api/eqapotojson", { body: { text: content, channels } })
+  if (data) return importedConfig(data)
   throw new Error("Could not translate file")
 }
