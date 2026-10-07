@@ -1779,6 +1779,34 @@ mod tests {
         assert!(unknown.is_err());
     }
 
+    fn import_eqapo(text: &str) -> Value {
+        let translated = eqapo::EqApo::new(2).translate(text);
+        to_json(&ConfigFragment::parse(translated).unwrap())
+    }
+
+    #[test]
+    fn eqapo_import_skips_unknown_channels() {
+        let conf = import_eqapo("Channel: 2 C\nFilter: ON HP Fc 30 Hz\n");
+        assert_eq!(conf["pipeline"][0]["channels"], json!([1]));
+        assert_eq!(conf["pipeline"][0]["names"], json!(["Filter_1"]));
+        assert_eq!(conf["filters"]["Filter_1"]["parameters"]["freq"], 30.0);
+    }
+
+    #[test]
+    fn eqapo_import_skips_filters_with_expressions() {
+        let conf = import_eqapo(
+            "Filter: ON PK Fc `2*a` Hz Gain 1 dB Q 2\nFilter: ON PK Fc 50 Hz Gain 1 dB Q 2\n\
+             Preamp: `a` dB\nDelay: `a` ms\nCopy: L=`a`*R R=R+`a`*L\n",
+        );
+        let filters = conf["filters"].as_object().unwrap();
+        assert_eq!(filters.keys().collect::<Vec<_>>(), ["Filter_1"]);
+        assert_eq!(filters["Filter_1"]["parameters"]["freq"], 50.0);
+        let mapping = &conf["mixers"]["Copy_1"]["mapping"];
+        assert_eq!(mapping.as_array().unwrap().len(), 1);
+        assert_eq!(mapping[0]["dest"], 1);
+        assert_eq!(mapping[0]["sources"][0]["channel"], 1);
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn on_set_active_config_passes_the_path_as_text() {

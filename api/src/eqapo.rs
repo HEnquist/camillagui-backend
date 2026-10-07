@@ -43,15 +43,13 @@ fn channel_map(channels: i64) -> &'static [(&'static str, i64)] {
     }
 }
 
-/// Inline expressions are not supported, a value that is not a plain number is null.
-fn parse_number(text: &str) -> Value {
-    match text.parse::<f64>() {
-        Ok(number) => json!(number),
-        Err(_) => {
-            log::warn!("Unable to parse '{text}' as number, inline expressions are not supported.");
-            Value::Null
-        }
+/// Inline expressions are not supported, only a plain number gives a value.
+fn parse_number(text: &str) -> Option<f64> {
+    let number = text.parse::<f64>().ok();
+    if number.is_none() {
+        log::warn!("Unable to parse '{text}' as number, inline expressions are not supported.");
     }
+    number
 }
 
 pub struct EqApo {
@@ -97,21 +95,23 @@ impl EqApo {
         name
     }
 
-    fn lookup_channel_index(&self, label: &str) -> Value {
+    /// The index of a channel, `None` for labels that are not known for the
+    /// number of channels, and for virtual channels.
+    fn lookup_channel_index(&self, label: &str) -> Option<i64> {
         if let Some((_, channel)) = channel_map(self.channels).iter().find(|(l, _)| *l == label) {
-            return json!(channel);
+            return Some(*channel);
         }
-        if !label.is_empty() && label.chars().all(|c| c.is_ascii_digit()) {
-            return label
-                .parse::<i64>()
-                .map(|n| json!(n - 1))
-                .unwrap_or(Value::Null);
+        if label.chars().all(|c| c.is_ascii_digit())
+            && let Some(number) = label.parse::<i64>().ok().filter(|n| *n > 0)
+        {
+            return Some(number - 1);
         }
-        log::warn!("Virtual channels are not supported, skipping channel {label}");
-        Value::Null
+        log::warn!("Unknown or virtual channel, skipping channel {label}");
+        None
     }
 
-    /// The parameters of a Filter command, `None` for unsupported types.
+    /// The parameters of a Filter command, `None` for unsupported types and
+    /// for values that are not plain numbers.
     fn parse_filter_params(&self, text: &str) -> Option<Map<String, Value>> {
         let tokens: Vec<&str> = text.split_whitespace().collect();
         let ftype = tokens.get(1)?;
@@ -152,7 +152,7 @@ impl EqApo {
                 log::warn!("Missing value for {first} in: {text}");
                 return None;
             };
-            params.insert(key.into(), parse_number(value));
+            params.insert(key.into(), json!(parse_number(value)?));
             rest = &rest[used.min(rest.len())..];
         }
         apply_width(ftype, camilla_type, &mut params);
@@ -166,7 +166,7 @@ impl EqApo {
             return None;
         }
         Some(
-            json!({"type": "Gain", "parameters": {"gain": parse_number(tokens[0]), "scale": "dB"}}),
+            json!({"type": "Gain", "parameters": {"gain": parse_number(tokens[0])?, "scale": "dB"}}),
         )
     }
 
@@ -181,7 +181,7 @@ impl EqApo {
             }
         };
         Some(
-            json!({"type": "Delay", "parameters": {"delay": parse_number(tokens[0]), "delay_unit": unit}}),
+            json!({"type": "Delay", "parameters": {"delay": parse_number(tokens[0])?, "delay_unit": unit}}),
         )
     }
 
@@ -194,8 +194,10 @@ impl EqApo {
                 log::warn!("Skipping invalid copy expression '{item}'");
                 continue;
             };
-            let dest = self.lookup_channel_index(dest);
-            handled.push(dest.clone());
+            let Some(dest) = self.lookup_channel_index(dest) else {
+                continue;
+            };
+            handled.push(dest);
             let mut sources = Vec::new();
             for source in expr.split('+') {
                 let (gain, scale, channel) = if let Some((gain, channel)) = source.split_once('*') {
@@ -208,10 +210,13 @@ impl EqApo {
                     // supported, other values have no practical use.
                     continue;
                 } else {
-                    (json!(0), "dB", source)
+                    (Some(0.0), "dB", source)
+                };
+                let (Some(gain), Some(channel)) = (gain, self.lookup_channel_index(channel)) else {
+                    continue;
                 };
                 sources.push(json!({
-                    "channel": self.lookup_channel_index(channel),
+                    "channel": channel,
                     "gain": gain,
                     "inverted": false,
                     "scale": scale,
@@ -220,7 +225,7 @@ impl EqApo {
             mapping.push(json!({"dest": dest, "mute": false, "sources": sources}));
         }
         for dest in 0..self.channels.max(0) {
-            if handled.contains(&json!(dest)) {
+            if handled.contains(&dest) {
                 continue;
             }
             mapping.push(json!({
@@ -277,12 +282,12 @@ impl EqApo {
                 self.selected_channels = if params.trim() == "all" {
                     Value::Null
                 } else {
-                    Value::Array(
+                    json!(
                         params
                             .trim()
                             .split(' ')
-                            .map(|c| self.lookup_channel_index(c))
-                            .collect(),
+                            .filter_map(|c| self.lookup_channel_index(c))
+                            .collect::<Vec<_>>()
                     )
                 };
                 self.pipeline.push(json!({
@@ -485,7 +490,7 @@ Filter: ON  NO       Fc     50 Hz
             json!({"gain": -6.0, "scale": "dB"})
         );
         assert_eq!(conf["pipeline"][1]["channels"], json!([0]));
-        assert_eq!(conf["pipeline"][2]["channels"], json!([1, null]));
+        assert_eq!(conf["pipeline"][2]["channels"], json!([1]));
     }
 
     #[test]
@@ -587,8 +592,7 @@ Filter: ON  NO       Fc     50 Hz
     fn crossover() {
         let text = "\nCopy: RL=L RR=R\nChannel: L R\nFilter  1: ON  LP       Fc     2000 Hz\nChannel: RL RR\nFilter  2: ON  HP       Fc     2000 Hz\n";
         let conf = EqApo::new(4).translate(text);
-        let source =
-            |channel: i64| json!({"channel": channel, "gain": 0, "inverted": false, "scale": "dB"});
+        let source = |channel: i64| json!({"channel": channel, "gain": 0.0, "inverted": false, "scale": "dB"});
         assert_eq!(
             conf,
             json!({
