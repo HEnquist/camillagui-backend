@@ -1054,11 +1054,15 @@ async fn run_shell(command: &str) -> std::io::Result<String> {
 /// Run a shell command, with `arg` as `$1` on Unix. cmd has no positional
 /// arguments, so on Windows `arg` must already be in `command`.
 async fn run_shell_with_arg(command: &str, arg: Option<&str>) -> std::io::Result<String> {
-    let mut cmd = if cfg!(windows) {
+    #[cfg(windows)]
+    let mut cmd = {
+        debug_assert!(arg.is_none(), "cmd has no positional arguments");
         let mut cmd = tokio::process::Command::new("cmd");
-        cmd.arg("/C").arg(command);
+        cmd.raw_arg(cmd_arguments(command));
         cmd
-    } else {
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
         let mut cmd = tokio::process::Command::new("sh");
         cmd.arg("-c").arg(command).arg("sh").args(arg);
         cmd
@@ -1067,17 +1071,48 @@ async fn run_shell_with_arg(command: &str, arg: Option<&str>) -> std::io::Result
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// The arguments for cmd that run `command` as it is written.
+///
+/// They go on the command line raw, since the usual argv quoting would turn
+/// the quotes in `command` into `\"`, which cmd does not understand. With `/S`,
+/// cmd strips the first and last quote and runs what is between them, whatever
+/// quotes `command` has of its own.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn cmd_arguments(command: &str) -> String {
+    format!("/S /C \"{command}\"")
+}
+
+/// Quote a path for a cmd command line, so cmd passes it on as one argument
+/// and expands nothing in it.
+///
+/// Inside quotes cmd still expands `%NAME%`, and `%CMDCMDLINE%` expands to a
+/// text with quotes in it, which would end the quoting early. So the quotes
+/// are escaped too, and cmd sees no quoted part at all: every character that
+/// means anything to it gets a `^`, which cmd removes when it runs the command.
+/// A `^` in front of each `%` also leaves no variable name for cmd to expand,
+/// since every name would end with `^`.
+fn cmd_quote(path: &str) -> String {
+    let mut quoted = String::from("^\"");
+    for c in path.chars() {
+        if matches!(c, '(' | ')' | '%' | '!' | '^' | '"' | '<' | '>' | '&' | '|') {
+            quoted.push('^');
+        }
+        quoted.push(c);
+    }
+    quoted.push_str("^\"");
+    quoted
+}
+
 /// Run the on_set_active_config command, with `{}` standing for the quoted
 /// config path.
 ///
 /// On Unix the path is passed to `sh` as `$1` and `{}` becomes `"$1"`, so the
 /// shell never parses the file name and `$(...)` in it stays text. On Windows
-/// the path is quoted in place. A Windows file name cannot contain `"`, so it
-/// cannot end the quotes.
+/// the path is quoted in place, see `cmd_quote`.
 async fn run_on_set_active_config(template: &str, path: &str) -> std::io::Result<String> {
     log::debug!("Running command: {template}, with path '{path}'");
     if cfg!(windows) {
-        run_shell(&template.replace("{}", &format!("\"{path}\""))).await
+        run_shell(&template.replace("{}", &cmd_quote(path))).await
     } else {
         run_shell_with_arg(&template.replace("{}", "\"$1\""), Some(path)).await
     }
@@ -1837,5 +1872,27 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(output, "done");
+    }
+
+    #[test]
+    fn cmd_quote_escapes_what_cmd_would_parse() {
+        assert_eq!(
+            cmd_quote(r"C:\my configs\a.yml"),
+            r#"^"C:\my configs\a.yml^""#
+        );
+        assert_eq!(
+            cmd_quote(r"C:\c\%CMDCMDLINE%&x|y^z(1)!.yml"),
+            r#"^"C:\c\^%CMDCMDLINE^%^&x^|y^^z^(1^)^!.yml^""#
+        );
+    }
+
+    #[test]
+    fn cmd_arguments_keep_the_command_as_written() {
+        let template = r#""C:\my tools\set.exe" {} & echo done"#;
+        let command = template.replace("{}", &cmd_quote(r"C:\c\a b.yml"));
+        assert_eq!(
+            cmd_arguments(&command),
+            r#"/S /C ""C:\my tools\set.exe" ^"C:\c\a b.yml^" & echo done""#
+        );
     }
 }
