@@ -63,6 +63,7 @@ pub struct ErrorBody {
     /// When CamillaDSP refused a command, the name of its error, for example
     /// `ProcessingNotRunningError`.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub result: Option<String>,
 }
 

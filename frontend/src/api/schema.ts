@@ -1341,7 +1341,7 @@ export interface components {
        * @description When CamillaDSP refused a command, the name of its error, for example
        *     `ProcessingNotRunningError`.
        */
-      result?: string | null
+      result?: string
     }
     /** @description Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`]. */
     Fader: {

@@ -4133,10 +4133,7 @@
             "description": "What went wrong, to show to the user."
           },
           "result": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "description": "When CamillaDSP refused a command, the name of its error, for example\n`ProcessingNotRunningError`."
           }
         }
