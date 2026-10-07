@@ -210,7 +210,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 [[package]]
 name = "camilladsp-schema"
 version = "5.0.0"
-source = "git+https://github.com/HEnquist/camilladsp?branch=next5#df8d8cbdffb7993c5088ef7cd5e64369661d9a23"
+source = "git+https://github.com/HEnquist/camilladsp?branch=next5#c5ce8b8a4d426002f028b770a795e84995c9fc69"
 dependencies = [
  "audioadapter",
  "audioadapter-sample",

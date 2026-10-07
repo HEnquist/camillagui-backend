@@ -175,11 +175,7 @@ fn unexpected(reply: WsReply) -> DspError {
 /// The reply, if it is the one to the command. A reply is tagged with the
 /// name of its command.
 fn answering(command: &WsCommand, reply: WsReply) -> Result<WsReply, DspError> {
-    fn tag(message: &impl serde::Serialize, field: &str) -> Option<String> {
-        let value = serde_json::to_value(message).ok()?;
-        value.get(field)?.as_str().map(String::from)
-    }
-    if tag(command, "command") == tag(&reply, "reply") {
+    if command.name() == reply.name() {
         Ok(reply)
     } else {
         Err(unexpected(reply))
