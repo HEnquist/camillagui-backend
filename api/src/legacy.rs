@@ -366,7 +366,9 @@ fn modify_filter_time_units(config: &mut Value) {
         match kind.as_deref() {
             Some("Delay") => {
                 let unit = params.remove("unit").filter(|u| !u.is_null());
-                params.insert("delay_unit".into(), unit.unwrap_or_else(|| json!("ms")));
+                let current = params.remove("delay_unit").filter(|u| !u.is_null());
+                let unit = unit.or(current).unwrap_or_else(|| json!("ms"));
+                params.insert("delay_unit".into(), unit);
             }
             Some("Volume") => {
                 if let Some(ramp) = params.remove("ramp_time") {
@@ -814,15 +816,29 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "migrate_legacy_config still overwrites delay_unit, renames File playback to \
-                RawFile and wipes the v5 CoreAudio and Wasapi formats; un-ignore once those \
-                steps only touch old configs"]
+    #[ignore = "migrate_legacy_config still renames File playback to RawFile and wipes the v5 \
+                CoreAudio and Wasapi formats; un-ignore once those steps only touch old configs"]
     fn migration_leaves_current_config_unchanged() {
         for config in v5_configs() {
             let mut migrated = config.clone();
             migrate_legacy_config(&mut migrated);
             assert_eq!(migrated, config);
         }
+    }
+
+    #[test]
+    fn delay_unit_is_kept_or_defaulted() {
+        let mut config = json!({"filters": {
+            "old": {"type": "Delay", "parameters": {"delay": 5.0}},
+            "old_unit": {"type": "Delay", "parameters": {"delay": 5.0, "unit": "mm"}},
+            "new": {"type": "Delay", "parameters": {"delay": 100.0, "delay_unit": "samples"}},
+        }});
+        modify_filter_time_units(&mut config);
+        let filters = &config["filters"];
+        assert_eq!(filters["old"]["parameters"]["delay_unit"], "ms");
+        assert_eq!(filters["old_unit"]["parameters"]["delay_unit"], "mm");
+        assert!(filters["old_unit"]["parameters"].get("unit").is_none());
+        assert_eq!(filters["new"]["parameters"]["delay_unit"], "samples");
     }
 
     #[test]
