@@ -465,12 +465,13 @@ pub async fn get_wav_info(
         Some(dir) => PathBuf::from(paths::make_absolute(&filename, dir)),
         None => PathBuf::from(&filename),
     };
-    match wav::read_info(&path) {
+    blocking(move || match wav::read_info(&path) {
         Some(info) => Ok(Reply(info)),
         None => Err(not_found(format!(
             "'{filename}' is not a wav file CamillaDSP can read"
         ))),
-    }
+    })
+    .await
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -867,9 +868,12 @@ pub async fn save_config_file(
     let SaveConfigBody { config, filename } = body;
     let config = config_for_dsp(&app, &config)?;
     let path = file_in_folder(&app.settings.config_dir, &filename).map_err(bad_request)?;
-    std::fs::write(&path, yaml::dump(&config))
-        .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
-    Ok(NoContent)
+    blocking(move || {
+        std::fs::write(&path, yaml::dump(&config))
+            .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
+        Ok(NoContent)
+    })
+    .await
 }
 
 // ── Imports ────────────────────────────────────────────────────────────────
@@ -1151,8 +1155,18 @@ async fn active_config_name(app: &AppState) -> Option<String> {
     }
     if let Some(statefile) = &settings.statefile_path {
         log::debug!("Getting config from statefile: {}", statefile.display());
-        let path = files::read_statefile_config_path(statefile);
-        return files::verify_path_in_config_dir(path.as_deref(), &settings.config_dir);
+        let statefile = statefile.clone();
+        let config_dir = settings.config_dir.clone();
+        return blocking(move || {
+            let path = files::read_statefile_config_path(&statefile);
+            Ok(files::verify_path_in_config_dir(
+                path.as_deref(),
+                &config_dir,
+            ))
+        })
+        .await
+        .ok()
+        .flatten();
     }
     log::error!(
         "The backend config has no state file and is unable to persistently store config file path"
@@ -1167,8 +1181,15 @@ async fn set_active_config_path(app: &AppState, path: &str) -> Result<(), ApiErr
         match &settings.statefile_path {
             Some(statefile) => {
                 log::debug!("Update config file path in statefile to '{path}'");
-                if let Err(err) = files::update_statefile_config_path(statefile, path) {
-                    log::error!("{err}");
+                let (statefile, path) = (statefile.clone(), path.to_string());
+                let written = tokio::task::spawn_blocking(move || {
+                    files::update_statefile_config_path(&statefile, &path)
+                })
+                .await;
+                match written {
+                    Ok(Err(err)) => log::error!("{err}"),
+                    Err(err) => log::error!("{err}"),
+                    Ok(Ok(())) => {}
                 }
             }
             None => log::error!(
@@ -1520,8 +1541,11 @@ pub async fn delete_files(
     Json(body): Json<FileNames>,
 ) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
-    files::delete_files(&folder, &body.names).map_err(internal)?;
-    Ok(NoContent)
+    blocking(move || {
+        files::delete_files(&folder, &body.names).map_err(internal)?;
+        Ok(NoContent)
+    })
+    .await
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -1549,8 +1573,11 @@ pub async fn rename_file(
     Json(body): Json<RenameBody>,
 ) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
-    files::rename_file(&folder, &body.source, &body.target).map_err(bad_request)?;
-    Ok(NoContent)
+    blocking(move || {
+        files::rename_file(&folder, &body.source, &body.target).map_err(bad_request)?;
+        Ok(NoContent)
+    })
+    .await
 }
 
 /// Some of the files in a folder, as a zip file.
