@@ -383,7 +383,8 @@ export class SpectrumEventStream {
     const query = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
       // A missing channel means all channels.
-      if (value !== null) query.set(key, String(value))
+      // Omitted (undefined) optional parameters are dropped too, not sent as "undefined".
+      if (value != null) query.set(key, String(value))
     }
     this.stream = new EventStream(
       `/api/spectrum?${query}`,

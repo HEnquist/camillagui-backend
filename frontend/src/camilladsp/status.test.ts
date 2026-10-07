@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
-import { Status, StatusPoller } from "./status"
+import { SpectrumEventStream, Status, StatusPoller } from "./status"
 
 /** Stands in for the browser's EventSource, so a test can push events and errors. */
 class FakeEventSource extends EventTarget {
@@ -113,4 +113,24 @@ test("stopping closes the state stream", () => {
   const stream = stateStream()
   poller.stop()
   expect(stream.closed).toBe(true)
+})
+
+test("the spectrum query leaves out null and omitted parameters", () => {
+  const base = { side: "playback", min_freq: 20, max_freq: 20000, n_bins: 100 } as const
+  const queryOf = (params: ConstructorParameters<typeof SpectrumEventStream>[0]) => {
+    const stream = new SpectrumEventStream(params, () => {})
+    const url = FakeEventSource.open.at(-1)!.url
+    stream.stop()
+    return new URL(url, "http://localhost").searchParams
+  }
+  const omitted = queryOf({ ...base, channel: undefined, max_rate: undefined })
+  expect(omitted.has("channel")).toBe(false)
+  expect(omitted.has("max_rate")).toBe(false)
+  expect(omitted.get("n_bins")).toBe("100")
+  const nulls = queryOf({ ...base, channel: null, max_rate: null })
+  expect(nulls.has("channel")).toBe(false)
+  expect(nulls.has("max_rate")).toBe(false)
+  const full = queryOf({ ...base, channel: 0, max_rate: 10 })
+  expect(full.get("channel")).toBe("0")
+  expect(full.get("max_rate")).toBe("10")
 })
