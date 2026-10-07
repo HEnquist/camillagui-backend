@@ -4,11 +4,12 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use utoipa::ToSchema;
 use waveadapter::SampleFormat;
 use waveadapter::header::read_wav_header;
 
-/// What `/api/wavinfo` reports, with the field names the frontend reads.
-#[derive(Debug, Serialize)]
+/// The header of a wav file.
+#[derive(Debug, Serialize, ToSchema)]
 pub struct WavInfo {
     #[serde(rename = "dataoffset")]
     pub data_offset: u64,

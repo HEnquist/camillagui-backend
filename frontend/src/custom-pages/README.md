@@ -193,13 +193,12 @@ const status = await res.json()
 import { api } from "../api/client"
 const { data: volume } = await api.GET("/api/param/volume")  // number
 
-// All stored config files
-const res = await fetch("/api/storedconfigs")
-const files: string[] = await res.json()
+// All stored config files, with their title and whether they are valid
+const { data: configs } = await api.GET("/api/files/{kind}", { params: { path: { kind: "config" } } })
 
 // All stored coefficient files
-const res = await fetch("/api/storedcoeffs")
-const files: string[] = await res.json()
+const { data: coeffs } = await api.GET("/api/files/{kind}", { params: { path: { kind: "coeff" } } })
+const names = (coeffs ?? []).map((file) => file.name)
 ```
 
 ### Evaluating a filter

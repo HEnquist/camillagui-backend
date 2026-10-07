@@ -1,4 +1,5 @@
 import { List } from "immutable"
+import { api } from "../api/client"
 import { components } from "../api/schema"
 import { sortedAlphabetically } from "../utilities/arrays"
 
@@ -1215,24 +1216,9 @@ export async function maxChannelCount(config: Config, pipelineStepIndex: number)
   return getCaptureDeviceChannelCount(config.devices.capture)
 }
 
-export interface WavInfo {
-  dataoffset: number
-  datalength: number
-  sampleformat: string
-  bitspersample: number
-  channels: number
-  byterate: number
-  samplerate: number
-  bytesperframe: number
-}
-
-async function getWavInfo(filename: string): Promise<WavInfo | null> {
-  const info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
-  if (info_resp.ok) {
-    const info = await info_resp.json()
-    return info == null ? null : (info as WavInfo)
-  }
-  return null
+async function getWavInfo(filename: string): Promise<Schemas["WavInfo"] | null> {
+  const { data } = await api.GET("/api/wavinfo", { params: { query: { filename } } })
+  return data ?? null
 }
 
 export async function getCaptureDeviceChannelCount(config: CaptureDevice): Promise<number> {

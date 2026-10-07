@@ -100,13 +100,14 @@ utilities/
 
 ## API
 
-All requests go to `/api/*` (proxied to the backend in dev). See `../rust/src/main.rs` for the full list.
+All requests go to `/api/*` (proxied to the backend in dev). The full list is the backend's
+OpenAPI spec, `../rust/openapi.json`.
 
-The typed endpoints are in the backend's OpenAPI spec, and `src/api/schema.ts` is generated from
-it by openapi-typescript. Call them through `api` in `src/api/client.ts` (openapi-fetch), so tsc
-checks the path, parameters, body and response. The demo backend uses the same generated types.
-The rest are still plain `fetch` until they are typed in the backend. Every error, typed or not,
-is a JSON `ErrorBody` with a `message`: use `errorMessage` after an `api` call and
+`src/api/schema.ts` is generated from the spec by openapi-typescript. Call the API through `api`
+in `src/api/client.ts` (openapi-fetch), so tsc checks the path, parameters, body and response.
+The exceptions are the event streams (`EventSource`) and `/api/convcoeffs` (binary), which use
+the generated payload types with their own code. The demo backend uses the same generated types.
+Every error is a JSON `ErrorBody` with a `message`: use `errorMessage` after an `api` call and
 `responseErrorMessage` after a plain `fetch`, both in `src/api/client.ts`.
 
 The config types in `camilladsp/config.ts` are the generated ones from camilladsp-config, wrapped
@@ -129,6 +130,10 @@ Key endpoints used by the frontend:
   the current one. `StatusPoller` merges it into the polled `/api/status` as `cdsp_status`
 - Each open stream is its own CamillaDSP subscription, which ends when the stream is closed
 - `POST /api/convcoeffs` — coefficients of a Conv filter that reads a file
+- `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip` — the
+  config, coeff and audiofile folders, helpers in `utilities/files.tsx`
+- `GET /api/devices/{direction}/{backend}` and `.../capabilities?device=...`, `GET /api/backends`
+  — the devices CamillaDSP can use
 
 ## Filter evaluation
 

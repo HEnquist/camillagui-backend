@@ -9,6 +9,91 @@
     "version": "internal"
   },
   "paths": {
+    "/api/backends": {
+      "get": {
+        "summary": "The device types CamillaDSP supports. They cannot change while it runs, so\nthis comes from the cache.",
+        "operationId": "get_backends",
+        "responses": {
+          "200": {
+            "description": "Null until CamillaDSP has been reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeviceTypeLists"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/convcoeffs": {
+      "post": {
+        "summary": "The coefficients of a Conv filter that reads them from a file, and which\nsamplerate and channel variants of that file exist. The GUI evaluates\nfilters itself; this exists because only the server can reach the files.",
+        "description": "Not JSON: a little endian u32 giving the length of a JSON `CoeffsHeader`,\nthat header, padding to the next multiple of 8, and then the samples, in\nthe width the header gives.",
+        "operationId": "conv_coefficients",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoeffsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Raw bytes, not JSON."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The filter reads no file, or the file could not be read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The file is outside the configured folders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "There is no such file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/convolvertojson": {
       "post": {
         "summary": "Translate a Convolver config.",
@@ -46,6 +131,148 @@
         }
       }
     },
+    "/api/defaultsforcoeffs": {
+      "get": {
+        "summary": "Sensible parameters for a Conv filter reading a coefficient file, from\nthe file's extension.",
+        "operationId": "get_defaults_for_coeffs",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "query",
+            "description": "The coefficient file, relative to config_dir.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoeffDefaults"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{direction}/{backend}": {
+      "get": {
+        "summary": "The devices of a device type, or the ones read earlier while CamillaDSP\ncannot be reached.",
+        "operationId": "get_devices",
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Direction"
+            }
+          },
+          {
+            "name": "backend",
+            "in": "path",
+            "description": "The device type, for example `Alsa`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AvailableDevice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{direction}/{backend}/capabilities": {
+      "get": {
+        "summary": "The capabilities of a device, or the ones read earlier if CamillaDSP\ncannot give them now.",
+        "operationId": "get_device_capabilities",
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Direction"
+            }
+          },
+          {
+            "name": "backend",
+            "in": "path",
+            "description": "The device type, for example `Alsa`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "device",
+            "in": "query",
+            "description": "The device, as a config names it.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioDeviceDescriptor"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No device is given, or CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/eqapotojson": {
       "post": {
         "summary": "Translate an Equalizer APO config.",
@@ -72,6 +299,268 @@
           },
           "default": {
             "description": "The body is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}": {
+      "get": {
+        "summary": "The files in a folder, sorted by name.",
+        "operationId": "get_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileInfo"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/delete": {
+      "post": {
+        "summary": "Delete files from a folder.",
+        "operationId": "delete_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileNames"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A file could not be deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/rename": {
+      "post": {
+        "summary": "Rename a file in a folder.",
+        "operationId": "rename_file",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Renamed"
+          },
+          "400": {
+            "description": "A file name is not valid, the new name is taken, or the file could not be renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/upload": {
+      "post": {
+        "summary": "Store files in a folder. Uploaded configs have their coefficient and audio\nfile paths reduced to bare file names, so that configs from other machines\nwork here.",
+        "operationId": "upload_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "A file name is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The folder does not exist, or a file could not be written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/zip": {
+      "post": {
+        "summary": "Some of the files in a folder, as a zip file.",
+        "operationId": "zip_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileNames"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Raw bytes, not JSON."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A file could not be read",
             "content": {
               "application/json": {
                 "schema": {
@@ -266,6 +755,23 @@
         }
       }
     },
+    "/api/guiconfig": {
+      "get": {
+        "summary": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs.",
+        "operationId": "get_gui_config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuiConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/levels": {
       "get": {
         "summary": "The VU levels, as a stream of `levels` events.",
@@ -284,6 +790,33 @@
           },
           "503": {
             "description": "CamillaDSP cannot be reached, or the level stream is disabled in the settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logfile": {
+      "get": {
+        "summary": "CamillaDSP's log file, `log_file` in the settings.",
+        "operationId": "get_log_file",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No log file is set, or it cannot be read",
             "content": {
               "application/json": {
                 "schema": {
@@ -890,6 +1423,54 @@
         }
       }
     },
+    "/api/wavinfo": {
+      "get": {
+        "summary": "The header of a wav file.",
+        "operationId": "get_wav_info",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "query",
+            "description": "A file name in audiofiles_dir, or a path.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WavInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The file is outside audiofiles_dir",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The file is not a wav file CamillaDSP can read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ymltojson": {
       "post": {
         "summary": "Read a YAML file to import from, which may be just part of a config,\nmigrating it from older versions of CamillaDSP if needed.",
@@ -1071,6 +1652,50 @@
           "BlackmanHarris",
           "BlackmanHarris2"
         ]
+      },
+      "AudioDeviceDescriptor": {
+        "type": "object",
+        "description": "Full capability descriptor for a named audio device.",
+        "required": [
+          "name",
+          "description",
+          "capability_sets"
+        ],
+        "properties": {
+          "capability_sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceCapabilitySet"
+            },
+            "description": "Capability sets, one per access mode supported by the backend."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable device name."
+          },
+          "name": {
+            "type": "string",
+            "description": "Backend-specific device identifier (e.g. `\"hw:0,0\"` for ALSA)."
+          }
+        }
+      },
+      "AvailableDevice": {
+        "type": "object",
+        "description": "A device CamillaDSP can use.",
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A readable name."
+          },
+          "name": {
+            "type": "string",
+            "description": "What a config calls it."
+          }
+        }
       },
       "BinarySampleFormat": {
         "type": "string",
@@ -1598,6 +2223,14 @@
           }
         ],
         "description": "Biquad filter type and its frequency/gain/Q parameters."
+      },
+      "CapabilityMode": {
+        "type": "string",
+        "enum": [
+          "Unified",
+          "Shared",
+          "Exclusive"
+        ]
       },
       "CaptureDevice": {
         "oneOf": [
@@ -2207,6 +2840,28 @@
         },
         "additionalProperties": false
       },
+      "ChannelCapability": {
+        "type": "object",
+        "description": "The sample rates (and their formats) supported by a device at a specific channel count.",
+        "required": [
+          "channels",
+          "samplerates"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "Number of channels.",
+            "minimum": 0
+          },
+          "samplerates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SamplerateCapability"
+            },
+            "description": "Supported sample rates for this channel count."
+          }
+        }
+      },
       "ChannelLabels": {
         "type": "object",
         "description": "Channel display labels returned by [`WsCommand::GetChannelLabels`].",
@@ -2258,6 +2913,70 @@
           }
         },
         "additionalProperties": false
+      },
+      "CoeffDefaults": {
+        "type": "object",
+        "description": "Sensible parameters for a Conv filter reading a coefficient file, from the\nfile's extension. Empty when the extension says nothing.",
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/FileSampleFormat"
+          },
+          "read_bytes_lines": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skip_bytes_lines": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "$ref": "#/components/schemas/ConvFileType"
+          }
+        }
+      },
+      "CoeffsHeader": {
+        "type": "object",
+        "description": "The JSON header of a coefficient frame, see `frame_coefficients`.",
+        "required": [
+          "options",
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/SampleWidth"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FilterOption"
+            },
+            "description": "The variants of the file for other samplerates and channel counts."
+          }
+        }
+      },
+      "CoeffsRequest": {
+        "type": "object",
+        "required": [
+          "parameters",
+          "samplerate",
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "For the `$channels$` token in the file name.",
+            "minimum": 0
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/ConvParameters",
+            "description": "The parameters of a Raw or Wav Conv filter, with the file path as the\nGUI has it."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "For the `$samplerate$` token in the file name.",
+            "minimum": 0
+          }
+        }
       },
       "CompressorParameters": {
         "type": "object",
@@ -2352,6 +3071,26 @@
           "config": {
             "$ref": "#/components/schemas/Configuration",
             "description": "With the file paths as the GUI has them, relative to the configured folders."
+          }
+        }
+      },
+      "ConfigElement": {
+        "type": "object",
+        "description": "A value in the config that a shortcut controls.",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The keys leading to the value."
+          },
+          "reverse": {
+            "type": "boolean",
+            "description": "Move this one the opposite way of the control."
           }
         }
       },
@@ -2507,6 +3246,14 @@
           }
         },
         "additionalProperties": false
+      },
+      "ConvFileType": {
+        "type": "string",
+        "description": "The Conv filter subtypes that read a file.",
+        "enum": [
+          "Raw",
+          "Wav"
+        ]
       },
       "ConvParameters": {
         "oneOf": [
@@ -2695,6 +3442,49 @@
           "samples"
         ]
       },
+      "DeviceCapabilitySet": {
+        "type": "object",
+        "description": "A set of device capabilities associated with a single access mode (e.g. exclusive vs. shared).",
+        "required": [
+          "mode",
+          "capabilities"
+        ],
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelCapability"
+            },
+            "description": "Per-channel-count capability entries."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/CapabilityMode",
+            "description": "The access mode these capabilities were probed under."
+          }
+        }
+      },
+      "DeviceTypeLists": {
+        "type": "object",
+        "description": "The device types a CamillaDSP build supports.",
+        "required": [
+          "playback",
+          "capture"
+        ],
+        "properties": {
+          "capture": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playback": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "Devices": {
         "type": "object",
         "description": "Top-level device and pipeline timing configuration.",
@@ -2864,6 +3654,14 @@
           }
         },
         "additionalProperties": false
+      },
+      "Direction": {
+        "type": "string",
+        "description": "Which side of CamillaDSP a device is on.",
+        "enum": [
+          "capture",
+          "playback"
+        ]
       },
       "DitherParameters": {
         "oneOf": [
@@ -3349,6 +4147,99 @@
           }
         }
       },
+      "FileInfo": {
+        "type": "object",
+        "description": "A file in a listing. What is known about it beyond its name, size and time\ndepends on the folder: configs have their title, version and validity, and\nwav files their format. What is not known is left out.",
+        "required": [
+          "name",
+          "lastModified",
+          "size"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "For a wav file.",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "description": "For a config, its description."
+          },
+          "duration": {
+            "type": "number",
+            "format": "double",
+            "description": "For a wav file, in seconds."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "description": "For a config, its errors and warnings."
+          },
+          "lastModified": {
+            "type": "number",
+            "format": "double",
+            "description": "The time of the last change, in seconds since the epoch."
+          },
+          "name": {
+            "type": "string"
+          },
+          "sampleformat": {
+            "type": "string",
+            "description": "For a wav file, the CamillaDSP name of its sample format."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "For a wav file, in Hz.",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In bytes.",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "description": "For a config, its title."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "For a config, whether it has no errors. For a wav file, whether\nCamillaDSP can read it."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a config, the CamillaDSP version it is for.",
+            "minimum": 0
+          }
+        }
+      },
+      "FileKind": {
+        "type": "string",
+        "description": "One of the folders the GUI keeps files in.",
+        "enum": [
+          "config",
+          "coeff",
+          "audiofile"
+        ]
+      },
+      "FileNames": {
+        "type": "object",
+        "required": [
+          "names"
+        ],
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File names, in the folder."
+          }
+        }
+      },
       "FileSampleFormat": {
         "type": "string",
         "description": "Sample format used for coefficient files; extends [`BinarySampleFormat`] with a plain-text variant.",
@@ -3632,6 +4523,28 @@
         ],
         "description": "Filter type selector; each variant carries its own parameter struct."
       },
+      "FilterOption": {
+        "type": "object",
+        "description": "A variant of a coefficient file that exists, with the samplerate and\nchannels its name gives for the `$samplerate$` and `$channels$` tokens.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "samplerate": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "FiniteF32": {
         "type": "number",
         "format": "float"
@@ -3745,6 +4658,149 @@
           }
         },
         "additionalProperties": false
+      },
+      "GuiConfig": {
+        "type": "object",
+        "description": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs.",
+        "required": [
+          "page_title",
+          "hide_capture_samplerate",
+          "hide_silence",
+          "hide_capture_device",
+          "hide_playback_device",
+          "hide_rate_monitoring",
+          "hide_multithreading",
+          "apply_config_automatically",
+          "save_config_automatically",
+          "status_update_interval",
+          "volume_range",
+          "volume_max",
+          "spectrum_min_freq",
+          "spectrum_max_freq",
+          "spectrum_n_bins",
+          "spectrum_min_db",
+          "spectrum_max_db",
+          "spectrum_max_rate",
+          "custom_shortcuts",
+          "coeff_dir",
+          "supported_capture_types",
+          "supported_playback_types",
+          "can_update_active_config",
+          "audiofiles_supported",
+          "allow_absolute_paths"
+        ],
+        "properties": {
+          "allow_absolute_paths": {
+            "type": "boolean"
+          },
+          "apply_config_automatically": {
+            "type": "boolean"
+          },
+          "audiofiles_supported": {
+            "type": "boolean",
+            "description": "Whether an audiofiles_dir is set."
+          },
+          "can_update_active_config": {
+            "type": "boolean",
+            "description": "Whether the backend can store which config file is the active one."
+          },
+          "coeff_dir": {
+            "type": "string",
+            "description": "coeff_dir, relative to config_dir and ending with a separator, from\n`camillagui.yml` like the rest below."
+          },
+          "custom_shortcuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShortcutSection"
+            }
+          },
+          "hide_capture_device": {
+            "type": "boolean"
+          },
+          "hide_capture_samplerate": {
+            "type": "boolean"
+          },
+          "hide_multithreading": {
+            "type": "boolean"
+          },
+          "hide_playback_device": {
+            "type": "boolean"
+          },
+          "hide_rate_monitoring": {
+            "type": "boolean"
+          },
+          "hide_silence": {
+            "type": "boolean"
+          },
+          "page_title": {
+            "type": "string",
+            "description": "The title of the browser tab."
+          },
+          "save_config_automatically": {
+            "type": "boolean"
+          },
+          "spectrum_max_db": {
+            "type": "number",
+            "format": "double"
+          },
+          "spectrum_max_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "In Hz."
+          },
+          "spectrum_max_rate": {
+            "type": "number",
+            "format": "float",
+            "description": "The most spectrum updates per second."
+          },
+          "spectrum_min_db": {
+            "type": "number",
+            "format": "double"
+          },
+          "spectrum_min_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "In Hz."
+          },
+          "spectrum_n_bins": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status_update_interval": {
+            "type": "integer",
+            "format": "int32",
+            "description": "In milliseconds.",
+            "minimum": 0
+          },
+          "supported_capture_types": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "supported_playback_types": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "volume_max": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The top of the volume sliders, in dB."
+          },
+          "volume_range": {
+            "type": "number",
+            "format": "double",
+            "description": "The range of the volume sliders, in dB."
+          }
+        }
       },
       "ImportText": {
         "type": "object",
@@ -4908,6 +5964,23 @@
         },
         "additionalProperties": false
       },
+      "RenameBody": {
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The file name, in the folder."
+          },
+          "target": {
+            "type": "string",
+            "description": "The new file name, in the same folder."
+          }
+        }
+      },
       "Resampler": {
         "oneOf": [
           {
@@ -4985,6 +6058,36 @@
         ],
         "description": "Resampler algorithm selection."
       },
+      "SampleWidth": {
+        "type": "string",
+        "description": "The width of the samples in a coefficient frame.",
+        "enum": [
+          "float32",
+          "float64"
+        ]
+      },
+      "SamplerateCapability": {
+        "type": "object",
+        "description": "The sample formats supported by a device at a specific sample rate.",
+        "required": [
+          "samplerate",
+          "formats"
+        ],
+        "properties": {
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of the supported sample formats at this rate."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "Sample rate in Hz.",
+            "minimum": 0
+          }
+        }
+      },
       "SaveConfigBody": {
         "type": "object",
         "required": [
@@ -5052,6 +6155,77 @@
           }
         ],
         "description": "Shelf steepness specified either as a Q factor or a slope in dB/octave."
+      },
+      "Shortcut": {
+        "type": "object",
+        "description": "A control for one or more values in the config.",
+        "required": [
+          "name",
+          "config_elements"
+        ],
+        "properties": {
+          "config_elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigElement"
+            },
+            "description": "The values it controls. The control shows the first one, the others\nfollow it."
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "range_from": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "range_to": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "step": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShortcutType",
+            "description": "A slider when not given."
+          }
+        }
+      },
+      "ShortcutSection": {
+        "type": "object",
+        "description": "A group of shortcuts, with a heading.",
+        "required": [
+          "section",
+          "shortcuts"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "shortcuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shortcut"
+            }
+          }
+        }
+      },
+      "ShortcutType": {
+        "type": "string",
+        "enum": [
+          "boolean",
+          "number"
+        ]
       },
       "Signal": {
         "oneOf": [
@@ -5383,6 +6557,23 @@
           "samples"
         ]
       },
+      "UploadForm": {
+        "type": "object",
+        "description": "Files to upload, as `multipart/form-data`.",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "description": "The files, each with its file name. A file of the same name is\nreplaced."
+          }
+        }
+      },
       "ValidationIssue": {
         "type": "object",
         "description": "A problem with a config.",
@@ -5498,6 +6689,58 @@
           "S32",
           "F32"
         ]
+      },
+      "WavInfo": {
+        "type": "object",
+        "description": "The header of a wav file.",
+        "required": [
+          "dataoffset",
+          "datalength",
+          "sampleformat",
+          "bitspersample",
+          "channels",
+          "byterate",
+          "samplerate",
+          "bytesperframe"
+        ],
+        "properties": {
+          "bitspersample": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "byterate": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "bytesperframe": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "datalength": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "dataoffset": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sampleformat": {
+            "type": "string"
+          },
+          "samplerate": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       }
     }
   }

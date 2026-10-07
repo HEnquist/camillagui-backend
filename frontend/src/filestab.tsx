@@ -12,7 +12,7 @@ import {
 } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
-import { api, errorMessage, responseErrorMessage } from "./api/client"
+import { api, errorMessage } from "./api/client"
 import { Config, CURRENT_CONFIG_VERSION, defaultConfig } from "./camilladsp/config"
 import { clearCoefficientCache } from "./camilladsp/eval"
 import { GuiConfig } from "./guiconfig"
@@ -32,8 +32,9 @@ import {
   UploadFilesButton,
 } from "./utilities/file-actions"
 import {
+  deleteFiles,
   doUpload,
-  download,
+  downloadAsZip,
   downloadFromUrl,
   FileInfo,
   fileNamesOf,
@@ -44,6 +45,7 @@ import {
   loadDefaultConfigJson,
   loadFiles,
   loadMigratedConfigJson,
+  renameFile,
   StoredFileType,
 } from "./utilities/files"
 import {
@@ -226,24 +228,28 @@ class FileTable extends Component<
   private async delete() {
     const del = window.confirm("Delete?\n" + this.state.selectedFiles.map((f) => f.name).join("\n"))
     if (!del) return
-    await fetch(`/api/delete${this.type}s`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-    })
-    this.setState({ fileStatus: null })
+    try {
+      await deleteFiles(
+        this.type,
+        this.state.selectedFiles.map((f) => f.name),
+      )
+      this.setState({ fileStatus: null })
+    } catch (e) {
+      this.showErrorMessage(EMPTY_FILENAME, "delete", (e as Error).message)
+    }
     this.coefficientFilesChanged()
     this.update()
   }
 
   private async downloadAsZip() {
-    const response = await fetch(`/api/download${this.type}szip`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-    })
-    const zipFile = await response.blob()
-    download(this.type + "s.zip", zipFile)
+    try {
+      await downloadAsZip(
+        this.type,
+        this.state.selectedFiles.map((f) => f.name),
+      )
+    } catch (e) {
+      this.showErrorMessage(EMPTY_FILENAME, "download", (e as Error).message)
+    }
   }
 
   private upload(files: FileList) {
@@ -392,22 +398,10 @@ class FileTable extends Component<
     if (newName === filename) return
     if (!newName) return
     try {
-      const response = await fetch(
-        `/api/rename${type}?source=${encodeURIComponent(filename)}&target=${encodeURIComponent(newName)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-      )
-      if (response.ok) {
-        this.showSuccess(newName, "rename")
-        this.coefficientFilesChanged()
-        this.update()
-      } else {
-        const message = await responseErrorMessage(response)
-        console.log("Error: " + message)
-        this.showErrorMessage(filename, "rename", message)
-      }
+      await renameFile(type, filename, newName)
+      this.showSuccess(newName, "rename")
+      this.coefficientFilesChanged()
+      this.update()
     } catch (e) {
       const error = e as Error
       this.showErrorMessage(filename, "rename", error.message)

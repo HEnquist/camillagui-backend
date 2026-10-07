@@ -125,14 +125,17 @@ class Backend:
             time.sleep(0.1)
         raise RuntimeError("Backend did not come up")
 
-    def wait_for_backends(self, expected):
-        """Wait until the backend has reconnected and read the device types.
+    def wait_for_backends(self, device_types):
+        """Wait until the backend has reconnected and read the device types,
+        given as CamillaDSP sends them, `[playback, capture]`.
 
         After a failed connect the backend only tries again a second later, and
         the device types read before going offline are still there until then.
         The status is refreshed once a second, so it may not have noticed the
         outage at all, and a request is what replaces the closed connection.
         """
+        playback, capture = device_types
+        expected = {"playback": playback, "capture": capture}
         deadline = time.time() + 10
         while time.time() < deadline:
             online = self.get("/api/status").json()["cdsp_online"]
@@ -185,7 +188,7 @@ class Backend:
         boundary = uuid.uuid4().hex
         body = (
             f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="file0"; filename="{filename}"\r\n'
+            f'Content-Disposition: form-data; name="files"; filename="{filename}"\r\n'
             "Content-Type: application/octet-stream\r\n\r\n"
         ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
         return self.post(

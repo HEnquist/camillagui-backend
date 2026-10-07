@@ -48,6 +48,22 @@ def test_offline_when_camilladsp_goes_away(page, server):
     expect(state).to_have_text("Offline", timeout=STREAMED)
 
 
+def test_files_tab_lists_the_files(page, server):
+    page.get_by_role("tab", name="Files").click()
+    expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
+
+
+def test_device_capabilities_show_the_supported_rates(page, server):
+    page.get_by_role("tab", name="Devices").click()
+    page.locator('label[data-tooltip-html="Audio backend for capture"] select').select_option("Alsa")
+    page.locator('[data-tooltip-html="Pick a device"]').first.click()
+    page.get_by_text("hw:Aaaa,0,0: Dev A", exact=True).click()
+    page.locator('[data-tooltip-html="Inspect device capabilities"]').first.click()
+    rates = page.locator(".device-capabilities-supported-rates-item")
+    expect(rates).to_have_count(1)
+    expect(rates.first).to_contain_text("44100")
+
+
 def test_config_and_volume_reach_camilladsp(page, server):
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.

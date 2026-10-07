@@ -4,10 +4,12 @@
 use crate::paths::file_in_folder;
 use crate::validate::{self, DeviceTypes, ValidationIssue};
 use crate::{legacy, paths, wav, yaml};
-use serde_json::{Map, Value, json};
+use serde::Serialize;
+use serde_json::{Value, json};
 use std::io::Write;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
+use utoipa::ToSchema;
 
 /// Refuse to write into a folder that does not exist, saying so.
 pub fn require_directory(folder: &Path) -> Result<(), String> {
@@ -21,10 +23,10 @@ pub fn require_directory(folder: &Path) -> Result<(), String> {
     }
 }
 
-/// What to find out about each file in a listing.
+/// What to find out about each file in a listing, beyond its name, size and
+/// time.
 #[derive(Clone, Copy, Default)]
 pub struct Details {
-    pub stats: bool,
     /// Title, description and validity, for config files.
     pub config: bool,
     /// Format and length, for wav files.
@@ -39,13 +41,67 @@ pub struct ConfigContext<'a> {
     pub device_types: &'a DeviceTypes,
 }
 
+/// A file in a listing. What is known about it beyond its name, size and time
+/// depends on the folder: configs have their title, version and validity, and
+/// wav files their format. What is not known is left out.
+#[derive(Debug, Default, Serialize, ToSchema)]
+pub struct FileInfo {
+    pub name: String,
+    /// The time of the last change, in seconds since the epoch.
+    #[serde(rename = "lastModified")]
+    pub last_modified: f64,
+    /// In bytes.
+    pub size: u64,
+    /// For a config, its title.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub title: Option<String>,
+    /// For a config, its description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub description: Option<String>,
+    /// For a config, the CamillaDSP version it is for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub version: Option<u32>,
+    /// For a config, whether it has no errors. For a wav file, whether
+    /// CamillaDSP can read it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub valid: Option<bool>,
+    /// For a config, its errors and warnings.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub errors: Option<Vec<ValidationIssue>>,
+    /// For a wav file, in Hz.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub samplerate: Option<usize>,
+    /// For a wav file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub channels: Option<usize>,
+    /// For a wav file, the CamillaDSP name of its sample format.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub sampleformat: Option<String>,
+    /// For a wav file, in seconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub duration: Option<f64>,
+}
+
 /// The visible files of a folder, sorted by name. A folder that does not
 /// exist has no files; the backend warned about it at startup.
-pub fn list_files(folder: &Path, details: Details, context: Option<&ConfigContext>) -> Vec<Value> {
+pub fn list_files(
+    folder: &Path,
+    details: Details,
+    context: Option<&ConfigContext>,
+) -> Vec<FileInfo> {
     let Ok(entries) = std::fs::read_dir(folder) else {
         return Vec::new();
     };
-    let mut files: Vec<(String, Value)> = entries
+    let mut files: Vec<FileInfo> = entries
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let name = entry.file_name().to_string_lossy().into_owned();
@@ -54,64 +110,54 @@ pub fn list_files(folder: &Path, details: Details, context: Option<&ConfigContex
             if name.starts_with('.') || !path.is_file() {
                 return None;
             }
-            let mut data = Map::new();
-            data.insert("name".into(), json!(name));
-            if details.stats
-                && let Ok(meta) = std::fs::metadata(&path)
-            {
-                let modified = meta
+            let mut info = FileInfo::default();
+            if let Ok(meta) = std::fs::metadata(&path) {
+                info.last_modified = meta
                     .modified()
                     .ok()
                     .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                     .map(|d| d.as_secs_f64())
                     .unwrap_or(0.0);
-                data.insert("lastModified".into(), json!(modified));
-                data.insert("size".into(), json!(meta.len()));
+                info.size = meta.len();
             }
             if details.config
                 && let Some(context) = context
             {
-                config_file_details(&path, &mut data, context);
+                config_file_details(&path, &mut info, context);
             }
             if details.wav && name.to_lowercase().ends_with(".wav") {
-                wav_details(&path, &mut data);
+                wav_details(&path, &mut info);
             }
-            Some((name, Value::Object(data)))
+            info.name = name;
+            Some(info)
         })
         .collect();
-    files.sort_by_key(|(name, _)| name.to_lowercase());
-    files.into_iter().map(|(_, data)| data).collect()
+    files.sort_by_key(|info| info.name.to_lowercase());
+    files
 }
 
 pub fn list_file_names(folder: &Path) -> Vec<String> {
     list_files(folder, Details::default(), None)
         .into_iter()
-        .filter_map(|file| file["name"].as_str().map(String::from))
+        .map(|file| file.name)
         .collect()
 }
 
-fn single_error(message: &str) -> Value {
-    json!([ValidationIssue::error(message)])
+fn single_error(message: &str) -> Option<Vec<ValidationIssue>> {
+    Some(vec![ValidationIssue::error(message)])
 }
 
-fn config_file_details(path: &Path, data: &mut Map<String, Value>, context: &ConfigContext) {
-    data.insert("title".into(), Value::Null);
-    data.insert("description".into(), Value::Null);
-    data.insert("version".into(), Value::Null);
-    data.insert("valid".into(), json!(false));
-    data.insert("errors".into(), Value::Null);
+fn config_file_details(path: &Path, info: &mut FileInfo, context: &ConfigContext) {
+    info.valid = Some(false);
     let not_a_config = "This does not appear to be a CamillaDSP config file.";
     let text = match std::fs::read(path).map(String::from_utf8) {
         Ok(Ok(text)) => text,
         Ok(Err(_)) => {
-            data.insert(
-                "errors".into(),
-                single_error("This does not appear to be a YAML file."),
-            );
+            info.errors = single_error("This does not appear to be a YAML file.");
             return;
         }
         Err(err) => {
-            data.insert("errors".into(), single_error(&format!("Error: {err}")));
+            info.errors = single_error(&format!("Error: {err}"));
             return;
         }
     };
@@ -124,27 +170,22 @@ fn config_file_details(path: &Path, data: &mut Map<String, Value>, context: &Con
                 }
                 None => "This config file has a YAML syntax error.".to_string(),
             };
-            data.insert("errors".into(), single_error(&message));
+            info.errors = single_error(&message);
             return;
         }
     };
     if !parsed.is_object() {
-        data.insert("errors".into(), single_error(not_a_config));
+        info.errors = single_error(not_a_config);
         return;
     }
-    data.insert(
-        "title".into(),
-        parsed.get("title").cloned().unwrap_or_default(),
-    );
-    data.insert(
-        "description".into(),
-        parsed.get("description").cloned().unwrap_or_default(),
-    );
+    let text_of = |key: &str| parsed.get(key).and_then(Value::as_str).map(String::from);
+    info.title = text_of("title");
+    info.description = text_of("description");
     let version = legacy::identify_version(&parsed);
-    data.insert("version".into(), json!(version));
+    info.version = version;
     match version {
         None => {
-            data.insert("errors".into(), single_error(not_a_config));
+            info.errors = single_error(not_a_config);
         }
         Some(legacy::CURRENT_VERSION) => {
             let mut config = parsed;
@@ -155,42 +196,31 @@ fn config_file_details(path: &Path, data: &mut Map<String, Value>, context: &Con
             );
             paths::make_audio_file_paths_absolute(&mut config, context.audiofiles_dir);
             let issues = validate::validate(config, context.device_types);
-            let valid = !validate::has_errors(&issues);
-            data.insert("valid".into(), json!(valid));
+            info.valid = Some(!validate::has_errors(&issues));
             if !issues.is_empty() {
-                data.insert("errors".into(), json!(issues));
+                info.errors = Some(issues);
             }
         }
         Some(older) => {
-            data.insert(
-                "errors".into(),
-                single_error(&format!(
-                    "This config is made for the previous version {older} of CamillaDSP."
-                )),
-            );
+            info.errors = single_error(&format!(
+                "This config is made for the previous version {older} of CamillaDSP."
+            ));
         }
     }
 }
 
-fn wav_details(path: &Path, data: &mut Map<String, Value>) {
-    data.insert("samplerate".into(), Value::Null);
-    data.insert("channels".into(), Value::Null);
-    data.insert("sampleformat".into(), Value::Null);
-    data.insert("duration".into(), Value::Null);
-    data.insert("valid".into(), json!(false));
-    let Some(info) = wav::read_info(path) else {
+fn wav_details(path: &Path, info: &mut FileInfo) {
+    let Some(wav) = wav::read_info(path) else {
+        info.valid = Some(false);
         return;
     };
-    data.insert("samplerate".into(), json!(info.sample_rate));
-    data.insert("channels".into(), json!(info.channels));
-    data.insert("sampleformat".into(), json!(info.sample_format));
-    if info.byte_rate > 0 {
-        data.insert(
-            "duration".into(),
-            json!(info.data_length as f64 / info.byte_rate as f64),
-        );
+    info.valid = Some(true);
+    info.samplerate = Some(wav.sample_rate);
+    info.channels = Some(wav.channels);
+    info.sampleformat = Some(wav.sample_format.to_string());
+    if wav.byte_rate > 0 {
+        info.duration = Some(wav.data_length as f64 / wav.byte_rate as f64);
     }
-    data.insert("valid".into(), json!(true));
 }
 
 pub fn delete_files(folder: &Path, files: &[String]) -> Result<(), String> {
@@ -338,17 +368,10 @@ mod tests {
         std::fs::write(dir.path().join("A.txt"), "xy").unwrap();
         std::fs::write(dir.path().join(".hidden"), "x").unwrap();
         std::fs::create_dir(dir.path().join("sub")).unwrap();
-        let files = list_files(
-            dir.path(),
-            Details {
-                stats: true,
-                ..Default::default()
-            },
-            None,
-        );
-        let names: Vec<_> = files.iter().map(|f| f["name"].as_str().unwrap()).collect();
+        let files = list_files(dir.path(), Details::default(), None);
+        let names: Vec<_> = files.iter().map(|f| f.name.as_str()).collect();
         assert_eq!(names, ["A.txt", "b.txt"]);
-        assert_eq!(files[0]["size"], 2);
+        assert_eq!(files[0].size, 2);
         assert!(list_files(&dir.path().join("missing"), Details::default(), None).is_empty());
     }
 
@@ -381,25 +404,21 @@ mod tests {
             ..Default::default()
         };
         let files = list_files(dir.path(), details, Some(&context));
-        let get = |name: &str| files.iter().find(|f| f["name"] == name).unwrap().clone();
+        let get = |name: &str| files.iter().find(|f| f.name == name).unwrap();
+        let first_error = |name: &str| get(name).errors.as_ref().unwrap()[0].message.clone();
         let eqapo = get("eqapo.yml");
-        assert_eq!(eqapo["version"], Value::Null);
-        assert_eq!(eqapo["valid"], false);
+        assert_eq!(eqapo.version, None);
+        assert_eq!(eqapo.valid, Some(false));
         assert_eq!(
-            eqapo["errors"][0]["message"],
+            first_error("eqapo.yml"),
             "This does not appear to be a CamillaDSP config file."
         );
-        assert!(
-            get("broken.yml")["errors"][0]["message"]
-                .as_str()
-                .unwrap()
-                .contains("YAML syntax error on line")
-        );
+        assert!(first_error("broken.yml").contains("YAML syntax error on line"));
         let good = get("good.yml");
-        assert_eq!(good["valid"], true, "{good}");
-        assert_eq!(good["title"], "Good");
-        assert_eq!(good["errors"], Value::Null);
-        assert_eq!(get("old.yml")["version"], 3);
+        assert_eq!(good.valid, Some(true), "{good:?}");
+        assert_eq!(good.title.as_deref(), Some("Good"));
+        assert!(good.errors.is_none());
+        assert_eq!(get("old.yml").version, Some(3));
     }
 
     #[test]

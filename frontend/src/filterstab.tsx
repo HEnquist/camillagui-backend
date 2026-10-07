@@ -10,6 +10,7 @@ import {
 } from "@mdi/js"
 import { isEqual } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
+import { api, Schemas } from "./api/client"
 import {
   Config,
   defaultFilter,
@@ -266,13 +267,7 @@ function asBands(value: FilterParameterValue): PeqBand[] | undefined {
     : undefined
 }
 
-interface FilterDefaults {
-  type?: string
-  format?: string
-  skip_bytes_lines?: number
-  read_bytes_lines?: number
-  errors?: string[]
-}
+type FilterDefaults = Schemas["CoeffDefaults"]
 
 interface FilterViewProps {
   name: string
@@ -368,16 +363,14 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   private updateDefaults(filename: string, updateFilter: boolean = false) {
     const filter = this.props.filter
     if (isConvolutionFileFilter(filter)) {
-      fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`).then((response) =>
-        response.json().then((json) => {
-          const defaults = json as FilterDefaults
-          this.setState({
-            filterDefaults: defaults,
-            showDefaults: false,
-          })
-          if (updateFilter) this.updateFilterParamsWithDefaults(defaults)
-        }),
-      )
+      api.GET("/api/defaultsforcoeffs", { params: { query: { file: filename } } }).then(({ data: defaults }) => {
+        if (!defaults) return
+        this.setState({
+          filterDefaults: defaults,
+          showDefaults: false,
+        })
+        if (updateFilter) this.updateFilterParamsWithDefaults(defaults)
+      })
     }
   }
 
@@ -387,10 +380,9 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       if (typeof subtype === "string") {
         const guiDefaults = DefaultFilterParameters[filter.type][subtype]
         const channel = filter.parameters.channel
-        const defaultsWithoutErrors = Object.fromEntries(Object.entries(defaults).filter(([key]) => key !== "errors"))
         filter.parameters = {
           ...guiDefaults,
-          ...defaultsWithoutErrors,
+          ...defaults,
           filename: filter.parameters.filename,
         }
         if (channel) filter.parameters.channel = channel

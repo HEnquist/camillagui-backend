@@ -41,6 +41,20 @@ impl<S: Send + Sync, T: DeserializeOwned> FromRequestParts<S> for Query<T> {
     }
 }
 
+/// A `multipart/form-data` request body.
+pub struct Multipart(pub axum::extract::Multipart);
+
+impl<S: Send + Sync> FromRequest<S> for Multipart {
+    type Rejection = ApiError;
+
+    async fn from_request(request: Request, state: &S) -> Result<Self, ApiError> {
+        axum::extract::Multipart::from_request(request, state)
+            .await
+            .map(Multipart)
+            .map_err(rejected)
+    }
+}
+
 pub struct Path<T>(pub T);
 
 impl<S: Send + Sync, T: DeserializeOwned + Send> FromRequestParts<S> for Path<T> {

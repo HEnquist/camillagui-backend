@@ -3,47 +3,20 @@ import { completeConfig, Config } from "../camilladsp/config"
 
 export type ValidationIssue = Schemas["ValidationIssue"]
 
-export interface FileInfo {
-  name: string
-  lastModified: number
-  formattedDate: string
-  size: number
-  title: string | null | undefined
-  description: string | null | undefined
-  version: number | null | undefined
-  valid: boolean | undefined
-  errors: ValidationIssue[] | null | undefined
-  samplerate?: number | null
-  channels?: number | null
-  sampleformat?: string | null
-  duration?: number | null
-}
+export type FileInfo = Schemas["FileInfo"] & { formattedDate: string }
 
-export type StoredFileType = "config" | "coeff" | "audiofile"
+export type StoredFileType = Schemas["FileKind"]
 
-export function loadFiles(type: StoredFileType): Promise<FileInfo[]> {
-  return fetch(`/api/stored${type}s`)
-    .then(
-      (response) => {
-        if (response.ok) return response.json()
-        else throw Error(response.statusText)
-      },
-      (err) => {
-        console.log("Failed to fetch", err)
-        throw Error(err)
-      },
-    )
-    .then(
-      (json) => {
-        const files = json as FileInfo[]
-        files.forEach((file) => (file.formattedDate = new Date(1000 * file.lastModified).toDateString()))
-        return files
-      },
-      (err) => {
-        console.log("Failed to get file list", err)
-        return []
-      },
-    )
+/** The files in a folder, none if they cannot be listed. */
+export async function loadFiles(type: StoredFileType): Promise<FileInfo[]> {
+  try {
+    const { data, error, response } = await api.GET("/api/files/{kind}", { params: { path: { kind: type } } })
+    if (data) return data.map((file) => ({ ...file, formattedDate: new Date(1000 * file.lastModified).toDateString() }))
+    console.log("Failed to get file list", errorMessage(error, response))
+  } catch (err) {
+    console.log("Failed to fetch", err)
+  }
+  return []
 }
 
 export function loadFilenames(type: StoredFileType): Promise<string[]> {
@@ -121,21 +94,50 @@ export async function doUpload(
 ) {
   const formData = new FormData()
   const uploadedFiles: string[] = []
-  for (let index = 0; index < files.length; index++) {
-    const file = files[index]
+  for (const file of Array.from(files)) {
     uploadedFiles.push(file.name)
-    formData.append("file" + index, file, file.name)
+    formData.append("files", file, file.name)
   }
   try {
-    await fetch(`/api/upload${type}s`, {
-      method: "POST",
-      body: formData,
+    const { error, response } = await api.POST("/api/files/{kind}/upload", {
+      params: { path: { kind: type } },
+      // The spec gives binary data as strings, so the files go in through the serializer.
+      body: { files: [] },
+      bodySerializer: () => formData,
     })
-    onSuccess(uploadedFiles)
+    if (response.ok) onSuccess(uploadedFiles)
+    else onError(errorMessage(error, response))
   } catch (e) {
     const err = e as Error
     onError(err.message)
   }
+}
+
+export async function deleteFiles(type: StoredFileType, names: string[]): Promise<void> {
+  const { error, response } = await api.POST("/api/files/{kind}/delete", {
+    params: { path: { kind: type } },
+    body: { names },
+  })
+  if (!response.ok) throw new Error(errorMessage(error, response))
+}
+
+export async function renameFile(type: StoredFileType, source: string, target: string): Promise<void> {
+  const { error, response } = await api.POST("/api/files/{kind}/rename", {
+    params: { path: { kind: type } },
+    body: { source, target },
+  })
+  if (!response.ok) throw new Error(errorMessage(error, response))
+}
+
+/** Download some of the files in a folder as `<type>s.zip`. */
+export async function downloadAsZip(type: StoredFileType, names: string[]): Promise<void> {
+  const { data, error, response } = await api.POST("/api/files/{kind}/zip", {
+    params: { path: { kind: type } },
+    body: { names },
+    parseAs: "blob",
+  })
+  if (!data) throw new Error(errorMessage(error, response))
+  download(`${type}s.zip`, data)
 }
 
 export function issueSeverity(issue: ValidationIssue): Schemas["Severity"] {

@@ -25,7 +25,7 @@ mod yaml;
 use api::AppState;
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
-use axum::routing::{get, post};
+use axum::routing::get;
 use clap::Parser;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -48,8 +48,8 @@ struct Args {
 /// Uploads can be large audio files.
 const MAX_UPLOAD_SIZE: usize = 1024 * 1024 * 1024;
 
-/// The `/api` routes. The typed ones are registered with `routes!`, which puts
-/// them in the spec as well, the rest with `route`, which leaves them out.
+/// The `/api` routes. They are registered with `routes!`, which puts them in
+/// the spec as well, all but the spec itself.
 fn api_routes() -> OpenApiRouter<Arc<AppState>> {
     OpenApiRouter::new()
         .routes(routes!(api::get_levels))
@@ -74,38 +74,20 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
         .routes(routes!(api::yaml_to_json))
         .routes(routes!(api::translate_convolver_to_json))
         .routes(routes!(api::translate_eqapo_to_json))
+        .routes(routes!(api::conv_coefficients))
+        .routes(routes!(api::get_wav_info))
+        .routes(routes!(api::get_defaults_for_coeffs))
+        .routes(routes!(api::get_files))
+        .routes(routes!(api::upload_files))
+        .routes(routes!(api::delete_files))
+        .routes(routes!(api::rename_file))
+        .routes(routes!(api::zip_files))
+        .routes(routes!(api::get_gui_config))
+        .routes(routes!(api::get_log_file))
+        .routes(routes!(api::get_devices))
+        .routes(routes!(api::get_device_capabilities))
+        .routes(routes!(api::get_backends))
         .route("/openapi.json", get(openapi::get_spec))
-        .route("/convcoeffs", post(api::conv_coefficients))
-        .route("/wavinfo", get(api::get_wav_info))
-        .route("/storedconfigs", get(api::get_stored_configs))
-        .route("/storedcoeffs", get(api::get_stored_coeffs))
-        .route("/storedaudiofiles", get(api::get_stored_audiofiles))
-        .route("/defaultsforcoeffs", get(api::get_defaults_for_coeffs))
-        .route("/uploadconfigs", post(api::store_configs))
-        .route("/uploadcoeffs", post(api::store_coeffs))
-        .route("/uploadaudiofiles", post(api::store_audiofiles))
-        .route("/deleteconfigs", post(api::delete_configs))
-        .route("/deletecoeffs", post(api::delete_coeffs))
-        .route("/deleteaudiofiles", post(api::delete_audiofiles))
-        .route("/renameconfig", post(api::rename_config_file))
-        .route("/renamecoeff", post(api::rename_coeff_file))
-        .route("/renamewav", post(api::rename_audio_file))
-        .route("/downloadconfigszip", post(api::download_configs_zip))
-        .route("/downloadcoeffszip", post(api::download_coeffs_zip))
-        .route("/downloadaudiofileszip", post(api::download_audiofiles_zip))
-        .route("/guiconfig", get(api::get_gui_config))
-        .route("/logfile", get(api::get_log_file))
-        .route("/capturedevices/{backend}", get(api::get_capture_devices))
-        .route("/playbackdevices/{backend}", get(api::get_playback_devices))
-        .route(
-            "/capturedevicecapabilities/{backend}",
-            get(api::get_capture_device_capabilities),
-        )
-        .route(
-            "/playbackdevicecapabilities/{backend}",
-            get(api::get_playback_device_capabilities),
-        )
-        .route("/backends", get(api::get_backends))
 }
 
 /// The `/api` router, and the spec of its typed routes.

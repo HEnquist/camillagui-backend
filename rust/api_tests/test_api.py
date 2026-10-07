@@ -85,7 +85,10 @@ def test_read_status(server):
         "title",
         "description",
     }
-    assert server.get("/api/backends").json() == [["Alsa", "Stdout"], ["Alsa", "Stdin"]]
+    assert server.get("/api/backends").json() == {
+        "playback": ["Alsa", "Stdout"],
+        "capture": ["Alsa", "Stdin"],
+    }
 
 
 def wait_until_offline(server):
@@ -285,16 +288,16 @@ def test_stop_processing(server):
         ("/api/getconfig", None),
         ("/api/getstartconfig", None),
         ("/api/getdefaultconfigfile", None),
-        ("/api/storedconfigs", None),
-        ("/api/storedcoeffs", None),
+        ("/api/files/config", None),
+        ("/api/files/coeff", None),
         ("/api/defaultsforcoeffs", {"file": "test.wav"}),
         ("/api/guiconfig", None),
         ("/api/getconfigfile", {"name": "config.yml"}),
         ("/api/logfile", None),
-        ("/api/capturedevices/Alsa", None),
-        ("/api/playbackdevices/Alsa", None),
-        ("/api/capturedevicecapabilities/Alsa", {"device": "hw:Aaaa,0,0"}),
-        ("/api/playbackdevicecapabilities/Alsa", {"device": "hw:Cccc,0,0"}),
+        ("/api/devices/capture/Alsa", None),
+        ("/api/devices/playback/Alsa", None),
+        ("/api/devices/capture/Alsa/capabilities", {"device": "hw:Aaaa,0,0"}),
+        ("/api/devices/playback/Alsa/capabilities", {"device": "hw:Cccc,0,0"}),
         ("/api/backends", None),
         ("/api/getactiveconfigfilename", None),
     ],
@@ -335,93 +338,113 @@ def test_style_override(server):
 # ── Devices ───────────────────────────────────────────────────────────────
 
 
-def test_capture_device_capabilities_are_cached(server):
-    resp = server.get("/api/capturedevicecapabilities/Alsa", params={"device": "hw:Aaaa,0,0"})
+def test_device_capabilities_are_cached(server):
+    url = "/api/devices/capture/Alsa/capabilities"
+    resp = server.get(url, params={"device": "hw:Aaaa,0,0"})
     assert resp.status == 200
     content = resp.json()
     assert content["name"] == "hw:Aaaa,0,0"
+    assert content["capability_sets"][0]["mode"] == "Unified"
     server.fake.go_offline()
-    cached = server.get("/api/capturedevicecapabilities/Alsa", params={"device": "hw:Aaaa,0,0"})
+    cached = server.get(url, params={"device": "hw:Aaaa,0,0"})
     assert cached.status == 200
     assert cached.json() == content
 
 
-def test_playback_device_capabilities_returns_cached_on_error(server):
-    first = server.get("/api/playbackdevicecapabilities/Alsa", params={"device": "hw:Cccc,0,0"})
+def test_device_capabilities_returns_cached_on_error(server):
+    url = "/api/devices/playback/Alsa/capabilities"
+    first = server.get(url, params={"device": "hw:Cccc,0,0"})
     assert first.status == 200
     server.fake.state["capability_errors"] = {"hw:Cccc,0,0": "DeviceBusyError"}
-    resp = server.get("/api/playbackdevicecapabilities/Alsa", params={"device": "hw:Cccc,0,0"})
+    resp = server.get(url, params={"device": "hw:Cccc,0,0"})
     assert resp.status == 200
     assert resp.json() == first.json()
 
 
-def test_capture_device_capabilities_forwards_error_without_cache(server):
-    resp = server.get("/api/capturedevicecapabilities/Alsa", params={"device": "missing"})
+def test_device_capabilities_forwards_error_without_cache(server):
+    resp = server.get("/api/devices/capture/Alsa/capabilities", params={"device": "missing"})
     assert resp.status == 400
     assert resp.json()["message"] == "device not found"
 
 
 def test_capabilities_need_a_device(server):
-    assert server.get("/api/capturedevicecapabilities/Alsa").status == 400
+    url = "/api/devices/capture/Alsa/capabilities"
+    assert server.get(url).status == 400
+    assert server.get(url, params={"device": ""}).status == 400
+
+
+def test_devices_need_a_direction(server):
+    resp = server.get("/api/devices/sideways/Alsa")
+    assert resp.status == 400
+    assert "message" in resp.json()
 
 
 def test_device_lists_come_from_the_cache_when_offline(server):
     server.fake.go_offline()
-    resp = server.get("/api/capturedevices/Alsa")
+    resp = server.get("/api/devices/capture/Alsa")
     assert resp.status == 200
-    assert resp.json() == [["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]
+    assert resp.json() == [
+        {"name": "hw:Aaaa,0,0", "description": "Dev A"},
+        {"name": "hw:Bbbb,0,0", "description": "Dev B"},
+    ]
+
+
+def test_backends(server):
+    backends = server.get("/api/backends").json()
+    assert "Alsa" in backends["capture"]
+    assert "Alsa" in backends["playback"]
 
 
 # ── Files ─────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize(
-    "upload, delete, getfile",
-    [
-        ("/api/uploadconfigs", "/api/deleteconfigs", "/config/"),
-        ("/api/uploadcoeffs", "/api/deletecoeffs", "/coeff/"),
-    ],
-)
-def test_upload_and_delete(server, upload, delete, getfile):
+@pytest.mark.parametrize("kind, getfile", [("config", "/config/"), ("coeff", "/coeff/")])
+def test_upload_and_delete(server, kind, getfile):
     filename = "".join(random.choice(string.ascii_lowercase) for i in range(10))
     filedata = "".join(random.choice(string.ascii_lowercase) for i in range(10))
 
     assert server.get(getfile + filename).status == 404
-    resp = server.upload(upload, filename, filedata.encode())
-    assert resp.status == 200
-    assert resp.text == "Saved 1 file(s)"
+    resp = server.upload(f"/api/files/{kind}/upload", filename, filedata.encode())
+    assert resp.status == 204, resp.text
     resp = server.get(getfile + filename)
     assert resp.status == 200
     assert resp.body == filedata.encode()
-    assert server.post(delete, json_body=[filename]).status == 200
+    assert server.post(f"/api/files/{kind}/delete", json_body={"names": [filename]}).status == 204
     assert server.get(getfile + filename).status == 404
+
+
+def test_upload_needs_a_form(server):
+    resp = server.post("/api/files/coeff/upload", data=b"not a form")
+    assert resp.status == 400
+    assert "message" in resp.json()
 
 
 def test_uploaded_configs_get_bare_paths(server):
     config = "filters:\n  f: {type: Conv, parameters: {type: Raw, filename: /far/away/f.raw}}\n"
-    assert server.upload("/api/uploadconfigs", "uploaded.yml", config.encode()).status == 200
+    assert server.upload("/api/files/config/upload", "uploaded.yml", config.encode()).status == 204
     try:
         stored = yaml.safe_load(server.get("/config/uploaded.yml").body)
         assert stored["filters"]["f"]["parameters"]["filename"] == "f.raw"
     finally:
-        server.post("/api/deleteconfigs", json_body=["uploaded.yml"])
+        server.post("/api/files/config/delete", json_body={"names": ["uploaded.yml"]})
 
 
 def test_rename(server):
-    assert server.upload("/api/uploadcoeffs", "rename_a.txt", b"1").status == 200
+    assert server.upload("/api/files/coeff/upload", "rename_a.txt", b"1").status == 204
     try:
-        resp = server.post("/api/renamecoeff", params={"source": "rename_a.txt", "target": "config.yml"})
+        url = "/api/files/coeff/rename"
+        resp = server.post(url, json_body={"source": "rename_a.txt", "target": "config.yml"})
         assert resp.status == 400
         assert resp.json()["message"] == "File config.yml already exists"
-        resp = server.post("/api/renamecoeff", params={"source": "rename_a.txt", "target": "rename_b.txt"})
-        assert resp.status == 200
+        resp = server.post(url, json_body={"source": "rename_a.txt", "target": "rename_b.txt"})
+        assert resp.status == 204
         assert server.get("/coeff/rename_b.txt").body == b"1"
     finally:
-        server.post("/api/deletecoeffs", json_body=["rename_b.txt"])
+        server.post("/api/files/coeff/delete", json_body={"names": ["rename_b.txt"]})
 
 
 def test_zip_download(server):
-    resp = server.post("/api/downloadconfigszip", json_body=["config.yml", "config2.yml"])
+    resp = server.post("/api/files/config/zip", json_body={"names": ["config.yml", "config2.yml"]})
     assert resp.status == 200
     assert resp.headers["Content-Disposition"] == "attachment; filename=configs.zip"
     import io
@@ -431,8 +454,12 @@ def test_zip_download(server):
     assert sorted(names) == ["config.yml", "config2.yml"]
 
 
+def test_files_need_a_known_folder(server):
+    assert server.get("/api/files/elsewhere").status == 400
+
+
 def test_stored_files_listing(server):
-    files = server.get("/api/storedcoeffs").json()
+    files = server.get("/api/files/coeff").json()
     names = [f["name"] for f in files]
     assert "config.yml" in names
     assert ".gitignore" not in names
@@ -451,18 +478,18 @@ def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_b
     for setting, path in missing.items():
         assert f"The directory {path}, set as {setting}, does not exist" in log
 
-    for listing in ("/api/storedconfigs", "/api/storedcoeffs", "/api/storedaudiofiles"):
-        resp = backend.get(listing)
-        assert resp.status == 200, listing
-        assert resp.json() == [], listing
+    for kind in ("config", "coeff", "audiofile"):
+        resp = backend.get(f"/api/files/{kind}")
+        assert resp.status == 200, kind
+        assert resp.json() == [], kind
 
-    for upload, setting in (
-        ("/api/uploadconfigs", "config_dir"),
-        ("/api/uploadcoeffs", "coeff_dir"),
-        ("/api/uploadaudiofiles", "audiofiles_dir"),
+    for kind, setting in (
+        ("config", "config_dir"),
+        ("coeff", "coeff_dir"),
+        ("audiofile", "audiofiles_dir"),
     ):
-        resp = backend.upload(upload, "file.txt", b"data")
-        assert resp.status == 500, upload
+        resp = backend.upload(f"/api/files/{kind}/upload", "file.txt", b"data")
+        assert resp.status == 500, kind
         message = resp.json()["message"]
         assert message == f"The directory {missing[setting]} does not exist. Create it and try again."
 
@@ -473,7 +500,7 @@ def test_refuses_to_start_with_ssl_settings(make_backend):
 
 
 def test_audiofiles_need_a_folder(server):
-    assert server.get("/api/storedaudiofiles").status == 404
+    assert server.get("/api/files/audiofile").status == 404
 
 
 # ── Configs ───────────────────────────────────────────────────────────────
@@ -743,10 +770,10 @@ def test_get_config_file_fills_in_defaults(server):
 
 
 def test_stored_configs(server):
-    content = server.get("/api/storedconfigs").json()
+    content = server.get("/api/files/config").json()
     config_file = next(item for item in content if item["name"] == "config.yml")
     assert config_file["valid"] is True
-    assert config_file["errors"] is None
+    assert "errors" not in config_file
     assert config_file["version"] == 5
 
 
@@ -763,7 +790,7 @@ def test_stored_configs_missing_file_is_only_a_warning(server):
     }
     (server.config_dir / "missingfile_tmp.yml").write_text(yaml.dump(config))
     try:
-        content = server.get("/api/storedconfigs").json()
+        content = server.get("/api/files/config").json()
     finally:
         (server.config_dir / "missingfile_tmp.yml").unlink()
     config_file = next(item for item in content if item["name"] == "missingfile_tmp.yml")
@@ -781,11 +808,11 @@ def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
         """).strip()
     (server.config_dir / "eqapo_like.yml").write_text(content)
     try:
-        files = server.get("/api/storedconfigs").json()
+        files = server.get("/api/files/config").json()
     finally:
         (server.config_dir / "eqapo_like.yml").unlink()
     config_file = next(item for item in files if item["name"] == "eqapo_like.yml")
-    assert config_file["version"] is None
+    assert "version" not in config_file
     assert config_file["valid"] is False
     assert config_file["errors"][0]["message"] == "This does not appear to be a CamillaDSP config file."
 
@@ -861,26 +888,54 @@ def test_gui_config(server):
 
 
 def test_log_file(server):
-    assert server.get("/api/logfile").text.startswith("Log message 1")
+    resp = server.get("/api/logfile")
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    assert resp.text.startswith("Log message 1")
+
+
+def test_log_file_not_set(make_backend):
+    resp = make_backend({"log_file": None}).get("/api/logfile")
+    assert resp.status == 404
+    assert resp.json()["message"] == "Please configure a valid 'log_file' path"
 
 
 def test_defaults_for_coeffs(server):
     assert server.get("/api/defaultsforcoeffs", params={"file": "x.wav"}).json() == {"type": "Wav"}
     assert server.get("/api/defaultsforcoeffs", params={"file": "x.dbl"}).json()["format"] == "F64_LE"
+    assert server.get("/api/defaultsforcoeffs", params={"file": "x.what"}).json() == {}
 
 
-def test_wav_info(server):
+def wav_bytes():
     data = struct.pack("<4sI4s", b"RIFF", 36 + 8, b"WAVE")
     data += struct.pack("<4sIHHIIHH", b"fmt ", 16, 3, 2, 44100, 44100 * 8, 8, 32)
-    data += struct.pack("<4sI", b"data", 8) + bytes(8)
+    return data + struct.pack("<4sI", b"data", 8) + bytes(8)
+
+
+def test_wav_info_outside_the_audiofiles_dir(server):
     path = server.config_dir / "info_tmp.wav"
-    path.write_bytes(data)
+    path.write_bytes(wav_bytes())
     try:
         resp = server.get("/api/wavinfo", params={"filename": str(path)})
     finally:
         path.unlink()
     # An absolute path is outside the (missing) audiofiles_dir.
     assert resp.status == 403
+
+
+def test_wav_info(make_backend, tmp_path):
+    audiofiles = tmp_path / "audio"
+    audiofiles.mkdir()
+    (audiofiles / "x.wav").write_bytes(wav_bytes())
+    (audiofiles / "y.wav").write_bytes(b"not a wav file")
+    backend = make_backend({"audiofiles_dir": str(audiofiles)})
+    info = backend.get("/api/wavinfo", params={"filename": "x.wav"}).json()
+    assert info["channels"] == 2
+    assert info["sampleformat"] == "F32_LE"
+    assert backend.get("/api/wavinfo", params={"filename": "y.wav"}).status == 404
+    listing = {file["name"]: file for file in backend.get("/api/files/audiofile").json()}
+    assert listing["x.wav"]["samplerate"] == 44100
+    assert listing["y.wav"]["valid"] is False
+    assert "samplerate" not in listing["y.wav"]
 
 
 # ── Coefficients ──────────────────────────────────────────────────────────
@@ -910,15 +965,12 @@ def unframe_coefficients(body):
 
 def conv_request(filename, samplerate=44100, channels=2):
     return {
-        "config": {
-            "type": "Conv",
-            "parameters": {
-                "type": "Raw",
-                "filename": filename,
-                "format": "F32_LE",
-                "skip_bytes_lines": 0,
-                "read_bytes_lines": 0,
-            },
+        "parameters": {
+            "type": "Raw",
+            "filename": filename,
+            "format": "F32_LE",
+            "skip_bytes_lines": 0,
+            "read_bytes_lines": 0,
         },
         "samplerate": samplerate,
         "channels": channels,
@@ -973,7 +1025,7 @@ def test_convcoeffs_sends_float64_when_the_source_holds_more(server):
     path.write_bytes(struct.pack(f"<{len(values)}i", *values))
     try:
         request = conv_request("convtest_s32.raw")
-        request["config"]["parameters"]["format"] = "S32_LE"
+        request["parameters"]["format"] = "S32_LE"
         resp = server.post("/api/convcoeffs", json_body=request)
         assert resp.status == 200, resp.text
         header, coefficients = unframe_coefficients(resp.body)
@@ -985,13 +1037,16 @@ def test_convcoeffs_sends_float64_when_the_source_holds_more(server):
 
 def test_convcoeffs_rejects_a_conv_that_reads_no_file(server):
     request = conv_request("unused.f32")
-    request["config"]["parameters"] = {"type": "Values", "values": [1.0, 0.5]}
+    request["parameters"] = {"type": "Values", "values": [1.0, 0.5]}
     assert server.post("/api/convcoeffs", json_body=request).status == 400
 
 
 def test_convcoeffs_rejects_a_conv_without_a_filename(server):
-    for filename in ("", None):
-        request = conv_request("unused.f32")
-        request["config"]["parameters"]["filename"] = filename
-        resp = server.post("/api/convcoeffs", json_body=request)
-        assert resp.status == 400, resp.text
+    request = conv_request("")
+    resp = server.post("/api/convcoeffs", json_body=request)
+    assert resp.status == 400, resp.text
+    # Not a Conv's parameters at all.
+    request["parameters"]["filename"] = None
+    resp = server.post("/api/convcoeffs", json_body=request)
+    assert resp.status == 422, resp.text
+    assert "message" in resp.json()

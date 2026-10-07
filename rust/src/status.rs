@@ -3,9 +3,8 @@
 
 use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
-use camilladsp_config::protocol::ChannelLabels;
+use camilladsp_config::protocol::{AudioDeviceDescriptor, ChannelLabels};
 use serde::Serialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -97,8 +96,8 @@ struct Devices {
     playback: HashMap<String, Vec<(String, String)>>,
     capture: HashMap<String, Vec<(String, String)>>,
     /// Keyed on backend and device.
-    playback_capabilities: HashMap<(String, String), Value>,
-    capture_capabilities: HashMap<(String, String), Value>,
+    playback_capabilities: HashMap<(String, String), Arc<AudioDeviceDescriptor>>,
+    capture_capabilities: HashMap<(String, String), Arc<AudioDeviceDescriptor>>,
 }
 
 pub struct StatusCache {
@@ -160,7 +159,12 @@ impl StatusCache {
     }
 
     /// The capabilities of a device, as last read.
-    pub fn capabilities(&self, capture: bool, backend: &str, device: &str) -> Option<Value> {
+    pub fn capabilities(
+        &self,
+        capture: bool,
+        backend: &str,
+        device: &str,
+    ) -> Option<Arc<AudioDeviceDescriptor>> {
         let devices = self.devices.lock().unwrap();
         let cache = if capture {
             &devices.capture_capabilities
@@ -172,7 +176,13 @@ impl StatusCache {
             .cloned()
     }
 
-    pub fn store_capabilities(&self, capture: bool, backend: &str, device: &str, value: Value) {
+    pub fn store_capabilities(
+        &self,
+        capture: bool,
+        backend: &str,
+        device: &str,
+        value: Arc<AudioDeviceDescriptor>,
+    ) {
         let mut devices = self.devices.lock().unwrap();
         let cache = if capture {
             &mut devices.capture_capabilities

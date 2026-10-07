@@ -20,7 +20,8 @@ pub struct DeviceTypes {
     pub settings_playback: Option<Vec<String>>,
 }
 
-#[derive(Clone, Debug)]
+/// The device types a CamillaDSP build supports.
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub struct DeviceTypeLists {
     pub playback: Vec<String>,
     pub capture: Vec<String>,

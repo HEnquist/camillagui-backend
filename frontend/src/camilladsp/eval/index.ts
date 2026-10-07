@@ -11,7 +11,7 @@ import { convComplexGain, convGroupDelay } from "./conv"
 import { complexGain, groupDelaySamples } from "./filters"
 import { addDelayInto, delayInMs } from "./groupdelay"
 import { FilterEvalError, num, numList, Params } from "./params"
-import { responseErrorMessage } from "../../api/client"
+import { responseErrorMessage, Schemas } from "../../api/client"
 import { ChartContent, FilterOption } from "../../utilities/chart"
 import { Config, LooseFilter } from "../config"
 
@@ -136,7 +136,7 @@ export function clearCoefficientCache(): void {
 function unframeCoefficients(buffer: ArrayBuffer): ConvCoefficients {
   const headerLength = new DataView(buffer).getUint32(0, true)
   const header = new TextDecoder().decode(new Uint8Array(buffer, 4, headerLength))
-  const { options, format } = JSON.parse(header) as { options: FilterOption[]; format: string }
+  const { options, format } = JSON.parse(header) as Schemas["CoeffsHeader"]
   const start = 4 + headerLength + ((8 - ((4 + headerLength) % 8)) % 8)
   const coefficients = format === "float32" ? new Float32Array(buffer, start) : new Float64Array(buffer, start)
   return { options, coefficients }
@@ -163,10 +163,16 @@ async function fetchConvCoefficients(
   }
 
   const pending = (async () => {
+    // The editor's parameters are loose; the backend checks that they are a Raw or Wav Conv.
+    const request: Schemas["CoeffsRequest"] = {
+      parameters: filterconf.parameters as Schemas["ConvParameters"],
+      samplerate,
+      channels,
+    }
     const response = await fetch("/api/convcoeffs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config: filterconf, samplerate, channels }),
+      body: JSON.stringify(request),
     })
     if (!response.ok) throw new FilterEvalError(await responseErrorMessage(response))
     return unframeCoefficients(await response.arrayBuffer())

@@ -1,29 +1,30 @@
-//! The `/api` handlers. The typed ones are in the OpenAPI spec; the rest still
-//! answer what the old Python backend did, until they are typed too.
+//! The `/api` handlers, each in the OpenAPI spec, and the redirect to the GUI.
 
 use crate::camilla::{CamillaClient, DspError, to_json};
+use crate::coeffs::CoeffDefaults;
 use crate::events::{self, SubscribeError};
-use crate::extract::{Json, Path as UrlPath, Query};
-use crate::files::{self, ConfigContext, Details};
+use crate::extract::{Json, Multipart, Path as UrlPath, Query};
+use crate::files::{self, ConfigContext, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
-use crate::settings::{self, Settings};
+use crate::settings::{self, GuiConfig, Settings};
 use crate::status::Status;
 use crate::status::StatusCache;
-use crate::validate::{self, DeviceTypes, Severity, ValidationIssue};
+use crate::validate::{self, DeviceTypeLists, DeviceTypes, Severity, ValidationIssue};
+use crate::wav::WavInfo;
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
 use axum::body::Bytes;
-use axum::extract::{Multipart, State};
+use axum::extract::State;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use camilladsp_config::config::{
-    Configuration, Filter, Mixer, PathElement, PipelineStep, Processor,
+    Configuration, ConvParameters, Filter, Mixer, PathElement, PipelineStep, Processor,
 };
 use camilladsp_config::protocol::{
-    Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
+    AudioDeviceDescriptor, Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels,
+    VuSubscription,
 };
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -63,6 +64,14 @@ pub struct ErrorBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
 }
+
+// Describes a binary body in the spec, where a `Vec<u8>` would be an array of
+// numbers.
+/// Raw bytes, not JSON.
+#[derive(ToSchema)]
+#[schema(value_type = String, format = Binary)]
+#[allow(dead_code, reason = "only describes a body in the spec")]
+pub struct Binary(Vec<u8>);
 
 /// An error response: a status, and an `ErrorBody`.
 #[derive(Debug)]
@@ -130,25 +139,8 @@ fn text_response(text: impl Into<String>) -> Response {
     ([NO_STORE], text.into()).into_response()
 }
 
-fn ok() -> ApiResult {
-    Ok(text_response("OK"))
-}
-
 fn no_content() -> ApiResult {
     Ok((StatusCode::NO_CONTENT, [NO_STORE]).into_response())
-}
-
-/// Parse a JSON body of an endpoint that is not typed yet. The frontend does
-/// not send a content type to those, so this does not ask for one.
-fn parse_body<T: DeserializeOwned>(body: &Bytes) -> Result<T, ApiError> {
-    serde_json::from_slice(body).map_err(|err| bad_request(format!("Invalid request body: {err}")))
-}
-
-fn query_param<'a>(query: &'a HashMap<String, String>, name: &str) -> Result<&'a str, ApiError> {
-    query
-        .get(name)
-        .map(String::as_str)
-        .ok_or_else(|| bad_request(format!("Missing required query parameter '{name}'")))
 }
 
 /// Run blocking file work off the async threads.
@@ -378,29 +370,61 @@ pub async fn set_fader_mute(
 
 // ── Coefficients ───────────────────────────────────────────────────────────
 
+#[derive(Deserialize, ToSchema)]
+pub struct CoeffsRequest {
+    /// The parameters of a Raw or Wav Conv filter, with the file path as the
+    /// GUI has it.
+    parameters: ConvParameters,
+    /// For the `$samplerate$` token in the file name.
+    samplerate: usize,
+    /// For the `$channels$` token in the file name.
+    channels: usize,
+}
+
 /// The coefficients of a Conv filter that reads them from a file, and which
 /// samplerate and channel variants of that file exist. The GUI evaluates
 /// filters itself; this exists because only the server can reach the files.
-pub async fn conv_coefficients(State(app): Shared, body: Bytes) -> ApiResult {
-    let content: Value = parse_body(&body)?;
+///
+/// Not JSON: a little endian u32 giving the length of a JSON `CoeffsHeader`,
+/// that header, padding to the next multiple of 8, and then the samples, in
+/// the width the header gives.
+#[utoipa::path(
+    post,
+    path = "/convcoeffs",
+    request_body = CoeffsRequest,
+    responses(
+        (status = 200, content_type = "application/octet-stream", body = inline(Binary)),
+        (status = 400, description = "The filter reads no file, or the file could not be read", body = ErrorBody),
+        (status = 403, description = "The file is outside the configured folders", body = ErrorBody),
+        (status = 404, description = "There is no such file", body = ErrorBody),
+    )
+)]
+pub async fn conv_coefficients(
+    State(app): Shared,
+    Json(request): Json<CoeffsRequest>,
+) -> ApiResult {
+    let CoeffsRequest {
+        mut parameters,
+        samplerate,
+        channels,
+    } = request;
     blocking(move || {
-        let mut filter = content.get("config").cloned().unwrap_or_default();
-        let parameters = filter.get("parameters").cloned().unwrap_or_default();
-        let subtype = parameters.get("type").and_then(Value::as_str);
-        if !matches!(subtype, Some("Raw" | "Wav")) {
-            return Err(bad_request(format!(
-                "Conv subtype '{}' reads no coefficient file",
-                subtype.unwrap_or("None")
-            )));
-        }
-        let filename = match parameters.get("filename").and_then(Value::as_str) {
-            Some(name) if !name.is_empty() => name.to_string(),
-            _ => return Err(bad_request("Conv filter has no coefficient file name")),
+        let filename = match &mut parameters {
+            ConvParameters::Raw(raw) => &mut raw.filename,
+            ConvParameters::Wav(wav) => &mut wav.filename,
+            _ => {
+                return Err(bad_request(
+                    "Only a Raw or Wav Conv filter reads a coefficient file",
+                ));
+            }
         };
+        if filename.is_empty() {
+            return Err(bad_request("Conv filter has no coefficient file name"));
+        }
         let settings = &app.settings;
         if !settings.allow_absolute_paths
             && !paths::path_is_safe(
-                &filename,
+                filename,
                 Some(&settings.coeff_dir),
                 Some(&settings.config_dir),
             )
@@ -413,25 +437,18 @@ pub async fn conv_coefficients(State(app): Shared, body: Bytes) -> ApiResult {
                 ),
             ));
         }
-        paths::convert_filter_path(&mut filter, &|path| {
-            paths::coeff_path_to_absolute(path, &settings.config_dir, &settings.coeff_dir)
-        });
         // The options come from the name as written, tokens and all, so they
         // are collected before the tokens are replaced.
         let file_names = files::list_file_names(&settings.coeff_dir);
-        let options = coeffs::filter_plot_options(&file_names, &filename);
-        let samplerate = content.get("samplerate").cloned().unwrap_or_default();
-        let channels = content.get("channels").cloned().unwrap_or_default();
-        coeffs::replace_tokens_in_filter(&mut filter, &samplerate, &channels);
-        let resolved = filter["parameters"]["filename"]
-            .as_str()
-            .unwrap_or_default();
-        if !Path::new(resolved).is_file() {
+        let options = coeffs::filter_plot_options(&file_names, filename);
+        let absolute =
+            paths::coeff_path_to_absolute(filename, &settings.config_dir, &settings.coeff_dir);
+        *filename = coeffs::replace_tokens(&absolute, samplerate, channels);
+        if !Path::new(filename.as_str()).is_file() {
             return Err(not_found("Filter coefficient file not found"));
         }
-        let (values, as_f32) =
-            coeffs::read_coefficients(&filter["parameters"]).map_err(bad_request)?;
-        let body = coeffs::frame_coefficients(&options, &values, as_f32);
+        let (values, as_f32) = coeffs::read_coefficients(&parameters).map_err(bad_request)?;
+        let body = coeffs::frame_coefficients(options, &values, as_f32);
         Ok((
             [NO_STORE, (header::CONTENT_TYPE, "application/octet-stream")],
             body,
@@ -441,11 +458,26 @@ pub async fn conv_coefficients(State(app): Shared, body: Bytes) -> ApiResult {
     .await
 }
 
-pub async fn get_wav_info(
-    State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
-) -> ApiResult {
-    let filename = query_param(&query, "filename")?.to_string();
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct WavInfoQuery {
+    /// A file name in audiofiles_dir, or a path.
+    filename: String,
+}
+
+/// The header of a wav file.
+#[utoipa::path(
+    get,
+    path = "/wavinfo",
+    params(WavInfoQuery),
+    responses(
+        (status = 200, body = WavInfo),
+        (status = 403, description = "The file is outside audiofiles_dir", body = ErrorBody),
+        (status = 404, description = "The file is not a wav file CamillaDSP can read", body = ErrorBody),
+    )
+)]
+pub async fn get_wav_info(State(app): Shared, Query(query): Query<WavInfoQuery>) -> ApiResult {
+    let WavInfoQuery { filename } = query;
     let audiofiles_dir = app.audiofiles_dir();
     if !app.settings.allow_absolute_paths
         && !paths::path_is_safe(&filename, audiofiles_dir, audiofiles_dir)
@@ -463,16 +495,35 @@ pub async fn get_wav_info(
         Some(dir) => PathBuf::from(paths::make_absolute(&filename, dir)),
         None => PathBuf::from(&filename),
     };
-    Ok(json_response(wav::read_info(&path)))
+    match wav::read_info(&path) {
+        Some(info) => Ok(json_response(info)),
+        None => Err(not_found(format!(
+            "'{filename}' is not a wav file CamillaDSP can read"
+        ))),
+    }
 }
 
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct CoeffDefaultsQuery {
+    /// The coefficient file, relative to config_dir.
+    file: String,
+}
+
+/// Sensible parameters for a Conv filter reading a coefficient file, from
+/// the file's extension.
+#[utoipa::path(
+    get,
+    path = "/defaultsforcoeffs",
+    params(CoeffDefaultsQuery),
+    responses((status = 200, body = CoeffDefaults))
+)]
 pub async fn get_defaults_for_coeffs(
     State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
-) -> ApiResult {
-    let file = query_param(&query, "file")?;
-    let absolute = paths::make_absolute(file, &app.settings.config_dir);
-    Ok(json_response(coeffs::defaults_for_filter(&absolute)))
+    Query(query): Query<CoeffDefaultsQuery>,
+) -> Response {
+    let absolute = paths::make_absolute(&query.file, &app.settings.config_dir);
+    json_response(coeffs::defaults_for_filter(&absolute))
 }
 
 // ── The active config ──────────────────────────────────────────────────────
@@ -1192,168 +1243,222 @@ fn require_audiofiles_dir(app: &AppState) -> Result<PathBuf, ApiError> {
         .ok_or_else(|| not_found("audiofiles_dir is not configured"))
 }
 
-pub async fn get_stored_configs(State(app): Shared) -> ApiResult {
+/// One of the folders the GUI keeps files in.
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum FileKind {
+    /// config_dir.
+    Config,
+    /// coeff_dir.
+    Coeff,
+    /// audiofiles_dir.
+    Audiofile,
+}
+
+impl FileKind {
+    fn folder(self, app: &AppState) -> Result<PathBuf, ApiError> {
+        match self {
+            FileKind::Config => Ok(app.settings.config_dir.clone()),
+            FileKind::Coeff => Ok(app.settings.coeff_dir.clone()),
+            FileKind::Audiofile => require_audiofiles_dir(app),
+        }
+    }
+}
+
+/// The files in a folder, sorted by name.
+#[utoipa::path(
+    get,
+    path = "/files/{kind}",
+    params(("kind" = FileKind, Path)),
+    responses(
+        (status = 200, body = Vec<FileInfo>),
+        (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
+    )
+)]
+pub async fn get_files(State(app): Shared, UrlPath(kind): UrlPath<FileKind>) -> ApiResult {
+    let folder = kind.folder(&app)?;
     let types = app.device_types();
     blocking(move || {
-        let settings = &app.settings;
-        let context = ConfigContext {
-            config_dir: &settings.config_dir,
-            coeff_dir: &settings.coeff_dir,
-            audiofiles_dir: app.audiofiles_dir(),
-            device_types: &types,
+        let files = match kind {
+            FileKind::Config => {
+                let settings = &app.settings;
+                let context = ConfigContext {
+                    config_dir: &settings.config_dir,
+                    coeff_dir: &settings.coeff_dir,
+                    audiofiles_dir: app.audiofiles_dir(),
+                    device_types: &types,
+                };
+                let details = Details {
+                    config: true,
+                    ..Default::default()
+                };
+                files::list_files(&folder, details, Some(&context))
+            }
+            FileKind::Coeff => files::list_files(&folder, Details::default(), None),
+            FileKind::Audiofile => {
+                let details = Details {
+                    wav: true,
+                    ..Default::default()
+                };
+                files::list_files(&folder, details, None)
+            }
         };
-        let details = Details {
-            stats: true,
-            config: true,
-            wav: false,
-        };
-        Ok(json_response(files::list_files(
-            &settings.config_dir,
-            details,
-            Some(&context),
-        )))
+        Ok(json_response(files))
     })
     .await
 }
 
-pub async fn get_stored_coeffs(State(app): Shared) -> ApiResult {
-    blocking(move || {
-        let details = Details {
-            stats: true,
-            ..Default::default()
-        };
-        Ok(json_response(files::list_files(
-            &app.settings.coeff_dir,
-            details,
-            None,
-        )))
-    })
-    .await
+/// Files to upload, as `multipart/form-data`.
+#[derive(ToSchema)]
+#[allow(dead_code, reason = "only describes the form in the spec")]
+pub struct UploadForm {
+    /// The files, each with its file name. A file of the same name is
+    /// replaced.
+    #[schema(value_type = Vec<String>, format = Binary)]
+    files: Vec<Vec<u8>>,
 }
 
-pub async fn get_stored_audiofiles(State(app): Shared) -> ApiResult {
-    let dir = require_audiofiles_dir(&app)?;
-    blocking(move || {
-        let details = Details {
-            stats: true,
-            wav: true,
-            ..Default::default()
-        };
-        Ok(json_response(files::list_files(&dir, details, None)))
-    })
-    .await
-}
-
-/// The uploaded files, in the order of their `file0`, `file1`, ... fields.
-async fn uploaded_files(mut multipart: Multipart) -> Result<Vec<(String, Bytes)>, ApiError> {
-    let mut fields = HashMap::new();
+/// The uploaded files, in the order they came.
+async fn uploaded_files(
+    mut multipart: axum::extract::Multipart,
+) -> Result<Vec<(String, Bytes)>, ApiError> {
+    let mut files = Vec::new();
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|err| bad_request(err.to_string()))?
     {
-        let name = field.name().unwrap_or_default().to_string();
+        if field.name() != Some("files") {
+            continue;
+        }
         let filename = field.file_name().unwrap_or_default().to_string();
         let data = field
             .bytes()
             .await
             .map_err(|err| bad_request(err.to_string()))?;
-        fields.insert(name, (filename, data));
-    }
-    let mut files = Vec::new();
-    for i in 0.. {
-        match fields.remove(&format!("file{i}")) {
-            Some(file) => files.push(file),
-            None => break,
-        }
+        files.push((filename, data));
     }
     Ok(files)
 }
 
-async fn store_files(
-    folder: &Path,
-    multipart: Multipart,
-    transform: fn(&[u8]) -> Vec<u8>,
+/// Store files in a folder. Uploaded configs have their coefficient and audio
+/// file paths reduced to bare file names, so that configs from other machines
+/// work here.
+#[utoipa::path(
+    post,
+    path = "/files/{kind}/upload",
+    params(("kind" = FileKind, Path)),
+    request_body(content = UploadForm, content_type = "multipart/form-data"),
+    responses(
+        (status = 204, description = "Stored"),
+        (status = 400, description = "A file name is not valid", body = ErrorBody),
+        (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
+        (status = 500, description = "The folder does not exist, or a file could not be written", body = ErrorBody),
+    )
+)]
+pub async fn upload_files(
+    State(app): Shared,
+    UrlPath(kind): UrlPath<FileKind>,
+    Multipart(multipart): Multipart,
 ) -> ApiResult {
-    files::require_directory(folder).map_err(internal)?;
-    let uploaded = uploaded_files(multipart).await?;
-    let count = uploaded.len();
-    for (filename, data) in uploaded {
-        let path = file_in_folder(folder, &filename).map_err(bad_request)?;
+    let folder = kind.folder(&app)?;
+    files::require_directory(&folder).map_err(internal)?;
+    let transform: fn(&[u8]) -> Vec<u8> = match kind {
+        FileKind::Config => files::sanitize_uploaded_config,
+        FileKind::Coeff | FileKind::Audiofile => <[u8]>::to_vec,
+    };
+    for (filename, data) in uploaded_files(multipart).await? {
+        let path = file_in_folder(&folder, &filename).map_err(bad_request)?;
         tokio::fs::write(&path, transform(&data))
             .await
             .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
     }
-    Ok(([NO_STORE], format!("Saved {count} file(s)")).into_response())
+    no_content()
 }
 
-pub async fn store_configs(State(app): Shared, multipart: Multipart) -> ApiResult {
-    store_files(
-        &app.settings.config_dir,
-        multipart,
-        files::sanitize_uploaded_config,
+#[derive(Deserialize, ToSchema)]
+pub struct FileNames {
+    /// File names, in the folder.
+    names: Vec<String>,
+}
+
+/// Delete files from a folder.
+#[utoipa::path(
+    post,
+    path = "/files/{kind}/delete",
+    params(("kind" = FileKind, Path)),
+    request_body = FileNames,
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
+        (status = "default", description = "A file could not be deleted", body = ErrorBody),
     )
-    .await
-}
-
-pub async fn store_coeffs(State(app): Shared, multipart: Multipart) -> ApiResult {
-    store_files(&app.settings.coeff_dir, multipart, <[u8]>::to_vec).await
-}
-
-pub async fn store_audiofiles(State(app): Shared, multipart: Multipart) -> ApiResult {
-    let dir = require_audiofiles_dir(&app)?;
-    store_files(&dir, multipart, <[u8]>::to_vec).await
-}
-
-async fn delete_from(folder: PathBuf, body: Bytes) -> ApiResult {
-    let names: Vec<String> = parse_body(&body)?;
-    files::delete_files(&folder, &names).map_err(internal)?;
-    Ok(text_response("ok"))
-}
-
-pub async fn delete_configs(State(app): Shared, body: Bytes) -> ApiResult {
-    delete_from(app.settings.config_dir.clone(), body).await
-}
-
-pub async fn delete_coeffs(State(app): Shared, body: Bytes) -> ApiResult {
-    delete_from(app.settings.coeff_dir.clone(), body).await
-}
-
-pub async fn delete_audiofiles(State(app): Shared, body: Bytes) -> ApiResult {
-    delete_from(require_audiofiles_dir(&app)?, body).await
-}
-
-fn rename_in(folder: &Path, query: &HashMap<String, String>) -> ApiResult {
-    let source = query_param(query, "source")?;
-    let target = query_param(query, "target")?;
-    files::rename_file(folder, source, target).map_err(bad_request)?;
-    ok()
-}
-
-pub async fn rename_config_file(
+)]
+pub async fn delete_files(
     State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
+    UrlPath(kind): UrlPath<FileKind>,
+    Json(body): Json<FileNames>,
 ) -> ApiResult {
-    rename_in(&app.settings.config_dir, &query)
+    let folder = kind.folder(&app)?;
+    files::delete_files(&folder, &body.names).map_err(internal)?;
+    no_content()
 }
 
-pub async fn rename_coeff_file(
+#[derive(Deserialize, ToSchema)]
+pub struct RenameBody {
+    /// The file name, in the folder.
+    source: String,
+    /// The new file name, in the same folder.
+    target: String,
+}
+
+/// Rename a file in a folder.
+#[utoipa::path(
+    post,
+    path = "/files/{kind}/rename",
+    params(("kind" = FileKind, Path)),
+    request_body = RenameBody,
+    responses(
+        (status = 204, description = "Renamed"),
+        (status = 400, description = "A file name is not valid, the new name is taken, or the \
+            file could not be renamed", body = ErrorBody),
+        (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
+    )
+)]
+pub async fn rename_file(
     State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
+    UrlPath(kind): UrlPath<FileKind>,
+    Json(body): Json<RenameBody>,
 ) -> ApiResult {
-    rename_in(&app.settings.coeff_dir, &query)
+    let folder = kind.folder(&app)?;
+    files::rename_file(&folder, &body.source, &body.target).map_err(bad_request)?;
+    no_content()
 }
 
-pub async fn rename_audio_file(
+/// Some of the files in a folder, as a zip file.
+#[utoipa::path(
+    post,
+    path = "/files/{kind}/zip",
+    params(("kind" = FileKind, Path)),
+    request_body = FileNames,
+    responses(
+        (status = 200, content_type = "application/octet-stream", body = inline(Binary)),
+        (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
+        (status = "default", description = "A file could not be read", body = ErrorBody),
+    )
+)]
+pub async fn zip_files(
     State(app): Shared,
-    Query(query): Query<HashMap<String, String>>,
+    UrlPath(kind): UrlPath<FileKind>,
+    Json(body): Json<FileNames>,
 ) -> ApiResult {
-    rename_in(&require_audiofiles_dir(&app)?, &query)
-}
-
-async fn zip_from(folder: PathBuf, body: Bytes, zip_name: &'static str) -> ApiResult {
-    let names: Vec<String> = parse_body(&body)?;
-    let zip = blocking(move || files::zip_of_files(&folder, &names).map_err(internal)).await?;
+    let folder = kind.folder(&app)?;
+    let zip = blocking(move || files::zip_of_files(&folder, &body.names).map_err(internal)).await?;
+    let zip_name = match kind {
+        FileKind::Config => "configs.zip",
+        FileKind::Coeff => "coeffs.zip",
+        FileKind::Audiofile => "audiofiles.zip",
+    };
     let disposition = format!("attachment; filename={zip_name}");
     Ok((
         [
@@ -1365,131 +1470,156 @@ async fn zip_from(folder: PathBuf, body: Bytes, zip_name: &'static str) -> ApiRe
         .into_response())
 }
 
-pub async fn download_configs_zip(State(app): Shared, body: Bytes) -> ApiResult {
-    zip_from(app.settings.config_dir.clone(), body, "configs.zip").await
-}
-
-pub async fn download_coeffs_zip(State(app): Shared, body: Bytes) -> ApiResult {
-    zip_from(app.settings.coeff_dir.clone(), body, "coeffs.zip").await
-}
-
-pub async fn download_audiofiles_zip(State(app): Shared, body: Bytes) -> ApiResult {
-    zip_from(require_audiofiles_dir(&app)?, body, "audiofiles.zip").await
-}
-
 // ── GUI settings and the log ───────────────────────────────────────────────
 
+/// The GUI settings: `gui-config.yml`, and the few settings from
+/// `camillagui.yml` that the frontend needs.
+#[utoipa::path(get, path = "/guiconfig", responses((status = 200, body = GuiConfig)))]
 pub async fn get_gui_config(State(app): Shared) -> Response {
-    let settings = &app.settings;
-    let mut config = settings::gui_config_or_defaults(settings.gui_config_file.as_deref());
-    let coeff_dir = paths::relpath(&settings.coeff_dir, &settings.config_dir).join("");
-    config.insert("coeff_dir".into(), json!(paths::to_string(&coeff_dir)));
-    config.insert(
-        "supported_capture_types".into(),
-        json!(settings.supported_capture_types),
-    );
-    config.insert(
-        "supported_playback_types".into(),
-        json!(settings.supported_playback_types),
-    );
-    config.insert(
-        "can_update_active_config".into(),
-        json!(settings.can_update_active_config),
-    );
-    config.insert(
-        "audiofiles_supported".into(),
-        json!(settings.audiofiles_dir.is_some()),
-    );
-    config.insert(
-        "allow_absolute_paths".into(),
-        json!(settings.allow_absolute_paths),
-    );
+    let config = settings::gui_config(&app.settings);
     log::debug!("GUI config: {config:?}");
     json_response(config)
 }
 
-pub async fn get_log_file(State(app): Shared) -> Response {
-    let log_file = app.settings.log_file.as_deref();
-    if let Some(path) = log_file {
-        match tokio::fs::read_to_string(settings::expand_home(Path::new(path))).await {
-            Ok(text) => return text_response(text),
-            Err(_) => log::error!("Unable to read logfile at {path}"),
+/// CamillaDSP's log file, `log_file` in the settings.
+#[utoipa::path(
+    get,
+    path = "/logfile",
+    responses(
+        (status = 200, content_type = "text/plain", body = String),
+        (status = 404, description = "No log file is set, or it cannot be read", body = ErrorBody),
+    )
+)]
+pub async fn get_log_file(State(app): Shared) -> ApiResult {
+    let Some(path) = app.settings.log_file.as_deref() else {
+        return Err(not_found("Please configure a valid 'log_file' path"));
+    };
+    match tokio::fs::read_to_string(settings::expand_home(Path::new(path))).await {
+        Ok(text) => Ok(text_response(text)),
+        Err(err) => {
+            log::error!("Unable to read logfile at {path}: {err}");
+            Err(not_found(format!(
+                "Please configure CamillaDSP to log to: {path}"
+            )))
         }
     }
-    let message = match log_file {
-        Some(path) => format!("Please configure CamillaDSP to log to: {path}"),
-        None => "Please configure a valid 'log_file' path".to_string(),
-    };
-    text_response(message)
 }
 
 // ── Devices ────────────────────────────────────────────────────────────────
 
-async fn device_list(app: &AppState, backend: &str, capture: bool) -> ApiResult {
+/// Which side of CamillaDSP a device is on.
+#[derive(Clone, Copy, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum Direction {
+    Capture,
+    Playback,
+}
+
+/// A device CamillaDSP can use.
+#[derive(Serialize, ToSchema)]
+pub struct AvailableDevice {
+    /// What a config calls it.
+    name: String,
+    /// A readable name.
+    description: String,
+}
+
+/// The devices of a device type, or the ones read earlier while CamillaDSP
+/// cannot be reached.
+#[utoipa::path(
+    get,
+    path = "/devices/{direction}/{backend}",
+    params(
+        ("direction" = Direction, Path),
+        ("backend" = String, Path, description = "The device type, for example `Alsa`"),
+    ),
+    responses(
+        (status = 200, body = Vec<AvailableDevice>),
+        (status = "default", description = "CamillaDSP refused", body = ErrorBody),
+    )
+)]
+pub async fn get_devices(
+    State(app): Shared,
+    UrlPath((direction, backend)): UrlPath<(Direction, String)>,
+) -> ApiResult {
+    let capture = matches!(direction, Direction::Capture);
     let result = if capture {
-        app.camilla.capture_devices(backend).await
+        app.camilla.capture_devices(&backend).await
     } else {
-        app.camilla.playback_devices(backend).await
+        app.camilla.playback_devices(&backend).await
     };
-    match result {
-        Ok(devices) => Ok(json_response(devices)),
+    let devices = match result {
+        Ok(devices) => devices,
         Err(DspError::Io(_)) => {
             log::debug!("CamillaDSP is offline, returning the {backend} devices from cache");
-            let cached = app.status.device_list(capture, backend);
-            Ok(json_response(cached.unwrap_or_default()))
+            app.status
+                .device_list(capture, &backend)
+                .unwrap_or_default()
         }
-        Err(err) => Err(err.into()),
-    }
+        Err(err) => return Err(err.into()),
+    };
+    let devices: Vec<AvailableDevice> = devices
+        .into_iter()
+        .map(|(name, description)| AvailableDevice { name, description })
+        .collect();
+    Ok(json_response(devices))
 }
 
-pub async fn get_capture_devices(
-    State(app): Shared,
-    UrlPath(backend): UrlPath<String>,
-) -> ApiResult {
-    device_list(&app, &backend, true).await
-}
-
-pub async fn get_playback_devices(
-    State(app): Shared,
-    UrlPath(backend): UrlPath<String>,
-) -> ApiResult {
-    device_list(&app, &backend, false).await
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct DeviceQuery {
+    /// The device, as a config names it.
+    device: String,
 }
 
 /// The capabilities of a device, or the ones read earlier if CamillaDSP
 /// cannot give them now.
-async fn device_capabilities(
-    app: &AppState,
-    backend: &str,
-    query: &HashMap<String, String>,
-    capture: bool,
+#[utoipa::path(
+    get,
+    path = "/devices/{direction}/{backend}/capabilities",
+    params(
+        ("direction" = Direction, Path),
+        ("backend" = String, Path, description = "The device type, for example `Alsa`"),
+        DeviceQuery,
+    ),
+    responses(
+        (status = 200, body = AudioDeviceDescriptor),
+        (status = 400, description = "No device is given, or CamillaDSP refused", body = ErrorBody),
+        (status = 503, description = "CamillaDSP cannot be reached", body = ErrorBody),
+    )
+)]
+pub async fn get_device_capabilities(
+    State(app): Shared,
+    UrlPath((direction, backend)): UrlPath<(Direction, String)>,
+    Query(query): Query<DeviceQuery>,
 ) -> ApiResult {
-    let device = query
-        .get("device")
-        .filter(|d| !d.is_empty())
-        .ok_or_else(|| bad_request("Missing required query parameter 'device'"))?;
+    let device = query.device;
+    if device.is_empty() {
+        return Err(bad_request("No device is given"));
+    }
+    let capture = matches!(direction, Direction::Capture);
     let result = if capture {
         app.camilla
-            .capture_device_capabilities(backend, device)
+            .capture_device_capabilities(&backend, &device)
             .await
     } else {
         app.camilla
-            .playback_device_capabilities(backend, device)
+            .playback_device_capabilities(&backend, &device)
             .await
     };
     match result {
         Ok(capabilities) => {
-            let capabilities = to_json(&capabilities);
+            let capabilities = Arc::new(capabilities);
             app.status
-                .store_capabilities(capture, backend, device, capabilities.clone());
-            Ok(json_response(capabilities))
+                .store_capabilities(capture, &backend, &device, capabilities.clone());
+            Ok(json_response(&*capabilities))
         }
-        Err(err) => match app.status.capabilities(capture, backend, device) {
+        Err(err) => match app.status.capabilities(capture, &backend, &device) {
             Some(cached) => {
                 log::debug!(
                     "Failed to fetch the capabilities of {backend}/{device}, returning cached data"
                 );
-                Ok(json_response(cached))
+                Ok(json_response(&*cached))
             }
             None => match err {
                 DspError::Command { message, .. } => Err(bad_request(message)),
@@ -1499,27 +1629,16 @@ async fn device_capabilities(
     }
 }
 
-pub async fn get_capture_device_capabilities(
-    State(app): Shared,
-    UrlPath(backend): UrlPath<String>,
-    Query(query): Query<HashMap<String, String>>,
-) -> ApiResult {
-    device_capabilities(&app, &backend, &query, true).await
-}
-
-pub async fn get_playback_device_capabilities(
-    State(app): Shared,
-    UrlPath(backend): UrlPath<String>,
-    Query(query): Query<HashMap<String, String>>,
-) -> ApiResult {
-    device_capabilities(&app, &backend, &query, false).await
-}
-
 /// The device types CamillaDSP supports. They cannot change while it runs, so
 /// this comes from the cache.
+#[utoipa::path(
+    get,
+    path = "/backends",
+    responses(
+        (status = 200, body = Option<DeviceTypeLists>, description = "Null until CamillaDSP has \
+            been reached"),
+    )
+)]
 pub async fn get_backends(State(app): Shared) -> Response {
-    match app.status.device_types() {
-        Some(types) => json_response([types.playback, types.capture]),
-        None => json_response(json!([])),
-    }
+    json_response(app.status.device_types())
 }

@@ -2,7 +2,7 @@ import React, { Component } from "react"
 import { mdiAlertCircle, mdiCheck, mdiOpenInApp, mdiPlay } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { cloneDeep, isEqual } from "lodash"
-import { api, errorMessage, responseErrorMessage } from "./api/client"
+import { api, errorMessage } from "./api/client"
 import { CaptureDevice, Config, CURRENT_CONFIG_VERSION, Mixer, PlaybackDevice } from "./camilladsp/config"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import {
@@ -15,7 +15,16 @@ import {
   RenameButton,
   UploadFilesButton,
 } from "./utilities/file-actions"
-import { FileInfo, doUpload, download, downloadFromUrl, loadConfigJson, loadFiles } from "./utilities/files"
+import {
+  FileInfo,
+  deleteFiles,
+  doUpload,
+  downloadAsZip,
+  downloadFromUrl,
+  loadConfigJson,
+  loadFiles,
+  renameFile,
+} from "./utilities/files"
 import { Box, ErrorBoundary, fileDateSort, fileNameSort, MdiButton } from "./utilities/ui-components"
 
 const PLAYBACK_MIXER_NAME = "__file_playback_adapter__"
@@ -167,23 +176,27 @@ class WavFileTable extends Component<
   private async delete() {
     const del = window.confirm("Delete?\n" + this.state.selectedFiles.map((f) => f.name).join("\n"))
     if (!del) return
-    await fetch("/api/deleteaudiofiles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-    })
-    this.setState({ fileStatus: null })
+    try {
+      await deleteFiles(
+        "audiofile",
+        this.state.selectedFiles.map((f) => f.name),
+      )
+      this.setState({ fileStatus: null })
+    } catch (e) {
+      this.showErrorMessage(EMPTY_FILENAME, "delete", (e as Error).message)
+    }
     this.update()
   }
 
   private async downloadAsZip() {
-    const response = await fetch("/api/downloadaudiofileszip", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(this.state.selectedFiles.map((f) => f.name)),
-    })
-    const zipFile = await response.blob()
-    download("audiofiles.zip", zipFile)
+    try {
+      await downloadAsZip(
+        "audiofile",
+        this.state.selectedFiles.map((f) => f.name),
+      )
+    } catch (e) {
+      this.showErrorMessage(EMPTY_FILENAME, "download", (e as Error).message)
+    }
   }
 
   private async rename(filename: string) {
@@ -191,16 +204,9 @@ class WavFileTable extends Component<
     if (newName === filename) return
     if (!newName) return
     try {
-      const response = await fetch(
-        `/api/renameaudiofile?source=${encodeURIComponent(filename)}&target=${encodeURIComponent(newName)}`,
-        { method: "POST", headers: { "Content-Type": "application/json" } },
-      )
-      if (response.ok) {
-        this.showSuccess(newName, "rename")
-        this.update()
-      } else {
-        this.showErrorMessage(filename, "rename", await responseErrorMessage(response))
-      }
+      await renameFile("audiofile", filename, newName)
+      this.showSuccess(newName, "rename")
+      this.update()
     } catch (e) {
       this.showErrorMessage(filename, "rename", (e as Error).message)
     }

@@ -4,6 +4,50 @@
  */
 
 export interface paths {
+  "/api/backends": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The device types CamillaDSP supports. They cannot change while it runs, so
+     *     this comes from the cache.
+     */
+    get: operations["get_backends"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/convcoeffs": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * The coefficients of a Conv filter that reads them from a file, and which
+     *     samplerate and channel variants of that file exist. The GUI evaluates
+     *     filters itself; this exists because only the server can reach the files.
+     * @description Not JSON: a little endian u32 giving the length of a JSON `CoeffsHeader`,
+     *     that header, padding to the next multiple of 8, and then the samples, in
+     *     the width the header gives.
+     */
+    post: operations["conv_coefficients"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/convolvertojson": {
     parameters: {
       query?: never
@@ -21,6 +65,66 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/defaultsforcoeffs": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Sensible parameters for a Conv filter reading a coefficient file, from
+     *     the file's extension.
+     */
+    get: operations["get_defaults_for_coeffs"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/devices/{direction}/{backend}": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The devices of a device type, or the ones read earlier while CamillaDSP
+     *     cannot be reached.
+     */
+    get: operations["get_devices"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/devices/{direction}/{backend}/capabilities": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The capabilities of a device, or the ones read earlier if CamillaDSP
+     *     cannot give them now.
+     */
+    get: operations["get_device_capabilities"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/eqapotojson": {
     parameters: {
       query?: never
@@ -32,6 +136,95 @@ export interface paths {
     put?: never
     /** Translate an Equalizer APO config. */
     post: operations["translate_eqapo_to_json"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/files/{kind}": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The files in a folder, sorted by name. */
+    get: operations["get_files"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/files/{kind}/delete": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Delete files from a folder. */
+    post: operations["delete_files"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/files/{kind}/rename": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Rename a file in a folder. */
+    post: operations["rename_file"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/files/{kind}/upload": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Store files in a folder. Uploaded configs have their coefficient and audio
+     *     file paths reduced to bare file names, so that configs from other machines
+     *     work here.
+     */
+    post: operations["upload_files"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/files/{kind}/zip": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Some of the files in a folder, as a zip file. */
+    post: operations["zip_files"]
     delete?: never
     options?: never
     head?: never
@@ -129,6 +322,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/guiconfig": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The GUI settings: `gui-config.yml`, and the few settings from
+     *     `camillagui.yml` that the frontend needs.
+     */
+    get: operations["get_gui_config"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/levels": {
     parameters: {
       query?: never
@@ -142,6 +355,23 @@ export interface paths {
      *     the stream. Smoothing and rate come from the settings.
      */
     get: operations["get_levels"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/logfile": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** CamillaDSP's log file, `log_file` in the settings. */
+    get: operations["get_log_file"]
     put?: never
     post?: never
     delete?: never
@@ -396,6 +626,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/wavinfo": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The header of a wav file. */
+    get: operations["get_wav_info"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/ymltojson": {
     parameters: {
       query?: never
@@ -467,6 +714,22 @@ export interface components {
      * @enum {string}
      */
     AsyncSincWindow: "Hann" | "Hann2" | "Blackman" | "Blackman2" | "BlackmanHarris" | "BlackmanHarris2"
+    /** @description Full capability descriptor for a named audio device. */
+    AudioDeviceDescriptor: {
+      /** @description Capability sets, one per access mode supported by the backend. */
+      capability_sets: components["schemas"]["DeviceCapabilitySet"][]
+      /** @description Human-readable device name. */
+      description: string
+      /** @description Backend-specific device identifier (e.g. `"hw:0,0"` for ALSA). */
+      name: string
+    }
+    /** @description A device CamillaDSP can use. */
+    AvailableDevice: {
+      /** @description A readable name. */
+      description: string
+      /** @description What a config calls it. */
+      name: string
+    }
     /** @enum {string} */
     BinarySampleFormat: "S16_LE" | "S24_4_RJ_LE" | "S24_4_LJ_LE" | "S24_3_LE" | "S32_LE" | "F32_LE" | "F64_LE"
     /** @description Multi-section biquad combination type (crossover, EQ, tilt, …). */
@@ -595,6 +858,8 @@ export interface components {
           /** @enum {string} */
           type: "LinkwitzTransform"
         }
+    /** @enum {string} */
+    CapabilityMode: "Unified" | "Shared" | "Exclusive"
     CaptureDevice:
       | {
           channels: number
@@ -704,6 +969,13 @@ export interface components {
       filename: string
       labels?: (string | null)[] | null
     }
+    /** @description The sample rates (and their formats) supported by a device at a specific channel count. */
+    ChannelCapability: {
+      /** @description Number of channels. */
+      channels: number
+      /** @description Supported sample rates for this channel count. */
+      samplerates: components["schemas"]["SamplerateCapability"][]
+    }
     /** @description Channel display labels returned by [`WsCommand::GetChannelLabels`]. */
     ChannelLabels: {
       /** @description Labels for capture channels. Same structure as `playback`. */
@@ -718,6 +990,33 @@ export interface components {
     ClipperParameters: {
       clip_limit?: components["schemas"]["FiniteF64"]
       soft_clip?: boolean | null
+    }
+    /**
+     * @description Sensible parameters for a Conv filter reading a coefficient file, from the
+     *     file's extension. Empty when the extension says nothing.
+     */
+    CoeffDefaults: {
+      format?: components["schemas"]["FileSampleFormat"]
+      read_bytes_lines?: number
+      skip_bytes_lines?: number
+      type?: components["schemas"]["ConvFileType"]
+    }
+    /** @description The JSON header of a coefficient frame, see `frame_coefficients`. */
+    CoeffsHeader: {
+      format: components["schemas"]["SampleWidth"]
+      /** @description The variants of the file for other samplerates and channel counts. */
+      options: components["schemas"]["FilterOption"][]
+    }
+    CoeffsRequest: {
+      /** @description For the `$channels$` token in the file name. */
+      channels: number
+      /**
+       * @description The parameters of a Raw or Wav Conv filter, with the file path as the
+       *     GUI has it.
+       */
+      parameters: components["schemas"]["ConvParameters"]
+      /** @description For the `$samplerate$` token in the file name. */
+      samplerate: number
     }
     /** @description Parameters for the dynamic range compressor processor. */
     CompressorParameters: {
@@ -737,6 +1036,13 @@ export interface components {
     ConfigBody: {
       /** @description With the file paths as the GUI has them, relative to the configured folders. */
       config: components["schemas"]["Configuration"]
+    }
+    /** @description A value in the config that a shortcut controls. */
+    ConfigElement: {
+      /** @description The keys leading to the value. */
+      path: string[]
+      /** @description Move this one the opposite way of the control. */
+      reverse?: boolean
     }
     /**
      * @description Part of a config, as an import gives it: any of the sections, with any of
@@ -784,6 +1090,11 @@ export interface components {
       } | null
       title?: string | null
     }
+    /**
+     * @description The Conv filter subtypes that read a file.
+     * @enum {string}
+     */
+    ConvFileType: "Raw" | "Wav"
     /** @description Source of convolution coefficients for the FFT convolution filter. */
     ConvParameters:
       | (components["schemas"]["ConvParametersRaw"] & {
@@ -829,6 +1140,18 @@ export interface components {
      * @enum {string}
      */
     DelayUnit: "us" | "ms" | "s" | "mm" | "samples"
+    /** @description A set of device capabilities associated with a single access mode (e.g. exclusive vs. shared). */
+    DeviceCapabilitySet: {
+      /** @description Per-channel-count capability entries. */
+      capabilities: components["schemas"]["ChannelCapability"][]
+      /** @description The access mode these capabilities were probed under. */
+      mode: components["schemas"]["CapabilityMode"]
+    }
+    /** @description The device types a CamillaDSP build supports. */
+    DeviceTypeLists: {
+      capture: string[]
+      playback: string[]
+    }
     /** @description Top-level device and pipeline timing configuration. */
     Devices: {
       adjust_interval_s?: components["schemas"]["FiniteF32"] | null
@@ -857,6 +1180,11 @@ export interface components {
       a?: components["schemas"]["FiniteF64"][] | null
       b?: components["schemas"]["FiniteF64"][] | null
     }
+    /**
+     * @description Which side of CamillaDSP a device is on.
+     * @enum {string}
+     */
+    Direction: "capture" | "playback"
     /** @description Dithering algorithm and bit depth for the dither filter. */
     DitherParameters:
       | {
@@ -1000,6 +1328,60 @@ export interface components {
       volume: number
     }
     /**
+     * @description A file in a listing. What is known about it beyond its name, size and time
+     *     depends on the folder: configs have their title, version and validity, and
+     *     wav files their format. What is not known is left out.
+     */
+    FileInfo: {
+      /** @description For a wav file. */
+      channels?: number
+      /** @description For a config, its description. */
+      description?: string
+      /**
+       * Format: double
+       * @description For a wav file, in seconds.
+       */
+      duration?: number
+      /** @description For a config, its errors and warnings. */
+      errors?: components["schemas"]["ValidationIssue"][]
+      /**
+       * Format: double
+       * @description The time of the last change, in seconds since the epoch.
+       */
+      lastModified: number
+      name: string
+      /** @description For a wav file, the CamillaDSP name of its sample format. */
+      sampleformat?: string
+      /** @description For a wav file, in Hz. */
+      samplerate?: number
+      /**
+       * Format: int64
+       * @description In bytes.
+       */
+      size: number
+      /** @description For a config, its title. */
+      title?: string
+      /**
+       * @description For a config, whether it has no errors. For a wav file, whether
+       *     CamillaDSP can read it.
+       */
+      valid?: boolean
+      /**
+       * Format: int32
+       * @description For a config, the CamillaDSP version it is for.
+       */
+      version?: number
+    }
+    /**
+     * @description One of the folders the GUI keeps files in.
+     * @enum {string}
+     */
+    FileKind: "config" | "coeff" | "audiofile"
+    FileNames: {
+      /** @description File names, in the folder. */
+      names: string[]
+    }
+    /**
      * @description Sample format used for coefficient files; extends [`BinarySampleFormat`] with a plain-text variant.
      * @enum {string}
      */
@@ -1072,6 +1454,17 @@ export interface components {
           /** @enum {string} */
           type: "LookaheadLimiter"
         }
+    /**
+     * @description A variant of a coefficient file that exists, with the samplerate and
+     *     channels its name gives for the `$samplerate$` and `$channels$` tokens.
+     */
+    FilterOption: {
+      /** Format: int64 */
+      channels?: number
+      name: string
+      /** Format: int64 */
+      samplerate?: number
+    }
     /** Format: float */
     FiniteF32: number
     /** Format: double */
@@ -1100,6 +1493,70 @@ export interface components {
       freq_max?: components["schemas"]["FiniteF32"] | null
       freq_min?: components["schemas"]["FiniteF32"] | null
       gains: components["schemas"]["FiniteF32"][]
+    }
+    /**
+     * @description The GUI settings: `gui-config.yml`, and the few settings from
+     *     `camillagui.yml` that the frontend needs.
+     */
+    GuiConfig: {
+      allow_absolute_paths: boolean
+      apply_config_automatically: boolean
+      /** @description Whether an audiofiles_dir is set. */
+      audiofiles_supported: boolean
+      /** @description Whether the backend can store which config file is the active one. */
+      can_update_active_config: boolean
+      /**
+       * @description coeff_dir, relative to config_dir and ending with a separator, from
+       *     `camillagui.yml` like the rest below.
+       */
+      coeff_dir: string
+      custom_shortcuts: components["schemas"]["ShortcutSection"][]
+      hide_capture_device: boolean
+      hide_capture_samplerate: boolean
+      hide_multithreading: boolean
+      hide_playback_device: boolean
+      hide_rate_monitoring: boolean
+      hide_silence: boolean
+      /** @description The title of the browser tab. */
+      page_title: string
+      save_config_automatically: boolean
+      /** Format: double */
+      spectrum_max_db: number
+      /**
+       * Format: double
+       * @description In Hz.
+       */
+      spectrum_max_freq: number
+      /**
+       * Format: float
+       * @description The most spectrum updates per second.
+       */
+      spectrum_max_rate: number
+      /** Format: double */
+      spectrum_min_db: number
+      /**
+       * Format: double
+       * @description In Hz.
+       */
+      spectrum_min_freq: number
+      spectrum_n_bins: number
+      /**
+       * Format: int32
+       * @description In milliseconds.
+       */
+      status_update_interval: number
+      supported_capture_types: string[] | null
+      supported_playback_types: string[] | null
+      /**
+       * Format: int32
+       * @description The top of the volume sliders, in dB.
+       */
+      volume_max: number
+      /**
+       * Format: double
+       * @description The range of the volume sliders, in dB.
+       */
+      volume_range: number
     }
     ImportText: {
       /** @description The text of the file to import from. */
@@ -1371,6 +1828,12 @@ export interface components {
       delay_unit: components["schemas"]["DelayUnit"]
       subsample_delay?: boolean | null
     }
+    RenameBody: {
+      /** @description The file name, in the folder. */
+      source: string
+      /** @description The new file name, in the same folder. */
+      target: string
+    }
     /** @description Resampler algorithm selection. */
     Resampler:
       | {
@@ -1390,6 +1853,18 @@ export interface components {
           /** @enum {string} */
           type: "Slip"
         }
+    /**
+     * @description The width of the samples in a coefficient frame.
+     * @enum {string}
+     */
+    SampleWidth: "float32" | "float64"
+    /** @description The sample formats supported by a device at a specific sample rate. */
+    SamplerateCapability: {
+      /** @description Names of the supported sample formats at this rate. */
+      formats: string[]
+      /** @description Sample rate in Hz. */
+      samplerate: number
+    }
     SaveConfigBody: {
       /** @description With the file paths as the GUI has them, relative to the configured folders. */
       config: components["schemas"]["Configuration"]
@@ -1413,6 +1888,41 @@ export interface components {
           gain: components["schemas"]["FiniteF64"]
           slope: components["schemas"]["FiniteF64"]
         }
+    /** @description A control for one or more values in the config. */
+    Shortcut: {
+      /**
+       * @description The values it controls. The control shows the first one, the others
+       *     follow it.
+       */
+      config_elements: components["schemas"]["ConfigElement"][]
+      description?: string
+      name: string
+      /**
+       * Format: double
+       * @description Needed for a number.
+       */
+      range_from?: number
+      /**
+       * Format: double
+       * @description Needed for a number.
+       */
+      range_to?: number
+      /**
+       * Format: double
+       * @description Needed for a number.
+       */
+      step?: number
+      /** @description A slider when not given. */
+      type?: components["schemas"]["ShortcutType"]
+    }
+    /** @description A group of shortcuts, with a heading. */
+    ShortcutSection: {
+      description?: string
+      section: string
+      shortcuts: components["schemas"]["Shortcut"][]
+    }
+    /** @enum {string} */
+    ShortcutType: "boolean" | "number"
     /** @description Signal type generated by the `SignalGenerator` capture device. */
     Signal:
       | {
@@ -1515,6 +2025,14 @@ export interface components {
      * @enum {string}
      */
     TimeUnit: "us" | "ms" | "s" | "samples"
+    /** @description Files to upload, as `multipart/form-data`. */
+    UploadForm: {
+      /**
+       * @description The files, each with its file name. A file of the same name is
+       *     replaced.
+       */
+      files: string[]
+    }
     /** @description A problem with a config. */
     ValidationIssue: {
       message: string
@@ -1549,6 +2067,22 @@ export interface components {
     }
     /** @enum {string} */
     WasapiSampleFormat: "S16" | "S24" | "S32" | "F32"
+    /** @description The header of a wav file. */
+    WavInfo: {
+      /** Format: int32 */
+      bitspersample: number
+      /** Format: int32 */
+      byterate: number
+      /** Format: int32 */
+      bytesperframe: number
+      channels: number
+      /** Format: int64 */
+      datalength: number
+      /** Format: int64 */
+      dataoffset: number
+      sampleformat: string
+      samplerate: number
+    }
   }
   responses: never
   parameters: never
@@ -1558,6 +2092,76 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  get_backends: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Null until CamillaDSP has been reached */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["DeviceTypeLists"] | null
+        }
+      }
+    }
+  }
+  conv_coefficients: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CoeffsRequest"]
+      }
+    }
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/octet-stream": string
+        }
+      }
+      /** @description The filter reads no file, or the file could not be read */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The file is outside the configured folders */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description There is no such file */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
   translate_convolver_to_json: {
     parameters: {
       query?: never
@@ -1590,6 +2194,104 @@ export interface operations {
       }
     }
   }
+  get_defaults_for_coeffs: {
+    parameters: {
+      query: {
+        /** @description The coefficient file, relative to config_dir. */
+        file: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["CoeffDefaults"]
+        }
+      }
+    }
+  }
+  get_devices: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        direction: components["schemas"]["Direction"]
+        /** @description The device type, for example `Alsa` */
+        backend: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["AvailableDevice"][]
+        }
+      }
+      /** @description CamillaDSP refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_device_capabilities: {
+    parameters: {
+      query: {
+        /** @description The device, as a config names it. */
+        device: string
+      }
+      header?: never
+      path: {
+        direction: components["schemas"]["Direction"]
+        /** @description The device type, for example `Alsa` */
+        backend: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["AudioDeviceDescriptor"]
+        }
+      }
+      /** @description No device is given, or CamillaDSP refused */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
   translate_eqapo_to_json: {
     parameters: {
       query?: never
@@ -1612,6 +2314,214 @@ export interface operations {
         }
       }
       /** @description The body is not valid */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_files: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        kind: components["schemas"]["FileKind"]
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["FileInfo"][]
+        }
+      }
+      /** @description No audiofiles_dir is set */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  delete_files: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        kind: components["schemas"]["FileKind"]
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FileNames"]
+      }
+    }
+    responses: {
+      /** @description Deleted */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description No audiofiles_dir is set */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description A file could not be deleted */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  rename_file: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        kind: components["schemas"]["FileKind"]
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RenameBody"]
+      }
+    }
+    responses: {
+      /** @description Renamed */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description A file name is not valid, the new name is taken, or the file could not be renamed */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description No audiofiles_dir is set */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  upload_files: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        kind: components["schemas"]["FileKind"]
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["UploadForm"]
+      }
+    }
+    responses: {
+      /** @description Stored */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description A file name is not valid */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description No audiofiles_dir is set */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The folder does not exist, or a file could not be written */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  zip_files: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        kind: components["schemas"]["FileKind"]
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FileNames"]
+      }
+    }
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/octet-stream": string
+        }
+      }
+      /** @description No audiofiles_dir is set */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description A file could not be read */
       default: {
         headers: {
           [name: string]: unknown
@@ -1786,6 +2696,25 @@ export interface operations {
       }
     }
   }
+  get_gui_config: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["GuiConfig"]
+        }
+      }
+    }
+  }
   get_levels: {
     parameters: {
       query?: never
@@ -1806,6 +2735,34 @@ export interface operations {
       }
       /** @description CamillaDSP cannot be reached, or the level stream is disabled in the settings */
       503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_log_file: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "text/plain": string
+        }
+      }
+      /** @description No log file is set, or it cannot be read */
+      404: {
         headers: {
           [name: string]: unknown
         }
@@ -2317,6 +3274,46 @@ export interface operations {
       }
       /** @description The body is not JSON */
       default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_wav_info: {
+    parameters: {
+      query: {
+        /** @description A file name in audiofiles_dir, or a path. */
+        filename: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["WavInfo"]
+        }
+      }
+      /** @description The file is outside audiofiles_dir */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description The file is not a wav file CamillaDSP can read */
+      404: {
         headers: {
           [name: string]: unknown
         }

@@ -1,9 +1,10 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Schemas } from "../api/client"
-import { completeConfig, Config, defaultConfig, WavInfo } from "../camilladsp/config"
+import { completeConfig, Config, defaultConfig } from "../camilladsp/config"
 import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
-import { FileInfo } from "../utilities/files"
+
+type FileInfo = Schemas["FileInfo"]
 
 type DemoAudioFile = {
   lastModified: number
@@ -438,9 +439,10 @@ function captureChannelCount(config: Config) {
  * the samples as raw float64. See `_coefficients_response` in the backend and
  * `unframeCoefficients` in camilladsp/eval.
  */
-function coefficientsResponse(options: unknown, coefficients: number[]): Response {
+function coefficientsResponse(options: Schemas["FilterOption"][], coefficients: number[]): Response {
   // float32, as the real backend sends for a wav or raw file of that width
-  const header = new TextEncoder().encode(JSON.stringify({ options, format: "float32" }))
+  const coeffsHeader: Schemas["CoeffsHeader"] = { options, format: "float32" }
+  const header = new TextEncoder().encode(JSON.stringify(coeffsHeader))
   const padding = (8 - ((4 + header.length) % 8)) % 8
   const start = 4 + header.length + padding
   const buffer = new ArrayBuffer(start + 4 * coefficients.length)
@@ -480,13 +482,11 @@ function makeConfigFileInfo(name: string, config: Config): FileInfo {
   return {
     name,
     lastModified: meta.lastModified,
-    formattedDate: new Date(meta.lastModified * 1000).toDateString(),
     size: JSON.stringify(config).length,
-    title: config.title,
-    description: config.description,
+    title: config.title ?? undefined,
+    description: config.description ?? undefined,
     version: CURRENT_CONFIG_VERSION,
     valid: true,
-    errors: null,
   }
 }
 
@@ -495,34 +495,102 @@ function makeCoeffFileInfo(name: string): FileInfo {
   return {
     name,
     lastModified: coeff.lastModified,
-    formattedDate: new Date(coeff.lastModified * 1000).toDateString(),
     size: coeff.size,
-    title: null,
-    description: null,
-    version: null,
-    valid: undefined,
-    errors: undefined,
   }
 }
 
 function makeAudioFileInfo(name: string): FileInfo {
   const f = state.storedAudioFiles[name]
   const isWav = name.toLowerCase().endsWith(".wav")
+  if (!isWav) return { name, lastModified: f.lastModified, size: f.size }
   return {
     name,
     lastModified: f.lastModified,
-    formattedDate: new Date(f.lastModified * 1000).toDateString(),
     size: f.size,
-    title: null,
-    description: null,
-    version: null,
-    valid: isWav ? true : undefined,
-    errors: undefined,
-    samplerate: f.samplerate ?? null,
-    channels: f.channels ?? null,
-    sampleformat: f.sampleformat ?? null,
-    duration: f.duration ?? null,
+    valid: true,
+    samplerate: f.samplerate,
+    channels: f.channels,
+    sampleformat: f.sampleformat,
+    duration: f.duration,
   }
+}
+
+/** The demo's files of a kind, by name. */
+function demoFiles(kind: Schemas["FileKind"]): Record<string, unknown> {
+  if (kind === "config") return state.storedConfigs
+  if (kind === "coeff") return state.storedCoeffs
+  return state.storedAudioFiles
+}
+
+function listDemoFiles(kind: Schemas["FileKind"]): FileInfo[] {
+  if (kind === "config")
+    return Object.entries(state.storedConfigs).map(([name, config]) => makeConfigFileInfo(name, config))
+  if (kind === "coeff") return Object.keys(state.storedCoeffs).map((name) => makeCoeffFileInfo(name))
+  return Object.keys(state.storedAudioFiles).map((name) => makeAudioFileInfo(name))
+}
+
+async function storeDemoFile(kind: Schemas["FileKind"], file: File) {
+  const lastModified = Math.floor(Date.now() / 1000)
+  if (kind === "config") {
+    const content = await file.text()
+    try {
+      const parsed = content.trim().startsWith("{") ? JSON.parse(content) : parseYaml(content)
+      state.storedConfigs[file.name] = parsed && typeof parsed === "object" ? (parsed as Config) : createSampleConfig()
+    } catch {
+      state.storedConfigs[file.name] = createSampleConfig()
+    }
+    touchConfigFile(file.name)
+  } else if (kind === "coeff") {
+    state.storedCoeffs[file.name] = { lastModified, size: file.size, content: await file.text() }
+  } else if (file.name.toLowerCase().endsWith(".wav")) {
+    state.storedAudioFiles[file.name] = {
+      lastModified,
+      size: file.size,
+      samplerate: 48000,
+      channels: 2,
+      sampleformat: "F32_LE",
+      duration: 0,
+    }
+  } else {
+    state.storedAudioFiles[file.name] = { lastModified, size: file.size }
+  }
+}
+
+function deleteDemoFile(kind: Schemas["FileKind"], name: string) {
+  delete demoFiles(kind)[name]
+  if (kind === "config") {
+    delete state.storedConfigMeta[name]
+    if (state.activeConfigFileName === name) state.activeConfigFileName = null
+  }
+}
+
+function renameDemoFile(kind: Schemas["FileKind"], source: string, target: string) {
+  const files = demoFiles(kind)
+  files[target] = files[source]
+  delete files[source]
+  if (kind === "config") {
+    state.storedConfigMeta[target] = state.storedConfigMeta[source] ?? { lastModified: Math.floor(Date.now() / 1000) }
+    delete state.storedConfigMeta[source]
+    if (state.activeConfigFileName === source) state.activeConfigFileName = target
+  }
+}
+
+/** Not a zip, just a readable stand-in for one. */
+function demoZipContent(kind: Schemas["FileKind"], names: string[]): string {
+  if (kind === "config") {
+    const configs = names.filter((name) => state.storedConfigs[name]).map((name) => [name, state.storedConfigs[name]])
+    return JSON.stringify(Object.fromEntries(configs), null, 2)
+  }
+  if (kind === "coeff") {
+    return names
+      .filter((name) => state.storedCoeffs[name])
+      .map((name) => `${name}\n${state.storedCoeffs[name].content}`)
+      .join("\n\n")
+  }
+  return names
+    .filter((name) => state.storedAudioFiles[name])
+    .map((name) => `${name} (${state.storedAudioFiles[name].size} bytes, demo placeholder)`)
+    .join("\n")
 }
 
 function cloneConfig(config: Config) {
@@ -564,11 +632,11 @@ function demoFragment(filters: Record<string, Schemas["Filter"]>): Schemas["Conf
   return { filters }
 }
 
-function makeWavInfo(): WavInfo {
+function makeWavInfo(): Schemas["WavInfo"] {
   return {
     dataoffset: 44,
     datalength: 524288,
-    sampleformat: "FLOAT32LE",
+    sampleformat: "F32_LE",
     bitspersample: 32,
     channels: 2,
     byterate: 384000,
@@ -733,8 +801,9 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/convcoeffs" && method === "POST") {
-    const payload = await requestJson<{ config?: { parameters?: { filename?: string } } }>(input, init)
-    const { options, coefficients } = makeConvCoefficients(payload.config?.parameters?.filename ?? "demo")
+    const { parameters } = await requestJson<Schemas["CoeffsRequest"]>(input, init)
+    const filename = "filename" in parameters ? parameters.filename : "demo"
+    const { options, coefficients } = makeConvCoefficients(filename)
     return coefficientsResponse(options, coefficients)
   }
 
@@ -744,193 +813,49 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
 
   if (pathname === "/api/defaultsforcoeffs" && method === "GET") {
     const filename = url.searchParams.get("file") ?? ""
-    const isWav = filename.toLowerCase().endsWith(".wav")
-    return jsonResponse({
-      type: isWav ? "Wav" : "Raw",
-      format: isWav ? undefined : "FLOAT32LE",
-      skip_bytes_lines: isWav ? undefined : 0,
-      read_bytes_lines: isWav ? undefined : 0,
-      errors: [],
-    })
+    const defaults: Schemas["CoeffDefaults"] = filename.toLowerCase().endsWith(".wav")
+      ? { type: "Wav" }
+      : { type: "Raw", format: "F32_LE", skip_bytes_lines: 0, read_bytes_lines: 0 }
+    return jsonResponse(defaults)
   }
 
-  if (pathname === "/api/storedconfigs" && method === "GET") {
-    return jsonResponse(Object.entries(state.storedConfigs).map(([name, config]) => makeConfigFileInfo(name, config)))
-  }
-
-  if (pathname === "/api/storedcoeffs" && method === "GET") {
-    return jsonResponse(Object.keys(state.storedCoeffs).map((name) => makeCoeffFileInfo(name)))
-  }
-
-  if (pathname === "/api/storedaudiofiles" && method === "GET") {
-    return jsonResponse(Object.keys(state.storedAudioFiles).map((name) => makeAudioFileInfo(name)))
-  }
-
-  if (pathname === "/api/uploadconfigs" && method === "POST") {
-    const formData = await requestFormData(input, init)
-    for (const [, value] of formData.entries()) {
-      if (!(value instanceof File)) continue
-      const content = await value.text()
-      try {
-        const parsed = content.trim().startsWith("{") ? JSON.parse(content) : parseYaml(content)
-        if (parsed && typeof parsed === "object") {
-          state.storedConfigs[value.name] = parsed as Config
-        } else {
-          state.storedConfigs[value.name] = createSampleConfig()
-        }
-      } catch {
-        state.storedConfigs[value.name] = createSampleConfig()
-      }
-      touchConfigFile(value.name)
+  const filesRequest = /^\/api\/files\/(config|coeff|audiofile)(?:\/(upload|delete|rename|zip))?$/.exec(pathname)
+  if (filesRequest) {
+    const kind = filesRequest[1] as Schemas["FileKind"]
+    const action = filesRequest[2]
+    if (action === undefined && method === "GET") return jsonResponse(listDemoFiles(kind))
+    if (action === "upload" && method === "POST") {
+      const formData = await requestFormData(input, init)
+      const files = formData.getAll("files").filter((value) => value instanceof File)
+      for (const file of files) await storeDemoFile(kind, file)
+      appendLog(`uploaded ${files.length} ${kind} file(s)`)
+      persistState()
+      return noContent()
     }
-    appendLog("uploaded config file(s)")
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/uploadcoeffs" && method === "POST") {
-    const formData = await requestFormData(input, init)
-    for (const [, value] of formData.entries()) {
-      if (!(value instanceof File)) continue
-      state.storedCoeffs[value.name] = {
-        lastModified: Math.floor(Date.now() / 1000),
-        size: value.size,
-        content: await value.text(),
-      }
+    if (action === "delete" && method === "POST") {
+      const { names } = await requestJson<Schemas["FileNames"]>(input, init)
+      names.forEach((name) => deleteDemoFile(kind, name))
+      appendLog(`deleted ${names.length} ${kind} file(s)`)
+      persistState()
+      return noContent()
     }
-    appendLog("uploaded coeff file(s)")
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/deleteconfigs" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    files.forEach((name) => {
-      delete state.storedConfigs[name]
-      delete state.storedConfigMeta[name]
-      if (state.activeConfigFileName === name) state.activeConfigFileName = null
-    })
-    appendLog(`deleted ${files.length} config file(s)`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/deletecoeffs" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    files.forEach((name) => delete state.storedCoeffs[name])
-    appendLog(`deleted ${files.length} coeff file(s)`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/renameconfig" && method === "POST") {
-    const source = url.searchParams.get("source")
-    const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedConfigs[source]) return errorResponse("Config file not found", 404)
-    state.storedConfigs[target] = state.storedConfigs[source]
-    delete state.storedConfigs[source]
-    state.storedConfigMeta[target] = state.storedConfigMeta[source] ?? { lastModified: Math.floor(Date.now() / 1000) }
-    delete state.storedConfigMeta[source]
-    if (state.activeConfigFileName === source) state.activeConfigFileName = target
-    appendLog(`renamed config ${source} to ${target}`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/renamecoeff" && method === "POST") {
-    const source = url.searchParams.get("source")
-    const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedCoeffs[source]) return errorResponse("Coeff file not found", 404)
-    state.storedCoeffs[target] = state.storedCoeffs[source]
-    delete state.storedCoeffs[source]
-    appendLog(`renamed coeff ${source} to ${target}`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/uploadaudiofiles" && method === "POST") {
-    const formData = await requestFormData(input, init)
-    let saved = 0
-    for (const [, value] of formData.entries()) {
-      if (!(value instanceof File)) continue
-      const isWav = value.name.toLowerCase().endsWith(".wav")
-      state.storedAudioFiles[value.name] = isWav
-        ? {
-            lastModified: Math.floor(Date.now() / 1000),
-            size: value.size,
-            samplerate: 48000,
-            channels: 2,
-            sampleformat: "F32_LE",
-            duration: 0,
-          }
-        : {
-            lastModified: Math.floor(Date.now() / 1000),
-            size: value.size,
-          }
-      saved += 1
+    if (action === "rename" && method === "POST") {
+      const { source, target } = await requestJson<Schemas["RenameBody"]>(input, init)
+      const files = demoFiles(kind)
+      if (!files[source]) return errorResponse(`File ${source} not found`, 400)
+      if (files[target]) return errorResponse(`File ${target} already exists`, 400)
+      renameDemoFile(kind, source, target)
+      appendLog(`renamed ${kind} ${source} to ${target}`)
+      persistState()
+      return noContent()
     }
-    appendLog(`uploaded ${saved} audio file(s)`)
-    persistState()
-    return textResponse(`Saved ${saved} file(s)`)
-  }
-
-  if (pathname === "/api/deleteaudiofiles" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    files.forEach((name) => delete state.storedAudioFiles[name])
-    appendLog(`deleted ${files.length} audio file(s)`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/renameaudiofile" && method === "POST") {
-    const source = url.searchParams.get("source")
-    const target = url.searchParams.get("target")
-    if (!source || !target || !state.storedAudioFiles[source]) return errorResponse("Audio file not found", 404)
-    if (state.storedAudioFiles[target]) return errorResponse(`File ${target} already exists`, 400)
-    state.storedAudioFiles[target] = state.storedAudioFiles[source]
-    delete state.storedAudioFiles[source]
-    appendLog(`renamed wav ${source} to ${target}`)
-    persistState()
-    return textResponse("OK")
-  }
-
-  if (pathname === "/api/downloadaudiofileszip" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    const content = files
-      .filter((name) => state.storedAudioFiles[name])
-      .map((name) => `${name} (${state.storedAudioFiles[name].size} bytes — demo placeholder)`)
-      .join("\n")
-    return blobResponse(new Blob([content], { type: "application/zip" }), {
-      "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="audiofiles.zip"',
-    })
-  }
-
-  if (pathname === "/api/downloadconfigszip" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    const content = JSON.stringify(
-      Object.fromEntries(
-        files.filter((name) => state.storedConfigs[name]).map((name) => [name, state.storedConfigs[name]]),
-      ),
-      null,
-      2,
-    )
-    return blobResponse(new Blob([content], { type: "application/zip" }), {
-      "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="configs.zip"',
-    })
-  }
-
-  if (pathname === "/api/downloadcoeffszip" && method === "POST") {
-    const files = await requestJson<string[]>(input, init)
-    const content = files
-      .filter((name) => state.storedCoeffs[name])
-      .map((name) => `${name}\n${state.storedCoeffs[name].content}`)
-      .join("\n\n")
-    return blobResponse(new Blob([content], { type: "application/zip" }), {
-      "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="coeffs.zip"',
-    })
+    if (action === "zip" && method === "POST") {
+      const { names } = await requestJson<Schemas["FileNames"]>(input, init)
+      return blobResponse(new Blob([demoZipContent(kind, names)]), {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename=${kind}s.zip`,
+      })
+    }
   }
 
   if (pathname === "/api/logfile" && method === "GET") {
@@ -946,21 +871,21 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/backends" && method === "GET") {
-    return jsonResponse([BACKENDS.playback, BACKENDS.capture])
+    const backends: Schemas["DeviceTypeLists"] = { playback: [...BACKENDS.playback], capture: [...BACKENDS.capture] }
+    return jsonResponse(backends)
   }
 
-  if (pathname.startsWith("/api/capturedevices/") && method === "GET") {
-    const backend = pathname.split("/").at(-1) ?? ""
-    return jsonResponse(demoDeviceOptionsForBackend(backend))
-  }
-
-  if (pathname.startsWith("/api/playbackdevices/") && method === "GET") {
-    const backend = pathname.split("/").at(-1) ?? ""
-    return jsonResponse(demoDeviceOptionsForBackend(backend))
-  }
-
-  if (pathname.startsWith("/api/capturedevicecapabilities/") && method === "GET") {
-    const backend = pathname.split("/").at(-1) ?? ""
+  const devicesRequest = /^\/api\/devices\/(capture|playback)\/([^/]+)(\/capabilities)?$/.exec(pathname)
+  if (devicesRequest && method === "GET") {
+    const direction = devicesRequest[1] as Schemas["Direction"]
+    const backend = decodeURIComponent(devicesRequest[2])
+    if (!devicesRequest[3]) {
+      const devices: Schemas["AvailableDevice"][] = demoDeviceOptionsForBackend(backend).map(([name, description]) => ({
+        name,
+        description,
+      }))
+      return jsonResponse(devices)
+    }
     const device = url.searchParams.get("device") ?? "default"
     if (!isKnownDemoDevice(backend, device)) {
       return errorResponse("device not found", 400)
@@ -970,7 +895,8 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     }
     const backendFormats = demoFormatsForBackend(backend)
     const highRateCapabilities = demoHighRateSamplerates(backendFormats)
-    const capabilities = isSixteenChannelDemoDevice(device)
+    const [baseRate, otherChannels, otherRate] = direction === "capture" ? [44100, 4, 48000] : [48000, 6, 96000]
+    const capabilities: Schemas["ChannelCapability"][] = isSixteenChannelDemoDevice(device)
       ? [
           {
             channels: 16,
@@ -982,49 +908,24 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       : [
           {
             channels: 2,
-            samplerates: [{ samplerate: 44100, formats: backendFormats }, ...highRateCapabilities],
+            samplerates: [{ samplerate: baseRate, formats: backendFormats }, ...highRateCapabilities],
           },
-          { channels: 4, samplerates: [{ samplerate: 48000, formats: backendFormats.slice(1) }] },
+          { channels: otherChannels, samplerates: [{ samplerate: otherRate, formats: backendFormats.slice(1) }] },
         ]
-    return jsonResponse({
+    // Like WASAPI, which gives shared mode only the mix format.
+    const capability_sets: Schemas["DeviceCapabilitySet"][] =
+      backend === "Wasapi"
+        ? [
+            { mode: "Shared", capabilities: capabilities.slice(0, 1) },
+            { mode: "Exclusive", capabilities },
+          ]
+        : [{ mode: "Unified", capabilities }]
+    const descriptor: Schemas["AudioDeviceDescriptor"] = {
       name: device,
-      description: `${backend} demo capture device`,
-      capabilities,
-    })
-  }
-
-  if (pathname.startsWith("/api/playbackdevicecapabilities/") && method === "GET") {
-    const backend = pathname.split("/").at(-1) ?? ""
-    const device = url.searchParams.get("device") ?? "default"
-    if (!isKnownDemoDevice(backend, device)) {
-      return errorResponse("device not found", 400)
+      description: `${backend} demo ${direction} device`,
+      capability_sets,
     }
-    if (isBusyDemoDevice(device)) {
-      return errorResponse("device busy", 400)
-    }
-    const backendFormats = demoFormatsForBackend(backend)
-    const highRateCapabilities = demoHighRateSamplerates(backendFormats)
-    const capabilities = isSixteenChannelDemoDevice(device)
-      ? [
-          {
-            channels: 16,
-            samplerates: [
-              { samplerate: 48000, formats: [backend === "CoreAudio" || backend === "Wasapi" ? "F32" : "F32_LE"] },
-            ],
-          },
-        ]
-      : [
-          {
-            channels: 2,
-            samplerates: [{ samplerate: 48000, formats: backendFormats }, ...highRateCapabilities],
-          },
-          { channels: 6, samplerates: [{ samplerate: 96000, formats: backendFormats.slice(1) }] },
-        ]
-    return jsonResponse({
-      name: device,
-      description: `${backend} demo playback device`,
-      capabilities,
-    })
+    return jsonResponse(descriptor)
   }
 
   if (pathname === "/api/ymltojson" && method === "POST") {
