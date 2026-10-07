@@ -149,20 +149,22 @@ fn modify_resampler(devices: &mut Map<String, Value>) {
     devices.remove("resampler_type");
 }
 
-/// v1->v2 removes "change_format" and makes "format" optional.
-fn modify_coreaudio_device(dev: &mut Map<String, Value>) {
+/// v1->v2 removes "change_format" and makes "format" optional. In v1 the
+/// physical format was changed only with "change_format: true", from v2 it is
+/// changed whenever "format" is set, so a format v1 would not have applied
+/// becomes null. "change_format" defaulted to false, but a device without it
+/// only has its format cleared in a config known to be for v1, since in a
+/// newer config the format is meant to be applied.
+fn modify_coreaudio_device(dev: &mut Map<String, Value>, v1: bool) {
     if dev.get("type").and_then(Value::as_str) != Some("CoreAudio") {
         return;
     }
-    match dev.remove("change_format") {
-        Some(change) => {
-            if change.as_bool() != Some(true) {
-                dev.insert("format".into(), Value::Null);
-            }
-        }
-        None => {
-            dev.insert("format".into(), Value::Null);
-        }
+    let change = match dev.remove("change_format") {
+        Some(change) => change.as_bool() == Some(true),
+        None => !v1,
+    };
+    if !change {
+        dev.insert("format".into(), Value::Null);
     }
 }
 
@@ -186,7 +188,9 @@ fn modify_device_sample_format(dev: &mut Map<String, Value>) {
     }
 }
 
-/// v3->v4 renames all sample formats.
+/// v3->v4 renames all sample formats. Wasapi and CoreAudio have no 64-bit
+/// format, so FLOAT64LE becomes null there. A name that is not a v3 one is
+/// kept as it is.
 fn map_format(backend: Option<&str>, format: &Value) -> Value {
     let Some(fmt) = format.as_str() else {
         return format.clone();
@@ -197,7 +201,8 @@ fn map_format(backend: Option<&str>, format: &Value) -> Value {
             "S16LE" => json!("S16"),
             "S32LE" => json!("S32"),
             "S24LE" | "S24LE3" => json!("S24"),
-            _ => Value::Null,
+            "FLOAT64LE" => Value::Null,
+            _ => format.clone(),
         };
     }
     json!(match fmt {
@@ -211,17 +216,17 @@ fn map_format(backend: Option<&str>, format: &Value) -> Value {
     })
 }
 
-fn modify_devices(config: &mut Value) {
+fn modify_devices(config: &mut Value, v1: bool) {
     let Some(devices) = section_mut(config, "devices") else {
         return;
     };
     if let Some(dev) = devices.get_mut("capture").and_then(Value::as_object_mut) {
-        modify_coreaudio_device(dev);
+        modify_coreaudio_device(dev, v1);
         modify_file_capture_device(dev);
         modify_device_sample_format(dev);
     }
     if let Some(dev) = devices.get_mut("playback").and_then(Value::as_object_mut) {
-        modify_coreaudio_device(dev);
+        modify_coreaudio_device(dev, v1);
         modify_device_sample_format(dev);
     }
     modify_resampler(devices);
@@ -458,10 +463,12 @@ pub fn migrate_legacy_config(config: &mut Value) {
         return;
     }
     fix_rew_pipeline(config);
+    // Taken before the v1 steps remove what identifies a config as v1.
+    let v1 = identify_version(config) == Some(1);
     remove_volume_filters(config);
     modify_loudness_filters(config);
     modify_dither(config);
-    modify_devices(config);
+    modify_devices(config, v1);
     modify_pipeline_filter_steps(config);
     modify_mixers(config);
     modify_conv_filters(config);
@@ -818,8 +825,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "migrate_legacy_config still wipes the v5 CoreAudio and Wasapi formats; \
-                un-ignore once that step only touches old configs"]
     fn migration_leaves_current_config_unchanged() {
         for config in v5_configs() {
             let mut migrated = config.clone();
@@ -854,13 +859,72 @@ mod tests {
             "type": "CoreAudio", "channels": 2, "device": "Built-in Output",
             "format": "S32LE", "exclusive": false, "change_format": false,
         });
-        modify_devices(&mut config);
+        modify_devices(&mut config, true);
         let capture = &config["devices"]["capture"];
         let playback = &config["devices"]["playback"];
         assert!(capture.get("change_format").is_none());
         assert!(playback.get("change_format").is_none());
         assert_eq!(capture["format"], "S32");
         assert_eq!(playback["format"], Value::Null);
+    }
+
+    /// Without "change_format", v1 left the physical format alone, while a
+    /// newer config applies its format.
+    #[test]
+    fn coreaudio_device_without_change_format() {
+        let device = json!({"type": "CoreAudio", "channels": 2, "format": "S32LE"});
+        let mut v1 = basic_config();
+        v1["devices"]["playback"] = device.clone();
+        assert_eq!(identify_version(&v1), Some(1));
+        migrate_legacy_config(&mut v1);
+        assert_eq!(v1["devices"]["playback"]["format"], Value::Null);
+
+        let mut v3 = json!({"devices": {"capture": device.clone(), "playback": device}});
+        assert_eq!(identify_version(&v3), Some(3));
+        migrate_legacy_config(&mut v3);
+        assert_eq!(v3["devices"]["capture"]["format"], "S32");
+        assert_eq!(v3["devices"]["playback"]["format"], "S32");
+
+        for format in ["S16", "S24", "S32", "F32"] {
+            let mut dev = json!({"type": "CoreAudio", "channels": 2, "format": format});
+            modify_coreaudio_device(dev.as_object_mut().unwrap(), false);
+            assert_eq!(dev["format"], format);
+        }
+    }
+
+    #[test]
+    fn wasapi_and_coreaudio_formats() {
+        let renamed = [
+            ("S16LE", json!("S16")),
+            ("S24LE", json!("S24")),
+            ("S24LE3", json!("S24")),
+            ("S32LE", json!("S32")),
+            ("FLOAT32LE", json!("F32")),
+            ("FLOAT64LE", Value::Null),
+        ];
+        for backend in ["Wasapi", "CoreAudio"] {
+            for (old, new) in &renamed {
+                assert_eq!(
+                    map_format(Some(backend), &json!(old)),
+                    *new,
+                    "{backend} {old}"
+                );
+            }
+            for current in ["S16", "S24", "S32", "F32"] {
+                assert_eq!(
+                    map_format(Some(backend), &json!(current)),
+                    current,
+                    "{backend} {current}"
+                );
+            }
+            let mut config = json!({"devices": {
+                "capture": {"type": backend, "channels": 2, "format": "S24"},
+                "playback": {"type": backend, "channels": 2, "format": "S32LE"},
+            }});
+            modify_devices(&mut config, false);
+            assert_eq!(config["devices"]["capture"]["format"], "S24");
+            assert_eq!(config["devices"]["playback"]["format"], "S32");
+        }
     }
 
     #[test]
@@ -870,7 +934,7 @@ mod tests {
             "type": "File", "channels": 2, "filename": "in.raw", "format": "S16LE",
             "extra_samples": 1024, "skip_bytes": 44, "read_bytes": 10000,
         });
-        modify_devices(&mut config);
+        modify_devices(&mut config, true);
         assert_eq!(
             config["devices"]["capture"],
             json!({
@@ -885,7 +949,7 @@ mod tests {
         let mut config = basic_config();
         config["devices"]["playback"] =
             json!({"type": "File", "channels": 2, "filename": "out.raw", "format": "S32LE"});
-        modify_devices(&mut config);
+        modify_devices(&mut config, true);
         assert_eq!(
             config["devices"]["playback"],
             json!({"type": "File", "channels": 2, "filename": "out.raw", "format": "S32_LE"})
@@ -929,7 +993,7 @@ mod tests {
     #[test]
     fn disabled_resampling() {
         let mut config = basic_config();
-        modify_devices(&mut config);
+        modify_devices(&mut config, true);
         assert!(config["devices"].get("enable_resampling").is_none());
         assert_eq!(config["devices"]["resampler"], Value::Null);
     }
@@ -942,7 +1006,7 @@ mod tests {
             "oversampling_ratio": 64, "interpolation": "Cubic",
         }});
         config["devices"]["enable_resampling"] = json!(true);
-        modify_devices(&mut config);
+        modify_devices(&mut config, true);
         assert!(config["devices"].get("enable_resampling").is_none());
         assert_eq!(
             config["devices"]["resampler"],
