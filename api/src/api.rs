@@ -1017,17 +1017,39 @@ async fn is_online(camilla: &CamillaClient) -> bool {
 
 /// Run a shell command, like `os.popen` and `os.system`.
 async fn run_shell(command: &str) -> std::io::Result<String> {
+    run_shell_with_arg(command, None).await
+}
+
+/// Run a shell command, with `arg` as `$1` on Unix. cmd has no positional
+/// arguments, so on Windows `arg` must already be in `command`.
+async fn run_shell_with_arg(command: &str, arg: Option<&str>) -> std::io::Result<String> {
     let mut cmd = if cfg!(windows) {
         let mut cmd = tokio::process::Command::new("cmd");
         cmd.arg("/C").arg(command);
         cmd
     } else {
         let mut cmd = tokio::process::Command::new("sh");
-        cmd.arg("-c").arg(command);
+        cmd.arg("-c").arg(command).arg("sh").args(arg);
         cmd
     };
     let output = cmd.output().await?;
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// Run the on_set_active_config command, with `{}` standing for the quoted
+/// config path.
+///
+/// On Unix the path is passed to `sh` as `$1` and `{}` becomes `"$1"`, so the
+/// shell never parses the file name and `$(...)` in it stays text. On Windows
+/// the path is quoted in place. A Windows file name cannot contain `"`, so it
+/// cannot end the quotes.
+async fn run_on_set_active_config(template: &str, path: &str) -> std::io::Result<String> {
+    log::debug!("Running command: {template}, with path '{path}'");
+    if cfg!(windows) {
+        run_shell(&template.replace("{}", &format!("\"{path}\""))).await
+    } else {
+        run_shell_with_arg(&template.replace("{}", "\"$1\""), Some(path)).await
+    }
 }
 
 /// The file name of the active config, if it is in config_dir.
@@ -1093,12 +1115,10 @@ async fn set_active_config_path(app: &AppState, path: &str) -> Result<(), ApiErr
             "CamillaDSP runs without state file and is unable to persistently store config file path"
         );
     }
-    if let Some(on_set) = &settings.on_set_active_config {
-        let command = on_set.replace("{}", &format!("\"{path}\""));
-        log::debug!("Running command: {command}");
-        if let Err(err) = run_shell(&command).await {
-            log::error!("Failed to run on_set_active_config command: {err}");
-        }
+    if let Some(on_set) = &settings.on_set_active_config
+        && let Err(err) = run_on_set_active_config(on_set, path).await
+    {
+        log::error!("Failed to run on_set_active_config command: {err}");
     }
     Ok(())
 }
@@ -1726,5 +1746,24 @@ mod tests {
         assert_eq!(to_json(&fragment), json!({"samplerate": 96000}));
         let unknown = serde_json::from_value::<DevicesFragment>(json!({"samplerat": 96000}));
         assert!(unknown.is_err());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn on_set_active_config_passes_the_path_as_text() {
+        let path = "/configs/x$(echo injected)`echo injected`\"; echo injected; \".yml";
+        let output = run_on_set_active_config("printf '%s' {}", path)
+            .await
+            .unwrap();
+        assert_eq!(output, path);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn on_set_active_config_without_placeholder() {
+        let output = run_on_set_active_config("printf done", "/configs/a.yml")
+            .await
+            .unwrap();
+        assert_eq!(output, "done");
     }
 }
