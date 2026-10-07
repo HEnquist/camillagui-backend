@@ -98,6 +98,8 @@ class Backend:
         }
         settings.update(overrides or {})
         self.settings = settings
+        self.coeff_dir = Path(settings["coeff_dir"])
+        self.audiofiles_dir = settings["audiofiles_dir"] and Path(settings["audiofiles_dir"])
         settings_path = self.root / "camillagui.yml"
         settings_path.write_text(yaml.dump(settings))
         self.reset_statefile()
@@ -207,6 +209,26 @@ def backend_session(tmp_path_factory):
 def server(backend_session):
     backend_session.reset()
     yield backend_session
+
+
+@pytest.fixture(scope="session")
+def split_backend_session(tmp_path_factory):
+    root = tmp_path_factory.mktemp("split")
+    folders = {"coeff_dir": root / "coeffs", "audiofiles_dir": root / "audiofiles"}
+    for folder in folders.values():
+        folder.mkdir()
+    backend = Backend(root, {key: str(folder) for key, folder in folders.items()})
+    yield backend
+    backend.stop()
+
+
+@pytest.fixture
+def split_server(split_backend_session):
+    """A backend with configs/, coeffs/ and audiofiles/ side by side, the
+    usual layout. The `server` one has its coefficients in config_dir and no
+    audio folder."""
+    split_backend_session.reset()
+    yield split_backend_session
 
 
 @pytest.fixture(scope="session")

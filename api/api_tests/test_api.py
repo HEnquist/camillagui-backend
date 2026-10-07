@@ -1184,3 +1184,125 @@ def test_convcoeffs_rejects_a_conv_without_a_filename(server):
     resp = server.post("/api/convcoeffs", json_body=request)
     assert resp.status == 422, resp.text
     assert "message" in resp.json()
+
+
+# ── Separate folders ──────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def split_files(split_server):
+    """A coefficient file and a wav file at the top of each folder and in a subfolder."""
+    for folder in ("", "sub"):
+        coeffs = split_server.coeff_dir / folder
+        coeffs.mkdir(exist_ok=True)
+        (coeffs / "f.raw").write_bytes(struct.pack("<4f", 1.0, 0.5, 0.25, 0.0))
+        audiofiles = split_server.audiofiles_dir / folder
+        audiofiles.mkdir(exist_ok=True)
+        (audiofiles / "in.wav").write_bytes(wav_bytes())
+    yield split_server
+
+
+def split_config(server, coeff, capture, playback):
+    config = server.get("/api/getconfigfile", params={"name": "config2.yml"}).json()
+    config["devices"]["capture"] = {"type": "WavFile", "filename": capture}
+    config["devices"]["playback"] = {
+        "type": "File",
+        "channels": 2,
+        "format": "S16_LE",
+        "filename": playback,
+    }
+    config["filters"] = {
+        "fir": {"type": "Conv", "parameters": {"type": "Raw", "filename": coeff, "format": "F32_LE"}}
+    }
+    return config
+
+
+def file_paths(config):
+    return (
+        config["filters"]["fir"]["parameters"]["filename"],
+        config["devices"]["capture"]["filename"],
+        config["devices"]["playback"]["filename"],
+    )
+
+
+def absolute_file_paths(server, folder):
+    return (
+        str(server.coeff_dir / folder / "f.raw"),
+        str(server.audiofiles_dir / folder / "in.wav"),
+        str(server.audiofiles_dir / folder / "out.wav"),
+    )
+
+
+# The paths as the GUI has them, and the subfolder they are in.
+SPLIT_PATHS = [
+    (("f.raw", "in.wav", "out.wav"), ""),
+    (("../coeffs/sub/f.raw", "sub/in.wav", "sub/out.wav"), "sub"),
+]
+
+
+@pytest.mark.parametrize("paths, folder", SPLIT_PATHS)
+def test_set_config_with_separate_folders(split_files, paths, folder):
+    server = split_files
+    resp = server.post("/api/setconfig", json_body={"config": split_config(server, *paths)})
+    assert resp.status == 204, resp.text
+    absolute = absolute_file_paths(server, folder)
+    assert file_paths(server.fake.state["config"]) == absolute
+    # The running config, as the GUI reads it back, can be applied again.
+    running = server.get("/api/getconfig").json()
+    resp = server.post("/api/setconfig", json_body={"config": running})
+    assert resp.status == 204, resp.text
+    assert file_paths(server.fake.state["config"]) == absolute
+
+
+@pytest.mark.parametrize("paths, folder", SPLIT_PATHS)
+def test_saved_config_file_with_separate_folders(split_files, paths, folder):
+    server = split_files
+    body = {"config": split_config(server, *paths), "filename": "split.yml"}
+    try:
+        assert server.post("/api/saveconfigfile", json_body=body).status == 204
+        saved = server.get("/api/getconfigfile", params={"name": "split.yml"}).json()
+    finally:
+        (server.config_dir / "split.yml").unlink(missing_ok=True)
+    assert file_paths(saved) == paths
+    resp = server.post("/api/setconfig", json_body={"config": saved})
+    assert resp.status == 204, resp.text
+    assert file_paths(server.fake.state["config"]) == absolute_file_paths(server, folder)
+
+
+def test_validate_config_with_separate_folders(split_files):
+    server = split_files
+    coeff_path = ["filters", "fir", "parameters", "filename"]
+    file_locations = [coeff_path, ["devices", "capture", "filename"]]
+    config = split_config(server, "../coeffs/sub/f.raw", "in.wav", "out.wav")
+    resp = server.post("/api/validateconfig", json_body=config)
+    assert resp.status == 200, resp.text
+    assert [issue for issue in resp.json() if issue["path"] in file_locations] == []
+
+    # A file that exists, but in the audio folder rather than the coefficient one.
+    config["filters"]["fir"]["parameters"]["filename"] = "../audiofiles/in.wav"
+    resp = server.post("/api/validateconfig", json_body=config)
+    [issue] = [issue for issue in resp.json() if issue["path"] == coeff_path]
+    assert issue["severity"] == "error"
+    assert "../audiofiles/in.wav" in issue["message"]
+
+
+def test_convcoeffs_with_separate_folders(split_server):
+    server = split_server
+    values = [0.5, -0.25]
+    for folder, samplerate in [(server.coeff_dir, 44100), (server.coeff_dir / "sub", 96000)]:
+        folder.mkdir(exist_ok=True)
+        path = folder / f"convtest_{samplerate}_2.f32"
+        path.write_bytes(struct.pack(f"<{len(values)}f", *values))
+    # A bare name is in coeff_dir, a path with a folder is relative to config_dir,
+    # and the options come from the folder the file is in.
+    for filename, samplerate in [
+        ("convtest_$samplerate$_$channels$.f32", 44100),
+        ("../coeffs/sub/convtest_$samplerate$_$channels$.f32", 96000),
+    ]:
+        resp = server.post("/api/convcoeffs", json_body=conv_request(filename, samplerate=samplerate))
+        assert resp.status == 200, resp.text
+        header, coefficients = unframe_coefficients(resp.body)
+        assert coefficients == values
+        assert header["options"] == [
+            {"name": f"convtest_{samplerate}_2.f32", "samplerate": samplerate, "channels": 2},
+        ]

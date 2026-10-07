@@ -625,6 +625,244 @@ mod tests {
         );
     }
 
+    /// A tempdir with `configs`, `coeffs` and `audio` folders side by side.
+    fn folders() -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        let [configs, coeffs, audio] =
+            ["configs", "coeffs", "audio"].map(|name| dir.path().join(name));
+        for folder in [&configs, &coeffs, &audio] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        (dir, configs, coeffs, audio)
+    }
+
+    fn outside(location: &[&str], filename: &str) -> OutsidePath {
+        OutsidePath {
+            location: location.iter().map(|key| key.to_string()).collect(),
+            filename: filename.to_string(),
+        }
+    }
+
+    fn conv(kind: &str, filename: &str) -> Value {
+        json!({"type": "Conv", "parameters": {"type": kind, "filename": filename}})
+    }
+
+    #[test]
+    fn paths_without_folders() {
+        assert!(path_is_safe("f.raw", None, None));
+        assert!(!path_is_safe("/etc/passwd", None, None));
+        let (_dir, _configs, coeffs, _audio) = folders();
+        assert!(!path_is_safe("sub/f.raw", Some(&coeffs), None));
+        // `is_bare` splits on both separators, so this is not a bare name on Unix either.
+        assert!(!path_is_safe("sub\\f.raw", Some(&coeffs), None));
+    }
+
+    #[test]
+    fn paths_into_neighbouring_folders_are_unsafe() {
+        let (dir, configs, coeffs, _audio) = folders();
+        std::fs::create_dir_all(dir.path().join("coeffs-elsewhere")).unwrap();
+        let (coeffs, configs) = (Some(coeffs.as_path()), Some(configs.as_path()));
+        assert!(!path_is_safe("../audio/x.wav", coeffs, configs));
+        assert!(!path_is_safe("../coeffs-elsewhere/f.raw", coeffs, configs));
+    }
+
+    #[test]
+    fn absolute_paths_are_safe_where_they_land() {
+        let (_dir, configs, coeffs, _audio) = folders();
+        let inside = to_string(&coeffs.join("f.raw"));
+        let escaping = to_string(&coeffs.join("../../../etc/shadow"));
+        assert!(path_is_safe(&inside, Some(&coeffs), Some(&configs)));
+        assert!(!path_is_safe(&escaping, Some(&coeffs), Some(&configs)));
+    }
+
+    #[test]
+    fn audio_paths_in_the_folder_round_trip() {
+        let (_dir, _configs, _coeffs, audio) = folders();
+        for capture_type in ["WavFile", "RawFile"] {
+            let mut config = json!({
+                "devices": {
+                    "capture": {"type": capture_type, "filename": "in.wav"},
+                    "playback": {"type": "File", "filename": "sub/out.wav"},
+                },
+            });
+            // Already relative to the folder, so kept as they are.
+            make_audio_file_paths_relative(&mut config, Some(&audio));
+            assert_eq!(config["devices"]["capture"]["filename"], "in.wav");
+            assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+            make_audio_file_paths_absolute(&mut config, Some(&audio));
+            assert_eq!(
+                config["devices"]["capture"]["filename"],
+                to_string(&audio.join("in.wav"))
+            );
+            assert_eq!(
+                config["devices"]["playback"]["filename"],
+                to_string(&audio.join("sub/out.wav"))
+            );
+            make_audio_file_paths_relative(&mut config, Some(&audio));
+            assert_eq!(config["devices"]["capture"]["filename"], "in.wav");
+            assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+        }
+    }
+
+    #[test]
+    fn absolute_audio_paths_stay_absolute() {
+        let (_dir, _configs, _coeffs, audio) = folders();
+        let original = json!({
+            "devices": {"capture": {"type": "WavFile", "filename": "/elsewhere/in.wav"}},
+        });
+        let mut config = original.clone();
+        make_audio_file_paths_absolute(&mut config, Some(&audio));
+        assert_eq!(config, original);
+    }
+
+    #[test]
+    fn audio_paths_need_a_file_device_and_a_folder() {
+        let (_dir, _configs, _coeffs, audio) = folders();
+        // Names that would change if the devices were file devices: the
+        // capture one going absolute, the playback one coming back bare.
+        let in_folder = to_string(&audio.join("out.wav"));
+        let other_devices = json!({
+            "devices": {
+                "capture": {"type": "Alsa", "channels": 2, "device": "hw:0", "filename": "in.wav"},
+                "playback": {"type": "Stdout", "channels": 2, "format": "S32_LE", "filename": in_folder},
+            },
+        });
+        let no_folder = json!({
+            "devices": {
+                "capture": {"type": "WavFile", "filename": "in.wav"},
+                "playback": {"type": "File", "filename": in_folder},
+            },
+        });
+        for (original, folder) in [(other_devices, Some(audio.as_path())), (no_folder, None)] {
+            let mut config = original.clone();
+            make_audio_file_paths_absolute(&mut config, folder);
+            assert_eq!(config, original);
+            make_audio_file_paths_relative(&mut config, folder);
+            assert_eq!(config, original);
+        }
+    }
+
+    #[test]
+    fn coeff_paths_outside_the_folder_are_found() {
+        let (_dir, configs, coeffs, audio) = folders();
+        let config = json!({
+            "filters": {
+                "absolute": conv("Raw", &to_string(&coeffs.join("f.raw"))),
+                "relative": conv("Wav", "../coeffs/f.wav"),
+                "escaping": conv("Raw", "../../../etc/passwd"),
+                // These read no file, so a stray filename is not checked.
+                "biquad": {"type": "Biquad", "parameters": {"type": "Peaking", "filename": "/etc/passwd"}},
+                "values": conv("Values", "/etc/passwd"),
+                "dummy": conv("Dummy", "/etc/passwd"),
+            },
+        });
+        assert_eq!(
+            paths_outside_folders(&config, &coeffs, Some(&audio), &configs),
+            [outside(
+                &["filters", "escaping", "parameters", "filename"],
+                "../../../etc/passwd"
+            )]
+        );
+    }
+
+    #[test]
+    fn audio_paths_outside_the_folder_are_found() {
+        let (_dir, configs, coeffs, audio) = folders();
+        let check = |side: &str, device: Value| {
+            let config = json!({"devices": {side: device}});
+            paths_outside_folders(&config, &coeffs, Some(&audio), &configs)
+        };
+        for (side, device) in [
+            ("capture", json!({"type": "WavFile", "filename": "in.wav"})),
+            (
+                "capture",
+                json!({"type": "WavFile", "filename": "sub/in.wav"}),
+            ),
+            ("playback", json!({"type": "File", "filename": "out.wav"})),
+        ] {
+            assert_eq!(check(side, device), []);
+        }
+        for (side, device) in [
+            (
+                "capture",
+                json!({"type": "WavFile", "filename": "/etc/passwd"}),
+            ),
+            (
+                "capture",
+                json!({"type": "RawFile", "filename": "/etc/shadow"}),
+            ),
+            (
+                "playback",
+                json!({"type": "File", "filename": "/tmp/out.wav"}),
+            ),
+        ] {
+            let filename = device["filename"].as_str().unwrap().to_string();
+            assert_eq!(
+                check(side, device),
+                [outside(&["devices", side, "filename"], &filename)]
+            );
+        }
+    }
+
+    #[test]
+    fn offenders_come_in_config_order() {
+        let (_dir, configs, coeffs, audio) = folders();
+        let config = json!({
+            "devices": {
+                "playback": {"type": "File", "filename": "/tmp/out.wav"},
+                "capture": {"type": "WavFile", "filename": "/tmp/in.wav"},
+            },
+            "filters": {"fir": conv("Raw", "/etc/passwd")},
+        });
+        assert_eq!(
+            paths_outside_folders(&config, &coeffs, Some(&audio), &configs),
+            [
+                outside(&["filters", "fir", "parameters", "filename"], "/etc/passwd"),
+                outside(&["devices", "capture", "filename"], "/tmp/in.wav"),
+                outside(&["devices", "playback", "filename"], "/tmp/out.wav"),
+            ]
+        );
+    }
+
+    #[test]
+    fn configs_without_files_have_no_offenders() {
+        let (_dir, configs, coeffs, audio) = folders();
+        for config in [
+            json!({}),
+            json!({"devices": {
+                "capture": {"type": "Alsa", "channels": 2, "device": "hw:0"},
+                "playback": {"type": "File", "filename": "out.wav"},
+            }}),
+        ] {
+            assert_eq!(
+                paths_outside_folders(&config, &coeffs, Some(&audio), &configs),
+                []
+            );
+        }
+    }
+
+    #[test]
+    fn only_coeff_file_paths_are_converted() {
+        let config_dir = Path::new("/c/configs");
+        let coeff_dir = Path::new("/c/coeffs");
+        let no_filters = json!({"devices": {"samplerate": 48000}});
+        // The stray filenames would change if these were read as files, the
+        // bare one going absolute and the absolute one coming back bare. An
+        // empty filename would become coeff_dir itself.
+        let other_filters = json!({"filters": {
+            "biquad": {"type": "Biquad", "parameters": {"type": "Peaking", "freq": 1000.0, "q": 1.0, "gain": 3.0, "filename": "f.raw"}},
+            "values": {"type": "Conv", "parameters": {"type": "Values", "values": [1.0, 0.5], "filename": "/c/coeffs/f.raw"}},
+            "empty": conv("Raw", ""),
+        }});
+        for original in [no_filters, other_filters] {
+            let mut config = original.clone();
+            make_config_filter_paths_absolute(&mut config, config_dir, coeff_dir);
+            assert_eq!(config, original);
+            make_config_filter_paths_relative(&mut config, config_dir, coeff_dir);
+            assert_eq!(config, original);
+        }
+    }
+
     #[test]
     fn uploaded_configs_get_bare_names() {
         let mut config = json!({
