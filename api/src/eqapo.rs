@@ -19,7 +19,7 @@ fn biquad_type(eqapo: &str) -> Option<&'static str> {
 /// Channel labels to channel numbers, for a given number of channels.
 fn channel_map(channels: i64) -> &'static [(&'static str, i64)] {
     match channels {
-        1 => &[("C", 1)],
+        1 => &[("C", 0)],
         2 => &[("L", 0), ("R", 1)],
         4 => &[("L", 0), ("R", 1), ("RL", 2), ("RR", 3)],
         6 => &[
@@ -538,6 +538,17 @@ Filter: ON  NO       Fc     50 Hz
                 serde_json::from_value::<camilladsp_schema::config::Filter>(filter.clone());
             assert!(parsed.is_ok(), "{name}: {filter} {parsed:?}");
         }
+    }
+
+    #[test]
+    fn mono_center_is_channel_zero() {
+        let conf = EqApo::new(1).translate("Channel: C\nFilter: ON PK Fc 1000 Hz Gain 3 dB Q 1\n");
+        assert_eq!(conf["pipeline"][0]["channels"], json!([0]));
+        let copy = EqApo::new(1).parse_copy("C=0.5*C");
+        let mapping = copy["mapping"].as_array().unwrap();
+        assert_eq!(mapping.len(), 1);
+        assert_eq!(mapping[0]["dest"], 0);
+        assert_eq!(mapping[0]["sources"][0]["channel"], 0);
     }
 
     #[test]
