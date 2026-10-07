@@ -45,7 +45,7 @@ const MAX_UPLOAD_SIZE: usize = 1024 * 1024 * 1024;
 
 fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/events", get(api::get_events))
+        .route("/levels", get(api::get_levels))
         .route("/status", get(api::get_status))
         .route("/getparam/{name}", get(api::get_param))
         .route("/getparamjson/{name}", get(api::get_param_json))
@@ -56,8 +56,7 @@ fn api_routes() -> Router<Arc<AppState>> {
         .route("/getconfig", get(api::get_config))
         .route("/setconfig", post(api::set_config))
         .route("/stop", post(api::stop_processing))
-        .route("/spectrum/subscribe", post(api::subscribe_spectrum))
-        .route("/spectrum/unsubscribe", post(api::unsubscribe_spectrum))
+        .route("/spectrum", get(api::get_spectrum))
         .route("/getstartconfig", get(api::get_config_at_gui_start))
         .route("/getactiveconfigfilename", get(api::get_active_config_name))
         .route("/getdefaultconfigfile", get(api::get_default_config_file))
@@ -173,30 +172,11 @@ async fn main() {
         settings.camilla_port,
     ));
     let status = Arc::new(status::StatusCache::new());
-    let publisher = events::Publisher::new();
-    let spectrum = if settings.enable_level_stream {
-        let levels = events::LevelStream::new(
-            camilla.url(),
-            status.clone(),
-            publisher.clone(),
-            settings.level_smoothing_ms,
-            settings.level_max_update_hz,
-        );
-        tokio::spawn(levels.run());
-        Some(events::SpectrumStream::new(
-            camilla.url(),
-            publisher.clone(),
-        ))
-    } else {
-        None
-    };
     let bind = format!("{}:{}", settings.bind_address, settings.port);
     let app = Arc::new(AppState {
         settings,
         camilla,
         status,
-        publisher,
-        spectrum,
     });
     let router = build_router(app);
 

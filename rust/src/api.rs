@@ -2,7 +2,7 @@
 //! backend's, so the frontend did not change with the port.
 
 use crate::camilla::{CamillaClient, DspError, to_json};
-use crate::events::{Publisher, SpectrumStream, SubscribeError};
+use crate::events::{self, SubscribeError};
 use crate::files::{self, ConfigContext, Details};
 use crate::paths::{self, file_in_folder};
 use crate::settings::{self, Settings};
@@ -13,7 +13,7 @@ use axum::body::Bytes;
 use axum::extract::{Multipart, Path as UrlPath, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
-use camilladsp_config::protocol::SpectrumSubscription;
+use camilladsp_config::protocol::{SpectrumSubscription, VuSubscription};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -24,9 +24,6 @@ pub struct AppState {
     pub settings: Settings,
     pub camilla: Arc<CamillaClient>,
     pub status: Arc<StatusCache>,
-    pub publisher: Publisher,
-    /// `None` when `enable_level_stream` is off.
-    pub spectrum: Option<SpectrumStream>,
 }
 
 impl AppState {
@@ -149,28 +146,47 @@ pub async fn get_status(State(app): Shared) -> Response {
     json_response(status)
 }
 
-pub async fn get_events(State(app): Shared) -> ApiResult {
+/// A VU level event stream with its own subscription, which ends when the
+/// browser closes the stream. Smoothing and rate come from the settings.
+pub async fn get_levels(State(app): Shared) -> ApiResult {
     if !app.settings.enable_level_stream {
-        return Err(unavailable("Event stream is disabled"));
+        return Err(unavailable("Level stream is disabled"));
     }
-    let mut response = app.publisher.subscribe().into_response();
-    let headers = response.headers_mut();
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_ORIGIN,
-        HeaderValue::from_static("*"),
-    );
-    // Tells nginx not to buffer the stream, which would hold the events back.
-    headers.insert("x-accel-buffering", HeaderValue::from_static("no"));
-    Ok(response)
+    let smoothing_ms = app.settings.level_smoothing_ms.max(0.0) as f32;
+    let subscription = VuSubscription {
+        max_rate: app.settings.level_max_update_hz.max(0.0) as f32,
+        attack: 0.1 * smoothing_ms,
+        release: smoothing_ms,
+    };
+    event_stream_response(events::level_stream(app.camilla.url(), subscription).await)
 }
 
-pub async fn subscribe_spectrum(State(app): Shared, body: Bytes) -> ApiResult {
-    let Some(spectrum) = &app.spectrum else {
+/// A spectrum event stream with its own subscription, which ends when the
+/// browser closes the stream. The parameters come in the query string, since
+/// an EventSource can only GET.
+pub async fn get_spectrum(
+    State(app): Shared,
+    Query(params): Query<SpectrumSubscription>,
+) -> ApiResult {
+    if !app.settings.enable_level_stream {
         return Err(unavailable("Spectrum stream is disabled"));
-    };
-    let params: SpectrumSubscription = parse_body(&body)?;
-    match spectrum.subscribe(params).await {
-        Ok(()) => Ok(json_response(json!({}))),
+    }
+    event_stream_response(events::spectrum_stream(app.camilla.url(), params).await)
+}
+
+fn event_stream_response(stream: Result<impl IntoResponse, SubscribeError>) -> ApiResult {
+    match stream {
+        Ok(stream) => {
+            let mut response = stream.into_response();
+            let headers = response.headers_mut();
+            headers.insert(
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                HeaderValue::from_static("*"),
+            );
+            // Tells nginx not to buffer the stream, which would hold the events back.
+            headers.insert("x-accel-buffering", HeaderValue::from_static("no"));
+            Ok(response)
+        }
         Err(SubscribeError::ProcessingNotRunning) => Ok((
             StatusCode::SERVICE_UNAVAILABLE,
             [NO_STORE],
@@ -179,13 +195,6 @@ pub async fn subscribe_spectrum(State(app): Shared, body: Bytes) -> ApiResult {
             .into_response()),
         Err(SubscribeError::Other(message)) => Err(unavailable(message)),
     }
-}
-
-pub async fn unsubscribe_spectrum(State(app): Shared) -> Response {
-    if let Some(spectrum) = &app.spectrum {
-        spectrum.unsubscribe().await;
-    }
-    json_response(json!({}))
 }
 
 // ── Parameters ─────────────────────────────────────────────────────────────

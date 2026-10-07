@@ -98,21 +98,26 @@ pub async fn send(ws: &mut Ws, command: &WsCommand) -> Result<(), DspError> {
     ws.send(Message::text(text)).await.map_err(io_error)
 }
 
-/// Read the next reply, skipping pings and the like. A reply to a command
-/// CamillaDSP did not recognize is returned as an error.
-pub async fn receive(ws: &mut Ws) -> Result<WsReply, DspError> {
-    let text = loop {
+/// Read the text of the next message, skipping pings and the like.
+pub async fn receive_text(ws: &mut Ws) -> Result<String, DspError> {
+    loop {
         match ws.next().await {
-            Some(Ok(Message::Text(text))) => break text.to_string(),
+            Some(Ok(Message::Text(text))) => return Ok(text.to_string()),
             Some(Ok(Message::Binary(data))) => {
-                break String::from_utf8(data.to_vec())
-                    .map_err(|_| io_error("Non-UTF-8 binary message"))?;
+                return String::from_utf8(data.to_vec())
+                    .map_err(|_| io_error("Non-UTF-8 binary message"));
             }
             Some(Ok(Message::Close(_))) | None => return Err(io_error("Websocket closed")),
             Some(Ok(_)) => continue,
             Some(Err(err)) => return Err(io_error(err)),
         }
-    };
+    }
+}
+
+/// Read the next reply, skipping pings and the like. A reply to a command
+/// CamillaDSP did not recognize is returned as an error.
+pub async fn receive(ws: &mut Ws) -> Result<WsReply, DspError> {
+    let text = receive_text(ws).await?;
     match serde_json::from_str::<WsReply>(&text) {
         Ok(WsReply::Invalid { error }) => Err(DspError::Command {
             result: "Invalid".to_string(),

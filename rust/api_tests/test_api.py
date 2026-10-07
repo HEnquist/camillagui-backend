@@ -8,6 +8,8 @@ import random
 import string
 import struct
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from textwrap import dedent
 
@@ -88,9 +90,22 @@ def test_status_goes_offline(server):
     assert status["cdsp_version"] == "(offline)"
 
 
-def test_events_stream_levels(server):
-    request = urllib.request.Request(f"http://127.0.0.1:{server.port}/api/events")
-    with urllib.request.urlopen(request, timeout=10) as stream:
+def wait_for_sockets(server, count):
+    deadline = time.time() + 5
+    while len(server.fake._sockets) != count and time.time() < deadline:
+        time.sleep(0.05)
+    assert len(server.fake._sockets) == count
+
+
+def test_level_stream_ends_with_the_browser(server):
+    before = len(server.fake._sockets)
+    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/levels", timeout=10):
+        wait_for_sockets(server, before + 1)
+    wait_for_sockets(server, before)
+
+
+def test_level_stream(server):
+    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/levels", timeout=10) as stream:
         assert stream.headers["Content-Type"].startswith("text/event-stream")
         # So that nginx passes the events on as they come.
         assert stream.headers["X-Accel-Buffering"] == "no"
@@ -102,8 +117,13 @@ def test_events_stream_levels(server):
                 event = line.split(":", 1)[1].strip()
             if line.startswith("data:") and event == "levels":
                 levels = json.loads(line.split(":", 1)[1])
-                assert levels["capturesignalrms"] == [-5.0, -6.0]
-                assert levels["playbacksignalpeak"] == [-3.0, -4.0]
+                # CamillaDSP's VuLevels, passed on as it came.
+                assert levels == {
+                    "playback_rms": [-7.0, -8.0],
+                    "playback_peak": [-3.0, -4.0],
+                    "capture_rms": [-5.0, -6.0],
+                    "capture_peak": [-2.0, -3.0],
+                }
                 return
     pytest.fail("No levels event")
 
@@ -118,18 +138,38 @@ SPECTRUM_PARAMS = {
 }
 
 
-def test_spectrum_subscription(server):
-    resp = server.post("/api/spectrum/subscribe", json_body=SPECTRUM_PARAMS)
-    assert resp.status == 200, resp.text
-    assert server.fake.commands("SubscribeSpectrum")[-1]["value"]["n_bins"] == 10
-    assert server.post("/api/spectrum/unsubscribe").status == 200
+def spectrum_url(server):
+    # No channel means all channels, so it is left out like the frontend does.
+    query = urllib.parse.urlencode({k: v for k, v in SPECTRUM_PARAMS.items() if v is not None})
+    return f"http://127.0.0.1:{server.port}/api/spectrum?{query}"
+
+
+def test_spectrum_stream(server):
+    with urllib.request.urlopen(spectrum_url(server), timeout=10) as stream:
+        assert stream.headers["Content-Type"].startswith("text/event-stream")
+        assert stream.headers["X-Accel-Buffering"] == "no"
+        subscribed = server.fake.commands("SubscribeSpectrum")[-1]["value"]
+        assert subscribed["n_bins"] == 10
+        assert subscribed["channel"] is None
+        deadline = time.time() + 5
+        event = None
+        while time.time() < deadline:
+            line = stream.readline().decode().strip()
+            if line.startswith("event:"):
+                event = line.split(":", 1)[1].strip()
+            if line.startswith("data:") and event == "spectrum":
+                spectrum = json.loads(line.split(":", 1)[1])
+                assert spectrum == {"frequencies": [100.0, 1000.0], "magnitudes": [-20.0, -30.0]}
+                return
+    pytest.fail("No spectrum event")
 
 
 def test_spectrum_needs_processing(server):
     server.fake.state["state"] = "Inactive"
-    resp = server.post("/api/spectrum/subscribe", json_body=SPECTRUM_PARAMS)
-    assert resp.status == 503
-    assert resp.json() == {"result": "ProcessingNotRunningError"}
+    with pytest.raises(urllib.error.HTTPError) as error:
+        urllib.request.urlopen(spectrum_url(server), timeout=10)
+    assert error.value.code == 503
+    assert json.loads(error.value.read()) == {"result": "ProcessingNotRunningError"}
 
 
 def test_stop_processing(server):

@@ -3,7 +3,6 @@ import {
   defaultStatus,
   defaultVuMeterStatus,
   emptyVuMeterStatus,
-  LevelsEvent,
   LevelsEventStream,
   SpectrumEvent,
   SpectrumEventStream,
@@ -34,16 +33,7 @@ export function useVuMeterLevels(active = true) {
   const [levels, setLevels] = React.useState<VuMeterStatus>(defaultVuMeterStatus())
 
   React.useEffect(() => {
-    const updateLevels = (event: LevelsEvent) => {
-      setLevels({
-        capturesignalrms: event.capturesignalrms,
-        capturesignalpeak: event.capturesignalpeak,
-        playbacksignalrms: event.playbacksignalrms,
-        playbacksignalpeak: event.playbacksignalpeak,
-      })
-    }
-
-    const levelsEventStream = new LevelsEventStream(updateLevels)
+    const levelsEventStream = new LevelsEventStream(setLevels)
 
     return () => {
       levelsEventStream.stop()

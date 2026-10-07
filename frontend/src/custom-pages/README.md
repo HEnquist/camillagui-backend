@@ -258,24 +258,25 @@ const res = await fetch("/api/validateconfig", {
 const errorMessage = await res.text()  // "" means valid
 ```
 
-### SSE: GET /api/events
+### SSE: GET /api/levels
 
-Server-sent event stream for real-time level meters and state changes. Use this instead of
-polling if you need live updates.
+Server-sent event stream for real-time level meters. Use this instead of polling if you need live
+levels. The open stream is a subscription in CamillaDSP, so close it when the page no longer
+shows the levels.
 
 ```ts
-const evtSource = new EventSource("/api/events")
+const evtSource = new EventSource("/api/levels")
 evtSource.addEventListener("levels", (e) => {
   const levels = JSON.parse(e.data)
-  // levels.playback: number[]     — dBFS per channel
-  // levels.capture: number[]
-  // levels.cdsp_status: string
-})
-evtSource.addEventListener("state", (e) => {
-  const state = JSON.parse(e.data)
+  // levels.playback_rms, levels.playback_peak: number[]  — dBFS per channel
+  // levels.capture_rms, levels.capture_peak: number[]
 })
 // Remember to call evtSource.close() in useEffect cleanup
 ```
+
+`GET /api/spectrum?side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10` is the same
+for the spectrum, as `spectrum` events with `frequencies` and `magnitudes`. Add `channel=0` for a
+single channel, leave it out to average them all. It answers 503 while processing is stopped.
 
 ## Adding a custom backend endpoint
 
@@ -500,7 +501,7 @@ export default FilterPlot
   or intermediate form values.
 - **Derived data from the DSP:** Call `evalFilter` inside `useEffect` with `config` as a
   dependency. Re-evaluates automatically when the user edits filters elsewhere.
-- **Real-time values:** Use `EventSource("/api/events")` for live level meters. Close the source
+- **Real-time values:** Use `EventSource("/api/levels")` for live level meters. Close the source
   in the `useEffect` cleanup to avoid leaks.
 - **TypeScript casts:** Filter parameters are typed as `Record<string, unknown>`. Cast to a
   specific shape: `const p = filter.parameters as { freq: number; q: number }`.

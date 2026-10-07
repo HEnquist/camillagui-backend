@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Config, defaultConfig, WavInfo } from "../camilladsp/config"
-import { SpectrumSubscriptionParams } from "../camilladsp/status"
+import { LevelsEvent, SpectrumSubscriptionParams } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { FileInfo } from "../utilities/files"
 
@@ -28,19 +28,10 @@ type DemoState = {
   logLines: string[]
 }
 
-type LevelsPayload = {
-  capturesignalrms: number[]
-  capturesignalpeak: number[]
-  playbacksignalrms: number[]
-  playbacksignalpeak: number[]
-  ts: number
-}
-
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
 const STORAGE_KEY = "camillagui.demo.state.v1"
 const LEVEL_INTERVAL_MS = 140
 
-let activeSpectrumParams: SpectrumSubscriptionParams | null = null
 let spectrumShape = { offset: -38, slope: -3 }
 const MAIN_CONFIG_NAME = "living-room-demo.yml"
 const CURRENT_CONFIG_VERSION = 4
@@ -604,20 +595,6 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     return jsonResponse(state.guiConfig)
   }
 
-  if (pathname === "/api/spectrum/subscribe" && method === "POST") {
-    if (state.processingStopped) {
-      return jsonResponse({ result: "ProcessingNotRunningError" }, 503)
-    }
-    activeSpectrumParams = await requestJson<SpectrumSubscriptionParams>(input, init)
-    spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
-    return jsonResponse({})
-  }
-
-  if (pathname === "/api/spectrum/unsubscribe" && method === "POST") {
-    activeSpectrumParams = null
-    return jsonResponse({})
-  }
-
   if (pathname === "/api/getstartconfig" && method === "GET") {
     const activeName = state.activeConfigFileName
     const config = activeName && state.storedConfigs[activeName] ? state.storedConfigs[activeName] : state.currentConfig
@@ -1125,26 +1102,19 @@ function updateMusicLevels(target: ChannelState[]) {
   })
 }
 
-function generateLevels(): LevelsPayload {
+function generateLevels(): LevelsEvent {
   if (state.processingStopped) {
-    return {
-      capturesignalrms: [],
-      capturesignalpeak: [],
-      playbacksignalrms: [],
-      playbacksignalpeak: [],
-      ts: Date.now(),
-    }
+    return { capture_rms: [], capture_peak: [], playback_rms: [], playback_peak: [] }
   }
   const captureCount = captureChannelCount(state.currentConfig)
   const playbackCount = state.currentConfig.devices.playback.channels
   const capture = updateMusicLevels(channelStates("capture", captureCount))
   const playback = updateMusicLevels(channelStates("playback", playbackCount))
   return {
-    capturesignalrms: capture.map((channel) => (state.mute ? -120 : Number(channel.rms.toFixed(1)))),
-    capturesignalpeak: capture.map((channel) => (state.mute ? -120 : Number(channel.peak.toFixed(1)))),
-    playbacksignalrms: playback.map((channel) => adjustedPlaybackLevel(channel.rms, state.volume)),
-    playbacksignalpeak: playback.map((channel) => adjustedPlaybackLevel(channel.peak, state.volume)),
-    ts: Date.now(),
+    capture_rms: capture.map((channel) => (state.mute ? -120 : Number(channel.rms.toFixed(1)))),
+    capture_peak: capture.map((channel) => (state.mute ? -120 : Number(channel.peak.toFixed(1)))),
+    playback_rms: playback.map((channel) => adjustedPlaybackLevel(channel.rms, state.volume)),
+    playback_peak: playback.map((channel) => adjustedPlaybackLevel(channel.peak, state.volume)),
   }
 }
 
@@ -1164,6 +1134,22 @@ function generateSpectrum(params: SpectrumSubscriptionParams): { frequencies: nu
     magnitudes.push(Math.max(-120, Math.min(0, pinkBase + noise)))
   }
   return { frequencies, magnitudes }
+}
+
+/** The parameters of a `/api/spectrum` stream, or null for any other URL. */
+function parseSpectrumParams(url: string): SpectrumSubscriptionParams | null {
+  const parsed = new URL(url, "http://demo")
+  if (parsed.pathname !== "/api/spectrum") return null
+  const query = parsed.searchParams
+  const channel = query.get("channel")
+  return {
+    side: query.get("side") === "capture" ? "capture" : "playback",
+    channel: channel === null ? null : Number(channel),
+    min_freq: Number(query.get("min_freq")),
+    max_freq: Number(query.get("max_freq")),
+    n_bins: Number(query.get("n_bins")),
+    max_rate: Number(query.get("max_rate")),
+  }
 }
 
 function adjustedPlaybackLevel(level: number, gainDb: number) {
@@ -1192,8 +1178,17 @@ class DemoEventSource extends EventTarget {
   constructor(url: string | URL) {
     super()
     this.url = String(url)
+    const spectrumParams = parseSpectrumParams(this.url)
+    if (spectrumParams) {
+      spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
+    }
     queueMicrotask(() => {
       if (this.readyState !== DemoEventSource.CONNECTING) return
+      // Like the backend, a spectrum stream is refused or ended while processing is stopped.
+      if (spectrumParams && state.processingStopped) {
+        this.fail()
+        return
+      }
       this.readyState = DemoEventSource.OPEN
       const openEvent = new Event("open")
       this.dispatchEvent(openEvent)
@@ -1201,19 +1196,21 @@ class DemoEventSource extends EventTarget {
     })
     this.timerId = setInterval(() => {
       if (this.readyState !== DemoEventSource.OPEN) return
-      const levelsMsg = new MessageEvent("levels", { data: JSON.stringify(generateLevels()) })
-      this.dispatchEvent(levelsMsg)
-      if (activeSpectrumParams !== null) {
-        if (state.processingStopped) {
-          this.dispatchEvent(new MessageEvent("spectrum", { data: JSON.stringify({ result: "ProcessingStopped" }) }))
-          activeSpectrumParams = null
-        } else {
-          this.dispatchEvent(
-            new MessageEvent("spectrum", { data: JSON.stringify(generateSpectrum(activeSpectrumParams)) }),
-          )
-        }
+      if (!spectrumParams) {
+        this.dispatchEvent(new MessageEvent("levels", { data: JSON.stringify(generateLevels()) }))
+      } else if (state.processingStopped) {
+        this.fail()
+      } else {
+        this.dispatchEvent(new MessageEvent("spectrum", { data: JSON.stringify(generateSpectrum(spectrumParams)) }))
       }
     }, LEVEL_INTERVAL_MS)
+  }
+
+  private fail() {
+    this.close()
+    const errorEvent = new Event("error")
+    this.dispatchEvent(errorEvent)
+    this.onerror?.call(this as unknown as EventSource, errorEvent)
   }
 
   close() {

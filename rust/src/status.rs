@@ -45,10 +45,6 @@ impl StatusCache {
     pub fn new() -> Self {
         let initial = json!({
             "backend_version": env!("CARGO_PKG_VERSION"),
-            "capturesignalrms": [],
-            "capturesignalpeak": [],
-            "playbacksignalrms": [],
-            "playbacksignalpeak": [],
             "backends": [],
             "playback_devices": {},
             "capture_devices": {},

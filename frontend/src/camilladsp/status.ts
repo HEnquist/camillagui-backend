@@ -27,12 +27,12 @@ export interface Status extends Versions {
 
 export interface StatusWithLevels extends Status, VuMeterStatus {}
 
+/** A `levels` event, CamillaDSP's VuLevels passed on unchanged by the backend. */
 export interface LevelsEvent {
-  capturesignalrms: number[]
-  capturesignalpeak: number[]
-  playbacksignalrms: number[]
-  playbacksignalpeak: number[]
-  ts: number
+  capture_rms: number[]
+  capture_peak: number[]
+  playback_rms: number[]
+  playback_peak: number[]
 }
 
 export interface SpectrumEvent {
@@ -211,7 +211,7 @@ export class LevelsEventStream {
   private source?: EventSource
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private stopped = false
-  private readonly onUpdate: (event: LevelsEvent) => void
+  private readonly onUpdate: (levels: VuMeterStatus) => void
   private readonly handleVisibilityChange = () => {
     if (this.stopped) {
       return
@@ -227,7 +227,7 @@ export class LevelsEventStream {
     }
   }
 
-  constructor(onUpdate: (event: LevelsEvent) => void) {
+  constructor(onUpdate: (levels: VuMeterStatus) => void) {
     this.onUpdate = onUpdate
     document.addEventListener("visibilitychange", this.handleVisibilityChange)
     if (!document.hidden) {
@@ -259,7 +259,7 @@ export class LevelsEventStream {
 
   private connect() {
     if (this.stopped || document.hidden) return
-    const source = new EventSource("/api/events")
+    const source = new EventSource("/api/levels")
     this.source = source
     this.markActivity(source)
     source.addEventListener("levels", (rawEvent: Event) => {
@@ -269,13 +269,19 @@ export class LevelsEventStream {
       try {
         const parsed = JSON.parse(message.data) as LevelsEvent
         if (
-          Array.isArray(parsed.capturesignalrms) &&
-          Array.isArray(parsed.capturesignalpeak) &&
-          Array.isArray(parsed.playbacksignalrms) &&
-          Array.isArray(parsed.playbacksignalpeak)
+          Array.isArray(parsed.capture_rms) &&
+          Array.isArray(parsed.capture_peak) &&
+          Array.isArray(parsed.playback_rms) &&
+          Array.isArray(parsed.playback_peak)
         ) {
-          cacheLevels(parsed)
-          this.onUpdate(parsed)
+          const levels: VuMeterStatus = {
+            capturesignalrms: parsed.capture_rms,
+            capturesignalpeak: parsed.capture_peak,
+            playbacksignalrms: parsed.playback_rms,
+            playbacksignalpeak: parsed.playback_peak,
+          }
+          cacheLevels(levels)
+          this.onUpdate(levels)
         }
       } catch {
         // Ignore malformed SSE payloads and wait for next frame.
@@ -350,30 +356,20 @@ export class SpectrumEventStream {
     this.scheduleReconnect(source, SpectrumEventStream.staleEventThresholdMs)
   }
 
-  private async connect() {
-    if (this.stopped || document.hidden) return
-    try {
-      const response = await fetch("/api/spectrum/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(this.params),
-      })
-      if (!response.ok) {
-        // Processing not running or other server error — retry after a delay
-        this.clearReconnectTimer()
-        if (!this.stopped && !document.hidden) {
-          this.reconnectTimer = setTimeout(() => {
-            this.reconnectTimer = undefined
-            this.connect()
-          }, SpectrumEventStream.reconnectDelayMs)
-        }
-        return
-      }
-    } catch {
-      // Network error — proceed to EventSource; stale timer will reconnect
+  private url() {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(this.params)) {
+      // A missing channel means all channels.
+      if (value !== null) query.set(key, String(value))
     }
-    if (this.stopped) return
-    const source = new EventSource("/api/events")
+    return `/api/spectrum?${query}`
+  }
+
+  // The stream is the subscription: closing it ends the subscription. While
+  // processing is stopped the backend refuses it, and onerror retries.
+  private connect() {
+    if (this.stopped || document.hidden) return
+    const source = new EventSource(this.url())
     this.source = source
     this.markActivity(source)
     source.addEventListener("spectrum", (rawEvent: Event) => {
@@ -384,9 +380,6 @@ export class SpectrumEventStream {
         if (Array.isArray(parsed.frequencies) && Array.isArray(parsed.magnitudes)) {
           this.markActivity(source)
           this.onUpdate(parsed as SpectrumEvent)
-        } else {
-          // Subscription was cancelled (e.g. ProcessingStopped) — reconnect
-          this.scheduleReconnect(source, SpectrumEventStream.reconnectDelayMs)
         }
       } catch {
         // Ignore malformed events
@@ -410,6 +403,5 @@ export class SpectrumEventStream {
     this.source?.close()
     this.source = undefined
     document.removeEventListener("visibilitychange", this.handleVisibilityChange)
-    fetch("/api/spectrum/unsubscribe", { method: "POST" }).catch(() => {})
   }
 }
