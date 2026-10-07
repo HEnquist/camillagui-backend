@@ -130,14 +130,17 @@ pub fn coeff_path_to_absolute(path: &str, config_dir: &Path, coeff_dir: &Path) -
     to_string(&normalize(&base.join(path)))
 }
 
-/// The other way: a file in coeff_dir becomes a bare name, anything else a
-/// path relative to config_dir.
+/// The other way: a file directly in coeff_dir becomes a bare name, anything
+/// else a path relative to config_dir. That includes files in subfolders of
+/// coeff_dir, since a relative path with a folder in it is resolved against
+/// config_dir.
 pub fn coeff_path_to_relative(path: &str, config_dir: &Path, coeff_dir: &Path) -> String {
     if !Path::new(path).is_absolute() {
         return path.to_string();
     }
-    if is_path_in_folder(Path::new(path), coeff_dir) {
-        return basename(path);
+    let normalized = normalize(Path::new(path));
+    if normalized.parent() == Some(coeff_dir) {
+        return basename(&to_string(&normalized));
     }
     to_string(&relpath(Path::new(path), config_dir))
 }
@@ -170,19 +173,20 @@ pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<
     is_path_in_folder(&realpath(&resolved), &realpath(configured_dir))
 }
 
-/// Reduce a path to a bare file name if it is inside `directory`.
-fn to_bare_filename(path: &str, directory: &Path) -> String {
-    if !Path::new(path).is_absolute() {
-        return basename(path);
+/// Make a path relative to `directory` if it is inside it, subfolders and all,
+/// which is what relative paths are resolved against. A relative path outside
+/// it is reduced to a bare file name, and an absolute one is left as it is.
+fn to_path_in_folder(path: &str, directory: &Path) -> String {
+    let directory = realpath(directory);
+    let canonical = realpath(&directory.join(path));
+    if is_path_in_folder(&canonical, &directory) {
+        return to_string(&relpath(&canonical, &directory));
     }
-    let canonical = realpath(Path::new(path));
-    if is_path_in_folder(&canonical, &realpath(directory)) {
-        return canonical
-            .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
+    if Path::new(path).is_absolute() {
+        path.to_string()
+    } else {
+        basename(path)
     }
-    path.to_string()
 }
 
 fn str_of<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
@@ -262,16 +266,16 @@ pub fn make_audio_file_paths_absolute(config: &mut Value, audiofiles_dir: Option
     });
 }
 
-/// Show capture and playback files inside audiofiles_dir as bare names.
-pub fn make_audio_file_paths_bare(config: &mut Value, audiofiles_dir: Option<&Path>) {
+/// Show capture and playback files inside audiofiles_dir relative to it.
+pub fn make_audio_file_paths_relative(config: &mut Value, audiofiles_dir: Option<&Path>) {
     let Some(dir) = audiofiles_dir else {
         return;
     };
     convert_device_filename(capture_file_device(config), |path| {
-        to_bare_filename(path, dir)
+        to_path_in_folder(path, dir)
     });
     convert_device_filename(playback_file_device(config), |path| {
-        to_bare_filename(path, dir)
+        to_path_in_folder(path, dir)
     });
 }
 
@@ -401,6 +405,76 @@ mod tests {
             coeff_path_to_relative("x/fir.wav", config_dir, coeff_dir),
             "x/fir.wav"
         );
+    }
+
+    #[test]
+    fn coeff_paths_in_subfolders_round_trip() {
+        let config_dir = Path::new("/c/configs");
+        let coeff_dir = Path::new("/c/coeffs");
+        let relative = coeff_path_to_relative("/c/coeffs/sub/fir.wav", config_dir, coeff_dir);
+        assert_eq!(relative, "../coeffs/sub/fir.wav");
+        assert_eq!(
+            coeff_path_to_absolute(&relative, config_dir, coeff_dir),
+            "/c/coeffs/sub/fir.wav"
+        );
+        assert_eq!(
+            coeff_path_to_relative("/c/coeffs/sub/../fir.wav", config_dir, coeff_dir),
+            "fir.wav"
+        );
+    }
+
+    #[test]
+    fn audio_paths_in_subfolders_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let audio = dir.path().join("audio");
+        std::fs::create_dir_all(audio.join("sub")).unwrap();
+        let input = to_string(&audio.join("sub/in.wav"));
+        let output = to_string(&audio.join("sub/out.wav"));
+        let mut config = json!({
+            "devices": {
+                "capture": {"type": "WavFile", "filename": input},
+                "playback": {"type": "File", "filename": output},
+            },
+        });
+        make_audio_file_paths_relative(&mut config, Some(&audio));
+        assert_eq!(config["devices"]["capture"]["filename"], "sub/in.wav");
+        assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+        make_audio_file_paths_absolute(&mut config, Some(&audio));
+        assert_eq!(config["devices"]["capture"]["filename"], input.as_str());
+        assert_eq!(config["devices"]["playback"]["filename"], output.as_str());
+        assert_eq!(
+            to_path_in_folder("/elsewhere/x.wav", &audio),
+            "/elsewhere/x.wav"
+        );
+    }
+
+    #[test]
+    fn subfolders_do_not_escape() {
+        let dir = tempfile::tempdir().unwrap();
+        let configs = dir.path().join("configs");
+        let coeffs = dir.path().join("coeffs");
+        std::fs::create_dir_all(coeffs.join("sub")).unwrap();
+        std::fs::create_dir_all(&configs).unwrap();
+        let escaping = to_string(&coeffs.join("sub/../../secret.raw"));
+        let relative = coeff_path_to_relative(&escaping, &configs, &coeffs);
+        assert_eq!(relative, "../secret.raw");
+        assert!(!path_is_safe(&relative, Some(&coeffs), Some(&configs)));
+        assert!(path_is_safe(
+            "../coeffs/sub/f.raw",
+            Some(&coeffs),
+            Some(&configs)
+        ));
+        assert!(!path_is_safe(
+            "../coeffs/sub/../../f.raw",
+            Some(&coeffs),
+            Some(&configs)
+        ));
+        let audio = dir.path().join("audio");
+        std::fs::create_dir_all(audio.join("sub")).unwrap();
+        assert_eq!(to_path_in_folder("sub/../../x.wav", &audio), "x.wav");
+        let audio = Some(audio.as_path());
+        assert!(path_is_safe("sub/in.wav", audio, audio));
+        assert!(!path_is_safe("sub/../../x.wav", audio, audio));
     }
 
     #[test]

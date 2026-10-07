@@ -702,7 +702,7 @@ fn check_finite(parsed: &yaml::Parsed) -> Result<(), String> {
 
 /// A config read from a file, as the GUI wants it: optional fields filled in,
 /// coefficient files in coeff_dir as bare names and the rest relative to
-/// config_dir, and audio files in audiofiles_dir as bare names.
+/// config_dir, and audio files in audiofiles_dir relative to it.
 fn config_for_gui(app: &AppState, parsed: yaml::Parsed) -> Result<Configuration, String> {
     check_finite(&parsed)?;
     let mut config = parsed.value;
@@ -711,7 +711,7 @@ fn config_for_gui(app: &AppState, parsed: yaml::Parsed) -> Result<Configuration,
         &app.settings.config_dir,
         &app.settings.coeff_dir,
     );
-    paths::make_audio_file_paths_bare(&mut config, app.audiofiles_dir());
+    paths::make_audio_file_paths_relative(&mut config, app.audiofiles_dir());
     validate::parse(config)
 }
 
@@ -808,7 +808,7 @@ fn read_and_migrate(
             blocking_errors.join("\n")
         )));
     }
-    paths::make_audio_file_paths_bare(&mut config, app.audiofiles_dir());
+    paths::make_audio_file_paths_relative(&mut config, app.audiofiles_dir());
     validate::parse(config).map_err(bad_request)
 }
 
