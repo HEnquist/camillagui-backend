@@ -874,6 +874,27 @@ def test_validate_config_that_does_not_parse(server):
     assert issue["severity"] == "error"
 
 
+def test_validate_config_refuses_paths_outside_the_folders(server):
+    config = json.loads(json.dumps(GRAPHIC_EQ_CONFIG))
+    config["devices"]["capture"] = {"type": "WavFile", "channels": 2, "filename": "/etc/hosts"}
+    config["filters"]["fir"] = {
+        "type": "Conv",
+        "parameters": {"type": "Raw", "filename": "/dev/zero", "read_bytes_lines": 0},
+    }
+    resp = server.post("/api/validateconfig", json_body=config)
+    assert resp.status == 200
+    issues = resp.json()
+    # Only the refusal, nothing from opening the files.
+    for path, filename in [
+        (["filters", "fir", "parameters", "filename"], "/dev/zero"),
+        (["devices", "capture", "filename"], "/etc/hosts"),
+    ]:
+        [issue] = [issue for issue in issues if issue["path"] == path]
+        assert issue["severity"] == "error"
+        assert filename in issue["message"]
+        assert "allow_absolute_paths" in issue["message"]
+
+
 def test_validate_config_needs_a_content_type(server):
     resp = server.post("/api/validateconfig", data=json.dumps(GRAPHIC_EQ_CONFIG))
     assert resp.status == 415

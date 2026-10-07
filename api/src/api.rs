@@ -505,22 +505,31 @@ pub async fn get_config(State(app): Shared) -> ApiResult<Reply<Option<Configurat
     Ok(Reply(app.camilla.config().await?))
 }
 
-/// Refuse a config with paths outside the configured folders, unless
-/// absolute paths are allowed.
-fn check_config_paths(app: &AppState, config: &Value) -> Result<(), ApiError> {
+/// The paths in a config from the frontend that are outside the configured
+/// folders, none if absolute paths are allowed.
+fn paths_outside_folders(app: &AppState, config: &Value) -> Vec<paths::OutsidePath> {
     if app.settings.allow_absolute_paths {
-        return Ok(());
+        return Vec::new();
     }
-    let offenders = paths::paths_outside_folders(
+    paths::paths_outside_folders(
         config,
         &app.settings.coeff_dir,
         app.audiofiles_dir(),
         &app.settings.config_dir,
-    );
+    )
+}
+
+/// Refuse a config with paths outside the configured folders, unless
+/// absolute paths are allowed.
+fn check_config_paths(app: &AppState, config: &Value) -> Result<(), ApiError> {
+    let offenders = paths_outside_folders(app, config);
     if offenders.is_empty() {
         return Ok(());
     }
-    let list: Vec<String> = offenders.iter().map(|p| format!("'{p}'")).collect();
+    let list: Vec<String> = offenders
+        .iter()
+        .map(|p| format!("'{}'", p.filename))
+        .collect();
     Err(ApiError::new(
         StatusCode::FORBIDDEN,
         format!(
@@ -614,10 +623,32 @@ pub async fn validate_config(
     State(app): Shared,
     Json(config): Json<Value>,
 ) -> ApiResult<Reply<Vec<ValidationIssue>>> {
-    let config = with_absolute_paths(&app, config);
+    // A path that setconfig would refuse is an error here, and is blanked so
+    // that validation does not open the file.
+    let outside = paths_outside_folders(&app, &config);
+    let mut config = with_absolute_paths(&app, config);
+    for offender in &outside {
+        if let Some(filename) = paths::value_at_mut(&mut config, &offender.location) {
+            *filename = Value::String(String::new());
+        }
+    }
     let types = app.device_types();
     // Validation reads every coefficient file, which can take a while.
-    let issues = blocking(move || Ok(validate::validate(config, &types))).await?;
+    let mut issues = blocking(move || Ok(validate::validate(config, &types))).await?;
+    for offender in outside {
+        let path: Vec<PathElement> = offender.location.iter().map(PathElement::from).collect();
+        // Whatever validation said about the blanked name.
+        issues.retain(|issue| issue.path != path);
+        issues.push(ValidationIssue {
+            path,
+            message: format!(
+                "The path '{}' is outside the configured directories. \
+                 Set allow_absolute_paths: true in camillagui.yml to allow this.",
+                offender.filename
+            ),
+            severity: Severity::Error,
+        });
+    }
     log::debug!("Validated config: {issues:?}");
     Ok(Reply(issues))
 }

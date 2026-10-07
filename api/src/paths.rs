@@ -287,6 +287,14 @@ pub fn strip_config_paths_to_bare_filenames(config: &mut Value) {
     });
 }
 
+/// A file path in a config that points outside its configured folder.
+#[derive(Debug, PartialEq)]
+pub struct OutsidePath {
+    /// The keys leading to the file name, from the top of the config.
+    pub location: Vec<String>,
+    pub filename: String,
+}
+
 /// The file paths in a config that point outside their configured folders.
 ///
 /// Relative coefficient paths are resolved against config_dir, and relative
@@ -297,10 +305,10 @@ pub fn paths_outside_folders(
     coeff_dir: &Path,
     audiofiles_dir: Option<&Path>,
     config_dir: &Path,
-) -> Vec<String> {
+) -> Vec<OutsidePath> {
     let mut offenders = Vec::new();
     if let Some(filters) = config.get("filters").and_then(Value::as_object) {
-        for filter in filters.values() {
+        for (name, filter) in filters {
             if !is_file_conv(filter) {
                 continue;
             }
@@ -308,7 +316,15 @@ pub fn paths_outside_folders(
                 && !filename.is_empty()
                 && !path_is_safe(filename, Some(coeff_dir), Some(config_dir))
             {
-                offenders.push(filename.to_string());
+                offenders.push(OutsidePath {
+                    location: vec![
+                        "filters".into(),
+                        name.clone(),
+                        "parameters".into(),
+                        "filename".into(),
+                    ],
+                    filename: filename.to_string(),
+                });
             }
         }
     }
@@ -318,18 +334,28 @@ pub fn paths_outside_folders(
             .and_then(|d| d.get(side))
             .filter(|d| str_of(d, "type").is_some_and(|t| types.contains(&t)))
     };
-    for device in [
-        device("capture", &["WavFile", "RawFile"]),
-        device("playback", &["File"]),
+    for (side, types) in [
+        ("capture", &["WavFile", "RawFile"][..]),
+        ("playback", &["File"][..]),
     ] {
-        if let Some(filename) = device.and_then(|d| str_of(d, "filename"))
+        if let Some(filename) = device(side, types).and_then(|d| str_of(d, "filename"))
             && !filename.is_empty()
             && !path_is_safe(filename, audiofiles_dir, audiofiles_dir)
         {
-            offenders.push(filename.to_string());
+            offenders.push(OutsidePath {
+                location: vec!["devices".into(), side.into(), "filename".into()],
+                filename: filename.to_string(),
+            });
         }
     }
     offenders
+}
+
+/// The value at a location given as keys, if there is one.
+pub fn value_at_mut<'a>(config: &'a mut Value, location: &[String]) -> Option<&'a mut Value> {
+    location
+        .iter()
+        .try_fold(config, |value, key| value.get_mut(key.as_str()))
 }
 
 #[cfg(test)]
@@ -410,9 +436,12 @@ mod tests {
             },
             "devices": {"capture": {"type": "WavFile", "filename": "/tmp/x.wav"}},
         });
+        let offenders = paths_outside_folders(&config, &coeffs, None, &configs);
+        let filenames: Vec<&str> = offenders.iter().map(|o| o.filename.as_str()).collect();
+        assert_eq!(filenames, vec!["/etc/passwd", "/tmp/x.wav"]);
         assert_eq!(
-            paths_outside_folders(&config, &coeffs, None, &configs),
-            vec!["/etc/passwd", "/tmp/x.wav"]
+            offenders[1].location,
+            vec!["devices", "capture", "filename"]
         );
     }
 
