@@ -1,4 +1,4 @@
-# camillagui-backend — the CamillaGUI backend and frontend
+# camillagui-backend: the CamillaGUI backend and frontend
 
 The web GUI for CamillaDSP. Targets CamillaDSP 5.0.x.
 

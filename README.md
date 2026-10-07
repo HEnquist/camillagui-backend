@@ -138,7 +138,7 @@ Config files on disk always store absolute paths so that CamillaDSP can use them
 This prevents anyone with GUI access from reading arbitrary files from the filesystem via the coefficient
 or audio file fields. With absolute paths allowed, anyone with GUI access can read any file on the system
 and write to any location the DSP process has write access to.
-The risk is especially serious if the CamillaDSP process runs with elevated privileges — running it as root
+The risk is especially serious if the CamillaDSP process runs with elevated privileges. Running it as root
 is strongly discouraged and should be avoided. A dedicated low-privilege user account is the right approach.
 
 **Upgrading from an older version:** if your configs reference coefficient or audio files that sit outside

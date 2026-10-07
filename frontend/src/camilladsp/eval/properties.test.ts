@@ -2,9 +2,9 @@
  * Closed-form properties every filter must satisfy.
  *
  * These are the tests that trust neither implementation. Each one asserts
- * something that follows from what the filter *is* — a Butterworth is 3 dB
+ * something that follows from what the filter *is* (a Butterworth is 3 dB
  * down at its cutoff whatever its order, an allpass passes every frequency at
- * unity, a delay of N samples has a group delay of N/fs — so they catch a
+ * unity, a delay of N samples has a group delay of N/fs), so they catch a
  * wrong coefficient without reference to any other code, and a genuine fix
  * makes them go green rather than red.
  *

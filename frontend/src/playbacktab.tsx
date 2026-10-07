@@ -497,14 +497,14 @@ function BaseConfigInfo(props: { config: Config }) {
 function describePlaybackDevice(playback: PlaybackDevice): string {
   switch (playback.type) {
     case "PipeWire":
-      return `PipeWire — ${playback.node_name ?? playback.node_description ?? "(default)"}`
+      return `PipeWire:${playback.node_name ?? playback.node_description ?? "(default)"}`
     case "File":
-      return `File — ${playback.filename}`
+      return `File:${playback.filename}`
     case "Stdout":
     case "Dummy":
       return playback.type
     default:
-      return `${playback.type} — ${playback.device ?? "(default)"}`
+      return `${playback.type}:${playback.device ?? "(default)"}`
   }
 }
 
@@ -525,7 +525,7 @@ export function buildPlaybackConfig(
 ): Config {
   const config = cloneDeep(base)
 
-  config.title = config.title ? `${config.title} — ${wav.filename}` : wav.filename
+  config.title = config.title ? `${config.title}: ${wav.filename}` : wav.filename
 
   // Capture device -> WavFile (bare filename; backend resolves against audiofiles_dir)
   config.devices.capture = {
