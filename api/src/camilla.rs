@@ -172,6 +172,20 @@ fn unexpected(reply: WsReply) -> DspError {
     DspError::Io(format!("Unexpected reply from CamillaDSP: {reply:?}"))
 }
 
+/// The reply, if it is the one to the command. A reply is tagged with the
+/// name of its command.
+fn answering(command: &WsCommand, reply: WsReply) -> Result<WsReply, DspError> {
+    fn tag(message: &impl serde::Serialize, field: &str) -> Option<String> {
+        let value = serde_json::to_value(message).ok()?;
+        value.get(field)?.as_str().map(String::from)
+    }
+    if tag(command, "command") == tag(&reply, "reply") {
+        Ok(reply)
+    } else {
+        Err(unexpected(reply))
+    }
+}
+
 /// A failed connect, which requests are answered with until the next try.
 struct Offline {
     error: String,
@@ -299,9 +313,12 @@ impl CamillaClient {
                 ws
             }
         };
-        let result = request_on(&mut ws, &command, timeout).await;
+        let result = request_on(&mut ws, &command, timeout)
+            .await
+            .and_then(|reply| answering(&command, reply));
         // Not after a lost connection either, or a reply that never came and
-        // might still arrive.
+        // might still arrive, or a reply to some other command, after which
+        // the one to this command would be taken for the answer to the next.
         if !matches!(result, Err(DspError::Io(_))) {
             *guard = Some(ws);
         }
@@ -523,8 +540,9 @@ mod tests {
     use super::*;
     use tokio::net::TcpListener;
 
-    /// A fake CamillaDSP that answers GetVersion at once, and GetState after a
-    /// delay, so that a request can be dropped while it waits. The first
+    /// A fake CamillaDSP that answers GetVersion at once, GetState after a
+    /// delay, so that a request can be dropped while it waits, and GetMute
+    /// after a stray GetVolume reply, like a message out of turn. The first
     /// `stalled` connections are accepted but never get the websocket
     /// handshake, so that a connect can be dropped while it waits.
     async fn fake_camilladsp(stalled: usize) -> u16 {
@@ -552,6 +570,18 @@ mod tests {
                                     value: ProcessingState::Running,
                                 }
                             }
+                            WsCommand::GetMute => {
+                                let stray = WsReply::GetVolume {
+                                    result: WsResult::Ok,
+                                    value: -10.0,
+                                };
+                                let text = serde_json::to_string(&stray).unwrap();
+                                ws.send(Message::text(text)).await.unwrap();
+                                WsReply::GetMute {
+                                    result: WsResult::Ok,
+                                    value: true,
+                                }
+                            }
                             command => panic!("unexpected command {command:?}"),
                         };
                         let text = serde_json::to_string(&reply).unwrap();
@@ -573,6 +603,20 @@ mod tests {
         let dropped = tokio::time::timeout(Duration::from_millis(50), client.state()).await;
         assert!(dropped.is_err());
         // The late GetState reply must not be read as the answer to this one.
+        assert_eq!(client.version().await.unwrap(), "5.0.0");
+        assert_eq!(client.connection(), 2);
+    }
+
+    #[tokio::test]
+    async fn stray_reply_does_not_leave_the_next_one_behind() {
+        let port = fake_camilladsp(0).await;
+        let client = CamillaClient::new("127.0.0.1", port);
+        assert_eq!(client.version().await.unwrap(), "5.0.0");
+        assert_eq!(client.connection(), 1);
+        // The stray GetVolume reply comes first and is refused.
+        let err = client.mute().await.unwrap_err();
+        assert!(err.to_string().starts_with("Unexpected reply"), "{err}");
+        // The GetMute reply behind it must not be read as the answer to this one.
         assert_eq!(client.version().await.unwrap(), "5.0.0");
         assert_eq!(client.connection(), 2);
     }
