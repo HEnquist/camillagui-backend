@@ -13,7 +13,6 @@ use crate::status::StatusCache;
 use crate::validate::{self, DeviceTypeLists, DeviceTypes, Severity, ValidationIssue};
 use crate::wav::WavInfo;
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
-use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
@@ -31,6 +30,7 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::io::AsyncWriteExt;
 use utoipa::{IntoParams, ToSchema};
 
 pub struct AppState {
@@ -1391,27 +1391,26 @@ pub struct UploadForm {
     files: Vec<Vec<u8>>,
 }
 
-/// The uploaded files, in the order they came.
-async fn uploaded_files(
-    mut multipart: axum::extract::Multipart,
-) -> Result<Vec<(String, Bytes)>, ApiError> {
-    let mut files = Vec::new();
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|err| bad_request(err.to_string()))?
-    {
-        if field.name() != Some("files") {
-            continue;
-        }
-        let filename = field.file_name().unwrap_or_default().to_string();
-        let data = field
-            .bytes()
-            .await
-            .map_err(|err| bad_request(err.to_string()))?;
-        files.push((filename, data));
+/// Write one uploaded file to `path`. Coefficient and audio files are streamed
+/// to disk as they arrive, configs are read whole to sanitize them.
+async fn save_upload(
+    kind: FileKind,
+    mut field: axum::extract::multipart::Field<'_>,
+    path: &Path,
+    filename: &str,
+) -> Result<(), ApiError> {
+    let read_error = |err: axum::extract::multipart::MultipartError| bad_request(err.to_string());
+    let write_error = |err: std::io::Error| internal(format!("Could not save {filename}: {err}"));
+    if let FileKind::Config = kind {
+        let data = field.bytes().await.map_err(read_error)?;
+        let content = files::sanitize_uploaded_config(&data);
+        return tokio::fs::write(path, content).await.map_err(write_error);
     }
-    Ok(files)
+    let mut file = tokio::fs::File::create(path).await.map_err(write_error)?;
+    while let Some(chunk) = field.chunk().await.map_err(read_error)? {
+        file.write_all(&chunk).await.map_err(write_error)?;
+    }
+    file.flush().await.map_err(write_error)
 }
 
 /// Store files in a folder. Uploaded configs have their coefficient and audio
@@ -1431,19 +1430,33 @@ async fn uploaded_files(
 pub async fn upload_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
-    Multipart(multipart): Multipart,
+    Multipart(mut multipart): Multipart,
 ) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
     files::require_directory(&folder).map_err(internal)?;
-    let transform: fn(&[u8]) -> Vec<u8> = match kind {
-        FileKind::Config => files::sanitize_uploaded_config,
-        FileKind::Coeff | FileKind::Audiofile => <[u8]>::to_vec,
-    };
-    for (filename, data) in uploaded_files(multipart).await? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|err| bad_request(err.to_string()))?
+    {
+        if field.name() != Some("files") {
+            continue;
+        }
+        let filename = field.file_name().unwrap_or_default().to_string();
         let path = file_in_folder(&folder, &filename).map_err(bad_request)?;
-        tokio::fs::write(&path, transform(&data))
-            .await
-            .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
+        // Written to a hidden file next to it and renamed into place when
+        // complete, so a failed upload leaves an existing file as it was.
+        let partial = file_in_folder(&folder, &format!(".{filename}.part")).map_err(bad_request)?;
+        let mut saved = save_upload(kind, field, &partial, &filename).await;
+        if saved.is_ok() {
+            saved = tokio::fs::rename(&partial, &path)
+                .await
+                .map_err(|err| internal(format!("Could not save {filename}: {err}")));
+        }
+        if saved.is_err() {
+            let _ = tokio::fs::remove_file(&partial).await;
+        }
+        saved?;
     }
     Ok(NoContent)
 }

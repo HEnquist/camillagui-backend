@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 from textwrap import dedent
 
@@ -411,6 +412,34 @@ def test_upload_and_delete(server, kind, getfile):
     assert resp.body == filedata.encode()
     assert server.post(f"/api/files/{kind}/delete", json_body={"names": [filename]}).status == 204
     assert server.get(getfile + filename).status == 404
+
+
+def test_upload_large_binary_file(server):
+    filedata = random.randbytes(3_000_000)
+    assert server.upload("/api/files/coeff/upload", "large.raw", filedata).status == 204
+    try:
+        assert server.get("/coeff/large.raw").body == filedata
+    finally:
+        server.post("/api/files/coeff/delete", json_body={"names": ["large.raw"]})
+
+
+def test_failed_upload_keeps_the_existing_file(server):
+    assert server.upload("/api/files/coeff/upload", "kept.raw", b"original").status == 204
+    try:
+        boundary = uuid.uuid4().hex
+        # The form ends in the middle of the file, as when an upload is cut off.
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="files"; filename="kept.raw"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n"
+        ).encode() + b"replacement, cut off"
+        headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+        resp = server.post("/api/files/coeff/upload", data=body, headers=headers)
+        assert resp.status == 400
+        assert server.get("/coeff/kept.raw").body == b"original"
+        assert not list(server.config_dir.glob(".*.part"))
+    finally:
+        server.post("/api/files/coeff/delete", json_body={"names": ["kept.raw"]})
 
 
 def test_upload_needs_a_form(server):
