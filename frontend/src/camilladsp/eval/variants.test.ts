@@ -3,7 +3,7 @@
  *
  * The filter types live in camilladsp-schema, in Rust, while the evaluator
  * lives here. `fixtures/variants.json` holds a case for every filter type,
- * subtype and optional parameter, and the backend's `rust/src/filter_variants.rs`
+ * subtype and optional parameter, and the backend's `api/src/filter_variants.rs`
  * fails when camilladsp-schema gains one the fixture does not cover, so a new
  * filter parameter has to show up here, and this test fails if the evaluator
  * does not handle it.

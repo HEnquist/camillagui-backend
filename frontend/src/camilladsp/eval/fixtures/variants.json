@@ -1,5 +1,5 @@
 {
- "maintained_by": "hand, checked against camilladsp-schema by rust/src/filter_variants.rs",
+ "maintained_by": "hand, checked against camilladsp-schema by api/src/filter_variants.rs",
  "volume": -45.0,
  "variants": [
   {

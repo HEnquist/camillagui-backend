@@ -17,7 +17,7 @@ jobs:
         cache: npm
         cache-dependency-path: frontend/package-lock.json
     - run: npm ci
-    # The backend's test checks rust/openapi.json against the code, this checks the types
+    # The backend's test checks api/openapi.json against the code, this checks the types
     # generated from it.
     - name: Check that the API types are current
       run: |
@@ -51,15 +51,15 @@ jobs:
         components: clippy, rustfmt
 
     - name: Check formatting
-      working-directory: rust
+      working-directory: api
       run: cargo fmt --check
 
     - name: Clippy
-      working-directory: rust
+      working-directory: api
       run: cargo clippy --all-targets -- -D warnings
 
     - name: Unit tests
-      working-directory: rust
+      working-directory: api
       run: cargo test
 
     - name: Setup Python
@@ -73,7 +73,7 @@ jobs:
         python -m playwright install --with-deps --only-shell chromium
 
     - name: API and GUI tests
-      run: python -m pytest rust/api_tests
+      run: python -m pytest api/api_tests
 
   build:
     name: Build ${{ matrix.asset }}
@@ -129,12 +129,12 @@ jobs:
 
     - name: Build with zig
       if: matrix.zig
-      working-directory: rust
+      working-directory: api
       run: cargo zigbuild --release --target ${{ matrix.target }}
 
     - name: Build
       if: ${{ !matrix.zig }}
-      working-directory: rust
+      working-directory: api
       run: cargo build --release --target ${{ matrix.target }}
 
     # A release is the binary, with the default settings in config/ next to
@@ -144,7 +144,7 @@ jobs:
       run: |
         mkdir -p package/config
         cp config/camillagui.yml config/gui-config.yml package/config/
-        cp rust/target/${{ matrix.target }}/release/camillagui* package/
+        cp api/target/${{ matrix.target }}/release/camillagui* package/
         rm -f package/camillagui.d package/camillagui.pdb
         if [[ "${{ matrix.asset }}" == *.zip ]]; then
           (cd package && 7z a ../${{ matrix.asset }} .)

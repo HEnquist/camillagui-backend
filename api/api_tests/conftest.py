@@ -12,7 +12,7 @@ Run from the repository root with the backend's venv:
 
     .venv/bin/python -m pip install pytest aiohttp PyYAML playwright
     .venv/bin/python -m playwright install --only-shell chromium
-    .venv/bin/python -m pytest rust/api_tests
+    .venv/bin/python -m pytest api/api_tests
 """
 
 import json
@@ -62,8 +62,8 @@ def rust_binary():
     explicit = os.environ.get("CAMILLAGUI_BIN")
     if explicit:
         return explicit
-    subprocess.run(["cargo", "build"], cwd=REPO / "rust", check=True)
-    return str(REPO / "rust" / "target" / "debug" / "camillagui")
+    subprocess.run(["cargo", "build"], cwd=REPO / "api", check=True)
+    return str(REPO / "api" / "target" / "debug" / "camillagui")
 
 
 class Backend:

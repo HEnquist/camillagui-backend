@@ -1,6 +1,6 @@
 /**
  * The client for the backend's API. Its types are generated from the backend's spec,
- * `rust/openapi.json`, into `schema.ts` by `npm run generate-api`, so tsc checks the path, the
+ * `api/openapi.json`, into `schema.ts` by `npm run generate-api`, so tsc checks the path, the
  * parameters, the body and the response of every call against what the backend has.
  */
 import createClient from "openapi-fetch"

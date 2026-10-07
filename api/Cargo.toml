@@ -7,7 +7,7 @@ edition = "2024"
 axum = { version = "0.8.9", features = ["multipart"] }
 # From git rather than crates.io, so a GUI build never waits for a publish: a branch while
 # developing, a camilladsp tag for a release. To build against a local checkout instead, put
-# this in rust/.cargo/config.toml:
+# this in api/.cargo/config.toml:
 # [patch."https://github.com/HEnquist/camilladsp"]
 # camilladsp-schema = { path = "/path/to/camilladsp/camilladsp-schema" }
 camilladsp-schema = { version = "5.0.0", git = "https://github.com/HEnquist/camilladsp", branch = "config_crate", features = ["pipewire-backend", "utoipa"] }

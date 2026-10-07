@@ -2,7 +2,7 @@
 
 The web GUI for CamillaDSP. Targets CamillaDSP 5.0.x.
 
-- `rust/` is the backend: an axum server that bridges the browser to a running CamillaDSP over
+- `api/` is the backend: an axum server that bridges the browser to a running CamillaDSP over
   its websocket, serves the config, coefficient and audio file folders, and embeds the frontend
   build in the binary. It replaced the Python backend for 5.0.
 - `frontend/` is the React frontend, with its own `frontend/CLAUDE.md`. It was a separate
@@ -17,7 +17,7 @@ The web GUI for CamillaDSP. Targets CamillaDSP 5.0.x.
 # Frontend: build it first, the backend embeds frontend/build at compile time
 cd frontend && npm ci && npm run build
 
-# Backend (from rust/)
+# Backend (from api/)
 cargo build                      # or --release
 cargo test
 cargo clippy --all-targets -- -D warnings
@@ -28,11 +28,11 @@ cd frontend && npm run dev
 
 # Black-box API tests against the backend process and a fake CamillaDSP (from the repo root),
 # plus GUI tests in headless Chromium against the frontend in frontend/build (build it first).
-# The GUI tests are skipped without Playwright, see rust/api_tests/conftest.py to install it.
-.venv/bin/python -m pytest rust/api_tests
+# The GUI tests are skipped without Playwright, see api/api_tests/conftest.py to install it.
+.venv/bin/python -m pytest api/api_tests
 ```
 
-## Source layout (rust/src)
+## Source layout (api/src)
 
 ```
 main.rs        routes, startup, the file folders as static files
@@ -66,7 +66,7 @@ release does not ship one, so an upgrade always brings the current stylesheet.
 
 `/api` exists for this frontend only, it is not a public API. Change it freely when that makes
 the GUI simpler or cheaper, and change the frontend, the demo backend
-(`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `rust/api_tests` with it.
+(`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `api/api_tests` with it.
 An endpoint the frontend does not call is deleted rather than kept.
 
 Every error is a JSON `ErrorBody`: a `message`, and `result` when CamillaDSP refused a command.
@@ -80,12 +80,12 @@ request body from the `Json<T>` argument, and the query parameters from `Query<T
 `params(T)`, which still has to be listed. What the attribute adds by hand is the error responses,
 the path parameters, and the few request bodies the argument cannot give (JSON numbers and
 booleans, multipart uploads, `validateconfig`). A handler returning a plain `Response` does not
-compile. The spec is committed as `rust/openapi.json`, and the frontend generates
+compile. The spec is committed as `api/openapi.json`, and the frontend generates
 `frontend/src/api/schema.ts` from it, both its API types and its config types. After changing a
 handler, a type it uses or a type in camilladsp-schema:
 
 ```sh
-cd rust && UPDATE_OPENAPI=1 cargo test committed_spec_is_current   # rewrite rust/openapi.json
+cd api && UPDATE_OPENAPI=1 cargo test committed_spec_is_current   # rewrite api/openapi.json
 cd frontend && npm run generate-api                                # rewrite src/api/schema.ts
 ```
 
@@ -118,7 +118,7 @@ Config types, validation, coefficient reading and the websocket protocol all com
 `camilladsp-schema` crate in the camilladsp repository, so the GUI checks configs with exactly the
 code the DSP runs. It is a git dependency rather than the crates.io release, so a GUI build never
 waits for a publish: a branch while developing, a camilladsp tag for a release, pinned by
-`Cargo.lock` either way. See the comment in `rust/Cargo.toml` for building against a local
+`Cargo.lock` either way. See the comment in `api/Cargo.toml` for building against a local
 checkout. Fix validation problems there, not here.
 
 Device types: a type is allowed if the connected CamillaDSP lists it (`GetSupportedDeviceTypes`,
@@ -136,5 +136,5 @@ and returns the samples, framed as binary rather than JSON (see `coeffs::frame_c
 
 `frontend/src/camilladsp/eval/fixtures/variants.json` holds a case for every filter type,
 subtype and optional parameter, for the frontend's `variants.test.ts`. It is edited by hand.
-`rust/src/filter_variants.rs` destructures every filter type without `..`, so anything new in
+`api/src/filter_variants.rs` destructures every filter type without `..`, so anything new in
 camilladsp-schema fails to compile there, and its tests fail until the fixture covers it.

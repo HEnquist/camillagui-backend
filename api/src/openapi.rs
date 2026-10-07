@@ -1,5 +1,5 @@
 //! The OpenAPI spec of `/api`, generated from the typed handlers and served at
-//! `/api/openapi.json`. A copy is committed as `rust/openapi.json`, which the
+//! `/api/openapi.json`. A copy is committed as `api/openapi.json`, which the
 //! frontend generates its API and config types from, and a test checks that
 //! the copy is current.
 
@@ -50,14 +50,14 @@ mod tests {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("openapi.json");
         let generated = render(&crate::api().1);
         if std::env::var_os("UPDATE_OPENAPI").is_some() {
-            std::fs::write(&path, &generated).expect("rust/openapi.json is writable");
+            std::fs::write(&path, &generated).expect("api/openapi.json is writable");
             return;
         }
         let committed = std::fs::read_to_string(&path).unwrap_or_default();
         assert!(
             committed == generated,
-            "rust/openapi.json is not what the code generates. Rewrite it with \
-             `UPDATE_OPENAPI=1 cargo test committed_spec_is_current` in rust/, then run \
+            "api/openapi.json is not what the code generates. Rewrite it with \
+             `UPDATE_OPENAPI=1 cargo test committed_spec_is_current` in api/, then run \
              `npm run generate-api` in frontend/."
         );
     }

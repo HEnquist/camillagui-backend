@@ -138,7 +138,7 @@ errors.messageFor("devices", "samplerate")  // error string or undefined
 
 ## The API
 
-Every endpoint is in the backend's OpenAPI spec, `rust/openapi.json` in the repository, also
+Every endpoint is in the backend's OpenAPI spec, `api/openapi.json` in the repository, also
 served by a running backend at `/api/openapi.json`. Load it into any OpenAPI viewer to browse the
 endpoints with their parameters, bodies and responses. The API is internal to the GUI and changes
 between versions, so a custom page is checked against it at build time rather than relying on
@@ -234,22 +234,22 @@ call on every render.
 ## Adding a custom backend endpoint
 
 Most custom pages will not need this — they work entirely with the existing API. But if you need
-something the backend doesn't expose, you need to add an endpoint to the backend, in `rust/`.
+something the backend doesn't expose, you need to add an endpoint to the backend, in `api/`.
 
-1. Add a handler function in `rust/src/api.rs` (or a new module), with a `#[utoipa::path]`
+1. Add a handler function in `api/src/api.rs` (or a new module), with a `#[utoipa::path]`
    attribute, like the handlers already there. It returns one of the reply types in
-   `rust/src/reply.rs`, for example `ApiResult<Reply<MyAnswer>>`, which is what the spec says it
+   `api/src/reply.rs`, for example `ApiResult<Reply<MyAnswer>>`, which is what the spec says it
    sends. Its request and response types derive `ToSchema`, and a response type also goes in
    `named_bodies!` in `reply.rs`.
-2. Register it with `.routes(routes!(api::my_handler))` in `api_routes` in `rust/src/main.rs`,
+2. Register it with `.routes(routes!(api::my_handler))` in `api_routes` in `api/src/main.rs`,
    which also puts it in the spec. The routes there are nested under `/api`.
 3. The handler can call the running DSP through `app.camilla`, the `CamillaClient` in
-   `rust/src/camilla.rs`. Filter evaluation runs in the browser, so import `evalFilter` from
+   `api/src/camilla.rs`. Filter evaluation runs in the browser, so import `evalFilter` from
    `camilladsp/eval` in the page itself rather than adding an endpoint for it.
 4. Regenerate the spec and the frontend's types, so the page can call the endpoint through `api`:
-   `UPDATE_OPENAPI=1 cargo test committed_spec_is_current` in `rust/`, then
+   `UPDATE_OPENAPI=1 cargo test committed_spec_is_current` in `api/`, then
    `npm run generate-api` in `frontend/`.
-5. Rebuild the backend, `cargo build --release` in `rust/`.
+5. Rebuild the backend, `cargo build --release` in `api/`.
 
 ## Available UI components
 

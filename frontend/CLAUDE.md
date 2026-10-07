@@ -13,7 +13,7 @@ npm run check        # tsc --noEmit only
 npm test             # vitest (watch mode)
 npm run lint         # eslint
 npm run format       # prettier
-npm run generate-api # src/api/schema.ts from ../rust/openapi.json
+npm run generate-api # src/api/schema.ts from ../api/openapi.json
 ```
 
 Node >= 22 required (see `.nvmrc`, and CI runs 24.x).
@@ -26,7 +26,7 @@ guiconfig.ts                # GuiConfig (generated) + defaults (fetched from /ap
 index.css                   # All CSS (CSS variables in public/css-variables.css)
 
 api/
-  schema.ts                 # Generated from ../rust/openapi.json, do not edit
+  schema.ts                 # Generated from ../api/openapi.json, do not edit
   client.ts                 # openapi-fetch client on the generated paths
 
 camilladsp/                 # Domain types + status polling
@@ -106,7 +106,7 @@ utilities/
 ## API
 
 All requests go to `/api/*` (proxied to the backend in dev). The full list is the backend's
-OpenAPI spec, `../rust/openapi.json`.
+OpenAPI spec, `../api/openapi.json`.
 
 `src/api/schema.ts` is generated from the spec by openapi-typescript. Call the API through `api`
 in `src/api/client.ts` (openapi-fetch), so tsc checks the path, parameters, body and response.
@@ -189,7 +189,7 @@ Four test files cover it:
 - `variants.test.ts` evaluates a case for every filter type, subtype and optional parameter, from
   `fixtures/variants.json`. **The filter types are in Rust (camilladsp-schema) and the evaluator
   is in TypeScript**, so this is the only thing keeping them coupled. The fixture is edited by
-  hand, and the backend's `rust/src/filter_variants.rs` fails to compile or fails its tests when
+  hand, and the backend's `api/src/filter_variants.rs` fails to compile or fails its tests when
   camilladsp-schema has something the fixture does not cover.
 - `eval.test.ts` covers the plumbing rather than the numbers: the coefficient cache, combining a
   whole pipeline step, and the samplerate and channel options a step offers.

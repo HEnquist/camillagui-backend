@@ -6,7 +6,7 @@ This version works with CamillaDSP 5.0.x.
 
 The complete GUI is made up of two parts, both in this repository:
 - a frontend based on React: https://reactjs.org/, in the `frontend` directory
-- a backend written in Rust, in the `rust` directory
+- a backend written in Rust, in the `api` directory
 
 The backend is a single executable with the frontend built into it.
 It validates configs with the same code as CamillaDSP itself.
@@ -373,22 +373,22 @@ Options:
 The backend embeds the frontend, so build that first:
 ```sh
 cd frontend && npm ci && npm run build
-cd ../rust && cargo build --release
+cd ../api && cargo build --release
 ```
-The executable is then `rust/target/release/camillagui`.
+The executable is then `api/target/release/camillagui`.
 There are no C dependencies, so cross compiling needs no C toolchain for the target.
 The releases are built with [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild),
 which links static Linux executables against musl.
 
 ### Running the tests
 ```sh
-cd rust && cargo test
+cd api && cargo test
 ```
 
-The API tests in `rust/api_tests` run the backend as a separate process against a fake CamillaDSP,
+The API tests in `api/api_tests` run the backend as a separate process against a fake CamillaDSP,
 and need Python with `pytest`, `aiohttp` and `PyYAML`:
 ```sh
-python -m pytest rust/api_tests
+python -m pytest api/api_tests
 ```
 
 ## Contributing
