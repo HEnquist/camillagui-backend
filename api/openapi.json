@@ -584,7 +584,7 @@
     },
     "/api/getconfig": {
       "get": {
-        "summary": "The config CamillaDSP runs, with the file paths as CamillaDSP has them,\nnull if it has none.",
+        "summary": "The config CamillaDSP runs, null if it has none. The file paths are\nrelative to the configured folders, as for a config file.",
         "operationId": "get_config",
         "responses": {
           "200": {

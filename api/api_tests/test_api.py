@@ -1247,11 +1247,23 @@ def test_set_config_with_separate_folders(split_files, paths, folder):
     assert resp.status == 204, resp.text
     absolute = absolute_file_paths(server, folder)
     assert file_paths(server.fake.state["config"]) == absolute
-    # The running config, as the GUI reads it back, can be applied again.
+    # The GUI reads the running config back with its paths as it set them,
+    # and can apply it again.
     running = server.get("/api/getconfig").json()
+    assert file_paths(running) == paths
     resp = server.post("/api/setconfig", json_body={"config": running})
     assert resp.status == 204, resp.text
     assert file_paths(server.fake.state["config"]) == absolute
+
+
+@pytest.mark.parametrize("paths, folder", SPLIT_PATHS)
+def test_start_config_from_dsp_with_separate_folders(split_files, paths, folder):
+    server = split_files
+    resp = server.post("/api/setconfig", json_body={"config": split_config(server, *paths)})
+    assert resp.status == 204, resp.text
+    start = server.get("/api/getstartconfig").json()
+    assert start["source"] == "dsp"
+    assert file_paths(start["config"]) == paths
 
 
 @pytest.mark.parametrize("paths, folder", SPLIT_PATHS)

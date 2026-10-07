@@ -495,8 +495,8 @@ pub async fn get_defaults_for_coeffs(
 
 // ── The active config ──────────────────────────────────────────────────────
 
-/// The config CamillaDSP runs, with the file paths as CamillaDSP has them,
-/// null if it has none.
+/// The config CamillaDSP runs, null if it has none. The file paths are
+/// relative to the configured folders, as for a config file.
 #[utoipa::path(
     get,
     path = "/getconfig",
@@ -506,7 +506,11 @@ pub async fn get_defaults_for_coeffs(
     )
 )]
 pub async fn get_config(State(app): Shared) -> ApiResult<Reply<Option<Configuration>>> {
-    Ok(Reply(app.camilla.config().await?))
+    let config = match app.camilla.config().await? {
+        Some(config) => Some(dsp_config_for_gui(&app, &config).map_err(internal)?),
+        None => None,
+    };
+    Ok(Reply(config))
 }
 
 /// The paths in a config from the frontend that are outside the configured
@@ -704,12 +708,21 @@ fn check_finite(parsed: &yaml::Parsed) -> Result<(), String> {
     }
 }
 
-/// A config read from a file, as the GUI wants it: optional fields filled in,
-/// coefficient files in coeff_dir as bare names and the rest relative to
-/// config_dir, and audio files in audiofiles_dir relative to it.
+/// A config read from a file, as the GUI wants it.
 fn config_for_gui(app: &AppState, parsed: yaml::Parsed) -> Result<Configuration, String> {
     check_finite(&parsed)?;
-    let mut config = parsed.value;
+    with_relative_paths(app, parsed.value)
+}
+
+/// The config CamillaDSP runs, as the GUI wants it, the same as for a file.
+fn dsp_config_for_gui(app: &AppState, config: &Configuration) -> Result<Configuration, String> {
+    with_relative_paths(app, to_json(config))
+}
+
+/// A config as the GUI wants it: optional fields filled in, coefficient files
+/// in coeff_dir as bare names and the rest relative to config_dir, and audio
+/// files in audiofiles_dir relative to it.
+fn with_relative_paths(app: &AppState, mut config: Value) -> Result<Configuration, String> {
     paths::make_config_filter_paths_relative(
         &mut config,
         &app.settings.config_dir,
@@ -1288,7 +1301,13 @@ pub struct StartConfig {
 )]
 pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult<Reply<StartConfig>> {
     // An unreadable config is logged by the client.
-    if let Ok(Some(config)) = app.camilla.config().await {
+    let dsp_config = match app.camilla.config().await {
+        Ok(Some(config)) => dsp_config_for_gui(&app, &config)
+            .inspect_err(|err| log::error!("Failed to read the config from CamillaDSP: {err}"))
+            .ok(),
+        _ => None,
+    };
+    if let Some(config) = dsp_config {
         let mut name = active_config_name(&app).await;
         if name.is_none() {
             name = app

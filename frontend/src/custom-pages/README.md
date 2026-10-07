@@ -152,7 +152,8 @@ Vite proxy forwards `/api/*` automatically.
 ```ts
 import { api, errorMessage, Schemas } from "../api/client"
 
-// The config CamillaDSP runs, not the GUI's edited version
+// The config CamillaDSP runs, not the GUI's edited version. File paths are relative to the
+// configured folders, as the GUI has them
 const { data: running } = await api.GET("/api/getconfig")
 
 // Status values: capture rate, buffer level, processing load and so on

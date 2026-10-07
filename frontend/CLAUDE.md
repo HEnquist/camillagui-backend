@@ -123,7 +123,8 @@ that comes from the backend goes through `completeConfig`, which says so to tsc.
 
 Key endpoints used by the frontend:
 - `GET /api/guiconfig`: GuiConfig JSON
-- `GET /api/getconfig`: current CamillaDSP config as JSON
+- `GET /api/getconfig`: current CamillaDSP config as JSON, with the file paths relative to the
+  configured folders like every other config the GUI gets
 - `POST /api/setconfig`: push config to running DSP `{config}`
 - `POST /api/saveconfigfile`: save config to disk `{filename, config}`
 - `POST /api/validateconfig`: the config's issues, `{path, message, severity}`, none if valid

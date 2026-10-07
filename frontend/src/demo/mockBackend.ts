@@ -673,7 +673,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/getconfig" && method === "GET") {
-    return jsonResponse(cloneConfig(state.currentConfig))
+    return jsonResponse(demoStripAudioPaths(cloneConfig(state.currentConfig)))
   }
 
   if (pathname === "/api/setconfig" && method === "POST") {

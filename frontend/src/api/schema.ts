@@ -256,8 +256,8 @@ export interface paths {
       cookie?: never
     }
     /**
-     * The config CamillaDSP runs, with the file paths as CamillaDSP has them,
-     *     null if it has none.
+     * The config CamillaDSP runs, null if it has none. The file paths are
+     *     relative to the configured folders, as for a config file.
      */
     get: operations["get_config"]
     put?: never
