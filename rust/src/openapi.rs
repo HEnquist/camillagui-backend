@@ -61,4 +61,35 @@ mod tests {
              `npm run generate-api` in frontend/."
         );
     }
+
+    fn collect_refs(value: &serde_json::Value, refs: &mut Vec<String>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                if let Some(serde_json::Value::String(target)) = map.get("$ref") {
+                    refs.push(target.clone());
+                }
+                map.values().for_each(|v| collect_refs(v, refs));
+            }
+            serde_json::Value::Array(items) => items.iter().for_each(|v| collect_refs(v, refs)),
+            _ => {}
+        }
+    }
+
+    /// A response body type missing from `named_bodies!` in `reply.rs` does not
+    /// compile, but a schema it refers to could still be left out.
+    #[test]
+    fn every_reference_resolves() {
+        let spec = serde_json::to_value(crate::api().1).unwrap();
+        let mut refs = Vec::new();
+        collect_refs(&spec, &mut refs);
+        let schemas = spec["components"]["schemas"].as_object().unwrap();
+        let missing: Vec<&String> = refs
+            .iter()
+            .filter(|target| {
+                let name = target.trim_start_matches("#/components/schemas/");
+                !schemas.contains_key(name)
+            })
+            .collect();
+        assert!(missing.is_empty(), "unresolved references: {missing:?}");
+    }
 }

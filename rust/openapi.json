@@ -11,11 +11,11 @@
   "paths": {
     "/api/backends": {
       "get": {
-        "summary": "The device types CamillaDSP supports. They cannot change while it runs, so\nthis comes from the cache.",
+        "summary": "The device types CamillaDSP supports, null until it has been reached. They\ncannot change while it runs, so this comes from the cache.",
         "operationId": "get_backends",
         "responses": {
           "200": {
-            "description": "Null until CamillaDSP has been reached",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -51,6 +51,7 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -110,6 +111,7 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -148,6 +150,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -184,6 +187,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -242,6 +246,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -289,6 +294,7 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -326,6 +332,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -376,7 +383,7 @@
         },
         "responses": {
           "204": {
-            "description": "Deleted"
+            "description": "Done"
           },
           "404": {
             "description": "No audiofiles_dir is set",
@@ -427,7 +434,7 @@
         },
         "responses": {
           "204": {
-            "description": "Renamed"
+            "description": "Done"
           },
           "400": {
             "description": "A file name is not valid, the new name is taken, or the file could not be renamed",
@@ -478,7 +485,7 @@
         },
         "responses": {
           "204": {
-            "description": "Stored"
+            "description": "Done"
           },
           "400": {
             "description": "A file name is not valid",
@@ -539,6 +546,7 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -578,6 +586,7 @@
         "operationId": "get_active_config_name",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -591,11 +600,11 @@
     },
     "/api/getconfig": {
       "get": {
-        "summary": "The config CamillaDSP runs, with the file paths as CamillaDSP has them.",
+        "summary": "The config CamillaDSP runs, with the file paths as CamillaDSP has them,\nnull if it has none.",
         "operationId": "get_config",
         "responses": {
           "200": {
-            "description": "The config, null if CamillaDSP has none",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -650,6 +659,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -687,6 +697,7 @@
         "operationId": "get_default_config_file",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -724,6 +735,7 @@
         "operationId": "get_config_at_gui_start",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -761,6 +773,7 @@
         "operationId": "get_gui_config",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -774,12 +787,12 @@
     },
     "/api/levels": {
       "get": {
-        "summary": "The VU levels, as a stream of `levels` events.",
+        "summary": "The VU levels, as a stream of `levels` events, one for each update from\nCamillaDSP.",
         "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. Smoothing and rate come from the settings.",
         "operationId": "get_levels",
         "responses": {
           "200": {
-            "description": "A `levels` event for each update from CamillaDSP",
+            "description": "Server-sent events",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -807,6 +820,7 @@
         "operationId": "get_log_file",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
@@ -834,6 +848,7 @@
         "operationId": "get_faders",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -876,7 +891,7 @@
         ],
         "requestBody": {
           "content": {
-            "text/plain": {
+            "application/json": {
               "schema": {
                 "type": "boolean"
               }
@@ -886,7 +901,7 @@
         },
         "responses": {
           "204": {
-            "description": "Set"
+            "description": "Done"
           },
           "default": {
             "description": "CamillaDSP cannot be reached, or refused",
@@ -919,7 +934,7 @@
         ],
         "requestBody": {
           "content": {
-            "text/plain": {
+            "application/json": {
               "schema": {
                 "type": "number",
                 "format": "float"
@@ -930,7 +945,7 @@
         },
         "responses": {
           "204": {
-            "description": "Set"
+            "description": "Done"
           },
           "default": {
             "description": "CamillaDSP cannot be reached, or refused",
@@ -951,8 +966,9 @@
         "operationId": "get_mute",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "type": "boolean"
                 }
@@ -976,7 +992,7 @@
         "operationId": "set_mute",
         "requestBody": {
           "content": {
-            "text/plain": {
+            "application/json": {
               "schema": {
                 "type": "boolean"
               }
@@ -986,7 +1002,7 @@
         },
         "responses": {
           "204": {
-            "description": "Set"
+            "description": "Done"
           },
           "default": {
             "description": "CamillaDSP cannot be reached, or refused",
@@ -1007,8 +1023,9 @@
         "operationId": "get_volume",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
-              "text/plain": {
+              "application/json": {
                 "schema": {
                   "type": "number",
                   "format": "float"
@@ -1033,7 +1050,7 @@
         "operationId": "set_volume",
         "requestBody": {
           "content": {
-            "text/plain": {
+            "application/json": {
               "schema": {
                 "type": "number",
                 "format": "float"
@@ -1044,7 +1061,7 @@
         },
         "responses": {
           "204": {
-            "description": "Set"
+            "description": "Done"
           },
           "default": {
             "description": "CamillaDSP cannot be reached, or refused",
@@ -1075,7 +1092,7 @@
         },
         "responses": {
           "204": {
-            "description": "Saved"
+            "description": "Done"
           },
           "400": {
             "description": "The file name is not valid",
@@ -1126,7 +1143,7 @@
         },
         "responses": {
           "204": {
-            "description": "Set"
+            "description": "Done"
           },
           "400": {
             "description": "The file name is not valid",
@@ -1167,7 +1184,7 @@
         },
         "responses": {
           "204": {
-            "description": "Applied"
+            "description": "Done"
           },
           "403": {
             "description": "The config has paths outside the configured folders",
@@ -1204,7 +1221,7 @@
     },
     "/api/spectrum": {
       "get": {
-        "summary": "The spectrum, as a stream of `spectrum` events.",
+        "summary": "The spectrum, as a stream of `spectrum` events, one for each update from\nCamillaDSP.",
         "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. The parameters come in the query string, since an EventSource\ncan only GET.",
         "operationId": "get_spectrum",
         "parameters": [
@@ -1281,7 +1298,7 @@
         ],
         "responses": {
           "200": {
-            "description": "A `spectrum` event for each update from CamillaDSP",
+            "description": "Server-sent events",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -1306,11 +1323,11 @@
     "/api/state": {
       "get": {
         "summary": "The processing state, as a stream of `state` events.",
-        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. It starts with the current state.",
+        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. It starts with a `state` event with the current state, then\nhas one for each change.",
         "operationId": "get_state",
         "responses": {
           "200": {
-            "description": "A `state` event with the current state, then one for each change",
+            "description": "Server-sent events",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -1339,6 +1356,7 @@
         "operationId": "get_status",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1356,7 +1374,7 @@
         "operationId": "stop_processing",
         "responses": {
           "204": {
-            "description": "Stopped"
+            "description": "Done"
           },
           "400": {
             "description": "CamillaDSP refused",
@@ -1383,8 +1401,8 @@
     },
     "/api/validateconfig": {
       "post": {
-        "summary": "Check a config without applying it, with the file paths as the GUI has\nthem.",
-        "description": "The body is meant to be a config, but any JSON is taken, since a config\nthat does not parse is reported as an issue like any other.",
+        "summary": "Check a config without applying it, with the file paths as the GUI has\nthem. Answers every issue, none if the config is valid.",
+        "description": "The body is meant to be a config, but any JSON is taken, since a config\nthat does not parse is reported as an issue like any other. This is the\none request body the spec does not take from the handler.",
         "operationId": "validate_config",
         "requestBody": {
           "content": {
@@ -1398,7 +1416,7 @@
         },
         "responses": {
           "200": {
-            "description": "Every issue, none if the config is valid",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1440,6 +1458,7 @@
         ],
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1487,6 +1506,7 @@
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {

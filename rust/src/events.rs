@@ -6,10 +6,11 @@
 //! ends the subscription when the socket closes.
 
 use crate::camilla::{self, CamillaClient, DspError, Ws, check};
-use axum::response::sse::{Event, KeepAlive, KeepAliveStream, Sse};
+use crate::reply::EventStream;
+use axum::response::sse::{Event, KeepAlive, Sse};
 use camilladsp_config::protocol::{
-    ProcessingState, SpectrumSubscription, StateUpdate, VuSubscription, WsCommand, WsReply,
-    WsResult,
+    ProcessingState, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
+    WsCommand, WsReply, WsResult,
 };
 use futures_util::{Stream, StreamExt, stream};
 use serde::Deserialize;
@@ -32,11 +33,14 @@ impl From<DspError> for SubscribeError {
     }
 }
 
+// The values are passed on as CamillaDSP sent them, unparsed, so the payload
+// types here are what CamillaDSP's protocol says these events carry.
+
 /// The VU levels, as `levels` events with CamillaDSP's VuLevels in them.
 pub async fn level_stream(
     url: &str,
     subscription: VuSubscription,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
+) -> Result<EventStream<VuLevels>, SubscribeError> {
     let command = WsCommand::SubscribeVuLevels {
         value: subscription,
     };
@@ -49,7 +53,7 @@ pub async fn level_stream(
 pub async fn spectrum_stream(
     url: &str,
     params: SpectrumSubscription,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
+) -> Result<EventStream<SpectrumData>, SubscribeError> {
     let command = WsCommand::SubscribeSpectrum { value: params };
     Ok(sse(
         event_stream(url, command, "SpectrumEvent", "spectrum").await?
@@ -62,7 +66,7 @@ pub async fn spectrum_stream(
 /// between comes as an event rather than being lost.
 pub async fn state_stream(
     camilla: &CamillaClient,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
+) -> Result<EventStream<StateUpdate>, SubscribeError> {
     let events = event_stream(
         camilla.url(),
         WsCommand::SubscribeState,
@@ -81,14 +85,16 @@ pub async fn state_stream(
     Ok(sse(stream::once(async { Ok(first) }).chain(events)))
 }
 
-fn sse<S>(events: S) -> Sse<KeepAliveStream<S>>
+fn sse<T, S>(events: S) -> EventStream<T>
 where
     S: Stream<Item = Result<Event, Infallible>> + Send + 'static,
 {
-    Sse::new(events).keep_alive(
-        KeepAlive::new()
-            .interval(Duration::from_secs(15))
-            .text("keepalive"),
+    EventStream::new(
+        Sse::new(events).keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("keepalive"),
+        ),
     )
 }
 

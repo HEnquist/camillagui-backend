@@ -237,8 +237,10 @@ Most custom pages will not need this — they work entirely with the existing AP
 something the backend doesn't expose, you need to add an endpoint to the backend, in `rust/`.
 
 1. Add a handler function in `rust/src/api.rs` (or a new module), with a `#[utoipa::path]`
-   attribute describing it, like the handlers already there. Its request and response types
-   derive `ToSchema`.
+   attribute, like the handlers already there. It returns one of the reply types in
+   `rust/src/reply.rs`, for example `ApiResult<Reply<MyAnswer>>`, which is what the spec says it
+   sends. Its request and response types derive `ToSchema`, and a response type also goes in
+   `named_bodies!` in `reply.rs`.
 2. Register it with `.routes(routes!(api::my_handler))` in `api_routes` in `rust/src/main.rs`,
    which also puts it in the spec. The routes there are nested under `/api`.
 3. The handler can call the running DSP through `app.camilla`, the `CamillaClient` in

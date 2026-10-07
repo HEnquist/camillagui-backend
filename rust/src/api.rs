@@ -6,6 +6,7 @@ use crate::events::{self, SubscribeError};
 use crate::extract::{Json, Multipart, Path as UrlPath, Query};
 use crate::files::{self, ConfigContext, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
+use crate::reply::{Binary, EventStream, NO_STORE, NoContent, Reply, Text};
 use crate::settings::{self, GuiConfig, Settings};
 use crate::status::Status;
 use crate::status::StatusCache;
@@ -14,7 +15,7 @@ use crate::wav::WavInfo;
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::{HeaderValue, StatusCode, header};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use camilladsp_config::config::{
     CaptureDevice, Configuration, ConvParameters, Filter, FiniteF32, FiniteF64, Mixer, PathElement,
@@ -54,8 +55,6 @@ impl AppState {
 
 type Shared = State<Arc<AppState>>;
 
-const NO_STORE: (header::HeaderName, &str) = (header::CACHE_CONTROL, "no-store");
-
 /// The body of every error response.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorBody {
@@ -66,14 +65,6 @@ pub struct ErrorBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
 }
-
-// Describes a binary body in the spec, where a `Vec<u8>` would be an array of
-// numbers.
-/// Raw bytes, not JSON.
-#[derive(ToSchema)]
-#[schema(value_type = String, format = Binary)]
-#[allow(dead_code, reason = "only describes a body in the spec")]
-pub struct Binary(Vec<u8>);
 
 /// An error response: a status, and an `ErrorBody`.
 #[derive(Debug)]
@@ -131,19 +122,9 @@ impl From<DspError> for ApiError {
     }
 }
 
-type ApiResult = Result<Response, ApiError>;
-
-fn json_response(value: impl serde::Serialize) -> Response {
-    ([NO_STORE], axum::Json(value)).into_response()
-}
-
-fn text_response(text: impl Into<String>) -> Response {
-    ([NO_STORE], text.into()).into_response()
-}
-
-fn no_content() -> ApiResult {
-    Ok((StatusCode::NO_CONTENT, [NO_STORE]).into_response())
-}
+/// What a handler answers. Its type is what the spec says the handler sends,
+/// see `reply.rs`.
+type ApiResult<T> = Result<T, ApiError>;
 
 /// Run blocking file work off the async threads.
 async fn blocking<T: Send + 'static>(
@@ -163,30 +144,31 @@ pub async fn get_gui_index() -> Redirect {
 /// The values the GUI polls for, and the versions.
 ///
 /// CamillaDSP is asked at most once a second, however many browsers poll.
-#[utoipa::path(get, path = "/status", responses((status = 200, body = Status)))]
-pub async fn get_status(State(app): Shared) -> Response {
-    let status = app.status.refresh(&app.camilla).await;
-    json_response(status)
+#[utoipa::path(get, path = "/status")]
+pub async fn get_status(State(app): Shared) -> Reply<Status> {
+    Reply(app.status.refresh(&app.camilla).await)
 }
 
 /// The processing state, as a stream of `state` events.
 ///
 /// The stream has its own subscription, which ends when the browser closes
-/// the stream. It starts with the current state.
+/// the stream. It starts with a `state` event with the current state, then
+/// has one for each change.
 #[utoipa::path(
     get,
     path = "/state",
     responses(
-        (status = 200, content_type = "text/event-stream", body = StateUpdate,
-            description = "A `state` event with the current state, then one for each change"),
         (status = 503, description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
-pub async fn get_state(State(app): Shared) -> ApiResult {
-    event_stream_response(events::state_stream(&app.camilla).await)
+pub async fn get_state(State(app): Shared) -> ApiResult<EventStream<StateUpdate>> {
+    events::state_stream(&app.camilla)
+        .await
+        .map_err(subscribe_error)
 }
 
-/// The VU levels, as a stream of `levels` events.
+/// The VU levels, as a stream of `levels` events, one for each update from
+/// CamillaDSP.
 ///
 /// The stream has its own subscription, which ends when the browser closes
 /// the stream. Smoothing and rate come from the settings.
@@ -194,13 +176,11 @@ pub async fn get_state(State(app): Shared) -> ApiResult {
     get,
     path = "/levels",
     responses(
-        (status = 200, content_type = "text/event-stream", body = VuLevels,
-            description = "A `levels` event for each update from CamillaDSP"),
         (status = 503, description = "CamillaDSP cannot be reached, or the level stream is \
             disabled in the settings", body = ErrorBody),
     )
 )]
-pub async fn get_levels(State(app): Shared) -> ApiResult {
+pub async fn get_levels(State(app): Shared) -> ApiResult<EventStream<VuLevels>> {
     if !app.settings.enable_level_stream {
         return Err(unavailable("Level stream is disabled"));
     }
@@ -210,10 +190,13 @@ pub async fn get_levels(State(app): Shared) -> ApiResult {
         attack: 0.1 * smoothing_ms,
         release: smoothing_ms,
     };
-    event_stream_response(events::level_stream(app.camilla.url(), subscription).await)
+    events::level_stream(app.camilla.url(), subscription)
+        .await
+        .map_err(subscribe_error)
 }
 
-/// The spectrum, as a stream of `spectrum` events.
+/// The spectrum, as a stream of `spectrum` events, one for each update from
+/// CamillaDSP.
 ///
 /// The stream has its own subscription, which ends when the browser closes
 /// the stream. The parameters come in the query string, since an EventSource
@@ -223,8 +206,6 @@ pub async fn get_levels(State(app): Shared) -> ApiResult {
     path = "/spectrum",
     params(SpectrumSubscription),
     responses(
-        (status = 200, content_type = "text/event-stream", body = SpectrumData,
-            description = "A `spectrum` event for each update from CamillaDSP"),
         (status = 503, description = "Processing is not running (with the result \
             `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is \
             disabled in the settings", body = ErrorBody),
@@ -233,60 +214,53 @@ pub async fn get_levels(State(app): Shared) -> ApiResult {
 pub async fn get_spectrum(
     State(app): Shared,
     Query(params): Query<SpectrumSubscription>,
-) -> ApiResult {
+) -> ApiResult<EventStream<SpectrumData>> {
     if !app.settings.enable_level_stream {
         return Err(unavailable("Spectrum stream is disabled"));
     }
-    event_stream_response(events::spectrum_stream(app.camilla.url(), params).await)
+    events::spectrum_stream(app.camilla.url(), params)
+        .await
+        .map_err(subscribe_error)
 }
 
-fn event_stream_response(stream: Result<impl IntoResponse, SubscribeError>) -> ApiResult {
-    match stream {
-        Ok(stream) => {
-            let mut response = stream.into_response();
-            let headers = response.headers_mut();
-            headers.insert(
-                header::ACCESS_CONTROL_ALLOW_ORIGIN,
-                HeaderValue::from_static("*"),
-            );
-            // Tells nginx not to buffer the stream, which would hold the events back.
-            headers.insert("x-accel-buffering", HeaderValue::from_static("no"));
-            Ok(response)
-        }
-        Err(SubscribeError::ProcessingNotRunning) => Err(unavailable("Processing is not running")
-            .with_result("ProcessingNotRunningError".to_string())),
-        Err(SubscribeError::Other(message)) => Err(unavailable(message)),
+fn subscribe_error(err: SubscribeError) -> ApiError {
+    match err {
+        SubscribeError::ProcessingNotRunning => unavailable("Processing is not running")
+            .with_result("ProcessingNotRunningError".to_string()),
+        SubscribeError::Other(message) => unavailable(message),
     }
 }
 
 // ── Volume and faders ──────────────────────────────────────────────────────
+
+// A JSON number or boolean would be `text/plain` in the spec if the request
+// body were left to be inferred from the `Json` argument, so those say what
+// they are.
 
 /// The main volume, in dB.
 #[utoipa::path(
     get,
     path = "/param/volume",
     responses(
-        (status = 200, body = f32),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
-pub async fn get_volume(State(app): Shared) -> ApiResult {
-    Ok(json_response(app.camilla.volume().await?))
+pub async fn get_volume(State(app): Shared) -> ApiResult<Reply<f32>> {
+    Ok(Reply(app.camilla.volume().await?))
 }
 
 /// Set the main volume, in dB.
 #[utoipa::path(
     post,
     path = "/param/volume",
-    request_body = f32,
+    request_body(content = f32, content_type = "application/json"),
     responses(
-        (status = 204, description = "Set"),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
-pub async fn set_volume(State(app): Shared, Json(volume): Json<f32>) -> ApiResult {
+pub async fn set_volume(State(app): Shared, Json(volume): Json<f32>) -> ApiResult<NoContent> {
     app.camilla.set_volume(volume).await?;
-    no_content()
+    Ok(NoContent)
 }
 
 /// Whether the main volume is muted.
@@ -294,27 +268,25 @@ pub async fn set_volume(State(app): Shared, Json(volume): Json<f32>) -> ApiResul
     get,
     path = "/param/mute",
     responses(
-        (status = 200, body = bool),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
-pub async fn get_mute(State(app): Shared) -> ApiResult {
-    Ok(json_response(app.camilla.mute().await?))
+pub async fn get_mute(State(app): Shared) -> ApiResult<Reply<bool>> {
+    Ok(Reply(app.camilla.mute().await?))
 }
 
 /// Mute or unmute the main volume.
 #[utoipa::path(
     post,
     path = "/param/mute",
-    request_body = bool,
+    request_body(content = bool, content_type = "application/json"),
     responses(
-        (status = 204, description = "Set"),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
-pub async fn set_mute(State(app): Shared, Json(mute): Json<bool>) -> ApiResult {
+pub async fn set_mute(State(app): Shared, Json(mute): Json<bool>) -> ApiResult<NoContent> {
     app.camilla.set_mute(mute).await?;
-    no_content()
+    Ok(NoContent)
 }
 
 /// Every fader, the main volume first, then the aux faders from 1 up.
@@ -322,12 +294,11 @@ pub async fn set_mute(State(app): Shared, Json(mute): Json<bool>) -> ApiResult {
     get,
     path = "/param/faders",
     responses(
-        (status = 200, body = Vec<Fader>),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
-pub async fn get_faders(State(app): Shared) -> ApiResult {
-    Ok(json_response(app.camilla.faders().await?))
+pub async fn get_faders(State(app): Shared) -> ApiResult<Reply<Vec<Fader>>> {
+    Ok(Reply(app.camilla.faders().await?))
 }
 
 /// Set the volume of a fader, in dB.
@@ -335,9 +306,8 @@ pub async fn get_faders(State(app): Shared) -> ApiResult {
     post,
     path = "/param/faders/{index}/volume",
     params(("index" = usize, Path, description = "The fader, 0 for the main volume")),
-    request_body = f32,
+    request_body(content = f32, content_type = "application/json"),
     responses(
-        (status = 204, description = "Set"),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
@@ -345,9 +315,9 @@ pub async fn set_fader_volume(
     State(app): Shared,
     UrlPath(index): UrlPath<usize>,
     Json(volume): Json<f32>,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     app.camilla.set_fader_volume(index, volume).await?;
-    no_content()
+    Ok(NoContent)
 }
 
 /// Mute or unmute a fader.
@@ -355,9 +325,8 @@ pub async fn set_fader_volume(
     post,
     path = "/param/faders/{index}/mute",
     params(("index" = usize, Path, description = "The fader, 0 for the main volume")),
-    request_body = bool,
+    request_body(content = bool, content_type = "application/json"),
     responses(
-        (status = 204, description = "Set"),
         (status = "default", description = "CamillaDSP cannot be reached, or refused", body = ErrorBody),
     )
 )]
@@ -365,9 +334,9 @@ pub async fn set_fader_mute(
     State(app): Shared,
     UrlPath(index): UrlPath<usize>,
     Json(mute): Json<bool>,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     app.camilla.set_fader_mute(index, mute).await?;
-    no_content()
+    Ok(NoContent)
 }
 
 // ── Coefficients ───────────────────────────────────────────────────────────
@@ -393,9 +362,7 @@ pub struct CoeffsRequest {
 #[utoipa::path(
     post,
     path = "/convcoeffs",
-    request_body = CoeffsRequest,
     responses(
-        (status = 200, content_type = "application/octet-stream", body = inline(Binary)),
         (status = 400, description = "The filter reads no file, or the file could not be read", body = ErrorBody),
         (status = 403, description = "The file is outside the configured folders", body = ErrorBody),
         (status = 404, description = "There is no such file", body = ErrorBody),
@@ -404,7 +371,7 @@ pub struct CoeffsRequest {
 pub async fn conv_coefficients(
     State(app): Shared,
     Json(request): Json<CoeffsRequest>,
-) -> ApiResult {
+) -> ApiResult<Binary> {
     let CoeffsRequest {
         mut parameters,
         samplerate,
@@ -450,12 +417,9 @@ pub async fn conv_coefficients(
             return Err(not_found("Filter coefficient file not found"));
         }
         let (values, as_f32) = coeffs::read_coefficients(&parameters).map_err(bad_request)?;
-        let body = coeffs::frame_coefficients(options, &values, as_f32);
-        Ok((
-            [NO_STORE, (header::CONTENT_TYPE, "application/octet-stream")],
-            body,
-        )
-            .into_response())
+        Ok(Binary::new(coeffs::frame_coefficients(
+            options, &values, as_f32,
+        )))
     })
     .await
 }
@@ -473,12 +437,14 @@ pub struct WavInfoQuery {
     path = "/wavinfo",
     params(WavInfoQuery),
     responses(
-        (status = 200, body = WavInfo),
         (status = 403, description = "The file is outside audiofiles_dir", body = ErrorBody),
         (status = 404, description = "The file is not a wav file CamillaDSP can read", body = ErrorBody),
     )
 )]
-pub async fn get_wav_info(State(app): Shared, Query(query): Query<WavInfoQuery>) -> ApiResult {
+pub async fn get_wav_info(
+    State(app): Shared,
+    Query(query): Query<WavInfoQuery>,
+) -> ApiResult<Reply<WavInfo>> {
     let WavInfoQuery { filename } = query;
     let audiofiles_dir = app.audiofiles_dir();
     if !app.settings.allow_absolute_paths
@@ -498,7 +464,7 @@ pub async fn get_wav_info(State(app): Shared, Query(query): Query<WavInfoQuery>)
         None => PathBuf::from(&filename),
     };
     match wav::read_info(&path) {
-        Some(info) => Ok(json_response(info)),
+        Some(info) => Ok(Reply(info)),
         None => Err(not_found(format!(
             "'{filename}' is not a wav file CamillaDSP can read"
         ))),
@@ -514,34 +480,29 @@ pub struct CoeffDefaultsQuery {
 
 /// Sensible parameters for a Conv filter reading a coefficient file, from
 /// the file's extension.
-#[utoipa::path(
-    get,
-    path = "/defaultsforcoeffs",
-    params(CoeffDefaultsQuery),
-    responses((status = 200, body = CoeffDefaults))
-)]
+#[utoipa::path(get, path = "/defaultsforcoeffs", params(CoeffDefaultsQuery))]
 pub async fn get_defaults_for_coeffs(
     State(app): Shared,
     Query(query): Query<CoeffDefaultsQuery>,
-) -> Response {
+) -> Reply<CoeffDefaults> {
     let absolute = paths::make_absolute(&query.file, &app.settings.config_dir);
-    json_response(coeffs::defaults_for_filter(&absolute))
+    Reply(coeffs::defaults_for_filter(&absolute))
 }
 
 // ── The active config ──────────────────────────────────────────────────────
 
-/// The config CamillaDSP runs, with the file paths as CamillaDSP has them.
+/// The config CamillaDSP runs, with the file paths as CamillaDSP has them,
+/// null if it has none.
 #[utoipa::path(
     get,
     path = "/getconfig",
     responses(
-        (status = 200, body = Option<Configuration>, description = "The config, null if CamillaDSP has none"),
         (status = "default", description = "CamillaDSP cannot be reached, or sent a config the GUI \
             cannot read", body = ErrorBody),
     )
 )]
-pub async fn get_config(State(app): Shared) -> ApiResult {
-    Ok(json_response(app.camilla.config().await?))
+pub async fn get_config(State(app): Shared) -> ApiResult<Reply<Option<Configuration>>> {
+    Ok(Reply(app.camilla.config().await?))
 }
 
 /// Refuse a config with paths outside the configured folders, unless
@@ -601,18 +562,16 @@ pub struct ConfigBody {
 #[utoipa::path(
     post,
     path = "/setconfig",
-    request_body = ConfigBody,
     responses(
-        (status = 204, description = "Applied"),
         (status = 403, description = "The config has paths outside the configured folders", body = ErrorBody),
         (status = 422, description = "The body is not a config, or CamillaDSP refused it", body = ErrorBody),
         (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
-pub async fn set_config(State(app): Shared, Json(body): Json<ConfigBody>) -> ApiResult {
+pub async fn set_config(State(app): Shared, Json(body): Json<ConfigBody>) -> ApiResult<NoContent> {
     let config = config_for_dsp(&app, &body.config)?;
     match app.camilla.set_config(&config).await {
-        Ok(()) => no_content(),
+        Ok(()) => Ok(NoContent),
         Err(DspError::Command { result, message }) => {
             Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, message).with_result(result))
         }
@@ -625,40 +584,42 @@ pub async fn set_config(State(app): Shared, Json(body): Json<ConfigBody>) -> Api
     post,
     path = "/stop",
     responses(
-        (status = 204, description = "Stopped"),
         (status = 400, description = "CamillaDSP refused", body = ErrorBody),
         (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
-pub async fn stop_processing(State(app): Shared) -> ApiResult {
+pub async fn stop_processing(State(app): Shared) -> ApiResult<NoContent> {
     match app.camilla.stop().await {
-        Ok(()) => no_content(),
+        Ok(()) => Ok(NoContent),
         Err(DspError::Command { result, message }) => Err(bad_request(message).with_result(result)),
         Err(err) => Err(err.into()),
     }
 }
 
 /// Check a config without applying it, with the file paths as the GUI has
-/// them.
+/// them. Answers every issue, none if the config is valid.
 ///
 /// The body is meant to be a config, but any JSON is taken, since a config
-/// that does not parse is reported as an issue like any other.
+/// that does not parse is reported as an issue like any other. This is the
+/// one request body the spec does not take from the handler.
 #[utoipa::path(
     post,
     path = "/validateconfig",
     request_body = Configuration,
     responses(
-        (status = 200, body = Vec<ValidationIssue>, description = "Every issue, none if the config is valid"),
         (status = "default", description = "The body is not JSON", body = ErrorBody),
     )
 )]
-pub async fn validate_config(State(app): Shared, Json(config): Json<Value>) -> ApiResult {
+pub async fn validate_config(
+    State(app): Shared,
+    Json(config): Json<Value>,
+) -> ApiResult<Reply<Vec<ValidationIssue>>> {
     let config = with_absolute_paths(&app, config);
     let types = app.device_types();
     // Validation reads every coefficient file, which can take a while.
     let issues = blocking(move || Ok(validate::validate(config, &types))).await?;
     log::debug!("Validated config: {issues:?}");
-    Ok(json_response(issues))
+    Ok(Reply(issues))
 }
 
 // ── Config files ───────────────────────────────────────────────────────────
@@ -744,7 +705,6 @@ pub struct ConfigFileQuery {
     path = "/getconfigfile",
     params(ConfigFileQuery),
     responses(
-        (status = 200, body = Configuration),
         (status = 400, description = "The file is not a config the GUI can use, or could not be \
             migrated", body = ErrorBody),
         (status = 404, description = "There is no such file", body = ErrorBody),
@@ -753,7 +713,7 @@ pub struct ConfigFileQuery {
 pub async fn get_config_file(
     State(app): Shared,
     Query(query): Query<ConfigFileQuery>,
-) -> ApiResult {
+) -> ApiResult<Reply<Configuration>> {
     let ConfigFileQuery { name, migrate } = query;
     let path = file_in_folder(&app.settings.config_dir, &name).map_err(bad_request)?;
     let types = app.device_types();
@@ -763,7 +723,7 @@ pub async fn get_config_file(
         } else {
             read_config_for_gui(&app, &path).map_err(|err| err.for_file(&name))?
         };
-        Ok(json_response(config))
+        Ok(Reply(config))
     })
     .await
 }
@@ -827,12 +787,11 @@ fn read_and_migrate(
     get,
     path = "/getdefaultconfigfile",
     responses(
-        (status = 200, body = Configuration),
         (status = 404, description = "No default config is set, or the file is missing", body = ErrorBody),
         (status = 500, description = "The file is not a config the GUI can use", body = ErrorBody),
     )
 )]
-pub async fn get_default_config_file(State(app): Shared) -> ApiResult {
+pub async fn get_default_config_file(State(app): Shared) -> ApiResult<Reply<Configuration>> {
     let Some(path) = app.settings.default_config.clone().filter(|p| p.is_file()) else {
         return Err(not_found("No default config"));
     };
@@ -844,7 +803,7 @@ pub async fn get_default_config_file(State(app): Shared) -> ApiResult {
             );
             internal(err.message())
         })?;
-        Ok(json_response(config))
+        Ok(Reply(config))
     })
     .await
 }
@@ -862,21 +821,22 @@ pub struct SaveConfigBody {
 #[utoipa::path(
     post,
     path = "/saveconfigfile",
-    request_body = SaveConfigBody,
     responses(
-        (status = 204, description = "Saved"),
         (status = 400, description = "The file name is not valid", body = ErrorBody),
         (status = 403, description = "The config has paths outside the configured folders", body = ErrorBody),
         (status = "default", description = "The file could not be written", body = ErrorBody),
     )
 )]
-pub async fn save_config_file(State(app): Shared, Json(body): Json<SaveConfigBody>) -> ApiResult {
+pub async fn save_config_file(
+    State(app): Shared,
+    Json(body): Json<SaveConfigBody>,
+) -> ApiResult<NoContent> {
     let SaveConfigBody { config, filename } = body;
     let config = config_for_dsp(&app, &config)?;
     let path = file_in_folder(&app.settings.config_dir, &filename).map_err(bad_request)?;
     std::fs::write(&path, yaml::dump(&config))
         .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
-    no_content()
+    Ok(NoContent)
 }
 
 // ── Imports ────────────────────────────────────────────────────────────────
@@ -996,35 +956,33 @@ pub struct ImportText {
 #[utoipa::path(
     post,
     path = "/ymltojson",
-    request_body = ImportText,
     responses(
-        (status = 200, body = ConfigFragment),
         (status = 400, description = "The text is not YAML, or not part of a config", body = ErrorBody),
     )
 )]
-pub async fn yaml_to_json(Json(body): Json<ImportText>) -> ApiResult {
+pub async fn yaml_to_json(Json(body): Json<ImportText>) -> ApiResult<Reply<ConfigFragment>> {
     let parsed = yaml::parse(&body.text).map_err(|err| bad_request(err.to_string()))?;
     check_finite(&parsed).map_err(bad_request)?;
     let mut loaded = parsed.value;
     legacy::migrate_legacy_config(&mut loaded);
     let fragment = ConfigFragment::parse(loaded).map_err(bad_request)?;
-    Ok(json_response(fragment))
+    Ok(Reply(fragment))
 }
 
 /// Translate a Convolver config.
 #[utoipa::path(
     post,
     path = "/convolvertojson",
-    request_body = ImportText,
     responses(
-        (status = 200, body = ConfigFragment),
         (status = 400, description = "The text is not a Convolver config", body = ErrorBody),
     )
 )]
-pub async fn translate_convolver_to_json(Json(body): Json<ImportText>) -> ApiResult {
+pub async fn translate_convolver_to_json(
+    Json(body): Json<ImportText>,
+) -> ApiResult<Reply<ConfigFragment>> {
     let translated = convolver::translate(&body.text).map_err(bad_request)?;
     let fragment = ConfigFragment::parse(translated).map_err(internal)?;
-    Ok(json_response(fragment))
+    Ok(Reply(fragment))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -1039,16 +997,16 @@ pub struct EqApoImport {
 #[utoipa::path(
     post,
     path = "/eqapotojson",
-    request_body = EqApoImport,
     responses(
-        (status = 200, body = ConfigFragment),
         (status = "default", description = "The body is not valid", body = ErrorBody),
     )
 )]
-pub async fn translate_eqapo_to_json(Json(body): Json<EqApoImport>) -> ApiResult {
+pub async fn translate_eqapo_to_json(
+    Json(body): Json<EqApoImport>,
+) -> ApiResult<Reply<ConfigFragment>> {
     let translated = eqapo::EqApo::new(body.channels).translate(&body.text);
     let fragment = ConfigFragment::parse(translated).map_err(internal)?;
-    Ok(json_response(fragment))
+    Ok(Reply(fragment))
 }
 
 // ── Startup and the active config file ─────────────────────────────────────
@@ -1155,14 +1113,10 @@ pub struct ActiveConfigFile {
 }
 
 /// The active config file, the one CamillaDSP loads when it starts.
-#[utoipa::path(
-    get,
-    path = "/getactiveconfigfilename",
-    responses((status = 200, body = ActiveConfigFile))
-)]
-pub async fn get_active_config_name(State(app): Shared) -> Response {
+#[utoipa::path(get, path = "/getactiveconfigfilename")]
+pub async fn get_active_config_name(State(app): Shared) -> Reply<ActiveConfigFile> {
     let config_file_name = active_config_name(&app).await;
-    json_response(ActiveConfigFile { config_file_name })
+    Reply(ActiveConfigFile { config_file_name })
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -1176,9 +1130,7 @@ pub struct ActiveConfigBody {
 #[utoipa::path(
     post,
     path = "/setactiveconfigfile",
-    request_body = ActiveConfigBody,
     responses(
-        (status = 204, description = "Set"),
         (status = 400, description = "The file name is not valid", body = ErrorBody),
         (status = "default", description = "CamillaDSP refused", body = ErrorBody),
     )
@@ -1186,10 +1138,10 @@ pub struct ActiveConfigBody {
 pub async fn set_active_config_name(
     State(app): Shared,
     Json(body): Json<ActiveConfigBody>,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     let path = file_in_folder(&app.settings.config_dir, &body.name).map_err(bad_request)?;
     set_active_config_path(&app, &paths::to_string(&path)).await?;
-    no_content()
+    Ok(NoContent)
 }
 
 /// Where the config the GUI starts with came from.
@@ -1220,12 +1172,11 @@ pub struct StartConfig {
     get,
     path = "/getstartconfig",
     responses(
-        (status = 200, body = StartConfig),
         (status = 404, description = "There is no config to start with", body = ErrorBody),
         (status = 500, description = "No config file could be read", body = ErrorBody),
     )
 )]
-pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
+pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult<Reply<StartConfig>> {
     // An unreadable config is logged by the client.
     if let Ok(Some(config)) = app.camilla.config().await {
         let mut name = active_config_name(&app).await;
@@ -1239,7 +1190,7 @@ pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
                 .map(|path| paths::basename(&path))
                 .filter(|n| !n.is_empty());
         }
-        return Ok(json_response(StartConfig {
+        return Ok(Reply(StartConfig {
             config,
             source: ConfigSource::Dsp,
             config_file_name: name,
@@ -1282,7 +1233,7 @@ pub async fn get_config_at_gui_start(State(app): Shared) -> ApiResult {
                     first_error.get_or_insert(err.message());
                 }
                 Ok(Some(config)) => {
-                    return Ok(json_response(StartConfig {
+                    return Ok(Reply(StartConfig {
                         config,
                         source,
                         config_file_name: Some(name),
@@ -1340,11 +1291,13 @@ impl FileKind {
     path = "/files/{kind}",
     params(("kind" = FileKind, Path)),
     responses(
-        (status = 200, body = Vec<FileInfo>),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
     )
 )]
-pub async fn get_files(State(app): Shared, UrlPath(kind): UrlPath<FileKind>) -> ApiResult {
+pub async fn get_files(
+    State(app): Shared,
+    UrlPath(kind): UrlPath<FileKind>,
+) -> ApiResult<Reply<Vec<FileInfo>>> {
     let folder = kind.folder(&app)?;
     let types = app.device_types();
     blocking(move || {
@@ -1372,7 +1325,7 @@ pub async fn get_files(State(app): Shared, UrlPath(kind): UrlPath<FileKind>) -> 
                 files::list_files(&folder, details, None)
             }
         };
-        Ok(json_response(files))
+        Ok(Reply(files))
     })
     .await
 }
@@ -1419,7 +1372,6 @@ async fn uploaded_files(
     params(("kind" = FileKind, Path)),
     request_body(content = UploadForm, content_type = "multipart/form-data"),
     responses(
-        (status = 204, description = "Stored"),
         (status = 400, description = "A file name is not valid", body = ErrorBody),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
         (status = 500, description = "The folder does not exist, or a file could not be written", body = ErrorBody),
@@ -1429,7 +1381,7 @@ pub async fn upload_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
     Multipart(multipart): Multipart,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
     files::require_directory(&folder).map_err(internal)?;
     let transform: fn(&[u8]) -> Vec<u8> = match kind {
@@ -1442,7 +1394,7 @@ pub async fn upload_files(
             .await
             .map_err(|err| internal(format!("Could not save {filename}: {err}")))?;
     }
-    no_content()
+    Ok(NoContent)
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -1456,9 +1408,7 @@ pub struct FileNames {
     post,
     path = "/files/{kind}/delete",
     params(("kind" = FileKind, Path)),
-    request_body = FileNames,
     responses(
-        (status = 204, description = "Deleted"),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
         (status = "default", description = "A file could not be deleted", body = ErrorBody),
     )
@@ -1467,10 +1417,10 @@ pub async fn delete_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
     Json(body): Json<FileNames>,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
     files::delete_files(&folder, &body.names).map_err(internal)?;
-    no_content()
+    Ok(NoContent)
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -1486,9 +1436,7 @@ pub struct RenameBody {
     post,
     path = "/files/{kind}/rename",
     params(("kind" = FileKind, Path)),
-    request_body = RenameBody,
     responses(
-        (status = 204, description = "Renamed"),
         (status = 400, description = "A file name is not valid, the new name is taken, or the \
             file could not be renamed", body = ErrorBody),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
@@ -1498,10 +1446,10 @@ pub async fn rename_file(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
     Json(body): Json<RenameBody>,
-) -> ApiResult {
+) -> ApiResult<NoContent> {
     let folder = kind.folder(&app)?;
     files::rename_file(&folder, &body.source, &body.target).map_err(bad_request)?;
-    no_content()
+    Ok(NoContent)
 }
 
 /// Some of the files in a folder, as a zip file.
@@ -1509,9 +1457,7 @@ pub async fn rename_file(
     post,
     path = "/files/{kind}/zip",
     params(("kind" = FileKind, Path)),
-    request_body = FileNames,
     responses(
-        (status = 200, content_type = "application/octet-stream", body = inline(Binary)),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
         (status = "default", description = "A file could not be read", body = ErrorBody),
     )
@@ -1520,7 +1466,7 @@ pub async fn zip_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
     Json(body): Json<FileNames>,
-) -> ApiResult {
+) -> ApiResult<Binary> {
     let folder = kind.folder(&app)?;
     let zip = blocking(move || files::zip_of_files(&folder, &body.names).map_err(internal)).await?;
     let zip_name = match kind {
@@ -1528,26 +1474,18 @@ pub async fn zip_files(
         FileKind::Coeff => "coeffs.zip",
         FileKind::Audiofile => "audiofiles.zip",
     };
-    let disposition = format!("attachment; filename={zip_name}");
-    Ok((
-        [
-            (header::CONTENT_DISPOSITION, disposition),
-            (header::CONTENT_TYPE, "application/octet-stream".to_string()),
-        ],
-        zip,
-    )
-        .into_response())
+    Ok(Binary::attachment(zip, zip_name))
 }
 
 // ── GUI settings and the log ───────────────────────────────────────────────
 
 /// The GUI settings: `gui-config.yml`, and the few settings from
 /// `camillagui.yml` that the frontend needs.
-#[utoipa::path(get, path = "/guiconfig", responses((status = 200, body = GuiConfig)))]
-pub async fn get_gui_config(State(app): Shared) -> Response {
+#[utoipa::path(get, path = "/guiconfig")]
+pub async fn get_gui_config(State(app): Shared) -> Reply<GuiConfig> {
     let config = settings::gui_config(&app.settings);
     log::debug!("GUI config: {config:?}");
-    json_response(config)
+    Reply(config)
 }
 
 /// CamillaDSP's log file, `log_file` in the settings.
@@ -1555,16 +1493,15 @@ pub async fn get_gui_config(State(app): Shared) -> Response {
     get,
     path = "/logfile",
     responses(
-        (status = 200, content_type = "text/plain", body = String),
         (status = 404, description = "No log file is set, or it cannot be read", body = ErrorBody),
     )
 )]
-pub async fn get_log_file(State(app): Shared) -> ApiResult {
+pub async fn get_log_file(State(app): Shared) -> ApiResult<Text> {
     let Some(path) = app.settings.log_file.as_deref() else {
         return Err(not_found("Please configure a valid 'log_file' path"));
     };
     match tokio::fs::read_to_string(settings::expand_home(Path::new(path))).await {
-        Ok(text) => Ok(text_response(text)),
+        Ok(text) => Ok(Text(text)),
         Err(err) => {
             log::error!("Unable to read logfile at {path}: {err}");
             Err(not_found(format!(
@@ -1603,14 +1540,13 @@ pub struct AvailableDevice {
         ("backend" = String, Path, description = "The device type, for example `Alsa`"),
     ),
     responses(
-        (status = 200, body = Vec<AvailableDevice>),
         (status = "default", description = "CamillaDSP refused", body = ErrorBody),
     )
 )]
 pub async fn get_devices(
     State(app): Shared,
     UrlPath((direction, backend)): UrlPath<(Direction, String)>,
-) -> ApiResult {
+) -> ApiResult<Reply<Vec<AvailableDevice>>> {
     let capture = matches!(direction, Direction::Capture);
     let result = if capture {
         app.camilla.capture_devices(&backend).await
@@ -1631,7 +1567,7 @@ pub async fn get_devices(
         .into_iter()
         .map(|(name, description)| AvailableDevice { name, description })
         .collect();
-    Ok(json_response(devices))
+    Ok(Reply(devices))
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -1652,7 +1588,6 @@ pub struct DeviceQuery {
         DeviceQuery,
     ),
     responses(
-        (status = 200, body = AudioDeviceDescriptor),
         (status = 400, description = "No device is given, or CamillaDSP refused", body = ErrorBody),
         (status = 503, description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
@@ -1661,7 +1596,7 @@ pub async fn get_device_capabilities(
     State(app): Shared,
     UrlPath((direction, backend)): UrlPath<(Direction, String)>,
     Query(query): Query<DeviceQuery>,
-) -> ApiResult {
+) -> ApiResult<Reply<Arc<AudioDeviceDescriptor>>> {
     let device = query.device;
     if device.is_empty() {
         return Err(bad_request("No device is given"));
@@ -1681,14 +1616,14 @@ pub async fn get_device_capabilities(
             let capabilities = Arc::new(capabilities);
             app.status
                 .store_capabilities(capture, &backend, &device, capabilities.clone());
-            Ok(json_response(&*capabilities))
+            Ok(Reply(capabilities))
         }
         Err(err) => match app.status.capabilities(capture, &backend, &device) {
             Some(cached) => {
                 log::debug!(
                     "Failed to fetch the capabilities of {backend}/{device}, returning cached data"
                 );
-                Ok(json_response(&*cached))
+                Ok(Reply(cached))
             }
             None => match err {
                 DspError::Command { message, .. } => Err(bad_request(message)),
@@ -1698,18 +1633,11 @@ pub async fn get_device_capabilities(
     }
 }
 
-/// The device types CamillaDSP supports. They cannot change while it runs, so
-/// this comes from the cache.
-#[utoipa::path(
-    get,
-    path = "/backends",
-    responses(
-        (status = 200, body = Option<DeviceTypeLists>, description = "Null until CamillaDSP has \
-            been reached"),
-    )
-)]
-pub async fn get_backends(State(app): Shared) -> Response {
-    json_response(app.status.device_types())
+/// The device types CamillaDSP supports, null until it has been reached. They
+/// cannot change while it runs, so this comes from the cache.
+#[utoipa::path(get, path = "/backends")]
+pub async fn get_backends(State(app): Shared) -> Reply<Option<DeviceTypeLists>> {
+    Reply(app.status.device_types())
 }
 
 #[cfg(test)]

@@ -38,7 +38,8 @@ cd frontend && npm run dev
 main.rs        routes, startup, the file folders as static files
 api.rs         the /api handlers, the counterpart of the old views.py
 extract.rs     axum's Json, Query and Path, with rejections as JSON error bodies
-openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check test
+reply.rs       what handlers answer (Reply, NoContent, Text, Binary, EventStream), typed for the spec
+openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check tests
 camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_config::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
 events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
@@ -73,7 +74,13 @@ That holds for requests that do not parse too, since the extractors in `extract.
 rejections into the same body.
 
 Every handler has `#[utoipa::path]` and is registered with `routes!` in `main.rs`, which puts it
-in the OpenAPI spec. The spec is committed as `rust/openapi.json`, and the frontend generates
+in the OpenAPI spec. The spec is taken from the handler's signature where utoipa can: the success
+response from the return type (utoipa's `auto_into_responses`, with the types in `reply.rs`), the
+request body from the `Json<T>` argument, and the query parameters from `Query<T>`, merged into
+`params(T)`, which still has to be listed. What the attribute adds by hand is the error responses,
+the path parameters, and the few request bodies the argument cannot give (JSON numbers and
+booleans, multipart uploads, `validateconfig`). A handler returning a plain `Response` does not
+compile. The spec is committed as `rust/openapi.json`, and the frontend generates
 `frontend/src/api/schema.ts` from it, both its API types and its config types. After changing a
 handler, a type it uses or a type in camilladsp-config:
 
@@ -91,8 +98,12 @@ Things to keep in mind:
   needs `Content-Type: application/json`, which openapi-fetch always sends.
 - An `Option` field that is left out when `None`, rather than sent as null, gets
   `#[schema(nullable = false)]`, so the frontend type is `T | undefined` and not `T | null`.
-- Binary bodies (zips, `/api/convcoeffs`) are described with `inline(Binary)`; a `Vec<u8>` would
-  come out as an array of numbers. Uploads are `multipart/form-data` with a `files` field per file.
+- A JSON reply is `Reply<T>`, and `T` needs a `BodySchema`: a type with a schema of its own goes
+  in `named_bodies!` in `reply.rs`, which makes the body a reference to it and lists the schema for
+  the components. A test fails if any reference in the spec does not resolve.
+- Binary bodies (zips, `/api/convcoeffs`) are `reply::Binary`, described as a binary string; a
+  `Vec<u8>` would come out as an array of numbers. Uploads are `multipart/form-data` with a
+  `files` field per file.
 - Configs go in and out as camilladsp-config's `Configuration`. The path rewriting in `paths.rs`
   still works on JSON values, so a config is turned into one with `camilla::to_json` and parsed
   back with `validate::parse`. `validateconfig` is the one handler that takes a `Value`, while its

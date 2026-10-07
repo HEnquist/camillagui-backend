@@ -16,6 +16,7 @@ mod gui;
 mod legacy;
 mod openapi;
 mod paths;
+mod reply;
 mod settings;
 mod status;
 mod validate;
@@ -92,9 +93,16 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
 
 /// The `/api` router, and the spec of its typed routes.
 pub fn api() -> (Router<Arc<AppState>>, utoipa::openapi::OpenApi) {
-    OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
+    let (router, mut spec) = OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
         .nest("/api", api_routes())
-        .split_for_parts()
+        .split_for_parts();
+    // The response bodies refer to their schemas, which utoipa does not
+    // collect from a handler's return type.
+    let components = spec.components.get_or_insert_default();
+    for (name, schema) in reply::schemas() {
+        components.schemas.entry(name).or_insert(schema);
+    }
+    (router, spec)
 }
 
 /// Serve a folder, or warn and carry on if it does not exist. Without it the

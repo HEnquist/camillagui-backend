@@ -12,8 +12,8 @@ export interface paths {
       cookie?: never
     }
     /**
-     * The device types CamillaDSP supports. They cannot change while it runs, so
-     *     this comes from the cache.
+     * The device types CamillaDSP supports, null until it has been reached. They
+     *     cannot change while it runs, so this comes from the cache.
      */
     get: operations["get_backends"]
     put?: never
@@ -255,7 +255,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** The config CamillaDSP runs, with the file paths as CamillaDSP has them. */
+    /**
+     * The config CamillaDSP runs, with the file paths as CamillaDSP has them,
+     *     null if it has none.
+     */
     get: operations["get_config"]
     put?: never
     post?: never
@@ -350,7 +353,8 @@ export interface paths {
       cookie?: never
     }
     /**
-     * The VU levels, as a stream of `levels` events.
+     * The VU levels, as a stream of `levels` events, one for each update from
+     *     CamillaDSP.
      * @description The stream has its own subscription, which ends when the browser closes
      *     the stream. Smoothing and rate come from the settings.
      */
@@ -532,7 +536,8 @@ export interface paths {
       cookie?: never
     }
     /**
-     * The spectrum, as a stream of `spectrum` events.
+     * The spectrum, as a stream of `spectrum` events, one for each update from
+     *     CamillaDSP.
      * @description The stream has its own subscription, which ends when the browser closes
      *     the stream. The parameters come in the query string, since an EventSource
      *     can only GET.
@@ -556,7 +561,8 @@ export interface paths {
     /**
      * The processing state, as a stream of `state` events.
      * @description The stream has its own subscription, which ends when the browser closes
-     *     the stream. It starts with the current state.
+     *     the stream. It starts with a `state` event with the current state, then
+     *     has one for each change.
      */
     get: operations["get_state"]
     put?: never
@@ -615,9 +621,10 @@ export interface paths {
     put?: never
     /**
      * Check a config without applying it, with the file paths as the GUI has
-     *     them.
+     *     them. Answers every issue, none if the config is valid.
      * @description The body is meant to be a config, but any JSON is taken, since a config
-     *     that does not parse is reported as an issue like any other.
+     *     that does not parse is reported as an issue like any other. This is the
+     *     one request body the spec does not take from the handler.
      */
     post: operations["validate_config"]
     delete?: never
@@ -2120,7 +2127,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Null until CamillaDSP has been reached */
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2144,6 +2151,7 @@ export interface operations {
       }
     }
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2194,6 +2202,7 @@ export interface operations {
       }
     }
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2225,6 +2234,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2248,6 +2258,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2283,6 +2294,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2324,6 +2336,7 @@ export interface operations {
       }
     }
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2354,6 +2367,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2388,7 +2402,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Deleted */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2430,7 +2444,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Renamed */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2472,7 +2486,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Stored */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2523,6 +2537,7 @@ export interface operations {
       }
     }
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2560,6 +2575,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2579,7 +2595,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description The config, null if CamillaDSP has none */
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2613,6 +2629,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2650,6 +2667,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2687,6 +2705,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2724,6 +2743,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2743,7 +2763,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description A `levels` event for each update from CamillaDSP */
+      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -2772,6 +2792,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2800,6 +2821,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2831,11 +2853,11 @@ export interface operations {
     }
     requestBody: {
       content: {
-        "text/plain": boolean
+        "application/json": boolean
       }
     }
     responses: {
-      /** @description Set */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2865,11 +2887,11 @@ export interface operations {
     }
     requestBody: {
       content: {
-        "text/plain": number
+        "application/json": number
       }
     }
     responses: {
-      /** @description Set */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2896,12 +2918,13 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
         }
         content: {
-          "text/plain": boolean
+          "application/json": boolean
         }
       }
       /** @description CamillaDSP cannot be reached, or refused */
@@ -2924,11 +2947,11 @@ export interface operations {
     }
     requestBody: {
       content: {
-        "text/plain": boolean
+        "application/json": boolean
       }
     }
     responses: {
-      /** @description Set */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2955,12 +2978,13 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
         }
         content: {
-          "text/plain": number
+          "application/json": number
         }
       }
       /** @description CamillaDSP cannot be reached, or refused */
@@ -2983,11 +3007,11 @@ export interface operations {
     }
     requestBody: {
       content: {
-        "text/plain": number
+        "application/json": number
       }
     }
     responses: {
-      /** @description Set */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3018,7 +3042,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Saved */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3067,7 +3091,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Set */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3107,7 +3131,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Applied */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3165,7 +3189,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description A `spectrum` event for each update from CamillaDSP */
+      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -3194,7 +3218,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description A `state` event with the current state, then one for each change */
+      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -3223,6 +3247,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3242,7 +3267,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Stopped */
+      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3282,7 +3307,7 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Every issue, none if the config is valid */
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3314,6 +3339,7 @@ export interface operations {
     }
     requestBody?: never
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3355,6 +3381,7 @@ export interface operations {
       }
     }
     responses: {
+      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
