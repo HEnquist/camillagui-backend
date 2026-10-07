@@ -1,6 +1,6 @@
 # Custom Pages
 
-Drop a `.tsx` file in this directory and rebuild — it becomes a new tab in the GUI. This document
+Drop a `.tsx` file in this directory and rebuild, and it becomes a new tab in the GUI. This document
 is a full reference for implementing a custom page from scratch.
 
 ## How it works
@@ -17,7 +17,7 @@ src/custom-pages/
 
 ## Required structure
 
-Each file must have a single default export — the React component — with `tabLabel` and optionally
+Each file must have a single default export (the React component) with `tabLabel` and optionally
 `enabled` attached as static properties. This keeps the file compatible with Vite's Fast Refresh.
 
 | Property | Type | Description |
@@ -233,7 +233,7 @@ call on every render.
 
 ## Adding a custom backend endpoint
 
-Most custom pages will not need this — they work entirely with the existing API. But if you need
+Most custom pages will not need this, they work entirely with the existing API. But if you need
 something the backend doesn't expose, you need to add an endpoint to the backend, in `api/`.
 
 1. Add a handler function in `api/src/api.rs` (or a new module), with a `#[utoipa::path]`
@@ -305,7 +305,7 @@ import { mdiFilter, mdiSpeaker, mdiChartLine, mdiPlus, mdiDelete } from "@mdi/js
 
 Browse all available icons at https://materialdesignicons.com.
 
-## Complete example — read-only config inspector
+## Complete example: read-only config inspector
 
 ```tsx
 import React from "react"
@@ -328,7 +328,7 @@ function ConfigInfo({ config }: CustomPageProps) {
         <Box title={`Filters (${filters.length})`}>
           <ul>
             {filters.map(([name, filter]) => (
-              <li key={name}>{name} — {filter.type}</li>
+              <li key={name}>{name}: {filter.type}</li>
             ))}
           </ul>
         </Box>
@@ -349,7 +349,7 @@ ConfigInfo.tabLabel = "Config Info"
 export default ConfigInfo
 ```
 
-## Example with config editing — adjust a filter frequency
+## Example with config editing: adjust a filter frequency
 
 ```tsx
 import React from "react"
@@ -407,7 +407,7 @@ QuickEQ.tabLabel = "Quick EQ"
 export default QuickEQ
 ```
 
-## Example with API call — show filter frequency response
+## Example with API call: show filter frequency response
 
 ```tsx
 import React, { useEffect, useState } from "react"
@@ -438,7 +438,7 @@ function FilterPlot({ config }: CustomPageProps) {
   return (
     <div className="tabcontainer">
       <div className="tabpanel" style={{ width: "600px" }}>
-        <Box title={`Frequency response — ${FILTER_NAME}`}>
+        <Box title={`Frequency response: ${FILTER_NAME}`}>
           {magnitude && freqs ? (
             <pre style={{ fontSize: "11px" }}>
               {freqs.slice(0, 10).map((f, i) =>

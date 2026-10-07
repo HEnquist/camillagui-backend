@@ -1,4 +1,4 @@
-# frontend — React frontend of CamillaGUI
+# frontend: React frontend of CamillaGUI
 
 React 19 + TypeScript SPA built with Vite. Targets CamillaDSP 5.0.x. Lives in `frontend/` of the
 camillagui-backend repository, next to the backend it talks to; it was a separate repository
@@ -21,7 +21,7 @@ Node >= 22 required (see `.nvmrc`, and CI runs 24.x).
 ## Source layout (`src/`)
 
 ```
-index.tsx                   # App root — CamillaConfig class component, tab shell
+index.tsx                   # App root, CamillaConfig class component, tab shell
 guiconfig.ts                # GuiConfig (generated) + defaults (fetched from /api/guiconfig)
 index.css                   # All CSS (CSS variables in public/css-variables.css)
 
@@ -34,7 +34,7 @@ camilladsp/                 # Domain types + status polling
   status.ts                 # Status/state types
   usevumeterstatus.ts       # React hook for VU meter SSE stream
   versions.tsx              # Version mismatch UI
-  eval/                     # Filter evaluation — see below
+  eval/                     # Filter evaluation, see below
     index.ts                # evalFilter / evalFilterStep, and the Conv coefficient cache
     filters.ts              # Transfer function per filter type
     biquad.ts               # Biquad coefficients for all 17 subtypes
@@ -122,23 +122,23 @@ work on `LooseFilter` and `LooseProcessor`, which every `Filter` and `Processor`
 that comes from the backend goes through `completeConfig`, which says so to tsc.
 
 Key endpoints used by the frontend:
-- `GET /api/guiconfig` — GuiConfig JSON
-- `GET /api/getconfig` — current CamillaDSP config as JSON
-- `POST /api/setconfig` — push config to running DSP `{config}`
-- `POST /api/saveconfigfile` — save config to disk `{filename, config}`
-- `POST /api/validateconfig` — the config's issues, `{path, message, severity}`, none if valid
+- `GET /api/guiconfig`: GuiConfig JSON
+- `GET /api/getconfig`: current CamillaDSP config as JSON
+- `POST /api/setconfig`: push config to running DSP `{config}`
+- `POST /api/saveconfigfile`: save config to disk `{filename, config}`
+- `POST /api/validateconfig`: the config's issues, `{path, message, severity}`, none if valid
 - `GET` and `POST /api/param/volume` and `/api/param/mute`, `GET /api/param/faders`,
-  `POST /api/param/faders/{index}/volume` and `.../mute` — the volume and the faders
-- `GET /api/levels` — SSE stream of VU levels, CamillaDSP's VuLevels as they came
-- `GET /api/spectrum?side=...&n_bins=...` — SSE stream of spectra, CamillaDSP's SpectrumData
-- `GET /api/state` — SSE stream of the processing state, CamillaDSP's StateUpdate, starting with
+  `POST /api/param/faders/{index}/volume` and `.../mute`: the volume and the faders
+- `GET /api/levels`: SSE stream of VU levels, CamillaDSP's VuLevels as they came
+- `GET /api/spectrum?side=...&n_bins=...`: SSE stream of spectra, CamillaDSP's SpectrumData
+- `GET /api/state`: SSE stream of the processing state, CamillaDSP's StateUpdate, starting with
   the current one. `StatusPoller` merges it into the polled `/api/status` as `cdsp_status`
 - Each open stream is its own CamillaDSP subscription, which ends when the stream is closed
-- `POST /api/convcoeffs` — coefficients of a Conv filter that reads a file
-- `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip` — the
+- `POST /api/convcoeffs`: coefficients of a Conv filter that reads a file
+- `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip`: the
   config, coeff and audiofile folders, helpers in `utilities/files.tsx`
 - `GET /api/devices/{direction}/{backend}` and `.../capabilities?device=...`, `GET /api/backends`
-  — the devices CamillaDSP can use
+  (the devices CamillaDSP can use)
 
 ## Filter evaluation
 
