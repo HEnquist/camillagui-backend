@@ -778,6 +778,23 @@ pub async fn get_config_file(
 }
 
 /// Read an older config, bring it up to date, and check that the result is valid.
+/// The errors among `issues` as list lines, with the path written the same way
+/// as in the other validation messages.
+fn blocking_error_lines(issues: &[ValidationIssue]) -> Vec<String> {
+    issues
+        .iter()
+        .filter(|issue| issue.severity == Severity::Error)
+        .map(|issue| {
+            if issue.path.is_empty() {
+                format!("- config: {}", issue.message)
+            } else {
+                let location = camilladsp_schema::config::format_path(&issue.path);
+                format!("- {location}: {}", issue.message)
+            }
+        })
+        .collect()
+}
+
 fn read_and_migrate(
     app: &AppState,
     path: &Path,
@@ -800,26 +817,7 @@ fn read_and_migrate(
         &settings.coeff_dir,
     );
     let issues = validate::validate(with_absolute_paths(app, config.clone()), types);
-    let blocking_errors: Vec<String> = issues
-        .iter()
-        .filter(|issue| issue.severity == Severity::Error)
-        .map(|issue| {
-            let location: Vec<String> = issue
-                .path
-                .iter()
-                .map(|element| match element {
-                    PathElement::Key(key) => key.clone(),
-                    PathElement::Index(index) => index.to_string(),
-                })
-                .collect();
-            let location = if location.is_empty() {
-                "config".to_string()
-            } else {
-                location.join("/")
-            };
-            format!("- {location}: {}", issue.message)
-        })
-        .collect();
+    let blocking_errors = blocking_error_lines(&issues);
     if !blocking_errors.is_empty() {
         return Err(bad_request(format!(
             "Migration failed: migrated config validation reported problems:\n{}",
@@ -1950,6 +1948,39 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(output, "done");
+    }
+
+    #[test]
+    fn migration_errors_name_the_path_like_other_messages() {
+        let error = |path: Vec<PathElement>, message: &str| ValidationIssue {
+            path,
+            message: message.to_string(),
+            severity: Severity::Error,
+        };
+        let issues = vec![
+            error(
+                vec![
+                    PathElement::Key("pipeline".into()),
+                    PathElement::Index(2),
+                    PathElement::Key("names".into()),
+                    PathElement::Index(0),
+                ],
+                "unknown filter",
+            ),
+            error(Vec::new(), "no devices"),
+            ValidationIssue {
+                path: vec![PathElement::Key("filters".into())],
+                message: "just a warning".to_string(),
+                severity: Severity::Warning,
+            },
+        ];
+        assert_eq!(
+            blocking_error_lines(&issues),
+            vec![
+                "- pipeline[2].names[0]: unknown filter",
+                "- config: no devices"
+            ]
+        );
     }
 
     #[test]
