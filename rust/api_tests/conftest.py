@@ -1,12 +1,17 @@
 """
-Black-box API tests that run against the real backend process.
+Black-box tests that run against the real backend process: the API, and the
+GUI in a headless browser.
 
 The backend is started as a subprocess with its own copy of the test files and
 its own fake CamillaDSP. It is built with cargo first unless CAMILLAGUI_BIN
-points at a binary.
+points at a binary. The GUI tests use the frontend in frontend/build, which the
+backend serves, so build the frontend first. They need Playwright and its
+headless Chromium, and are skipped without Playwright.
 
 Run from the repository root with the backend's venv:
 
+    .venv/bin/python -m pip install pytest aiohttp PyYAML playwright
+    .venv/bin/python -m playwright install --only-shell chromium
     .venv/bin/python -m pytest rust/api_tests
 """
 
@@ -199,6 +204,31 @@ def backend_session(tmp_path_factory):
 def server(backend_session):
     backend_session.reset()
     yield backend_session
+
+
+@pytest.fixture(scope="session")
+def browser():
+    sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
+    with sync_api.sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        yield browser
+        browser.close()
+
+
+@pytest.fixture
+def page(server, browser):
+    """The GUI in a fresh browser context, loaded from the backend.
+
+    Uncaught errors in the page fail the test.
+    """
+    context = browser.new_context()
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(error))
+    page.goto(f"http://127.0.0.1:{server.port}/gui/index.html")
+    yield page
+    context.close()
+    assert errors == []
 
 
 @pytest.fixture

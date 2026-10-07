@@ -26,7 +26,9 @@ cargo clippy --all-targets -- -D warnings
 # Frontend dev server on :5173, proxying /api to :5005, see frontend/CLAUDE.md
 cd frontend && npm run dev
 
-# Black-box API tests against the backend process and a fake CamillaDSP (from the repo root)
+# Black-box API tests against the backend process and a fake CamillaDSP (from the repo root),
+# plus GUI tests in headless Chromium against the frontend in frontend/build (build it first).
+# The GUI tests are skipped without Playwright, see rust/api_tests/conftest.py to install it.
 .venv/bin/python -m pytest rust/api_tests
 ```
 
@@ -61,9 +63,9 @@ release does not ship one, so an upgrade always brings the current stylesheet.
 
 `/api` exists for this frontend only, it is not a public API. Change it freely when that makes
 the GUI simpler or cheaper, and change the frontend, the demo backend
-(`frontend/src/demo/mockBackend.ts`) and the API tests in `rust/api_tests` with it. Most responses
-still have the old Python backend's shape, down to quirks like `getparam/mute` answering
-`True`/`False`, only because the port kept the frontend unchanged.
+(`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `rust/api_tests` with it.
+Most responses still have the old Python backend's shape, down to quirks like `getparam/mute`
+answering `True`/`False`, only because the port kept the frontend unchanged.
 
 Two things to keep in mind:
 - serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.

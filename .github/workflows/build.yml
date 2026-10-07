@@ -61,10 +61,12 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install API test dependencies
-      run: python -m pip install pytest aiohttp PyYAML
+    - name: Install API and GUI test dependencies
+      run: |
+        python -m pip install pytest aiohttp PyYAML playwright
+        python -m playwright install --with-deps --only-shell chromium
 
-    - name: API tests
+    - name: API and GUI tests
       run: python -m pytest rust/api_tests
 
   build:
