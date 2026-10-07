@@ -5,6 +5,7 @@ The API tests, over HTTP against the real backend process.
 import array
 import json
 import random
+import shutil
 import string
 import struct
 import time
@@ -1064,6 +1065,26 @@ def test_convcoeffs_resolves_the_filename_tokens(server, coeff_files):
         {"name": "convtest_44100_2.f32", "samplerate": 44100, "channels": 2},
         {"name": "convtest_48000_2.f32", "samplerate": 48000, "channels": 2},
     ]
+
+
+def test_convcoeffs_lists_the_options_from_the_folder_of_the_file(server, coeff_files):
+    # convtest_44100_2.f32 and convtest_48000_2.f32 are at the top of coeff_dir,
+    # the subfolder has a 96000 variant only, and that is the one to offer.
+    folder = server.config_dir / "convtest_sub"
+    folder.mkdir()
+    values = [0.5, -0.25]
+    (folder / "convtest_96000_2.f32").write_bytes(struct.pack(f"<{len(values)}f", *values))
+    try:
+        filename = "convtest_sub/convtest_$samplerate$_$channels$.f32"
+        resp = server.post("/api/convcoeffs", json_body=conv_request(filename, samplerate=96000))
+        assert resp.status == 200, resp.text
+        header, coefficients = unframe_coefficients(resp.body)
+        assert coefficients == values
+        assert header["options"] == [
+            {"name": "convtest_96000_2.f32", "samplerate": 96000, "channels": 2},
+        ]
+    finally:
+        shutil.rmtree(folder)
 
 
 def test_convcoeffs_rejects_a_path_outside_the_coeff_dir(server):

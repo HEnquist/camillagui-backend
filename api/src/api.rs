@@ -406,12 +406,14 @@ pub async fn conv_coefficients(
                 ),
             ));
         }
-        // The options come from the name as written, tokens and all, so they
-        // are collected before the tokens are replaced.
-        let file_names = files::list_file_names(&settings.coeff_dir);
-        let options = coeffs::filter_plot_options(&file_names, filename);
         let absolute =
             paths::coeff_path_to_absolute(filename, &settings.config_dir, &settings.coeff_dir);
+        // The options come from the name as written, tokens and all, so they
+        // are collected before the tokens are replaced. They are the files next
+        // to it, which is not coeff_dir when the path has a folder in it.
+        let folder = Path::new(&absolute).parent().unwrap_or(&settings.coeff_dir);
+        let file_names = files::list_file_names(folder);
+        let options = coeffs::filter_plot_options(&file_names, &absolute);
         *filename = coeffs::replace_tokens(&absolute, samplerate, channels);
         if !Path::new(filename.as_str()).is_file() {
             return Err(not_found("Filter coefficient file not found"));
