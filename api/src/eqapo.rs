@@ -110,10 +110,14 @@ impl EqApo {
         None
     }
 
-    /// The parameters of a Filter command, `None` for unsupported types and
-    /// for values that are not plain numbers.
+    /// The parameters of a Filter command, `None` for filters that are off,
+    /// unsupported types and values that are not plain numbers.
     fn parse_filter_params(&self, text: &str) -> Option<Map<String, Value>> {
         let tokens: Vec<&str> = text.split_whitespace().collect();
+        if tokens.first()?.eq_ignore_ascii_case("off") {
+            log::info!("Skipping disabled filter: {text}");
+            return None;
+        }
         let ftype = tokens.get(1)?;
         let Some(camilla_type) = biquad_type(ftype) else {
             log::warn!("Unsupported filter type '{ftype}'");
@@ -524,6 +528,16 @@ Filter: ON  NO       Fc     50 Hz
                 serde_json::from_value::<camilladsp_schema::config::Filter>(filter.clone());
             assert!(parsed.is_ok(), "{name}: {filter} {parsed:?}");
         }
+    }
+
+    #[test]
+    fn off_filters_are_skipped() {
+        let mut eqapo = EqApo::new(2);
+        eqapo.parse_line("Filter 1: OFF PK Fc 1000 Hz Gain 12 dB Q 1");
+        eqapo.parse_line("Filter 2: off PK Fc 2000 Hz Gain 12 dB Q 1");
+        eqapo.parse_line("Filter 3: ON PK Fc 3000 Hz Gain 3 dB Q 1");
+        assert_eq!(eqapo.filters.len(), 1);
+        assert_eq!(eqapo.filters["Filter_1"]["parameters"]["freq"], 3000.0);
     }
 
     #[test]
