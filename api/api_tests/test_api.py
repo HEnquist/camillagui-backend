@@ -14,6 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from textwrap import dedent
 
@@ -423,6 +424,23 @@ def test_upload_large_binary_file(server):
         assert server.get("/coeff/large.raw").body == filedata
     finally:
         server.post("/api/files/coeff/delete", json_body={"names": ["large.raw"]})
+
+
+@pytest.mark.parametrize("kind, name", [("coeff", "same.raw"), ("config", "same.yml")])
+def test_concurrent_uploads_of_one_name(server, kind, name):
+    # Valid as a config too, and large enough that the uploads overlap.
+    contents = [b"# " + bytes([ord("a") + i]) * 2_000_000 + b"\n" for i in range(4)]
+    try:
+        with ThreadPoolExecutor(max_workers=len(contents)) as pool:
+            results = list(
+                pool.map(lambda c: server.upload(f"/api/files/{kind}/upload", name, c), contents)
+            )
+        assert [r.status for r in results] == [204] * len(contents), [r.text for r in results]
+        stored = server.get(f"/{kind}/{name}").body
+        assert stored in contents
+        assert not list(server.config_dir.glob(".*.part"))
+    finally:
+        server.post(f"/api/files/{kind}/delete", json_body={"names": [name]})
 
 
 def test_failed_upload_keeps_the_existing_file(server):

@@ -30,6 +30,7 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::AsyncWriteExt;
 use utoipa::{IntoParams, ToSchema};
 
@@ -1469,7 +1470,16 @@ pub struct UploadForm {
     files: Vec<Vec<u8>>,
 }
 
-/// Write one uploaded file to `path`. Coefficient and audio files are streamed
+/// The hidden name an upload of `filename` is written to before it is renamed
+/// into place. The process id and a counter keep it unique, also when two
+/// backends share a folder.
+fn partial_name(filename: &str) -> String {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!(".{filename}.{}.{n}.part", std::process::id())
+}
+
+/// Write one uploaded file to `path`, which must not exist. Coefficient and audio files are streamed
 /// to disk as they arrive, configs are read whole to sanitize them.
 async fn save_upload(
     kind: FileKind,
@@ -1479,12 +1489,16 @@ async fn save_upload(
 ) -> Result<(), ApiError> {
     let read_error = |err: axum::extract::multipart::MultipartError| bad_request(err.to_string());
     let write_error = |err: std::io::Error| internal(format!("Could not save {filename}: {err}"));
+    let mut create = tokio::fs::OpenOptions::new();
+    create.write(true).create_new(true);
     if let FileKind::Config = kind {
         let data = field.bytes().await.map_err(read_error)?;
         let content = files::sanitize_uploaded_config(&data);
-        return tokio::fs::write(path, content).await.map_err(write_error);
+        let mut file = create.open(path).await.map_err(write_error)?;
+        file.write_all(&content).await.map_err(write_error)?;
+        return file.flush().await.map_err(write_error);
     }
-    let mut file = tokio::fs::File::create(path).await.map_err(write_error)?;
+    let mut file = create.open(path).await.map_err(write_error)?;
     while let Some(chunk) = field.chunk().await.map_err(read_error)? {
         file.write_all(&chunk).await.map_err(write_error)?;
     }
@@ -1524,7 +1538,9 @@ pub async fn upload_files(
         let path = file_in_folder(&folder, &filename).map_err(bad_request)?;
         // Written to a hidden file next to it and renamed into place when
         // complete, so a failed upload leaves an existing file as it was.
-        let partial = file_in_folder(&folder, &format!(".{filename}.part")).map_err(bad_request)?;
+        // The name is unique per upload, so concurrent uploads of one file
+        // do not write into each other's partial file.
+        let partial = file_in_folder(&folder, &partial_name(&filename)).map_err(bad_request)?;
         let mut saved = save_upload(kind, field, &partial, &filename).await;
         if saved.is_ok() {
             saved = tokio::fs::rename(&partial, &path)
