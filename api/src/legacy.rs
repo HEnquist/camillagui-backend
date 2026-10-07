@@ -166,8 +166,10 @@ fn modify_coreaudio_device(dev: &mut Map<String, Value>) {
     }
 }
 
-/// File playback became RawFile at some point.
-fn modify_file_playback_device(dev: &mut Map<String, Value>) {
+/// v2->v3 renames the File capture device to RawFile, with the same fields.
+/// File playback keeps its name. No current capture device is called File, so
+/// this only ever touches an old config.
+fn modify_file_capture_device(dev: &mut Map<String, Value>) {
     if dev.get("type").and_then(Value::as_str) == Some("File") {
         dev.insert("type".into(), json!("RawFile"));
     }
@@ -215,11 +217,11 @@ fn modify_devices(config: &mut Value) {
     };
     if let Some(dev) = devices.get_mut("capture").and_then(Value::as_object_mut) {
         modify_coreaudio_device(dev);
+        modify_file_capture_device(dev);
         modify_device_sample_format(dev);
     }
     if let Some(dev) = devices.get_mut("playback").and_then(Value::as_object_mut) {
         modify_coreaudio_device(dev);
-        modify_file_playback_device(dev);
         modify_device_sample_format(dev);
     }
     modify_resampler(devices);
@@ -816,8 +818,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "migrate_legacy_config still renames File playback to RawFile and wipes the v5 \
-                CoreAudio and Wasapi formats; un-ignore once those steps only touch old configs"]
+    #[ignore = "migrate_legacy_config still wipes the v5 CoreAudio and Wasapi formats; \
+                un-ignore once that step only touches old configs"]
     fn migration_leaves_current_config_unchanged() {
         for config in v5_configs() {
             let mut migrated = config.clone();
@@ -859,6 +861,69 @@ mod tests {
         assert!(playback.get("change_format").is_none());
         assert_eq!(capture["format"], "S32");
         assert_eq!(playback["format"], Value::Null);
+    }
+
+    #[test]
+    fn file_capture_is_renamed() {
+        let mut config = basic_config();
+        config["devices"]["capture"] = json!({
+            "type": "File", "channels": 2, "filename": "in.raw", "format": "S16LE",
+            "extra_samples": 1024, "skip_bytes": 44, "read_bytes": 10000,
+        });
+        modify_devices(&mut config);
+        assert_eq!(
+            config["devices"]["capture"],
+            json!({
+                "type": "RawFile", "channels": 2, "filename": "in.raw", "format": "S16_LE",
+                "extra_samples": 1024, "skip_bytes": 44, "read_bytes": 10000,
+            })
+        );
+    }
+
+    #[test]
+    fn file_playback_is_kept() {
+        let mut config = basic_config();
+        config["devices"]["playback"] =
+            json!({"type": "File", "channels": 2, "filename": "out.raw", "format": "S32LE"});
+        modify_devices(&mut config);
+        assert_eq!(
+            config["devices"]["playback"],
+            json!({"type": "File", "channels": 2, "filename": "out.raw", "format": "S32_LE"})
+        );
+    }
+
+    /// A config for each of v2, v3 and v4 with File playback, and the File
+    /// capture of its version, migrates to one that validates.
+    #[test]
+    fn file_devices_migrate_to_valid_config() {
+        let config = |capture: &str, format: &str| {
+            json!({
+                "devices": {
+                    "samplerate": 48000,
+                    "chunksize": 1024,
+                    "capture": {"type": capture, "channels": 2, "filename": "in.raw", "format": format},
+                    "playback": {"type": "File", "channels": 2, "filename": "out.raw", "format": format},
+                },
+                "filters": {"hp": {"type": "Biquad", "parameters": {"type": "Highpass", "freq": 80, "q": 0.5}}},
+                "pipeline": [{"type": "Filter", "channels": [0], "names": ["hp"]}],
+            })
+        };
+        let mut v2 = config("File", "S32LE");
+        v2["pipeline"][0] = json!({"type": "Filter", "channel": 0, "names": ["hp"]});
+        let v3 = config("RawFile", "S32LE");
+        let mut v4 = config("RawFile", "S32_LE");
+        v4["devices"]["adjust_period"] = json!(10);
+        for (version, mut config) in [(2, v2), (3, v3), (4, v4)] {
+            assert_eq!(identify_version(&config), Some(version));
+            migrate_if_older(&mut config);
+            assert_eq!(config["devices"]["capture"]["type"], "RawFile");
+            assert_eq!(config["devices"]["playback"]["type"], "File");
+            let issues = crate::validate::validate(config, &Default::default());
+            assert!(
+                !crate::validate::has_errors(&issues),
+                "v{version}: {issues:?}"
+            );
+        }
     }
 
     #[test]
