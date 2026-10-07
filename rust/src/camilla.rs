@@ -2,10 +2,12 @@
 //! camilladsp-config so the messages are exactly the ones the DSP itself uses.
 
 use camilladsp_config::protocol::{
-    AudioDeviceDescriptor, ChannelLabels, Fader, ProcessingState, WsCommand, WsReply, WsResult,
+    AudioDeviceDescriptor, ChannelLabels, Fader, ProcessingState, StopReason, WsCommand, WsReply,
+    WsResult,
 };
 use futures_util::{SinkExt, StreamExt};
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
@@ -15,6 +17,9 @@ pub type Ws = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long requests fail at once after a failed connect, before the next
+/// one tries again.
+const RETRY_INTERVAL: Duration = Duration::from_secs(1);
 /// Applying or reading a config makes CamillaDSP read every coefficient file,
 /// which takes a while for long filters on a small machine.
 const CONFIG_REPLY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -166,11 +171,24 @@ fn unexpected(reply: WsReply) -> DspError {
     DspError::Io(format!("Unexpected reply from CamillaDSP: {reply:?}"))
 }
 
+/// A failed connect, which requests are answered with until the next try.
+struct Offline {
+    error: String,
+    retry_at: Instant,
+}
+
 /// A shared connection for request/response commands. Connects on first use
 /// and again after any connection error, so there is no reconnect thread.
+///
+/// After a connect fails, requests fail at once with the same error until
+/// `RETRY_INTERVAL` has passed, and while the next try is under way. An
+/// unreachable host takes the whole connect timeout to fail, and without this
+/// every request would wait that out, one after the other on the lock.
 pub struct CamillaClient {
     url: String,
     ws: Mutex<Option<Ws>>,
+    offline: std::sync::Mutex<Option<Offline>>,
+    connections: AtomicU64,
 }
 
 impl CamillaClient {
@@ -178,11 +196,54 @@ impl CamillaClient {
         CamillaClient {
             url: format!("ws://{host}:{port}"),
             ws: Mutex::new(None),
+            offline: std::sync::Mutex::new(None),
+            connections: AtomicU64::new(0),
         }
     }
 
     pub fn url(&self) -> &str {
         &self.url
+    }
+
+    /// The number of the current connection, counting from 1, so that a new
+    /// one can be told from the one seen last. Any request reconnects, so a
+    /// CamillaDSP restart may go by without any one caller seeing it fail.
+    pub fn connection(&self) -> u64 {
+        self.connections.load(Ordering::Relaxed)
+    }
+
+    /// The error of the last failed connect, until it is time to try again.
+    fn check_offline(&self) -> Result<(), DspError> {
+        match &*self.offline.lock().unwrap() {
+            Some(offline) if Instant::now() < offline.retry_at => {
+                Err(DspError::Io(offline.error.clone()))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// Connect, and ask for the version, like pycamilladsp, which also checks
+    /// that the other end really is CamillaDSP.
+    async fn connect_checked(&self) -> Result<Ws, DspError> {
+        if let Some(offline) = &mut *self.offline.lock().unwrap() {
+            // Long enough for this try to finish, so that the requests that
+            // come meanwhile fail at once rather than queue up behind it.
+            offline.retry_at = Instant::now() + CONNECT_TIMEOUT + REPLY_TIMEOUT;
+        }
+        let result: Result<Ws, DspError> = async {
+            let mut ws = connect(&self.url).await?;
+            request_on(&mut ws, &WsCommand::GetVersion, REPLY_TIMEOUT).await?;
+            Ok(ws)
+        }
+        .await;
+        *self.offline.lock().unwrap() = match &result {
+            Ok(_) => None,
+            Err(err) => Some(Offline {
+                error: err.to_string(),
+                retry_at: Instant::now() + RETRY_INTERVAL,
+            }),
+        };
+        result
     }
 
     pub async fn request(&self, command: WsCommand) -> Result<WsReply, DspError> {
@@ -194,13 +255,13 @@ impl CamillaClient {
             | WsCommand::ValidateConfigJson { .. } => CONFIG_REPLY_TIMEOUT,
             _ => REPLY_TIMEOUT,
         };
+        self.check_offline()?;
         let mut guard = self.ws.lock().await;
         if guard.is_none() {
-            let mut ws = connect(&self.url).await?;
-            // Like pycamilladsp, ask for the version first, which also checks
-            // that the other end really is CamillaDSP.
-            request_on(&mut ws, &WsCommand::GetVersion, REPLY_TIMEOUT).await?;
-            *guard = Some(ws);
+            // Again, since a connect may have failed while this one waited.
+            self.check_offline()?;
+            *guard = Some(self.connect_checked().await?);
+            self.connections.fetch_add(1, Ordering::Relaxed);
         }
         let ws = guard.as_mut().expect("connected above");
         let result = request_on(ws, &command, timeout).await;
@@ -218,6 +279,10 @@ impl CamillaClient {
 
     pub async fn state(&self) -> Result<ProcessingState, DspError> {
         value_of!(self.request(WsCommand::GetState).await?, GetState)
+    }
+
+    pub async fn stop_reason(&self) -> Result<StopReason, DspError> {
+        value_of!(self.request(WsCommand::GetStopReason).await?, GetStopReason)
     }
 
     pub async fn capture_rate(&self) -> Result<usize, DspError> {

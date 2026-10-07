@@ -57,8 +57,11 @@ PLAYBACK_CAPABILITIES = {
 def default_state(config_file_path):
     return {
         "online": True,
+        # accept connections but never answer the handshake, like a hung or unreachable host
+        "hung": False,
         "version": "5.0.0",
         "state": "Running",
+        "stop_reason": "None",
         "capture_rate": 44100,
         "rate_adjust": 1.01,
         "buffer_level": 1234,
@@ -136,9 +139,10 @@ class FakeCamillaDSP:
         asyncio.run_coroutine_threadsafe(shutdown(), self._loop).result(5)
         self._loop.call_soon_threadsafe(self._loop.stop)
 
-    def go_offline(self):
-        """Drop every connection and refuse new ones."""
+    def go_offline(self, hung=False):
+        """Drop every connection and refuse new ones, or leave them hanging."""
         self.state["online"] = False
+        self.state["hung"] = hung
 
         async def close_all():
             for ws in list(self._sockets):
@@ -149,6 +153,10 @@ class FakeCamillaDSP:
     # ── Protocol ──────────────────────────────────────────────────────────
 
     async def _handle(self, request):
+        if self.state["hung"]:
+            # Longer than the backend's connect timeout, short enough not to hold up shutdown.
+            await asyncio.sleep(3)
+            raise web.HTTPServiceUnavailable()
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         if not self.state["online"]:
@@ -163,7 +171,7 @@ class FakeCamillaDSP:
                 command = json.loads(message.data)
                 self.state["received"].append(command)
                 name = command.get("command")
-                if name in ("SubscribeVuLevels", "SubscribeSpectrum"):
+                if name in ("SubscribeVuLevels", "SubscribeSpectrum", "SubscribeState"):
                     reply = self._subscribe(name)
                     await ws.send_str(json.dumps(reply))
                     if reply["result"] == "Ok":
@@ -188,6 +196,9 @@ class FakeCamillaDSP:
         return {"reply": name, "result": "Ok"}
 
     async def _push_events(self, ws, name):
+        if name == "SubscribeState":
+            await self._push_state_events(ws)
+            return
         while not ws.closed:
             if name == "SubscribeVuLevels":
                 event = {
@@ -209,6 +220,20 @@ class FakeCamillaDSP:
             await ws.send_str(json.dumps(event))
             await asyncio.sleep(0.05)
 
+    async def _push_state_events(self, ws):
+        """Like CamillaDSP, an event only when the state changes, none for the current one."""
+        last = self.state["state"]
+        while not ws.closed:
+            await asyncio.sleep(0.05)
+            state = self.state["state"]
+            if state == last:
+                continue
+            last = state
+            value = {"state": state}
+            if state == "Inactive":
+                value["stop_reason"] = self.state["stop_reason"]
+            await ws.send_str(json.dumps({"reply": "StateEvent", "result": "Ok", "value": value}))
+
     def _reply(self, command):
         s = self.state
         name = command["command"]
@@ -228,6 +253,7 @@ class FakeCamillaDSP:
         getters = {
             "GetVersion": "version",
             "GetState": "state",
+            "GetStopReason": "stop_reason",
             "GetCaptureRate": "capture_rate",
             "GetRateAdjust": "rate_adjust",
             "GetBufferLevel": "buffer_level",

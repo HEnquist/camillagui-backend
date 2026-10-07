@@ -113,7 +113,7 @@ class Backend:
                 raise RuntimeError(f"Backend exited, see {self.root / 'backend.log'}")
             try:
                 status = self.get("/api/status").json()
-                if status["cdsp_status"] != "Offline" and self.get("/api/backends").json():
+                if status["cdsp_online"] and self.get("/api/backends").json():
                     return
             except (urllib.error.URLError, ConnectionError, json.JSONDecodeError):
                 pass
@@ -121,11 +121,18 @@ class Backend:
         raise RuntimeError("Backend did not come up")
 
     def wait_for_backends(self, expected):
-        """Wait until the backend has read the device types after reconnecting."""
+        """Wait until the backend has reconnected and read the device types.
+
+        After a failed connect the backend only tries again a second later, and
+        the device types read before going offline are still there until then.
+        The status is refreshed once a second, so it may not have noticed the
+        outage at all, and a request is what replaces the closed connection.
+        """
         deadline = time.time() + 10
         while time.time() < deadline:
-            self.get("/api/status")
-            if self.get("/api/backends").json() == expected:
+            online = self.get("/api/status").json()["cdsp_online"]
+            reachable = self.get("/api/getparam/volume").status == 200
+            if online and reachable and self.get("/api/backends").json() == expected:
                 return
             time.sleep(0.1)
         raise RuntimeError("Backend did not read the device types")

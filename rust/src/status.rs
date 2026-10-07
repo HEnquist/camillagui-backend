@@ -4,7 +4,7 @@
 use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::validate::DeviceTypeLists;
 use serde_json::{Map, Value, json};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -35,8 +35,9 @@ fn nearest_standard_rate(rate: usize) -> Option<usize> {
 pub struct StatusCache {
     values: Mutex<Map<String, Value>>,
     last_refresh: Mutex<Option<Instant>>,
-    /// Whether the last status query reached CamillaDSP.
-    online: AtomicBool,
+    /// The client connection the version and device lists were read on, 0
+    /// for none. When the client has made a new one, they are read again.
+    connection: AtomicU64,
     /// The device types the connected CamillaDSP supports, once known.
     device_types: Mutex<Option<DeviceTypeLists>>,
 }
@@ -55,7 +56,7 @@ impl StatusCache {
         let cache = StatusCache {
             values: Mutex::new(Map::new()),
             last_refresh: Mutex::new(None),
-            online: AtomicBool::new(false),
+            connection: AtomicU64::new(0),
             device_types: Mutex::new(None),
         };
         cache.merge(initial);
@@ -65,7 +66,7 @@ impl StatusCache {
 
     fn set_offline(&self) {
         self.merge(json!({
-            "cdsp_status": "Offline",
+            "cdsp_online": false,
             "cdsp_version": "(offline)",
             "capturerate": null,
             "rateadjust": null,
@@ -77,7 +78,7 @@ impl StatusCache {
             "description": null,
         }));
         *self.last_refresh.lock().unwrap() = None;
-        self.online.store(false, Ordering::Relaxed);
+        self.connection.store(0, Ordering::Relaxed);
     }
 
     pub fn merge(&self, update: Value) {
@@ -130,7 +131,9 @@ impl StatusCache {
         values.get(cache_key)?.get(group)?.get(name).cloned()
     }
 
-    /// Ask CamillaDSP for its state, and once a second for everything else.
+    /// Ask CamillaDSP for the values at most once a second, however many
+    /// browsers poll. The processing state is not here, the browsers get it
+    /// from `/api/state` as it changes.
     pub async fn refresh(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Value {
         if let Err(err) = self.query_all(camilla).await {
             log::debug!("Status query failed: {err}");
@@ -140,20 +143,6 @@ impl StatusCache {
     }
 
     async fn query_all(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
-        let state = match camilla.state().await {
-            Ok(state) => state,
-            Err(DspError::Command { message, .. }) => {
-                log::warn!("CamillaDSP did not give its state: {message}");
-                return Ok(());
-            }
-            Err(err) => return Err(err),
-        };
-        // The Python backend sent the name of pycamilladsp's enum, so the
-        // frontend gets "RUNNING" rather than "Running".
-        self.merge(json!({"cdsp_status": state.to_string()}));
-        if !self.online.swap(true, Ordering::Relaxed) {
-            self.on_reconnect(camilla).await?;
-        }
         let due = match *self.last_refresh.lock().unwrap() {
             Some(last) => last.elapsed() > SLOW_REFRESH,
             None => true,
@@ -164,6 +153,7 @@ impl StatusCache {
         *self.last_refresh.lock().unwrap() = Some(Instant::now());
         let capture_rate = value(camilla.capture_rate().await)?.and_then(nearest_standard_rate);
         let update = json!({
+            "cdsp_online": true,
             "capturerate": capture_rate,
             "rateadjust": to_json(&value(camilla.rate_adjust().await)?),
             "bufferlevel": value(camilla.buffer_level().await)?,
@@ -174,6 +164,10 @@ impl StatusCache {
             "title": value(camilla.config_title().await)?,
             "description": value(camilla.config_description().await)?,
         });
+        let connection = camilla.connection();
+        if self.connection.swap(connection, Ordering::Relaxed) != connection {
+            self.on_reconnect(camilla).await?;
+        }
         self.merge(update);
         Ok(())
     }

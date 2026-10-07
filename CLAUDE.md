@@ -37,7 +37,7 @@ main.rs        routes, startup, the file folders as static files
 api.rs         the /api handlers, the counterpart of the old views.py
 camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_config::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
-events.rs      SSE out: VU levels and spectrum, one CamillaDSP subscription per open stream
+events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
 validate.rs    validation with camilladsp-config, plus the GUI's device type rules
 settings.rs    camillagui.yml and gui-config.yml
 paths.rs       resolving, relativizing and policing coefficient and audio paths
@@ -63,8 +63,7 @@ release does not ship one, so an upgrade always brings the current stylesheet.
 the GUI simpler or cheaper, and change the frontend, the demo backend
 (`frontend/src/demo/mockBackend.ts`) and the API tests in `rust/api_tests` with it. Most responses
 still have the old Python backend's shape, down to quirks like `getparam/mute` answering
-`True`/`False` and status values with the pycamilladsp names (`RUNNING`), only because the port
-kept the frontend unchanged.
+`True`/`False`, only because the port kept the frontend unchanged.
 
 Two things to keep in mind:
 - serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.

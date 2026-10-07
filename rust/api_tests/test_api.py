@@ -75,7 +75,10 @@ def test_read_status(server):
     resp = server.get("/api/status")
     assert resp.status == 200
     status = resp.json()
-    assert status["cdsp_status"] == "RUNNING"
+    assert status["cdsp_online"] is True
+    # The state comes from /api/state, so the status does not ask for it.
+    assert "cdsp_status" not in status
+    assert not server.fake.commands("GetState")
     assert status["resamplerload"] == 0.2
     assert status["capturerate"] == 44100
     assert status["labels"] == {"capture": ["L", "R"], "playback": ["L", "R"]}
@@ -83,11 +86,104 @@ def test_read_status(server):
     assert status["capture_devices"]["Alsa"] == [["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]
 
 
+def wait_until_offline(server):
+    """The status asks CamillaDSP at most once a second, so it may take that long to notice."""
+    deadline = time.time() + 5
+    while True:
+        status = server.get("/api/status").json()
+        if not status["cdsp_online"]:
+            return status
+        assert time.time() < deadline
+        time.sleep(0.05)
+
+
 def test_status_goes_offline(server):
     server.fake.go_offline()
-    status = server.get("/api/status").json()
-    assert status["cdsp_status"] == "Offline"
+    status = wait_until_offline(server)
     assert status["cdsp_version"] == "(offline)"
+
+
+def test_status_rereads_the_version_after_a_restart_it_did_not_see(server):
+    # A quick restart, noticed by another request, which reconnects.
+    server.fake.go_offline()
+    server.fake.state["version"] = "5.0.1"
+    server.fake.state["online"] = True
+    deadline = time.time() + 5
+    while server.get("/api/getparam/volume").status != 200:
+        assert time.time() < deadline
+    while server.get("/api/status").json()["cdsp_version"] != "5.0.1":
+        assert time.time() < deadline
+        time.sleep(0.05)
+    # Offline again, so the next reset reconnects and reads the usual version.
+    server.fake.go_offline()
+
+
+def timed_status(server):
+    start = time.time()
+    status = server.get("/api/status").json()
+    return status, time.time() - start
+
+
+def test_status_does_not_wait_on_a_hung_camilladsp(server):
+    server.fake.go_offline(hung=True)
+    wait_until_offline(server)
+    # Every connect runs into the timeout. Only one request per retry interval
+    # tries, the others answer at once.
+    slow = fast = 0
+    end = time.time() + 2.5
+    while time.time() < end:
+        status, elapsed = timed_status(server)
+        assert status["cdsp_online"] is False
+        if elapsed > 0.5:
+            slow += 1
+        else:
+            fast += 1
+        time.sleep(0.05)
+    assert 1 <= slow <= 2
+    assert fast >= 5
+
+
+def read_events(stream, name, count, timeout=5):
+    """The data of the next `count` events called `name`, parsed."""
+    deadline = time.time() + timeout
+    event = None
+    found = []
+    while time.time() < deadline and len(found) < count:
+        line = stream.readline().decode().strip()
+        if line.startswith("event:"):
+            event = line.split(":", 1)[1].strip()
+        if line.startswith("data:") and event == name:
+            found.append(json.loads(line.split(":", 1)[1]))
+    return found
+
+
+def test_state_stream(server):
+    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10) as stream:
+        assert stream.headers["Content-Type"].startswith("text/event-stream")
+        assert stream.headers["X-Accel-Buffering"] == "no"
+        # CamillaDSP sends nothing until the state changes, so the backend starts with the current one.
+        assert read_events(stream, "state", 1) == [{"state": "Running"}]
+        server.fake.state["stop_reason"] = "Done"
+        server.fake.state["state"] = "Inactive"
+        assert read_events(stream, "state", 1) == [{"state": "Inactive", "stop_reason": "Done"}]
+        server.fake.state["state"] = "Paused"
+        assert read_events(stream, "state", 1) == [{"state": "Paused"}]
+
+
+def test_state_stream_starts_with_the_stop_reason(server):
+    server.fake.state["state"] = "Inactive"
+    server.fake.state["stop_reason"] = {"CaptureError": "device gone"}
+    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10) as stream:
+        assert read_events(stream, "state", 1) == [
+            {"state": "Inactive", "stop_reason": {"CaptureError": "device gone"}}
+        ]
+
+
+def test_state_stream_offline(server):
+    server.fake.go_offline()
+    with pytest.raises(urllib.error.HTTPError) as error:
+        urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10)
+    assert error.value.code == 503
 
 
 def wait_for_sockets(server, count):
@@ -686,7 +782,7 @@ def test_validate_config_without_content_type(server):
 def test_validate_config_reports_device_types_the_dsp_lacks(server):
     # The device types are read when the backend reconnects.
     server.fake.go_offline()
-    server.get("/api/status")
+    wait_until_offline(server)
     server.fake.state["supported_device_types"] = [["Stdout"], ["Alsa"]]
     server.fake.state["online"] = True
     server.wait_for_backends([["Stdout"], ["Alsa"]])

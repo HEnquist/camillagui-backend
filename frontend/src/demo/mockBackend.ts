@@ -680,7 +680,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     }
     const processingRunning = !state.processingStopped
     return jsonResponse({
-      cdsp_status: processingRunning ? "Running" : "Stopped",
+      cdsp_online: true,
       capturerate: processingRunning ? 47999 + Math.round(Math.sin(Date.now() / 5000) * 3) : "",
       rateadjust: processingRunning ? Number((Math.sin(Date.now() / 1800) * 0.08).toFixed(3)) : "",
       bufferlevel: processingRunning ? 22 + Math.round((Math.sin(Date.now() / 1200) + 1) * 18) : "",
@@ -1159,6 +1159,11 @@ function adjustedPlaybackLevel(level: number, gainDb: number) {
   return Number(Math.max(-120, Math.min(0, level + gainDb)).toFixed(1))
 }
 
+/** A `/api/state` event, CamillaDSP's StateUpdate. */
+function currentStateEvent() {
+  return state.processingStopped ? { state: "Inactive", stop_reason: "None" } : { state: "Running" }
+}
+
 class DemoEventSource extends EventTarget {
   static readonly CONNECTING = 0
   static readonly OPEN = 1
@@ -1182,6 +1187,8 @@ class DemoEventSource extends EventTarget {
     if (spectrumParams) {
       spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
     }
+    const isStateStream = new URL(this.url, "http://demo").pathname === "/api/state"
+    let lastState = JSON.stringify(currentStateEvent())
     queueMicrotask(() => {
       if (this.readyState !== DemoEventSource.CONNECTING) return
       // Like the backend, a spectrum stream is refused or ended while processing is stopped.
@@ -1193,10 +1200,18 @@ class DemoEventSource extends EventTarget {
       const openEvent = new Event("open")
       this.dispatchEvent(openEvent)
       this.onopen?.call(this as unknown as EventSource, openEvent)
+      // Like the backend, a state stream starts with the current state.
+      if (isStateStream) this.dispatchEvent(new MessageEvent("state", { data: lastState }))
     })
     this.timerId = setInterval(() => {
       if (this.readyState !== DemoEventSource.OPEN) return
-      if (!spectrumParams) {
+      if (isStateStream) {
+        const current = JSON.stringify(currentStateEvent())
+        if (current !== lastState) {
+          lastState = current
+          this.dispatchEvent(new MessageEvent("state", { data: current }))
+        }
+      } else if (!spectrumParams) {
         this.dispatchEvent(new MessageEvent("levels", { data: JSON.stringify(generateLevels()) }))
       } else if (state.processingStopped) {
         this.fail()

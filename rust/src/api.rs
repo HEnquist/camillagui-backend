@@ -146,6 +146,12 @@ pub async fn get_status(State(app): Shared) -> Response {
     json_response(status)
 }
 
+/// A processing state event stream with its own subscription, which ends when
+/// the browser closes the stream. It starts with the current state.
+pub async fn get_state(State(app): Shared) -> ApiResult {
+    event_stream_response(events::state_stream(&app.camilla).await)
+}
+
 /// A VU level event stream with its own subscription, which ends when the
 /// browser closes the stream. Smoothing and rate come from the settings.
 pub async fn get_levels(State(app): Shared) -> ApiResult {

@@ -104,6 +104,8 @@ Key endpoints used by the frontend:
 - `POST /api/saveconfigfile` — save config to disk `{filename, config}`
 - `GET /api/levels` — SSE stream of VU levels, CamillaDSP's VuLevels as they came
 - `GET /api/spectrum?side=...&n_bins=...` — SSE stream of spectra, CamillaDSP's SpectrumData
+- `GET /api/state` — SSE stream of the processing state, CamillaDSP's StateUpdate, starting with
+  the current one. `StatusPoller` merges it into the polled `/api/status` as `cdsp_status`
 - Each open stream is its own CamillaDSP subscription, which ends when the stream is closed
 - `POST /api/convcoeffs` — coefficients of a Conv filter that reads a file
 

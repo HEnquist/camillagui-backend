@@ -5,12 +5,13 @@
 //! the browser goes away the stream is dropped with its socket, and CamillaDSP
 //! ends the subscription when the socket closes.
 
-use crate::camilla::{self, DspError, Ws, check};
-use axum::response::sse::{Event, KeepAlive, Sse};
+use crate::camilla::{self, CamillaClient, DspError, Ws, check};
+use axum::response::sse::{Event, KeepAlive, KeepAliveStream, Sse};
 use camilladsp_config::protocol::{
-    SpectrumSubscription, VuSubscription, WsCommand, WsReply, WsResult,
+    ProcessingState, SpectrumSubscription, StateUpdate, VuSubscription, WsCommand, WsReply,
+    WsResult,
 };
-use futures_util::{Stream, stream};
+use futures_util::{Stream, StreamExt, stream};
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use std::convert::Infallible;
@@ -25,6 +26,12 @@ pub enum SubscribeError {
     Other(String),
 }
 
+impl From<DspError> for SubscribeError {
+    fn from(err: DspError) -> Self {
+        SubscribeError::Other(err.to_string())
+    }
+}
+
 /// The VU levels, as `levels` events with CamillaDSP's VuLevels in them.
 pub async fn level_stream(
     url: &str,
@@ -33,7 +40,9 @@ pub async fn level_stream(
     let command = WsCommand::SubscribeVuLevels {
         value: subscription,
     };
-    event_stream(url, command, "VuLevelsEvent", "levels").await
+    Ok(sse(
+        event_stream(url, command, "VuLevelsEvent", "levels").await?
+    ))
 }
 
 /// The spectrum, as `spectrum` events with CamillaDSP's SpectrumData in them.
@@ -42,7 +51,45 @@ pub async fn spectrum_stream(
     params: SpectrumSubscription,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
     let command = WsCommand::SubscribeSpectrum { value: params };
-    event_stream(url, command, "SpectrumEvent", "spectrum").await
+    Ok(sse(
+        event_stream(url, command, "SpectrumEvent", "spectrum").await?
+    ))
+}
+
+/// The processing state, as `state` events with CamillaDSP's StateUpdate in
+/// them. CamillaDSP sends one only when the state changes, so the stream starts
+/// with the current state. That is read after subscribing, so a change in
+/// between comes as an event rather than being lost.
+pub async fn state_stream(
+    camilla: &CamillaClient,
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
+    let events = event_stream(
+        camilla.url(),
+        WsCommand::SubscribeState,
+        "StateEvent",
+        "state",
+    )
+    .await?;
+    let state = camilla.state().await?;
+    let stop_reason = match state {
+        ProcessingState::Inactive => Some(camilla.stop_reason().await?),
+        _ => None,
+    };
+    let current = serde_json::to_string(&StateUpdate { state, stop_reason })
+        .map_err(|err| SubscribeError::Other(err.to_string()))?;
+    let first = Event::default().event("state").data(current);
+    Ok(sse(stream::once(async { Ok(first) }).chain(events)))
+}
+
+fn sse<S>(events: S) -> Sse<KeepAliveStream<S>>
+where
+    S: Stream<Item = Result<Event, Infallible>> + Send + 'static,
+{
+    Sse::new(events).keep_alive(
+        KeepAlive::new()
+            .interval(Duration::from_secs(15))
+            .text("keepalive"),
+    )
 }
 
 /// Subscribe on a socket of its own, and return once CamillaDSP has accepted
@@ -54,30 +101,26 @@ async fn event_stream(
     command: WsCommand,
     reply: &'static str,
     event: &'static str,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>> + use<>>, SubscribeError> {
-    let mut ws = camilla::connect(url)
-        .await
-        .map_err(|err| SubscribeError::Other(err.to_string()))?;
-    let answer = camilla::request_on(&mut ws, &command, REPLY_TIMEOUT)
-        .await
-        .map_err(|err| SubscribeError::Other(err.to_string()))?;
+) -> Result<impl Stream<Item = Result<Event, Infallible>> + use<>, SubscribeError> {
+    let mut ws = camilla::connect(url).await?;
+    let answer = camilla::request_on(&mut ws, &command, REPLY_TIMEOUT).await?;
     match answer {
-        WsReply::SubscribeVuLevels { result } | WsReply::SubscribeSpectrum { result } => {
-            match result {
-                WsResult::Ok => {}
-                WsResult::ProcessingNotRunningError => {
-                    return Err(SubscribeError::ProcessingNotRunning);
-                }
-                result => {
-                    return Err(SubscribeError::Other(
-                        check(result)
-                            .err()
-                            .map(|e| e.to_string())
-                            .unwrap_or_default(),
-                    ));
-                }
+        WsReply::SubscribeVuLevels { result }
+        | WsReply::SubscribeSpectrum { result }
+        | WsReply::SubscribeState { result } => match result {
+            WsResult::Ok => {}
+            WsResult::ProcessingNotRunningError => {
+                return Err(SubscribeError::ProcessingNotRunning);
             }
-        }
+            result => {
+                return Err(SubscribeError::Other(
+                    check(result)
+                        .err()
+                        .map(|e| e.to_string())
+                        .unwrap_or_default(),
+                ));
+            }
+        },
         other => {
             return Err(SubscribeError::Other(format!(
                 "Got a reply to {other:?} while waiting for the subscription"
@@ -85,7 +128,7 @@ async fn event_stream(
         }
     }
     log::debug!("Subscribed to {reply}");
-    let events = stream::unfold(ws, move |mut ws| async move {
+    Ok(stream::unfold(ws, move |mut ws| async move {
         match next_event(&mut ws, reply).await {
             Ok(Ok(value)) => Some((Ok(Event::default().event(event).data(value)), ws)),
             Ok(Err(result)) => {
@@ -97,12 +140,7 @@ async fn event_stream(
                 None
             }
         }
-    });
-    Ok(Sse::new(events).keep_alive(
-        KeepAlive::new()
-            .interval(Duration::from_secs(15))
-            .text("keepalive"),
-    ))
+    }))
 }
 
 /// A pushed event with its value left as CamillaDSP's own JSON text, which goes

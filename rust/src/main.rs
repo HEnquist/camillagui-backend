@@ -47,6 +47,7 @@ fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/levels", get(api::get_levels))
         .route("/status", get(api::get_status))
+        .route("/state", get(api::get_state))
         .route("/getparam/{name}", get(api::get_param))
         .route("/getparamjson/{name}", get(api::get_param_json))
         .route("/getlistparam/{name}", get(api::get_list_param))

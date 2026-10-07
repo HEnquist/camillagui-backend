@@ -183,10 +183,11 @@ Use plain `fetch` — no library needed.
 const res = await fetch("/api/getconfig")
 const config = await res.json()
 
-// Running status
+// Status values: capturerate, bufferlevel, processingload, title and so on.
+// The processing state is not here, it comes from the /api/state stream below.
 const res = await fetch("/api/status")
 const status = await res.json()
-// status.cdsp_status: "Running" | "Paused" | "Inactive" | "Starting" | "Off"
+// status.cdsp_online: boolean, whether the backend reaches CamillaDSP
 
 // Live parameter value (e.g. current volume)
 const res = await fetch("/api/getparam/volume.level")
@@ -277,6 +278,11 @@ evtSource.addEventListener("levels", (e) => {
 `GET /api/spectrum?side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10` is the same
 for the spectrum, as `spectrum` events with `frequencies` and `magnitudes`. Add `channel=0` for a
 single channel, leave it out to average them all. It answers 503 while processing is stopped.
+
+`GET /api/state` is the same for the processing state, as `state` events with `state` ("Running",
+"Paused", "Inactive", "Starting" or "Stalled") and, when inactive, `stop_reason`. The first event
+is the current state, the next ones come when it changes. It answers 503, or ends, while
+CamillaDSP cannot be reached.
 
 ## Adding a custom backend endpoint
 
