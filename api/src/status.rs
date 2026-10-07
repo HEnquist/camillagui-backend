@@ -220,9 +220,13 @@ impl StatusCache {
         let labels = value(camilla.channel_labels().await)?.unwrap_or_default();
         let title = value(camilla.config_title().await)?;
         let description = value(camilla.config_description().await)?;
+        // Stored only once on_reconnect is through, so that a poll dropped
+        // halfway, by a page reload, leaves it for the next one. Two polls may
+        // both run it, which only reads the same values twice.
         let connection = camilla.connection();
-        if self.connection.swap(connection, Ordering::Relaxed) != connection {
+        if self.connection.load(Ordering::Relaxed) != connection {
             self.on_reconnect(camilla).await?;
+            self.connection.store(connection, Ordering::Relaxed);
         }
         let mut status = self.status.lock().unwrap();
         status.cdsp_online = true;
@@ -320,8 +324,10 @@ mod tests {
     }
 
     /// A fake CamillaDSP with Jack and Alsa, where Jack cannot list devices.
-    async fn fake_camilladsp_without_jack() -> u16 {
-        use camilladsp_schema::protocol::{WsCommand, WsReply, WsResult};
+    /// It answers the config description after a delay, and the state after a
+    /// longer one, so that a status poll can be held up behind a request.
+    async fn fake_camilladsp() -> u16 {
+        use camilladsp_schema::protocol::{ProcessingState, WsCommand, WsReply, WsResult};
         use futures_util::{SinkExt, StreamExt};
         use tokio_tungstenite::tungstenite::Message;
 
@@ -364,6 +370,52 @@ mod tests {
                                     value: if jack { vec![] } else { alsa() },
                                 }
                             }
+                            WsCommand::GetCaptureRate => WsReply::GetCaptureRate {
+                                result: WsResult::Ok,
+                                value: 44100,
+                            },
+                            WsCommand::GetRateAdjust => WsReply::GetRateAdjust {
+                                result: WsResult::Ok,
+                                value: 1.0,
+                            },
+                            WsCommand::GetBufferLevel => WsReply::GetBufferLevel {
+                                result: WsResult::Ok,
+                                value: 0,
+                            },
+                            WsCommand::GetClippedSamples => WsReply::GetClippedSamples {
+                                result: WsResult::Ok,
+                                value: 0,
+                            },
+                            WsCommand::GetProcessingLoad => WsReply::GetProcessingLoad {
+                                result: WsResult::Ok,
+                                value: 0.0,
+                            },
+                            WsCommand::GetResamplerLoad => WsReply::GetResamplerLoad {
+                                result: WsResult::Ok,
+                                value: 0.0,
+                            },
+                            WsCommand::GetChannelLabels => WsReply::GetChannelLabels {
+                                result: WsResult::Ok,
+                                value: ChannelLabels::default(),
+                            },
+                            WsCommand::GetConfigTitle => WsReply::GetConfigTitle {
+                                result: WsResult::Ok,
+                                value: "Title".to_string(),
+                            },
+                            WsCommand::GetConfigDescription => {
+                                tokio::time::sleep(Duration::from_millis(100)).await;
+                                WsReply::GetConfigDescription {
+                                    result: WsResult::Ok,
+                                    value: "Description".to_string(),
+                                }
+                            }
+                            WsCommand::GetState => {
+                                tokio::time::sleep(Duration::from_millis(200)).await;
+                                WsReply::GetState {
+                                    result: WsResult::Ok,
+                                    value: ProcessingState::Running,
+                                }
+                            }
                             command => panic!("unexpected command {command:?}"),
                         };
                         let text = serde_json::to_string(&reply).unwrap();
@@ -377,7 +429,7 @@ mod tests {
 
     #[tokio::test]
     async fn failing_backend_does_not_stop_the_others_from_being_cached() {
-        let port = fake_camilladsp_without_jack().await;
+        let port = fake_camilladsp().await;
         let camilla = CamillaClient::new("127.0.0.1", port);
         let cache = StatusCache::new();
         cache.refresh_devices(&camilla).await.unwrap();
@@ -386,5 +438,31 @@ mod tests {
         assert_eq!(cache.device_list(false, "Alsa"), Some(alsa.clone()));
         assert_eq!(cache.device_list(true, "Jack"), None);
         assert_eq!(cache.device_list(true, "Alsa"), Some(alsa));
+    }
+
+    #[tokio::test]
+    async fn dropped_poll_leaves_the_reconnect_for_the_next() {
+        let port = fake_camilladsp().await;
+        let camilla = Arc::new(CamillaClient::new("127.0.0.1", port));
+        let cache = Arc::new(StatusCache::new());
+        // The first poll is held up in on_reconnect, waiting for the socket
+        // while another request has it, and is dropped there, like the
+        // handler of a reloaded page.
+        let poll = tokio::time::timeout(Duration::from_millis(250), cache.refresh(&camilla));
+        let meanwhile = async {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            camilla.state().await
+        };
+        let (poll, meanwhile) = tokio::join!(poll, meanwhile);
+        assert!(poll.is_err());
+        meanwhile.unwrap();
+        // Dropped while waiting, not halfway through a request, so the
+        // connection is still the same.
+        assert_eq!(camilla.connection(), 1);
+        // The next poll reads the version, rather than take it as read.
+        *cache.last_refresh.lock().unwrap() = None;
+        let status = cache.refresh(&camilla).await;
+        assert!(status.cdsp_online);
+        assert_eq!(status.cdsp_version, "5.0.0");
     }
 }
