@@ -12,7 +12,7 @@ import { complexGain, groupDelaySamples } from "./filters"
 import { addDelayInto, delayInMs } from "./groupdelay"
 import { FilterEvalError, num, numList, Params } from "./params"
 import { ChartContent, FilterOption } from "../../utilities/chart"
-import { Config, Filter } from "../config"
+import { Config, LooseFilter } from "../config"
 
 export { FilterEvalError } from "./params"
 
@@ -100,7 +100,7 @@ function pruneCoefficientCache(): void {
   for (let n = 0; n < evicted; n++) coeffCache.delete(keys[n])
 }
 
-function cacheKey(filterconf: Filter, samplerate: number, channels: number): string {
+function cacheKey(filterconf: LooseFilter, samplerate: number, channels: number): string {
   return JSON.stringify([filterconf.parameters, samplerate, channels])
 }
 
@@ -147,7 +147,7 @@ function unframeCoefficients(buffer: ArrayBuffer): ConvCoefficients {
  * and decodes the samples; it does no DSP.
  */
 async function fetchConvCoefficients(
-  filterconf: Filter,
+  filterconf: LooseFilter,
   samplerate: number,
   channels: number,
 ): Promise<ConvCoefficients> {
@@ -189,7 +189,11 @@ async function fetchConvCoefficients(
  * came with it. Only Raw and Wav reach the backend; Dummy and Values are built
  * here.
  */
-async function convCoefficients(filterconf: Filter, samplerate: number, channels: number): Promise<ConvCoefficients> {
+async function convCoefficients(
+  filterconf: LooseFilter,
+  samplerate: number,
+  channels: number,
+): Promise<ConvCoefficients> {
   const params = (filterconf.parameters ?? {}) as Params
   const subtype = params.type
   if (subtype === "Raw" || subtype === "Wav") return fetchConvCoefficients(filterconf, samplerate, channels)
@@ -222,7 +226,7 @@ function blankedBelowFloor(delay: number[], magnitude: number[], floor: number |
 }
 
 /** Evaluate one filter, for the plot in the filters tab. */
-export async function evalFilter(filterconf: Filter, options: EvalOptions): Promise<ChartContent> {
+export async function evalFilter(filterconf: LooseFilter, options: EvalOptions): Promise<ChartContent> {
   const { samplerate, channels } = options
   const volume = options.volume ?? 0.0
   const npoints = options.npoints ?? NPOINTS

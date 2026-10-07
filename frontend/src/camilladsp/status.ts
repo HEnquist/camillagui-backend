@@ -1,4 +1,4 @@
-import { Versions } from "./versions"
+import { api, QueryOf, Schemas } from "../api/client"
 
 export interface VuMeterStatus {
   capturesignalrms: number[]
@@ -7,64 +7,35 @@ export interface VuMeterStatus {
   playbacksignalpeak: number[]
 }
 
-export interface Labels {
-  capture: (string | null)[] | null
-  playback: (string | null)[] | null
-}
+export type Labels = Schemas["ChannelLabels"]
+
+/** What `/api/status` answers. */
+type PolledStatus = Schemas["Status"]
 
 /**
  * The status the GUI shows: what `/api/status` answers, with the processing
  * state from `/api/state` in place of `cdsp_online`.
  */
-export interface Status extends Versions {
+export type Status = Omit<PolledStatus, "cdsp_online"> & {
   /** CamillaDSP's processing state, like "Running", or one of the OFFLINE_STATES. */
   cdsp_status: string
-  capturerate: number | ""
-  rateadjust: number | ""
-  bufferlevel: number | ""
-  clippedsamples: number | ""
-  processingload: number | ""
-  resamplerload: number | ""
-  labels: Labels
-  title: string | null
-  description: string | null
 }
 
-/** What `/api/status` answers. */
-interface PolledStatus extends Omit<Status, "cdsp_status"> {
-  cdsp_online: boolean
-}
+/**
+ * A `state` event, CamillaDSP's StateUpdate passed on unchanged by the backend.
+ * `stop_reason` is there only when the state is "Inactive".
+ */
+export type StateEvent = Schemas["StateUpdate"]
 
-/** A `state` event, CamillaDSP's StateUpdate passed on unchanged by the backend. */
-export interface StateEvent {
-  state: string
-  /** Only when the state is "Inactive", for example "Done" or {"CaptureError": "..."}. */
-  stop_reason?: unknown
-}
-
-export interface StatusWithLevels extends Status, VuMeterStatus {}
+export type StatusWithLevels = Status & VuMeterStatus
 
 /** A `levels` event, CamillaDSP's VuLevels passed on unchanged by the backend. */
-export interface LevelsEvent {
-  capture_rms: number[]
-  capture_peak: number[]
-  playback_rms: number[]
-  playback_peak: number[]
-}
+export type LevelsEvent = Schemas["VuLevels"]
 
-export interface SpectrumEvent {
-  frequencies: number[]
-  magnitudes: number[]
-}
+/** A `spectrum` event, CamillaDSP's SpectrumData passed on unchanged by the backend. */
+export type SpectrumEvent = Schemas["SpectrumData"]
 
-export interface SpectrumSubscriptionParams {
-  side: "capture" | "playback"
-  channel: number | null
-  min_freq: number
-  max_freq: number
-  n_bins: number
-  max_rate: number
-}
+export type SpectrumSubscriptionParams = QueryOf<"/api/spectrum">
 
 const CACHE_MAX_AGE_MS = 5000
 const VISIBILITY_RESUME_DELAY_MS = 100
@@ -89,12 +60,12 @@ export function defaultVuMeterStatus(): VuMeterStatus {
 function offlineStatus(): Status {
   return {
     cdsp_status: BACKEND_OFFLINE,
-    capturerate: "",
-    rateadjust: "",
-    bufferlevel: "",
-    clippedsamples: "",
-    processingload: "",
-    resamplerload: "",
+    capturerate: null,
+    rateadjust: null,
+    bufferlevel: null,
+    clippedsamples: null,
+    processingload: null,
+    resamplerload: null,
     cdsp_version: "",
     backend_version: "",
     labels: { playback: null, capture: null },
@@ -196,7 +167,9 @@ export class StatusPoller {
     }
     this.timerId = undefined
     try {
-      this.polled = await (await fetch("/api/status")).json()
+      const { data } = await api.GET("/api/status")
+      if (!data) throw new Error("The backend did not send a status")
+      this.polled = data
       this.publish()
     } catch {
       this.polled = null

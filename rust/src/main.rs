@@ -13,6 +13,7 @@ mod files;
 mod filter_variants;
 mod gui;
 mod legacy;
+mod openapi;
 mod paths;
 mod settings;
 mod status;
@@ -28,6 +29,9 @@ use clap::Parser;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tower_http::services::ServeDir;
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 #[derive(Parser)]
 #[command(about = "Backend for the CamillaDSP web GUI", version)]
@@ -43,11 +47,15 @@ struct Args {
 /// Uploads can be large audio files.
 const MAX_UPLOAD_SIZE: usize = 1024 * 1024 * 1024;
 
-fn api_routes() -> Router<Arc<AppState>> {
-    Router::new()
-        .route("/levels", get(api::get_levels))
-        .route("/status", get(api::get_status))
-        .route("/state", get(api::get_state))
+/// The `/api` routes. The typed ones are registered with `routes!`, which puts
+/// them in the spec as well, the rest with `route`, which leaves them out.
+fn api_routes() -> OpenApiRouter<Arc<AppState>> {
+    OpenApiRouter::new()
+        .routes(routes!(api::get_levels))
+        .routes(routes!(api::get_status))
+        .routes(routes!(api::get_state))
+        .routes(routes!(api::get_spectrum))
+        .route("/openapi.json", get(openapi::get_spec))
         .route("/getparam/{name}", get(api::get_param))
         .route("/getparamjson/{name}", get(api::get_param_json))
         .route("/getlistparam/{name}", get(api::get_list_param))
@@ -57,7 +65,6 @@ fn api_routes() -> Router<Arc<AppState>> {
         .route("/getconfig", get(api::get_config))
         .route("/setconfig", post(api::set_config))
         .route("/stop", post(api::stop_processing))
-        .route("/spectrum", get(api::get_spectrum))
         .route("/getstartconfig", get(api::get_config_at_gui_start))
         .route("/getactiveconfigfilename", get(api::get_active_config_name))
         .route("/getdefaultconfigfile", get(api::get_default_config_file))
@@ -105,6 +112,13 @@ fn api_routes() -> Router<Arc<AppState>> {
         .route("/backends", get(api::get_backends))
 }
 
+/// The `/api` router, and the spec of its typed routes.
+pub fn api() -> (Router<Arc<AppState>>, utoipa::openapi::OpenApi) {
+    OpenApiRouter::with_openapi(openapi::ApiDoc::openapi())
+        .nest("/api", api_routes())
+        .split_for_parts()
+}
+
 /// Serve a folder, or warn and carry on if it does not exist. Without it the
 /// GUI still works, it just has no files of that kind until it is created.
 fn add_folder(
@@ -126,8 +140,8 @@ fn add_folder(
 
 pub fn build_router(app: Arc<AppState>) -> Router {
     let settings = &app.settings;
-    let mut router = Router::new()
-        .nest("/api", api_routes())
+    let mut router = api()
+        .0
         .route("/", get(api::get_gui_index))
         .route("/gui/{*path}", get(gui::file));
     router = add_folder(router, "/config", &settings.config_dir, "config_dir");

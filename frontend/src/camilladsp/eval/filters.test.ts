@@ -7,7 +7,7 @@
  * sources, rather than pinning a curve.
  */
 import { describe, expect, it, vi } from "vitest"
-import { Filter } from "../config"
+import { LooseFilter } from "../config"
 import { magnitudeDb } from "./complex"
 import { findPeak } from "./conv"
 import { LOUDNESS_LOW_Q } from "./defaults"
@@ -18,17 +18,17 @@ import { unwrapPhase } from "./unwrap"
 
 const FS = 48000
 
-function filter(type: string, parameters: Filter["parameters"]): Filter {
+function filter(type: string, parameters: LooseFilter["parameters"]): LooseFilter {
   return { type, description: null, parameters }
 }
 
 /** Magnitude in dB at the given frequencies. */
-function gainAt(f: Filter, freqs: number[], volume = 0.0): number[] {
+function gainAt(f: LooseFilter, freqs: number[], volume = 0.0): number[] {
   return magnitudeDb(complexGain(f, FS, volume, Float64Array.from(freqs)))
 }
 
 /** Two filters that must produce the same response, compared point by point. */
-function expectSameResponse(a: Filter, b: Filter, volume = 0.0) {
+function expectSameResponse(a: LooseFilter, b: LooseFilter, volume = 0.0) {
   const freqs = [10, 50, 100, 500, 1000, 5000, 10000, 20000]
   const left = gainAt(a, freqs, volume)
   const right = gainAt(b, freqs, volume)

@@ -13,6 +13,7 @@ npm run check        # tsc --noEmit only
 npm test             # vitest (watch mode)
 npm run lint         # eslint
 npm run format       # prettier
+npm run generate-api # src/api/schema.ts from ../rust/openapi.json
 ```
 
 Node >= 22 required (see `.nvmrc`, and CI runs 24.x).
@@ -24,8 +25,12 @@ index.tsx                   # App root — CamillaConfig class component, tab sh
 guiconfig.ts                # GuiConfig type + defaults (fetched from /api/guiconfig)
 index.css                   # All CSS (CSS variables in public/css-variables.css)
 
+api/
+  schema.ts                 # Generated from ../rust/openapi.json, do not edit
+  client.ts                 # openapi-fetch client on the generated paths
+
 camilladsp/                 # Domain types + status polling
-  config.ts                 # Config type, helpers (getCaptureDeviceChannelCount, etc.)
+  config.ts                 # Config types (generated, see below), helpers
   status.ts                 # Status/state types
   usevumeterstatus.ts       # React hook for VU meter SSE stream
   versions.tsx              # Version mismatch UI
@@ -96,6 +101,16 @@ utilities/
 ## API
 
 All requests go to `/api/*` (proxied to the backend in dev). See `../rust/src/main.rs` for the full list.
+
+The typed endpoints are in the backend's OpenAPI spec, and `src/api/schema.ts` is generated from
+it by openapi-typescript. Call them through `api` in `src/api/client.ts` (openapi-fetch), so tsc
+checks the path, parameters, body and response. The demo backend uses the same generated types.
+The rest are still plain `fetch` until they are typed in the backend.
+
+The config types in `camilladsp/config.ts` are the generated ones from camilladsp-config, wrapped
+in `Complete<>`, since the backend sends every optional field (as null) and the GUI always writes
+them all. The filter and processor editors and the evaluator handle parameters by name, so they
+work on `LooseFilter` and `LooseProcessor`, which every `Filter` and `Processor` is.
 
 Key endpoints used by the frontend:
 - `GET /api/guiconfig` — GuiConfig JSON

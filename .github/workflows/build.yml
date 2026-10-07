@@ -17,6 +17,12 @@ jobs:
         cache: npm
         cache-dependency-path: frontend/package-lock.json
     - run: npm ci
+    # The backend's test checks rust/openapi.json against the code, this checks the types
+    # generated from it.
+    - name: Check that the API types are current
+      run: |
+        npm run generate-api
+        git diff --exit-code src/api/schema.ts || (echo "Run npm run generate-api in frontend/" && exit 1)
     - run: npm run lint
     - run: npm test -- run
     - run: npm run build

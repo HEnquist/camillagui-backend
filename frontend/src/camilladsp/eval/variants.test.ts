@@ -15,11 +15,11 @@
  * covered by properties.test.ts.
  */
 import { describe, expect, it } from "vitest"
-import { Filter } from "../config"
+import { LooseFilter } from "../config"
 import variants from "./fixtures/variants.json"
 import { evalFilter } from "./index"
 
-const cases = variants.variants as unknown as { id: string; filter: Filter }[]
+const cases = variants.variants as unknown as { id: string; filter: LooseFilter }[]
 
 describe("every schema valid filter evaluates", () => {
   it.each(cases.map((variant) => [variant.id, variant] as const))("%s", async (_id, variant) => {

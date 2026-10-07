@@ -14,7 +14,7 @@ import {
   Config,
   defaultFilter,
   DefaultFilterParameters,
-  Filter,
+  LooseFilter,
   FilterTypeOptions,
   newFilterName,
   removeFilter,
@@ -160,7 +160,7 @@ export class FiltersTab extends React.Component<
     return !this.filterNames().includes(name)
   }
 
-  private updateFilter(name: string, update: Update<Filter>) {
+  private updateFilter(name: string, update: Update<LooseFilter>) {
     this.props.updateConfig((config) => {
       if (!config.filters) {
         config.filters = {}
@@ -237,11 +237,11 @@ export class FiltersTab extends React.Component<
   }
 }
 
-function isConvolutionFileFilter(filter: Filter): boolean {
+function isConvolutionFileFilter(filter: LooseFilter): boolean {
   return filter.type === "Conv" && (filter.parameters.type === "Raw" || filter.parameters.type === "Wav")
 }
 
-function isGraphicEqualizer(filter: Filter): boolean {
+function isGraphicEqualizer(filter: LooseFilter): boolean {
   return filter.type === "BiquadCombo" && filter.parameters.type === "GraphicEqualizer"
 }
 
@@ -251,7 +251,7 @@ const peqBandTooltips = {
   gain: "Band gain in dB. A band with zero gain is left out when the filter is built",
 }
 
-function isNPointPeq(filter: Filter): boolean {
+function isNPointPeq(filter: LooseFilter): boolean {
   return filter.type === "BiquadCombo" && filter.parameters.type === "NPointPeq"
 }
 
@@ -276,10 +276,10 @@ interface FilterDefaults {
 
 interface FilterViewProps {
   name: string
-  filter: Filter
+  filter: LooseFilter
   errors: Errors
   availableCoeffFiles: FileInfo[]
-  updateFilter: (update: Update<Filter>) => void
+  updateFilter: (update: Update<LooseFilter>) => void
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
   remove: () => void
@@ -598,7 +598,7 @@ function coeffFilePath(coeffDir: string, filename: string) {
   return coeffDir + filename
 }
 
-function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
+function coeffFileNameUpdate(coeffDir: string, filename: string): Update<LooseFilter> {
   return (filter) => (filter.parameters.filename = coeffFilePath(coeffDir, filename))
 }
 
@@ -620,9 +620,9 @@ type ParameterInfo =
     }
 
 interface FilterParamsProps {
-  filter: Filter
+  filter: LooseFilter
   errors: Errors
-  updateFilter: (update: Update<Filter>) => void
+  updateFilter: (update: Update<LooseFilter>) => void
   availableCoeffFiles: FileInfo[]
   coeffDir: string
   allowAbsolutePaths: boolean

@@ -210,7 +210,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 [[package]]
 name = "camilladsp-config"
 version = "5.0.0"
-source = "git+https://github.com/HEnquist/camilladsp?branch=config_crate#c55665c402902b4ac27db05bbff332ef0bda0821"
+source = "git+https://github.com/HEnquist/camilladsp?branch=config_crate#cbce2270fa9d3ebb3eadd7058a5e344dab0a5409"
 dependencies = [
  "audioadapter",
  "audioadapter-sample",
@@ -219,6 +219,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "utoipa",
  "waveadapter",
  "yaml_serde",
 ]
@@ -240,6 +241,8 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tower-http",
+ "utoipa",
+ "utoipa-axum",
  "waveadapter",
  "yaml_serde",
  "zip",
@@ -680,6 +683,8 @@ checksum = "cc4e190f5d26ca7051642629da2c52fc03bde85a03197c99408dcd291734c855"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -879,6 +884,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "pastey"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4"
 
 [[package]]
 name = "percent-encoding"
@@ -1431,6 +1442,43 @@ name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
+
+[[package]]
+name = "utoipa"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8765fe27aeff71012a3f90fa474cf1df863a7d0dd81ed25de4e63fff2544994f"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_json",
+ "utoipa-gen",
+]
+
+[[package]]
+name = "utoipa-axum"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "865319162dc3d0032e1e40ed11bd49d5b78e8ef576740589fd6823e2e9977423"
+dependencies = [
+ "axum",
+ "pastey",
+ "tower-layer",
+ "tower-service",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-gen"
+version = "6.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d935f1c83fdf8b88f09bbe050d0cea78ea4afee6d7b0317403228c1200b2c8ab"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 3.0.6",
+]
 
 [[package]]
 name = "version_check"

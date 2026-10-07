@@ -37,6 +37,7 @@ cd frontend && npm run dev
 ```
 main.rs        routes, startup, the file folders as static files
 api.rs         the /api handlers, the counterpart of the old views.py
+openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check test
 camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_config::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
 events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
@@ -66,6 +67,20 @@ the GUI simpler or cheaper, and change the frontend, the demo backend
 (`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `rust/api_tests` with it.
 Most responses still have the old Python backend's shape, down to quirks like `getparam/mute`
 answering `True`/`False`, only because the port kept the frontend unchanged.
+
+The API is being typed (session D of the plan in HEnquist/notes `gui/rust_backend_plan.md`).
+A typed handler has `#[utoipa::path]` and is registered with `routes!` in `main.rs`, which puts
+it in the OpenAPI spec; the rest still use `route` and are left out of it. The spec is committed
+as `rust/openapi.json`, and the frontend generates `frontend/src/api/schema.ts` from it, both its
+API types and its config types. After changing a typed handler, a type it uses or a type in
+camilladsp-config:
+
+```sh
+cd rust && UPDATE_OPENAPI=1 cargo test committed_spec_is_current   # rewrite rust/openapi.json
+cd frontend && npm run generate-api                                # rewrite src/api/schema.ts
+```
+
+`cargo test` fails while `openapi.json` is stale, and CI fails while `schema.ts` is.
 
 Two things to keep in mind:
 - serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.

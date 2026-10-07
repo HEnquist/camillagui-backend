@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -82,8 +83,22 @@ def test_read_status(server):
     assert status["resamplerload"] == 0.2
     assert status["capturerate"] == 44100
     assert status["labels"] == {"capture": ["L", "R"], "playback": ["L", "R"]}
-    assert status["backends"] == [["Alsa", "Stdout"], ["Alsa", "Stdin"]]
-    assert status["capture_devices"]["Alsa"] == [["hw:Aaaa,0,0", "Dev A"], ["hw:Bbbb,0,0", "Dev B"]]
+    # The device lists and capabilities are kept for their own endpoints, not sent with every poll.
+    assert set(status) == {
+        "cdsp_online",
+        "cdsp_version",
+        "backend_version",
+        "capturerate",
+        "rateadjust",
+        "bufferlevel",
+        "clippedsamples",
+        "processingload",
+        "resamplerload",
+        "labels",
+        "title",
+        "description",
+    }
+    assert server.get("/api/backends").json() == [["Alsa", "Stdout"], ["Alsa", "Stdin"]]
 
 
 def wait_until_offline(server):
@@ -302,6 +317,14 @@ def test_all_get_endpoints_ok(server, endpoint, parameters):
     assert resp.status == 200, resp.text
 
 
+def test_openapi_spec_is_served_as_committed(server):
+    resp = server.get("/api/openapi.json")
+    assert resp.status == 200
+    assert resp.headers["Content-Type"] == "application/json"
+    committed = Path(__file__).parent.parent / "openapi.json"
+    assert resp.text == committed.read_text()
+
+
 def test_gui_index_redirects(server):
     resp = server.get("/")
     assert resp.status == 200
@@ -330,8 +353,10 @@ def test_capture_device_capabilities_are_cached(server):
     assert resp.status == 200
     content = resp.json()
     assert content["name"] == "hw:Aaaa,0,0"
-    cached = server.get("/api/status").json()["capture_device_capabilities"]
-    assert cached["Alsa"]["hw:Aaaa,0,0"] == content
+    server.fake.go_offline()
+    cached = server.get("/api/capturedevicecapabilities/Alsa", params={"device": "hw:Aaaa,0,0"})
+    assert cached.status == 200
+    assert cached.json() == content
 
 
 def test_playback_device_capabilities_returns_cached_on_error(server):

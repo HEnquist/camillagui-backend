@@ -1,6 +1,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Config, defaultConfig, WavInfo } from "../camilladsp/config"
-import { LevelsEvent, SpectrumSubscriptionParams } from "../camilladsp/status"
+import { Schemas } from "../api/client"
+import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { FileInfo } from "../utilities/files"
 
@@ -679,24 +680,25 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       playback: currentPlaybackLabels(),
     }
     const processingRunning = !state.processingStopped
-    return jsonResponse({
+    const status: Schemas["Status"] = {
       cdsp_online: true,
-      capturerate: processingRunning ? 47999 + Math.round(Math.sin(Date.now() / 5000) * 3) : "",
-      rateadjust: processingRunning ? Number((Math.sin(Date.now() / 1800) * 0.08).toFixed(3)) : "",
-      bufferlevel: processingRunning ? 22 + Math.round((Math.sin(Date.now() / 1200) + 1) * 18) : "",
+      capturerate: processingRunning ? 47999 + Math.round(Math.sin(Date.now() / 5000) * 3) : null,
+      rateadjust: processingRunning ? Number((Math.sin(Date.now() / 1800) * 0.08).toFixed(3)) : null,
+      bufferlevel: processingRunning ? 22 + Math.round((Math.sin(Date.now() / 1200) + 1) * 18) : null,
       clippedsamples: 0,
       processingload: processingRunning
         ? Number((18 + Math.sin(Date.now() / 900) * 6 + Math.random() * 3).toFixed(1))
-        : "",
+        : null,
       resamplerload: processingRunning
         ? Number((6 + Math.sin(Date.now() / 1100) * 2 + Math.random() * 1.5).toFixed(1))
-        : "",
+        : null,
       cdsp_version: "demo-3.0.0",
       backend_version: "demo-backend",
       labels,
       title: state.currentConfig.title,
       description: state.currentConfig.description,
-    })
+    }
+    return jsonResponse(status)
   }
 
   if (pathname === "/api/getparam/volume" && method === "GET") {
@@ -1118,7 +1120,7 @@ function generateLevels(): LevelsEvent {
   }
 }
 
-function generateSpectrum(params: SpectrumSubscriptionParams): { frequencies: number[]; magnitudes: number[] } {
+function generateSpectrum(params: SpectrumSubscriptionParams): SpectrumEvent {
   const { min_freq, max_freq, n_bins } = params
   const logMin = Math.log10(min_freq)
   const logMax = Math.log10(max_freq)
@@ -1160,7 +1162,7 @@ function adjustedPlaybackLevel(level: number, gainDb: number) {
 }
 
 /** A `/api/state` event, CamillaDSP's StateUpdate. */
-function currentStateEvent() {
+function currentStateEvent(): StateEvent {
   return state.processingStopped ? { state: "Inactive", stop_reason: "None" } : { state: "Running" }
 }
 

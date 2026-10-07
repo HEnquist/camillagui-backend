@@ -57,7 +57,12 @@ beforeEach(() => {
   polled = POLLED
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => ({ json: async () => polled })),
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify(polled), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    ),
   )
   updates = []
   poller = new StatusPoller((status) => updates.push(status), 500)

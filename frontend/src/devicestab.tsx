@@ -711,7 +711,7 @@ function CaptureOptions(props: {
   const captureTypes = supported_capture_types
     ? defaultCaptureTypes.filter((type) => supported_capture_types.includes(type))
     : defaultCaptureTypes
-  if (!captureTypes.includes(props.capture.type)) {
+  if (!(captureTypes as string[]).includes(props.capture.type)) {
     // The selected type isn't available, change to one that is
     props.onChange((devices) => (devices.capture = defaults[captureTypes[0]]))
   }
@@ -1363,7 +1363,7 @@ function PlaybackOptions(props: {
   const playbackDeviceTypes = supported_playback_types
     ? defaultPlaybackTypes.filter((type) => supported_playback_types.includes(type))
     : defaultPlaybackTypes
-  if (!playbackDeviceTypes.includes(props.playback.type)) {
+  if (!(playbackDeviceTypes as string[]).includes(props.playback.type)) {
     // The selected type isn't available, change to one that is
     props.onChange((devices) => (devices.playback = defaults[playbackDeviceTypes[0]]))
   }

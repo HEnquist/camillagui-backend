@@ -14,9 +14,9 @@ import {
   logspace,
 } from "./index"
 import { FilterOption } from "../../utilities/chart"
-import { Config, defaultConfig, Filter } from "../config"
+import { Config, defaultConfig, LooseFilter } from "../config"
 
-function convFilter(filename: string): Filter {
+function convFilter(filename: string): LooseFilter {
   return {
     type: "Conv",
     description: null,
@@ -24,7 +24,7 @@ function convFilter(filename: string): Filter {
   }
 }
 
-function gainFilter(gain: number): Filter {
+function gainFilter(gain: number): LooseFilter {
   return { type: "Gain", description: null, parameters: { gain, scale: "dB" } }
 }
 
@@ -146,7 +146,7 @@ describe("coefficient cache", () => {
 
   it("does not go to the backend for a Conv that carries its own values", async () => {
     const fetchMock = stubCoefficients()
-    const filter: Filter = {
+    const filter: LooseFilter = {
       type: "Conv",
       description: null,
       parameters: { type: "Values", values: [1.0, 0.5] },
@@ -162,9 +162,9 @@ describe("filter step evaluation", () => {
     vi.restoreAllMocks()
   })
 
-  function configWithStep(filters: { [name: string]: Filter }): Config {
+  function configWithStep(filters: { [name: string]: LooseFilter }): Config {
     const config = defaultConfig()
-    config.filters = filters
+    config.filters = filters as Config["filters"]
     config.pipeline = [
       {
         type: "Filter",
@@ -207,7 +207,7 @@ describe("a phase too deep to be readable", () => {
   })
 
   /** A windowed sinc, whose stopband runs past -200 dB. */
-  function windowedSinc(cutoff: number, highpass = false): Filter {
+  function windowedSinc(cutoff: number, highpass = false): LooseFilter {
     const taps = 1001
     const centre = (taps - 1) / 2
     const fc = cutoff / 48000
@@ -274,7 +274,7 @@ describe("a phase too deep to be readable", () => {
     }
     for (let run = 0; run < 20; run++) {
       const base = windowedSinc(1000.0, true).parameters!.values as number[]
-      const shaken: Filter = {
+      const shaken: LooseFilter = {
         type: "Conv",
         description: null,
         parameters: { type: "Values", values: base.map((v) => v * jitter()) },
@@ -288,7 +288,7 @@ describe("a phase too deep to be readable", () => {
   })
 
   it("has no floor for a filter evaluated in closed form, however far down it goes", async () => {
-    const highpass: Filter = {
+    const highpass: LooseFilter = {
       type: "BiquadCombo",
       description: null,
       parameters: { type: "ButterworthHighpass", order: 4, freq: 1000.0 },

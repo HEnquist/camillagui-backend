@@ -6,6 +6,7 @@ use crate::events::{self, SubscribeError};
 use crate::files::{self, ConfigContext, Details};
 use crate::paths::{self, file_in_folder};
 use crate::settings::{self, Settings};
+use crate::status::Status;
 use crate::status::StatusCache;
 use crate::validate::{self, DeviceTypes};
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
@@ -13,7 +14,9 @@ use axum::body::Bytes;
 use axum::extract::{Multipart, Path as UrlPath, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
-use camilladsp_config::protocol::{SpectrumSubscription, VuSubscription};
+use camilladsp_config::protocol::{
+    SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
+};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -141,19 +144,46 @@ pub async fn get_gui_index() -> Redirect {
     Redirect::to("/gui/index.html")
 }
 
+/// The values the GUI polls for, and the versions.
+///
+/// CamillaDSP is asked at most once a second, however many browsers poll.
+#[utoipa::path(get, path = "/status", responses((status = 200, body = Status)))]
 pub async fn get_status(State(app): Shared) -> Response {
     let status = app.status.refresh(&app.camilla).await;
     json_response(status)
 }
 
-/// A processing state event stream with its own subscription, which ends when
-/// the browser closes the stream. It starts with the current state.
+/// The processing state, as a stream of `state` events.
+///
+/// The stream has its own subscription, which ends when the browser closes
+/// the stream. It starts with the current state.
+#[utoipa::path(
+    get,
+    path = "/state",
+    responses(
+        (status = 200, content_type = "text/event-stream", body = StateUpdate,
+            description = "A `state` event with the current state, then one for each change"),
+        (status = 503, description = "CamillaDSP cannot be reached"),
+    )
+)]
 pub async fn get_state(State(app): Shared) -> ApiResult {
     event_stream_response(events::state_stream(&app.camilla).await)
 }
 
-/// A VU level event stream with its own subscription, which ends when the
-/// browser closes the stream. Smoothing and rate come from the settings.
+/// The VU levels, as a stream of `levels` events.
+///
+/// The stream has its own subscription, which ends when the browser closes
+/// the stream. Smoothing and rate come from the settings.
+#[utoipa::path(
+    get,
+    path = "/levels",
+    responses(
+        (status = 200, content_type = "text/event-stream", body = VuLevels,
+            description = "A `levels` event for each update from CamillaDSP"),
+        (status = 503, description = "CamillaDSP cannot be reached, or the level stream is \
+            disabled in the settings"),
+    )
+)]
 pub async fn get_levels(State(app): Shared) -> ApiResult {
     if !app.settings.enable_level_stream {
         return Err(unavailable("Level stream is disabled"));
@@ -167,9 +197,22 @@ pub async fn get_levels(State(app): Shared) -> ApiResult {
     event_stream_response(events::level_stream(app.camilla.url(), subscription).await)
 }
 
-/// A spectrum event stream with its own subscription, which ends when the
-/// browser closes the stream. The parameters come in the query string, since
-/// an EventSource can only GET.
+/// The spectrum, as a stream of `spectrum` events.
+///
+/// The stream has its own subscription, which ends when the browser closes
+/// the stream. The parameters come in the query string, since an EventSource
+/// can only GET.
+#[utoipa::path(
+    get,
+    path = "/spectrum",
+    params(SpectrumSubscription),
+    responses(
+        (status = 200, content_type = "text/event-stream", body = SpectrumData,
+            description = "A `spectrum` event for each update from CamillaDSP"),
+        (status = 503, description = "Processing is not running, CamillaDSP cannot be reached, \
+            or the level stream is disabled in the settings"),
+    )
+)]
 pub async fn get_spectrum(
     State(app): Shared,
     Query(params): Query<SpectrumSubscription>,
@@ -1147,23 +1190,17 @@ pub async fn get_log_file(State(app): Shared) -> Response {
 // ── Devices ────────────────────────────────────────────────────────────────
 
 async fn device_list(app: &AppState, backend: &str, capture: bool) -> ApiResult {
-    let (result, cache_key) = if capture {
-        (
-            app.camilla.capture_devices(backend).await,
-            "capture_devices",
-        )
+    let result = if capture {
+        app.camilla.capture_devices(backend).await
     } else {
-        (
-            app.camilla.playback_devices(backend).await,
-            "playback_devices",
-        )
+        app.camilla.playback_devices(backend).await
     };
     match result {
         Ok(devices) => Ok(json_response(devices)),
         Err(DspError::Io(_)) => {
-            log::debug!("CamillaDSP is offline, returning {cache_key} from cache");
-            let cached = app.status.get(cache_key).get(backend).cloned();
-            Ok(json_response(cached.unwrap_or_else(|| json!([]))))
+            log::debug!("CamillaDSP is offline, returning the {backend} devices from cache");
+            let cached = app.status.device_list(capture, backend);
+            Ok(json_response(cached.unwrap_or_default()))
         }
         Err(err) => Err(err.into()),
     }
@@ -1195,32 +1232,26 @@ async fn device_capabilities(
         .get("device")
         .filter(|d| !d.is_empty())
         .ok_or_else(|| bad_request("Missing required query parameter 'device'"))?;
-    let (result, cache_key) = if capture {
-        (
-            app.camilla
-                .capture_device_capabilities(backend, device)
-                .await,
-            "capture_device_capabilities",
-        )
+    let result = if capture {
+        app.camilla
+            .capture_device_capabilities(backend, device)
+            .await
     } else {
-        (
-            app.camilla
-                .playback_device_capabilities(backend, device)
-                .await,
-            "playback_device_capabilities",
-        )
+        app.camilla
+            .playback_device_capabilities(backend, device)
+            .await
     };
     match result {
         Ok(capabilities) => {
             let capabilities = to_json(&capabilities);
             app.status
-                .store_nested(cache_key, backend, device, capabilities.clone());
+                .store_capabilities(capture, backend, device, capabilities.clone());
             Ok(json_response(capabilities))
         }
-        Err(err) => match app.status.get_nested(cache_key, backend, device) {
+        Err(err) => match app.status.capabilities(capture, backend, device) {
             Some(cached) => {
                 log::debug!(
-                    "Failed to fetch {cache_key} for {backend}/{device}, returning cached data"
+                    "Failed to fetch the capabilities of {backend}/{device}, returning cached data"
                 );
                 Ok(json_response(cached))
             }
@@ -1251,7 +1282,10 @@ pub async fn get_playback_device_capabilities(
 /// The device types CamillaDSP supports. They cannot change while it runs, so
 /// this comes from the cache.
 pub async fn get_backends(State(app): Shared) -> Response {
-    json_response(app.status.get("backends"))
+    match app.status.device_types() {
+        Some(types) => json_response([types.playback, types.capture]),
+        None => json_response(json!([])),
+    }
 }
 
 #[cfg(test)]

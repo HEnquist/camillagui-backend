@@ -1,12 +1,16 @@
-//! The status sent to the frontend by `GET /api/status`, kept as a JSON
-//! object with the same keys as the Python backend's `STATUSCACHE`.
+//! The status sent to the frontend by `GET /api/status`, and what has been
+//! read from CamillaDSP about its devices, kept for when it cannot be asked.
 
-use crate::camilla::{CamillaClient, DspError, to_json};
+use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
-use serde_json::{Map, Value, json};
+use camilladsp_config::protocol::ChannelLabels;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use utoipa::ToSchema;
 
 /// How often the slower changing values are refreshed.
 const SLOW_REFRESH: Duration = Duration::from_secs(1);
@@ -32,114 +36,160 @@ fn nearest_standard_rate(rate: usize) -> Option<usize> {
     (0.96 < ratio && ratio < 1.04).then_some(nearest)
 }
 
+/// What `GET /api/status` answers. The processing state is not here, it comes
+/// from `/api/state` as it changes. A value CamillaDSP declines to give, for
+/// example with no config loaded, is null, and so is every value while it is
+/// offline.
+#[derive(Clone, Debug, Serialize, ToSchema)]
+pub struct Status {
+    /// Whether CamillaDSP answered the last time it was asked.
+    pub cdsp_online: bool,
+    /// CamillaDSP's version, `(offline)` until it has been reached.
+    pub cdsp_version: String,
+    /// The version of this backend.
+    pub backend_version: String,
+    /// The capture rate in Hz, rounded to the nearest standard rate. Null when
+    /// it is not within 4% of one.
+    #[schema(required)]
+    pub capturerate: Option<usize>,
+    #[schema(required)]
+    pub rateadjust: Option<f32>,
+    #[schema(required)]
+    pub bufferlevel: Option<usize>,
+    #[schema(required)]
+    pub clippedsamples: Option<usize>,
+    /// In percent.
+    #[schema(required)]
+    pub processingload: Option<f32>,
+    /// In percent.
+    #[schema(required)]
+    pub resamplerload: Option<f32>,
+    pub labels: ChannelLabels,
+    #[schema(required)]
+    pub title: Option<String>,
+    #[schema(required)]
+    pub description: Option<String>,
+}
+
+impl Status {
+    fn offline() -> Self {
+        Status {
+            cdsp_online: false,
+            cdsp_version: "(offline)".to_string(),
+            backend_version: env!("CARGO_PKG_VERSION").to_string(),
+            capturerate: None,
+            rateadjust: None,
+            bufferlevel: None,
+            clippedsamples: None,
+            processingload: None,
+            resamplerload: None,
+            labels: ChannelLabels::default(),
+            title: None,
+            description: None,
+        }
+    }
+}
+
+/// What has been read about the devices, by backend.
+#[derive(Default)]
+struct Devices {
+    types: Option<DeviceTypeLists>,
+    playback: HashMap<String, Vec<(String, String)>>,
+    capture: HashMap<String, Vec<(String, String)>>,
+    /// Keyed on backend and device.
+    playback_capabilities: HashMap<(String, String), Value>,
+    capture_capabilities: HashMap<(String, String), Value>,
+}
+
 pub struct StatusCache {
-    values: Mutex<Map<String, Value>>,
+    status: Mutex<Status>,
     last_refresh: Mutex<Option<Instant>>,
     /// The client connection the version and device lists were read on, 0
     /// for none. When the client has made a new one, they are read again.
     connection: AtomicU64,
-    /// The device types the connected CamillaDSP supports, once known.
-    device_types: Mutex<Option<DeviceTypeLists>>,
+    devices: Mutex<Devices>,
 }
 
 impl StatusCache {
     pub fn new() -> Self {
-        let initial = json!({
-            "backend_version": env!("CARGO_PKG_VERSION"),
-            "backends": [],
-            "playback_devices": {},
-            "capture_devices": {},
-            "playback_device_capabilities": {},
-            "capture_device_capabilities": {},
-            "labels": {"playback": null, "capture": null},
-        });
-        let cache = StatusCache {
-            values: Mutex::new(Map::new()),
+        StatusCache {
+            status: Mutex::new(Status::offline()),
             last_refresh: Mutex::new(None),
             connection: AtomicU64::new(0),
-            device_types: Mutex::new(None),
-        };
-        cache.merge(initial);
-        cache.set_offline();
-        cache
+            devices: Mutex::new(Devices::default()),
+        }
     }
 
     fn set_offline(&self) {
-        self.merge(json!({
-            "cdsp_online": false,
-            "cdsp_version": "(offline)",
-            "capturerate": null,
-            "rateadjust": null,
-            "bufferlevel": null,
-            "clippedsamples": null,
-            "processingload": null,
-            "resamplerload": null,
-            "title": null,
-            "description": null,
-        }));
+        {
+            let mut status = self.status.lock().unwrap();
+            let labels = std::mem::take(&mut status.labels);
+            *status = Status {
+                labels,
+                ..Status::offline()
+            };
+        }
         *self.last_refresh.lock().unwrap() = None;
         self.connection.store(0, Ordering::Relaxed);
     }
 
-    pub fn merge(&self, update: Value) {
-        if let Value::Object(update) = update {
-            self.values.lock().unwrap().extend(update);
-        }
-    }
-
-    pub fn get(&self, key: &str) -> Value {
-        self.values
-            .lock()
-            .unwrap()
-            .get(key)
-            .cloned()
-            .unwrap_or(Value::Null)
-    }
-
-    pub fn snapshot(&self) -> Value {
-        Value::Object(self.values.lock().unwrap().clone())
-    }
-
+    /// The device types the connected CamillaDSP supports, once known.
     pub fn device_types(&self) -> Option<DeviceTypeLists> {
-        self.device_types.lock().unwrap().clone()
+        self.devices.lock().unwrap().types.clone()
     }
 
-    /// Store a value under `cache_key`, then `group`, then `name`.
-    pub fn store_nested(&self, cache_key: &str, group: &str, name: &str, value: Value) {
-        let mut values = self.values.lock().unwrap();
-        let outer = values.entry(cache_key).or_insert_with(|| json!({}));
-        if !outer.is_object() {
-            *outer = json!({});
-        }
-        let inner = outer
-            .as_object_mut()
-            .expect("an object")
-            .entry(group)
-            .or_insert_with(|| json!({}));
-        if !inner.is_object() {
-            *inner = json!({});
-        }
-        inner
-            .as_object_mut()
-            .expect("an object")
-            .insert(name.to_string(), value);
+    /// The devices of a backend, as last read.
+    pub fn device_list(&self, capture: bool, backend: &str) -> Option<Vec<(String, String)>> {
+        let devices = self.devices.lock().unwrap();
+        let lists = if capture {
+            &devices.capture
+        } else {
+            &devices.playback
+        };
+        lists.get(backend).cloned()
     }
 
-    /// The value under `cache_key`, then `group`, then `name`, if there is one.
-    pub fn get_nested(&self, cache_key: &str, group: &str, name: &str) -> Option<Value> {
-        let values = self.values.lock().unwrap();
-        values.get(cache_key)?.get(group)?.get(name).cloned()
+    fn store_device_list(&self, capture: bool, backend: &str, list: Vec<(String, String)>) {
+        let mut devices = self.devices.lock().unwrap();
+        let lists = if capture {
+            &mut devices.capture
+        } else {
+            &mut devices.playback
+        };
+        lists.insert(backend.to_string(), list);
+    }
+
+    /// The capabilities of a device, as last read.
+    pub fn capabilities(&self, capture: bool, backend: &str, device: &str) -> Option<Value> {
+        let devices = self.devices.lock().unwrap();
+        let cache = if capture {
+            &devices.capture_capabilities
+        } else {
+            &devices.playback_capabilities
+        };
+        cache
+            .get(&(backend.to_string(), device.to_string()))
+            .cloned()
+    }
+
+    pub fn store_capabilities(&self, capture: bool, backend: &str, device: &str, value: Value) {
+        let mut devices = self.devices.lock().unwrap();
+        let cache = if capture {
+            &mut devices.capture_capabilities
+        } else {
+            &mut devices.playback_capabilities
+        };
+        cache.insert((backend.to_string(), device.to_string()), value);
     }
 
     /// Ask CamillaDSP for the values at most once a second, however many
-    /// browsers poll. The processing state is not here, the browsers get it
-    /// from `/api/state` as it changes.
-    pub async fn refresh(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Value {
+    /// browsers poll.
+    pub async fn refresh(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Status {
         if let Err(err) = self.query_all(camilla).await {
             log::debug!("Status query failed: {err}");
             self.set_offline();
         }
-        self.snapshot()
+        self.status.lock().unwrap().clone()
     }
 
     async fn query_all(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
@@ -151,24 +201,30 @@ impl StatusCache {
             return Ok(());
         }
         *self.last_refresh.lock().unwrap() = Some(Instant::now());
-        let capture_rate = value(camilla.capture_rate().await)?.and_then(nearest_standard_rate);
-        let update = json!({
-            "cdsp_online": true,
-            "capturerate": capture_rate,
-            "rateadjust": to_json(&value(camilla.rate_adjust().await)?),
-            "bufferlevel": value(camilla.buffer_level().await)?,
-            "clippedsamples": value(camilla.clipped_samples().await)?,
-            "processingload": to_json(&value(camilla.processing_load().await)?),
-            "resamplerload": to_json(&value(camilla.resampler_load().await)?),
-            "labels": value(camilla.channel_labels().await)?,
-            "title": value(camilla.config_title().await)?,
-            "description": value(camilla.config_description().await)?,
-        });
+        let capturerate = value(camilla.capture_rate().await)?.and_then(nearest_standard_rate);
+        let rateadjust = value(camilla.rate_adjust().await)?;
+        let bufferlevel = value(camilla.buffer_level().await)?;
+        let clippedsamples = value(camilla.clipped_samples().await)?;
+        let processingload = value(camilla.processing_load().await)?;
+        let resamplerload = value(camilla.resampler_load().await)?;
+        let labels = value(camilla.channel_labels().await)?.unwrap_or_default();
+        let title = value(camilla.config_title().await)?;
+        let description = value(camilla.config_description().await)?;
         let connection = camilla.connection();
         if self.connection.swap(connection, Ordering::Relaxed) != connection {
             self.on_reconnect(camilla).await?;
         }
-        self.merge(update);
+        let mut status = self.status.lock().unwrap();
+        status.cdsp_online = true;
+        status.capturerate = capturerate;
+        status.rateadjust = rateadjust;
+        status.bufferlevel = bufferlevel;
+        status.clippedsamples = clippedsamples;
+        status.processingload = processingload;
+        status.resamplerload = resamplerload;
+        status.labels = labels;
+        status.title = title;
+        status.description = description;
         Ok(())
     }
 
@@ -177,7 +233,7 @@ impl StatusCache {
     /// so they are fetched in the background.
     async fn on_reconnect(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
         let version = camilla.version().await?;
-        self.merge(json!({"cdsp_version": version}));
+        self.status.lock().unwrap().cdsp_version = version;
         let cache = self.clone();
         let camilla = camilla.clone();
         tokio::spawn(async move {
@@ -191,30 +247,21 @@ impl StatusCache {
     async fn refresh_devices(&self, camilla: &CamillaClient) -> Result<(), DspError> {
         let (playback_types, capture_types) = camilla.supported_device_types().await?;
         log::debug!("Updated backends: {playback_types:?}, {capture_types:?}");
-        self.merge(json!({"backends": [playback_types, capture_types]}));
-        *self.device_types.lock().unwrap() = Some(DeviceTypeLists {
+        self.devices.lock().unwrap().types = Some(DeviceTypeLists {
             playback: playback_types.clone(),
             capture: capture_types.clone(),
         });
         for backend in &playback_types {
             let devices = camilla.playback_devices(backend).await?;
             log::debug!("Updated {backend} playback devices: {devices:?}");
-            self.store_list("playback_devices", backend, devices);
+            self.store_device_list(false, backend, devices);
         }
         for backend in &capture_types {
             let devices = camilla.capture_devices(backend).await?;
             log::debug!("Updated {backend} capture devices: {devices:?}");
-            self.store_list("capture_devices", backend, devices);
+            self.store_device_list(true, backend, devices);
         }
         Ok(())
-    }
-
-    pub fn store_list(&self, cache_key: &str, backend: &str, devices: Vec<(String, String)>) {
-        let mut values = self.values.lock().unwrap();
-        let entry = values.entry(cache_key).or_insert_with(|| json!({}));
-        if let Some(map) = entry.as_object_mut() {
-            map.insert(backend.to_string(), json!(devices));
-        }
     }
 }
 

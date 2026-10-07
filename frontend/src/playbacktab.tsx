@@ -501,7 +501,8 @@ function describePlaybackDevice(playback: PlaybackDevice): string {
     case "File":
       return `File — ${playback.filename}`
     case "Stdout":
-      return "Stdout"
+    case "Dummy":
+      return playback.type
     default:
       return `${playback.type} — ${playback.device ?? "(default)"}`
   }

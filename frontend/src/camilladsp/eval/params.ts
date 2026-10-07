@@ -1,11 +1,10 @@
 /**
  * Narrowing helpers for filter parameters.
  *
- * `Filter.parameters` is an untyped bag of `FilterParameterValue`, so the
+ * `LooseFilter.parameters` is an untyped bag of `FilterParameterValue`, so the
  * evaluator has to narrow every value it reads. A missing key and an explicit
- * null both mean "not set": the schemas declare optional parameters as
- * `default: null`, so a config that has been through the validator carries
- * nulls where the user left a parameter out.
+ * null both mean "not set": the backend sends every optional parameter, as
+ * null where the user left it out, but a test or a partial filter may not.
  */
 import { FilterParameterValue, PeqBand } from "../config"
 
