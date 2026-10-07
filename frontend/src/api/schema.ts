@@ -1049,25 +1049,19 @@ export interface components {
      *     the device settings.
      */
     ConfigFragment: {
-      description?: string | null
-      /**
-       * @description Any of the device settings. They are not checked, since an import may
-       *     have only some of them.
-       */
-      devices?: {
-        [key: string]: unknown
-      } | null
+      description?: string
+      devices?: components["schemas"]["DevicesFragment"]
       filters?: {
         [key: string]: components["schemas"]["Filter"]
-      } | null
+      }
       mixers?: {
         [key: string]: components["schemas"]["Mixer"]
-      } | null
-      pipeline?: components["schemas"]["PipelineStep"][] | null
+      }
+      pipeline?: components["schemas"]["PipelineStep"][]
       processors?: {
         [key: string]: components["schemas"]["Processor"]
-      } | null
-      title?: string | null
+      }
+      title?: string
     }
     /**
      * @description Where the config the GUI starts with came from.
@@ -1174,6 +1168,31 @@ export interface components {
       volume_limit?: components["schemas"]["FiniteF32"] | null
       volume_ramp_time_ms?: components["schemas"]["FiniteF32"] | null
       worker_threads?: number | null
+    }
+    /**
+     * @description Any of the device settings, since an import may have only some of them.
+     *     The fields of camilladsp-config's `Devices`, every one optional and left
+     *     out when the import does not have it.
+     */
+    DevicesFragment: {
+      adjust_interval_s?: components["schemas"]["FiniteF32"]
+      capture?: components["schemas"]["CaptureDevice"]
+      capture_samplerate?: number
+      chunksize?: number
+      enable_rate_adjust?: boolean
+      multithreaded?: boolean
+      playback?: components["schemas"]["PlaybackDevice"]
+      queuelimit?: number
+      rate_measure_interval_s?: components["schemas"]["FiniteF32"]
+      resampler?: components["schemas"]["Resampler"]
+      samplerate?: number
+      silence_threshold?: components["schemas"]["FiniteF64"]
+      silence_timeout_s?: components["schemas"]["FiniteF64"]
+      stop_on_rate_change?: boolean
+      target_level?: number
+      volume_limit?: components["schemas"]["FiniteF32"]
+      volume_ramp_time_ms?: components["schemas"]["FiniteF32"]
+      worker_threads?: number
     }
     /** @description Parameters for the difference-equation (IIR) filter: `a` (feedback) and `b` (feedforward) coefficients. */
     DiffEqParameters: {

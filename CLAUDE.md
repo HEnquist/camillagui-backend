@@ -95,8 +95,11 @@ Things to keep in mind:
   come out as an array of numbers. Uploads are `multipart/form-data` with a `files` field per file.
 - Configs go in and out as camilladsp-config's `Configuration`. The path rewriting in `paths.rs`
   still works on JSON values, so a config is turned into one with `camilla::to_json` and parsed
-  back with `validate::parse`. Validation takes any JSON, since a config that does not parse is
-  reported as an issue like any other.
+  back with `validate::parse`. `validateconfig` is the one handler that takes a `Value`, while its
+  spec says `Configuration`: a config that does not parse is reported as an issue like any other.
+- Imports answer a `ConfigFragment`, whose `DevicesFragment` has every field of camilladsp-config's
+  `Devices`, all optional. A test in `api.rs` destructures `Devices` without `..`, so a field added
+  there fails to compile until the fragment has it.
 
 ## camilladsp-config
 

@@ -17,7 +17,8 @@ use axum::extract::State;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use camilladsp_config::config::{
-    Configuration, ConvParameters, Filter, Mixer, PathElement, PipelineStep, Processor,
+    CaptureDevice, Configuration, ConvParameters, Filter, FiniteF32, FiniteF64, Mixer, PathElement,
+    PipelineStep, PlaybackDevice, Processor, Resampler,
 };
 use camilladsp_config::protocol::{
     AudioDeviceDescriptor, Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels,
@@ -26,6 +27,7 @@ use camilladsp_config::protocol::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
@@ -884,21 +886,88 @@ pub async fn save_config_file(State(app): Shared, Json(body): Json<SaveConfigBod
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ConfigFragment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub description: Option<String>,
-    /// Any of the device settings. They are not checked, since an import may
-    /// have only some of them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub devices: Option<HashMap<String, Value>>,
+    #[schema(nullable = false)]
+    pub devices: Option<DevicesFragment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub mixers: Option<HashMap<String, Mixer>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub filters: Option<HashMap<String, Filter>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub processors: Option<HashMap<String, Processor>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
     pub pipeline: Option<Vec<PipelineStep>>,
+}
+
+/// Any of the device settings, since an import may have only some of them.
+/// The fields of camilladsp-config's `Devices`, every one optional and left
+/// out when the import does not have it.
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DevicesFragment {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
+    pub samplerate: Option<NonZeroUsize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
+    pub chunksize: Option<NonZeroUsize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub queuelimit: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub silence_threshold: Option<FiniteF64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub silence_timeout_s: Option<FiniteF64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub capture: Option<CaptureDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub playback: Option<PlaybackDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub enable_rate_adjust: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub target_level: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub adjust_interval_s: Option<FiniteF32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub resampler: Option<Resampler>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
+    pub capture_samplerate: Option<NonZeroUsize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub stop_on_rate_change: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub rate_measure_interval_s: Option<FiniteF32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub volume_ramp_time_ms: Option<FiniteF32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub volume_limit: Option<FiniteF32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub multithreaded: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub worker_threads: Option<usize>,
 }
 
 impl ConfigFragment {
@@ -1641,4 +1710,93 @@ pub async fn get_device_capabilities(
 )]
 pub async fn get_backends(State(app): Shared) -> Response {
     json_response(app.status.device_types())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use camilladsp_config::config::Devices;
+    use serde_json::json;
+
+    /// Every field of `Devices`, destructured without `..`, so that a field
+    /// added in camilladsp-config fails to compile here until the fragment
+    /// has it too.
+    fn fragment_of(devices: Devices) -> DevicesFragment {
+        let Devices {
+            samplerate,
+            chunksize,
+            queuelimit,
+            silence_threshold,
+            silence_timeout_s,
+            capture,
+            playback,
+            enable_rate_adjust,
+            target_level,
+            adjust_interval_s,
+            resampler,
+            capture_samplerate,
+            stop_on_rate_change,
+            rate_measure_interval_s,
+            volume_ramp_time_ms,
+            volume_limit,
+            multithreaded,
+            worker_threads,
+        } = devices;
+        DevicesFragment {
+            samplerate: Some(samplerate),
+            chunksize: Some(chunksize),
+            queuelimit,
+            silence_threshold,
+            silence_timeout_s,
+            capture: Some(capture),
+            playback: Some(playback),
+            enable_rate_adjust,
+            target_level,
+            adjust_interval_s,
+            resampler,
+            capture_samplerate,
+            stop_on_rate_change,
+            rate_measure_interval_s,
+            volume_ramp_time_ms,
+            volume_limit,
+            multithreaded,
+            worker_threads,
+        }
+    }
+
+    #[test]
+    fn devices_fragment_has_the_fields_of_devices() {
+        let devices = json!({
+            "samplerate": 44100,
+            "chunksize": 1024,
+            "queuelimit": 2,
+            "silence_threshold": -60,
+            "silence_timeout_s": 3,
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16_LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S16_LE"},
+            "enable_rate_adjust": true,
+            "target_level": 512,
+            "adjust_interval_s": 5,
+            "resampler": {"type": "AsyncPoly", "interpolation": "Cubic"},
+            "capture_samplerate": 48000,
+            "stop_on_rate_change": true,
+            "rate_measure_interval_s": 2,
+            "volume_ramp_time_ms": 100,
+            "volume_limit": 0,
+            "multithreaded": true,
+            "worker_threads": 4,
+        });
+        let full: Devices = serde_json::from_value(devices.clone()).unwrap();
+        let fragment: DevicesFragment = serde_json::from_value(devices).unwrap();
+        assert_eq!(fragment, fragment_of(full));
+    }
+
+    #[test]
+    fn devices_fragment_takes_some_settings_and_sends_only_those() {
+        let fragment: DevicesFragment =
+            serde_json::from_value(json!({"samplerate": 96000})).unwrap();
+        assert_eq!(to_json(&fragment), json!({"samplerate": 96000}));
+        let unknown = serde_json::from_value::<DevicesFragment>(json!({"samplerat": 96000}));
+        assert!(unknown.is_err());
+    }
 }

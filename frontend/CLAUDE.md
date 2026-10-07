@@ -22,7 +22,7 @@ Node >= 22 required (see `.nvmrc`, and CI runs 24.x).
 
 ```
 index.tsx                   # App root — CamillaConfig class component, tab shell
-guiconfig.ts                # GuiConfig type + defaults (fetched from /api/guiconfig)
+guiconfig.ts                # GuiConfig (generated) + defaults (fetched from /api/guiconfig)
 index.css                   # All CSS (CSS variables in public/css-variables.css)
 
 api/
@@ -49,11 +49,15 @@ camilladsp/                 # Domain types + status polling
 # Tab components (one per GUI tab)
 titletab.tsx
 devicestab.tsx
+devicecapabilitiespopup.tsx # A device's capabilities, from the devices tab
 filterstab.tsx
 mixerstab.tsx
 processorstab.tsx
 shortcuts.tsx
 filestab.tsx
+playbacktab.tsx             # Playing an audio file through the pipeline
+
+custom-pages/               # Extra tabs: a .tsx here is a tab, see its README.md
 
 pipeline/
   pipelinetab.tsx           # Pipeline tab
@@ -89,6 +93,7 @@ utilities/
   common.ts                 # Update<T> type, misc helpers
   errors.ts                 # Errors type (per-path error tracking)
   files.tsx                 # File API helpers (loadStartupConfig, etc.)
+  file-actions.tsx          # Upload, download, rename and delete buttons for the file tables
   arrays.ts                 # Array helpers
   chart.tsx                 # Chart.js wrapper
   data-table.tsx            # TanStack Table wrapper

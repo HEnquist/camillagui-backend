@@ -689,6 +689,23 @@ def test_yml_to_json_says_what_is_wrong(server):
     assert resp.json()["message"].startswith("filters.lim")
 
 
+def test_yml_to_json_takes_some_device_settings(server):
+    text = "devices:\n  samplerate: 48000\n  capture: {type: Stdin, channels: 2, format: S16_LE}\n"
+    resp = server.post("/api/ymltojson", json_body={"text": text})
+    assert resp.status == 200
+    devices = resp.json()["devices"]
+    assert devices["samplerate"] == 48000
+    assert devices["capture"]["type"] == "Stdin"
+    assert "chunksize" not in devices
+
+
+def test_yml_to_json_checks_the_device_settings(server):
+    text = "devices:\n  samplerate: 48000\n  samplerat: 44100\n"
+    resp = server.post("/api/ymltojson", json_body={"text": text})
+    assert resp.status == 400
+    assert resp.json()["message"].startswith("devices")
+
+
 NONFINITE_CONFIG = dedent(
     """
     devices:

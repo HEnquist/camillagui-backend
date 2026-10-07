@@ -49,69 +49,29 @@ export default MyPage
 
 ### `config: Config`
 
-The current CamillaDSP configuration, read-only. Top-level structure:
+The current CamillaDSP configuration, read-only. `Config` in `../camilladsp/config` is generated
+from camilladsp-config's own types (see [The API](#the-api)), so tsc knows every field, and your
+editor shows them as you type. Every optional field is present, as `null` when it is not set.
 
 ```ts
-config.devices.samplerate: number          // e.g. 48000
-config.devices.capture.channels: number    // input channel count
-config.devices.capture.type: string        // e.g. "Alsa", "CoreAudio"
-config.devices.playback.channels: number   // output channel count
-config.devices.playback.type: string
-
-config.filters: Record<string, {           // keyed by filter name
-  type: string                             // "Biquad", "BiquadCombo", "Gain", "Delay", "Conv", ...
-  parameters: Record<string, unknown>      // depends on type — see below
-}>
-
-config.mixers: Record<string, {            // keyed by mixer name
-  channels: { in: number; out: number }
-  mapping: Array<{
-    dest: number
-    sources: Array<{ channel: number; gain: number; mute: boolean; inverted?: boolean }>
-    mute: boolean
-  }>
-}>
-
-config.processors: Record<string, {
-  type: string
-  parameters: Record<string, unknown>
-}>
-
-config.pipeline: Array<{
-  type: "Filter" | "Mixer" | "Processor"
-  name: string
-  channels?: number[]    // for Filter steps: which channels this applies to
-  bypassed?: boolean
-}>
-
-config.title: string | null
-config.description: string | null
+config.devices.samplerate                  // number, e.g. 48000
+config.devices.capture.type                // "Alsa", "CoreAudio", ...
+config.devices.playback.channels           // output channel count
+config.filters                             // keyed by filter name, null if there are none
+config.mixers                              // keyed by mixer name, null if there are none
+config.processors                          // keyed by processor name, null if there are none
+config.pipeline                            // the steps in order, null if there are none
+config.title, config.description           // string | null
 ```
 
-#### Common filter parameter shapes
+Filters, processors and pipeline steps are unions on `type`, and the filter parameters on
+`parameters.type` where a filter has subtypes, so checking those narrows the parameters:
 
 ```ts
-// Biquad filters (Lowpass, Highpass, Peaking, Notch, Allpass, ...)
-{ type: "Lowpass",  freq: number, q: number }
-{ type: "Highpass", freq: number, q: number }
-{ type: "Peaking",  freq: number, q: number, gain: number }
-{ type: "Lowshelf", freq: number, slope: number, gain: number }
-{ type: "Highshelf", freq: number, slope: number, gain: number }
-
-// BiquadCombo (higher-order filters as a single definition)
-{ type: "ButterworthLowpass",    order: number, freq: number }
-{ type: "ButterworthHighpass",   order: number, freq: number }
-{ type: "LinkwitzRileyLowpass",  order: number, freq: number }
-{ type: "LinkwitzRileyHighpass", order: number, freq: number }
-
-// Gain
-{ gain: number, mute?: boolean, scale?: "dB" | "Linear" | "Linear2", inverted?: boolean }
-
-// Delay
-{ delay: number, delay_unit: "ms" | "us" | "s" | "mm" | "samples", subsample?: boolean }
-
-// Conv (convolution / FIR)
-{ type: "Raw" | "Wav" | "Values", filename?: string, values?: number[] }
+const filter = config.filters?.["MyLowpass"]
+if (filter?.type === "Biquad" && filter.parameters.type === "Lowpass") {
+  console.log(filter.parameters.freq, filter.parameters.q)
+}
 ```
 
 ### `updateConfig: (update: (config: Config) => void) => void`
@@ -123,32 +83,37 @@ to the undo/redo stack and marked as unapplied (the user must click Apply to sen
 ```ts
 // Change a filter's frequency
 updateConfig((config) => {
-  const params = config.filters["MyLowpass"].parameters as { freq: number }
-  params.freq = 1500
+  const filter = config.filters?.["MyLowpass"]
+  if (filter?.type === "Biquad" && filter.parameters.type === "Lowpass") filter.parameters.freq = 1500
 })
 
-// Add a new filter
+// Add a new filter, with every optional field, as null when it is not set
 updateConfig((config) => {
+  config.filters ??= {}
   config.filters["NewFilter"] = {
     type: "Biquad",
+    description: null,
     parameters: { type: "Lowpass", freq: 1000, q: 0.707 }
   }
 })
 
 // Change a mixer mapping gain
 updateConfig((config) => {
-  config.mixers["xover"].mapping[0].sources[0].gain = -6
+  const xover = config.mixers?.["xover"]
+  if (xover) xover.mapping[0].sources[0].gain = -6
 })
 
 // Mute a channel
 updateConfig((config) => {
-  config.mixers["xover"].mapping[2].mute = true
+  const xover = config.mixers?.["xover"]
+  if (xover) xover.mapping[2].mute = true
 })
 ```
 
 ### `guiConfig: GuiConfig`
 
-Server-provided GUI settings (fetched from `/api/guiconfig`). Useful fields:
+Server-provided GUI settings (fetched from `/api/guiconfig`, all of them in `GuiConfig` in the
+API schema). Useful fields:
 
 ```ts
 guiConfig.coeff_dir: string        // directory where coefficient files are stored
@@ -171,37 +136,70 @@ errors.hasErrorsFor("filters", "MyFilter")  // errors for that specific filter?
 errors.messageFor("devices", "samplerate")  // error string or undefined
 ```
 
-## Calling existing API endpoints
+## The API
 
-The backend runs on port 5005 in production; in dev the Vite proxy forwards `/api/*` automatically.
-Use plain `fetch` — no library needed.
+Every endpoint is in the backend's OpenAPI spec, `rust/openapi.json` in the repository, also
+served by a running backend at `/api/openapi.json`. Load it into any OpenAPI viewer to browse the
+endpoints with their parameters, bodies and responses. The API is internal to the GUI and changes
+between versions, so a custom page is checked against it at build time rather than relying on
+this document.
 
-### GET endpoints (no body)
+`src/api/schema.ts` is generated from the spec, and the `api` client in `src/api/client.ts` takes
+its types, so tsc checks the path, the parameters, the body and the response of every call. The
+schemas are `Schemas` from the same file. The backend runs on port 5005 in production; in dev the
+Vite proxy forwards `/api/*` automatically.
 
 ```ts
-// Current active config from the DSP (not the GUI's edited version)
-const res = await fetch("/api/getconfig")
-const config = await res.json()
+import { api, errorMessage, Schemas } from "../api/client"
 
-// Status values: capturerate, bufferlevel, processingload, title and so on.
-// The processing state is not here, it comes from the /api/state stream below.
-const res = await fetch("/api/status")
-const status = await res.json()
-// status.cdsp_online: boolean, whether the backend reaches CamillaDSP
+// The config CamillaDSP runs, not the GUI's edited version
+const { data: running } = await api.GET("/api/getconfig")
 
-// The current main volume in dB, through the typed client in src/api/client.ts
-import { api } from "../api/client"
-const { data: volume } = await api.GET("/api/param/volume")  // number
+// Status values: capture rate, buffer level, processing load and so on
+const { data: status } = await api.GET("/api/status")
 
-// All stored config files, with their title and whether they are valid
-const { data: configs } = await api.GET("/api/files/{kind}", { params: { path: { kind: "config" } } })
+// The main volume in dB, and setting it on the running DSP without changing the config
+const { data: volume } = await api.GET("/api/param/volume")
+await api.POST("/api/param/volume", { body: -10 })
+await api.POST("/api/param/faders/{index}/mute", { params: { path: { index: 1 } }, body: true })
 
-// All stored coefficient files
+// The stored coefficient files
 const { data: coeffs } = await api.GET("/api/files/{kind}", { params: { path: { kind: "coeff" } } })
 const names = (coeffs ?? []).map((file) => file.name)
+
+// Every issue with a config, none if it is valid
+const { data: issues, error, response } = await api.POST("/api/validateconfig", { body: config })
+if (error) console.log(errorMessage(error, response))
 ```
 
-### Evaluating a filter
+On failure `data` is undefined and `error` is an `ErrorBody` with a `message`.
+
+### Event streams
+
+A few endpoints are server-sent event streams, which OpenAPI cannot describe beyond their content
+type. Their payloads are in the schema: `VuLevels`, `SpectrumData` and `StateUpdate`. Each open
+stream is a subscription in CamillaDSP, so close it when the page no longer shows it.
+
+```ts
+import type { Schemas } from "../api/client"
+
+const evtSource = new EventSource("/api/levels")
+evtSource.addEventListener("levels", (e) => {
+  const levels: Schemas["VuLevels"] = JSON.parse(e.data)
+  // levels.playback_rms, levels.playback_peak: dBFS per channel, and the same for capture
+})
+// Remember to call evtSource.close() in useEffect cleanup
+```
+
+`GET /api/spectrum?side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10` is the same
+for the spectrum, as `spectrum` events. Add `channel=0` for a single channel, leave it out to
+average them all. It answers 503 while processing is stopped.
+
+`GET /api/state` is the same for the processing state, as `state` events. The first event is the
+current state, the next ones come when it changes. It answers 503, or ends, while CamillaDSP
+cannot be reached.
+
+## Evaluating a filter
 
 Filter evaluation runs in the browser, not on the backend, so it is a plain function call rather
 than an endpoint. Custom pages compile into the app, so they can import it directly.
@@ -209,10 +207,14 @@ than an endpoint. Custom pages compile into the app, so they can import it direc
 ```ts
 import { evalFilter, evalFilterStep } from "../camilladsp/eval"
 
-const data = await evalFilter(config.filters["MyFilter"], {
+// The capture channel count, for $channels$ in coefficient file names. A WavFile capture has none.
+const capture = config.devices.capture
+const channels = "channels" in capture ? capture.channels : 2
+
+const data = await evalFilter(config.filters!["MyFilter"], {
   name: "MyFilter",
   samplerate: config.devices.samplerate,
-  channels: config.devices.capture.channels,
+  channels,
 })
 // data.f: number[]            - frequency axis in Hz
 // data.magnitude: number[]    - magnitude in dB at each frequency
@@ -222,73 +224,30 @@ const data = await evalFilter(config.filters["MyFilter"], {
 // data.impulse: number[]      - the impulse response, Conv filters only
 
 // The combined response of a whole pipeline step
-const step = await evalFilterStep(config, 0, {
-  samplerate: config.devices.samplerate,
-  channels: config.devices.capture.channels,
-})
+const step = await evalFilterStep(config, 0, { samplerate: config.devices.samplerate, channels })
 ```
 
 It returns a promise because a Conv filter reading a coefficient file has to ask the backend for
 the coefficients. Everything else resolves without touching the network, so it is cheap enough to
 call on every render.
 
-### POST /api/param/volume, /api/param/mute, /api/param/faders/{index}/...
-
-Set the volume or mute on the running DSP without changing the full config. Useful for real-time
-controls. The value is the JSON body.
-
-```ts
-await api.POST("/api/param/volume", { body: -10 })
-await api.POST("/api/param/faders/{index}/mute", { params: { path: { index: 1 } }, body: true })
-```
-
-### POST /api/validateconfig
-
-Validate a config object without applying it. Returns every issue, none if the config is valid.
-
-```ts
-const { data: issues } = await api.POST("/api/validateconfig", { body: config })
-// issues: { path: (string | number)[], message: string, severity: "error" | "warning" }[]
-```
-
-### SSE: GET /api/levels
-
-Server-sent event stream for real-time level meters. Use this instead of polling if you need live
-levels. The open stream is a subscription in CamillaDSP, so close it when the page no longer
-shows the levels.
-
-```ts
-const evtSource = new EventSource("/api/levels")
-evtSource.addEventListener("levels", (e) => {
-  const levels = JSON.parse(e.data)
-  // levels.playback_rms, levels.playback_peak: number[]  — dBFS per channel
-  // levels.capture_rms, levels.capture_peak: number[]
-})
-// Remember to call evtSource.close() in useEffect cleanup
-```
-
-`GET /api/spectrum?side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10` is the same
-for the spectrum, as `spectrum` events with `frequencies` and `magnitudes`. Add `channel=0` for a
-single channel, leave it out to average them all. It answers 503 while processing is stopped.
-
-`GET /api/state` is the same for the processing state, as `state` events with `state` ("Running",
-"Paused", "Inactive", "Starting" or "Stalled") and, when inactive, `stop_reason`. The first event
-is the current state, the next ones come when it changes. It answers 503, or ends, while
-CamillaDSP cannot be reached.
-
 ## Adding a custom backend endpoint
 
 Most custom pages will not need this — they work entirely with the existing API. But if you need
-to compute something the backend doesn't expose (like the crossover frequency response across all
-channels at once), you need to add an endpoint to the backend, in `rust/`.
+something the backend doesn't expose, you need to add an endpoint to the backend, in `rust/`.
 
-1. Add a handler function in `rust/src/api.rs` (or a new module).
-2. Register it with `.route("/mycustom", get(api::my_handler))` in `api_routes` in
-   `rust/src/main.rs`. The routes there are nested under `/api`.
+1. Add a handler function in `rust/src/api.rs` (or a new module), with a `#[utoipa::path]`
+   attribute describing it, like the handlers already there. Its request and response types
+   derive `ToSchema`.
+2. Register it with `.routes(routes!(api::my_handler))` in `api_routes` in `rust/src/main.rs`,
+   which also puts it in the spec. The routes there are nested under `/api`.
 3. The handler can call the running DSP through `app.camilla`, the `CamillaClient` in
    `rust/src/camilla.rs`. Filter evaluation runs in the browser, so import `evalFilter` from
    `camilladsp/eval` in the page itself rather than adding an endpoint for it.
-4. Rebuild the backend, `cargo build --release` in `rust/`.
+4. Regenerate the spec and the frontend's types, so the page can call the endpoint through `api`:
+   `UPDATE_OPENAPI=1 cargo test committed_spec_is_current` in `rust/`, then
+   `npm run generate-api` in `frontend/`.
+5. Rebuild the backend, `cargo build --release` in `rust/`.
 
 ## Available UI components
 
@@ -302,14 +261,14 @@ import { Box, CheckBox, FloatInput, IntInput, EnumOption, MdiButton, ErrorBounda
 | Component | Description |
 |-----------|-------------|
 | `Box` | Titled box container. `<Box title="Crossover">...</Box>` |
-| `CheckBox` | Labelled checkbox. Props: `label`, `value`, `tooltip`, `onChange` |
+| `CheckBox` | Labelled checkbox. Props: `text`, `checked`, `tooltip`, `onChange` |
 | `FloatInput` | Floating-point text field. Props: `value`, `onChange`, `tooltip` |
-| `OptionalFloatInput` | Like FloatInput but allows null/undefined |
+| `OptionalFloatInput` | Like FloatInput but allows null |
 | `IntInput` | Integer text field |
-| `FloatOption` | Label + FloatInput row. Props: `label`, `value`, `onChange`, `tooltip` |
+| `FloatOption` | Label + FloatInput row. Props: `desc` (the label), `value`, `onChange`, `tooltip` |
 | `IntOption` | Label + IntInput row |
 | `BoolOption` | Label + CheckBox row |
-| `EnumOption` | Label + `<select>` row. Props: `label`, `value`, `options`, `onChange` |
+| `EnumOption` | Label + `<select>` row. Props: `desc`, `value`, `options`, `onChange`, `tooltip` |
 | `EnumInput` | `<select>` without label |
 | `MdiButton` | Icon button. Props: `icon` (from `@mdi/js`), `tooltip`, `onClick`, `enabled` |
 | `MdiIcon` | Icon display. Props: `icon`, `tooltip`, `style` |
@@ -352,21 +311,22 @@ import type { CustomPageProps } from "./types"
 import { Box } from "../utilities/ui-components"
 
 function ConfigInfo({ config }: CustomPageProps) {
-  const filterNames = Object.keys(config.filters)
-  const mixerNames = Object.keys(config.mixers)
+  const filters = Object.entries(config.filters ?? {})
+  const mixerNames = Object.keys(config.mixers ?? {})
+  const capture = config.devices.capture
 
   return (
     <div className="tabcontainer">
       <div className="tabpanel" style={{ width: "500px" }}>
         <Box title="Devices">
           <p>Samplerate: {config.devices.samplerate} Hz</p>
-          <p>Capture channels: {config.devices.capture.channels}</p>
+          <p>Capture channels: {"channels" in capture ? capture.channels : "N/A"}</p>
           <p>Playback channels: {config.devices.playback.channels}</p>
         </Box>
-        <Box title={`Filters (${filterNames.length})`}>
+        <Box title={`Filters (${filters.length})`}>
           <ul>
-            {filterNames.map((name) => (
-              <li key={name}>{name} — {config.filters[name].type}</li>
+            {filters.map(([name, filter]) => (
+              <li key={name}>{name} — {filter.type}</li>
             ))}
           </ul>
         </Box>
@@ -392,39 +352,46 @@ export default ConfigInfo
 ```tsx
 import React from "react"
 import type { CustomPageProps } from "./types"
+import type { Filter } from "../camilladsp/config"
 import { Box, FloatOption } from "../utilities/ui-components"
 
 const FILTER_NAME = "PeakingEQ_1"   // must exist in your config
 
+/** The filter's parameters, if it is a peaking biquad. */
+function peaking(filter: Filter | undefined) {
+  if (filter?.type === "Biquad" && filter.parameters.type === "Peaking") return filter.parameters
+}
+
 function QuickEQ({ config, updateConfig }: CustomPageProps) {
-  const filter = config.filters[FILTER_NAME]
-  if (!filter) {
+  const params = peaking(config.filters?.[FILTER_NAME])
+  if (!params) {
     return (
       <div className="tabcontainer">
-        <p>Filter "{FILTER_NAME}" not found in config.</p>
+        <p>There is no peaking filter "{FILTER_NAME}" in the config.</p>
       </div>
     )
   }
-  const params = filter.parameters as { freq: number; gain: number; q: number }
 
   return (
     <div className="tabcontainer">
       <div className="tabpanel" style={{ width: "400px" }}>
         <Box title={FILTER_NAME}>
           <FloatOption
-            label="Frequency (Hz)"
+            desc="Frequency (Hz)"
             value={params.freq}
             tooltip="Center frequency"
             onChange={(freq) => updateConfig((c) => {
-              ;(c.filters[FILTER_NAME].parameters as { freq: number }).freq = freq
+              const p = peaking(c.filters?.[FILTER_NAME])
+              if (p) p.freq = freq
             })}
           />
           <FloatOption
-            label="Gain (dB)"
+            desc="Gain (dB)"
             value={params.gain}
             tooltip="Boost or cut in dB"
             onChange={(gain) => updateConfig((c) => {
-              ;(c.filters[FILTER_NAME].parameters as { gain: number }).gain = gain
+              const p = peaking(c.filters?.[FILTER_NAME])
+              if (p) p.gain = gain
             })}
           />
         </Box>
@@ -453,12 +420,13 @@ function FilterPlot({ config }: CustomPageProps) {
   const [freqs, setFreqs] = useState<number[] | null>(null)
 
   useEffect(() => {
-    const filter = config.filters[FILTER_NAME]
+    const filter = config.filters?.[FILTER_NAME]
     if (!filter) return
+    const capture = config.devices.capture
     evalFilter(filter, {
       name: FILTER_NAME,
       samplerate: config.devices.samplerate,
-      channels: config.devices.capture.channels,
+      channels: "channels" in capture ? capture.channels : 2,
     }).then((data) => {
       setFreqs(data.f)
       setMagnitude(data.magnitude ?? null)
@@ -501,7 +469,8 @@ export default FilterPlot
   dependency. Re-evaluates automatically when the user edits filters elsewhere.
 - **Real-time values:** Use `EventSource("/api/levels")` for live level meters. Close the source
   in the `useEffect` cleanup to avoid leaks.
-- **TypeScript casts:** Filter parameters are typed as `Record<string, unknown>`. Cast to a
-  specific shape: `const p = filter.parameters as { freq: number; q: number }`.
+- **Narrowing instead of casts:** Check `filter.type`, and `filter.parameters.type` for a filter
+  with subtypes, and tsc knows which parameters the filter has. A cast hides it from tsc when a
+  new version of CamillaDSP changes them.
 - **Imports:** All imports must be relative paths starting with `../` (e.g. `../utilities/...`,
   `../camilladsp/config`). Do not import from `./` except for `./types`.

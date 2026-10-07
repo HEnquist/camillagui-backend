@@ -3099,27 +3099,13 @@
         "description": "Part of a config, as an import gives it: any of the sections, with any of\nthe device settings.",
         "properties": {
           "description": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "devices": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "description": "Any of the device settings. They are not checked, since an import may\nhave only some of them.",
-            "additionalProperties": {},
-            "propertyNames": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/DevicesFragment"
           },
           "filters": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/Filter"
             },
@@ -3128,10 +3114,7 @@
             }
           },
           "mixers": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/Mixer"
             },
@@ -3140,19 +3123,13 @@
             }
           },
           "pipeline": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/components/schemas/PipelineStep"
             }
           },
           "processors": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/Processor"
             },
@@ -3161,10 +3138,7 @@
             }
           },
           "title": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           }
         }
       },
@@ -3625,6 +3599,73 @@
               "integer",
               "null"
             ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "DevicesFragment": {
+        "type": "object",
+        "description": "Any of the device settings, since an import may have only some of them.\nThe fields of camilladsp-config's `Devices`, every one optional and left\nout when the import does not have it.",
+        "properties": {
+          "adjust_interval_s": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "capture": {
+            "$ref": "#/components/schemas/CaptureDevice"
+          },
+          "capture_samplerate": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunksize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "enable_rate_adjust": {
+            "type": "boolean"
+          },
+          "multithreaded": {
+            "type": "boolean"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackDevice"
+          },
+          "queuelimit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rate_measure_interval_s": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "resampler": {
+            "$ref": "#/components/schemas/Resampler"
+          },
+          "samplerate": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "silence_threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "silence_timeout_s": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "stop_on_rate_change": {
+            "type": "boolean"
+          },
+          "target_level": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "volume_limit": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "volume_ramp_time_ms": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "worker_threads": {
+            "type": "integer",
             "minimum": 0
           }
         },
