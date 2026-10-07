@@ -241,15 +241,12 @@ class FileTable extends Component<
     this.update()
   }
 
-  private async downloadAsZip() {
-    try {
-      await downloadAsZip(
-        this.type,
-        this.state.selectedFiles.map((f) => f.name),
-      )
-    } catch (e) {
-      this.showErrorMessage(EMPTY_FILENAME, "download", (e as Error).message)
-    }
+  private downloadAsZip() {
+    downloadAsZip(
+      this.type,
+      this.state.selectedFiles.map((f) => f.name),
+      (message) => this.showErrorMessage(EMPTY_FILENAME, "download", message),
+    )
   }
 
   private upload(files: FileList) {

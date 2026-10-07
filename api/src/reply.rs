@@ -12,6 +12,7 @@ use crate::settings::GuiConfig;
 use crate::status::Status;
 use crate::validate::{DeviceTypeLists, ValidationIssue};
 use crate::wav::WavInfo;
+use axum::body::{Body, Bytes};
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use camilladsp_schema::config::Configuration;
@@ -20,8 +21,10 @@ use camilladsp_schema::protocol::{
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::io;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use utoipa::openapi::schema::{ArrayBuilder, ObjectBuilder, OneOfBuilder, Schema, Type};
 use utoipa::openapi::{Content, Ref, RefOr, response::Response as SpecResponse};
 use utoipa::{IntoResponses, PartialSchema, ToSchema};
@@ -182,22 +185,22 @@ impl IntoResponses for Text {
 
 /// Raw bytes, optionally as a file to save.
 pub struct Binary {
-    bytes: Vec<u8>,
+    body: Body,
     attachment: Option<String>,
 }
 
 impl Binary {
     pub fn new(bytes: Vec<u8>) -> Self {
         Binary {
-            bytes,
+            body: Body::from(bytes),
             attachment: None,
         }
     }
 
-    /// Bytes the browser offers to save under this name.
-    pub fn attachment(bytes: Vec<u8>, name: &str) -> Self {
+    /// A body the browser saves under this name.
+    pub fn attachment(body: Body, name: &str) -> Self {
         Binary {
-            bytes,
+            body,
             attachment: Some(format!("attachment; filename={name}")),
         }
     }
@@ -207,7 +210,7 @@ impl IntoResponse for Binary {
     fn into_response(self) -> Response {
         let mut response = (
             [NO_STORE, (header::CONTENT_TYPE, "application/octet-stream")],
-            self.bytes,
+            self.body,
         )
             .into_response();
         if let Some(disposition) = self.attachment
@@ -234,6 +237,74 @@ impl IntoResponses for Binary {
             StatusCode::OK,
             Some(("application/octet-stream", schema.into())),
         )
+    }
+}
+
+/// How much a `BodyWriter` collects before sending it on.
+const BODY_CHUNK: usize = 64 * 1024;
+
+/// How many chunks a `BodyWriter` lets wait for a slow client.
+const BODY_CHUNKS_WAITING: usize = 4;
+
+/// A body that blocking code writes as it goes, so that a large one is never
+/// all in memory: the writer waits while a few chunks wait for the client.
+pub struct BodyWriter {
+    sender: mpsc::Sender<io::Result<Bytes>>,
+    buffer: Vec<u8>,
+    client_gone: bool,
+}
+
+impl BodyWriter {
+    /// A writer, and the body that sends on what is written to it. The body
+    /// ends when the writer is dropped, so the writer is flushed first.
+    pub fn new() -> (BodyWriter, Body) {
+        let (sender, mut receiver) = mpsc::channel(BODY_CHUNKS_WAITING);
+        let stream = futures_util::stream::poll_fn(move |cx| receiver.poll_recv(cx));
+        let writer = BodyWriter {
+            sender,
+            buffer: Vec::with_capacity(BODY_CHUNK),
+            client_gone: false,
+        };
+        (writer, Body::from_stream(stream))
+    }
+
+    /// Cut the body short, for an error after it started. The client then
+    /// sees a broken download, rather than a whole looking one that is not.
+    pub fn fail(self, err: io::Error) {
+        let _ = self.sender.blocking_send(Err(err));
+    }
+
+    fn send(&mut self) -> io::Result<()> {
+        if self.buffer.is_empty() || self.client_gone {
+            return Ok(());
+        }
+        let chunk = std::mem::replace(&mut self.buffer, Vec::with_capacity(BODY_CHUNK));
+        if self.sender.blocking_send(Ok(chunk.into())).is_err() {
+            // Fail once, which stops the writing, and take whatever comes
+            // after quietly: a zip writer that is dropped still finishes.
+            self.client_gone = true;
+            return Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "The client went away",
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl io::Write for BodyWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if !self.client_gone {
+            self.buffer.extend_from_slice(buf);
+            if self.buffer.len() >= BODY_CHUNK {
+                self.send()?;
+            }
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.send()
     }
 }
 

@@ -3,6 +3,7 @@ import { Schemas } from "../api/client"
 import { completeConfig, Config, defaultConfig } from "../camilladsp/config"
 import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
+import { download } from "../utilities/files"
 
 type FileInfo = Schemas["FileInfo"]
 
@@ -159,6 +160,8 @@ function isKnownDemoDevice(backend: string, device: string) {
 let installed = false
 const nativeFetch = globalThis.fetch.bind(globalThis)
 const NativeEventSource = globalThis.EventSource
+// Not there outside a browser, as in the tests.
+const nativeSubmit: (() => void) | undefined = globalThis.HTMLFormElement?.prototype.submit
 
 function createSampleConfig(): Config {
   const config = defaultConfig()
@@ -850,7 +853,8 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       return noContent()
     }
     if (action === "zip" && method === "POST") {
-      const { names } = await requestJson<Schemas["FileNames"]>(input, init)
+      const formData = await requestFormData(input, init)
+      const names = formData.getAll("names").map(String)
       return blobResponse(new Blob([demoZipContent(kind, names)]), {
         "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename=${kind}s.zip`,
@@ -1132,6 +1136,23 @@ class DemoEventSource extends EventTarget {
   }
 }
 
+/** A form posted to the API, which is how a zip is downloaded, answered here and saved. */
+function submitDemoForm(this: HTMLFormElement) {
+  const url = resolveUrl(this.action)
+  if (!url.pathname.startsWith("/api/")) {
+    nativeSubmit?.call(this)
+    return
+  }
+  void handleApiRequest(url, { method: this.method, body: new FormData(this) }).then(async (response) => {
+    if (!response.ok) {
+      console.warn("Demo form post failed", await response.text())
+      return
+    }
+    const disposition = response.headers.get("Content-Disposition") ?? ""
+    download(/filename="?([^";]+)/.exec(disposition)?.[1] ?? "download", await response.blob())
+  })
+}
+
 export function installDemoBackend() {
   if (!ENABLE_DEMO_BACKEND || installed) return ENABLE_DEMO_BACKEND
   installed = true
@@ -1143,6 +1164,7 @@ export function installDemoBackend() {
     return nativeFetch(input, init)
   }) as typeof globalThis.fetch
   globalThis.EventSource = DemoEventSource as unknown as typeof EventSource
+  if (nativeSubmit) HTMLFormElement.prototype.submit = submitDemoForm
   appendLog("demo backend enabled")
   return true
 }
@@ -1152,5 +1174,6 @@ export function restoreNativeNetworking() {
   if (NativeEventSource) {
     globalThis.EventSource = NativeEventSource
   }
+  if (nativeSubmit) HTMLFormElement.prototype.submit = nativeSubmit
   installed = false
 }

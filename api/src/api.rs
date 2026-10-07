@@ -3,10 +3,10 @@
 use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::coeffs::CoeffDefaults;
 use crate::events::{self, SubscribeError};
-use crate::extract::{Json, Multipart, Path as UrlPath, Query};
+use crate::extract::{Form, Json, Multipart, Path as UrlPath, Query};
 use crate::files::{self, ConfigContext, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
-use crate::reply::{Binary, EventStream, NO_STORE, NoContent, Reply, Text};
+use crate::reply::{Binary, BodyWriter, EventStream, NO_STORE, NoContent, Reply, Text};
 use crate::settings::{self, GuiConfig, Settings};
 use crate::status::Status;
 use crate::status::StatusCache;
@@ -1616,29 +1616,42 @@ pub async fn rename_file(
     .await
 }
 
-/// Some of the files in a folder, as a zip file.
+/// Some of the files in a folder, as a zip file to save.
+///
+/// The body is a form, as the browser posts it, so that the browser saves
+/// the zip as it arrives. The zip is made as it is sent. The files are
+/// checked first, and an error after the zip started cuts it short.
 #[utoipa::path(
     post,
     path = "/files/{kind}/zip",
     params(("kind" = FileKind, Path)),
     responses(
+        (status = 400, description = "A file name is not valid, or a file could not be read",
+            body = ErrorBody),
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
-        (status = "default", description = "A file could not be read", body = ErrorBody),
     )
 )]
 pub async fn zip_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
-    Json(body): Json<FileNames>,
+    Form(body): Form<FileNames>,
 ) -> ApiResult<Binary> {
     let folder = kind.folder(&app)?;
-    let zip = blocking(move || files::zip_of_files(&folder, &body.names).map_err(internal)).await?;
-    let zip_name = match kind {
-        FileKind::Config => "configs.zip",
-        FileKind::Coeff => "coeffs.zip",
-        FileKind::Audiofile => "audiofiles.zip",
+    let files =
+        blocking(move || files::files_to_zip(&folder, &body.names).map_err(bad_request)).await?;
+    let (zip_name, method) = match kind {
+        FileKind::Config => ("configs.zip", zip::CompressionMethod::Deflated),
+        FileKind::Coeff => ("coeffs.zip", zip::CompressionMethod::Deflated),
+        FileKind::Audiofile => ("audiofiles.zip", zip::CompressionMethod::Stored),
     };
-    Ok(Binary::attachment(zip, zip_name))
+    let (mut writer, body) = BodyWriter::new();
+    tokio::task::spawn_blocking(move || {
+        if let Err(err) = files::write_zip(&files, method, &mut writer) {
+            log::warn!("The download of {zip_name} stopped: {err}");
+            writer.fail(err);
+        }
+    });
+    Ok(Binary::attachment(body, zip_name))
 }
 
 // ── GUI settings and the log ───────────────────────────────────────────────

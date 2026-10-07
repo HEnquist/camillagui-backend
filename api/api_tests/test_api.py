@@ -3,6 +3,7 @@ The API tests, over HTTP against the real backend process.
 """
 
 import array
+import io
 import json
 import random
 import shutil
@@ -14,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from textwrap import dedent
@@ -492,15 +494,51 @@ def test_rename(server):
         server.post("/api/files/coeff/delete", json_body={"names": ["rename_b.txt"]})
 
 
+def post_form(server, path, fields):
+    """Post a form, as a browser does, with `fields` a list of name, value pairs."""
+    return server.post(
+        path,
+        data=urllib.parse.urlencode(fields),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+
+
 def test_zip_download(server):
-    resp = server.post("/api/files/config/zip", json_body={"names": ["config.yml", "config2.yml"]})
+    fields = [("names", "config.yml"), ("names", "config2.yml")]
+    resp = post_form(server, "/api/files/config/zip", fields)
     assert resp.status == 200
     assert resp.headers["Content-Disposition"] == "attachment; filename=configs.zip"
-    import io
-    import zipfile
+    archive = zipfile.ZipFile(io.BytesIO(resp.body))
+    assert sorted(archive.namelist()) == ["config.yml", "config2.yml"]
+    assert archive.read("config.yml") == (server.config_dir / "config.yml").read_bytes()
+    assert archive.getinfo("config.yml").compress_type == zipfile.ZIP_DEFLATED
 
-    names = zipfile.ZipFile(io.BytesIO(resp.body)).namelist()
-    assert sorted(names) == ["config.yml", "config2.yml"]
+
+def test_zip_download_stores_audio_files(split_server):
+    audio = bytes(range(256)) * 4000
+    (split_server.audiofiles_dir / "zipped.wav").write_bytes(audio)
+    try:
+        resp = post_form(split_server, "/api/files/audiofile/zip", [("names", "zipped.wav")])
+        assert resp.status == 200
+        assert resp.headers["Content-Disposition"] == "attachment; filename=audiofiles.zip"
+        archive = zipfile.ZipFile(io.BytesIO(resp.body))
+        assert archive.read("zipped.wav") == audio
+        assert archive.getinfo("zipped.wav").compress_type == zipfile.ZIP_STORED
+    finally:
+        (split_server.audiofiles_dir / "zipped.wav").unlink()
+
+
+def test_zip_download_checks_the_files_first(server):
+    fields = [("names", "config.yml"), ("names", "missing.yml")]
+    resp = post_form(server, "/api/files/config/zip", fields)
+    assert resp.status == 400
+    assert "Content-Disposition" not in resp.headers
+    assert resp.json()["message"].startswith("Could not read missing.yml")
+    resp = post_form(server, "/api/files/config/zip", [("names", "../config.yml")])
+    assert resp.status == 400
+    # The browser posts a form, not JSON.
+    resp = server.post("/api/files/config/zip", json_body={"names": ["config.yml"]})
+    assert resp.status == 415
 
 
 def test_files_need_a_known_folder(server):

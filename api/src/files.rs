@@ -6,8 +6,10 @@ use crate::validate::{self, DeviceTypes, ValidationIssue};
 use crate::{legacy, paths, wav, yaml};
 use serde::Serialize;
 use serde_json::{Value, json};
+use std::collections::HashSet;
+use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use utoipa::ToSchema;
 
@@ -242,22 +244,45 @@ pub fn rename_file(folder: &Path, source: &str, target: &str) -> Result<(), Stri
         .map_err(|err| format!("Could not rename {source}: {err}"))
 }
 
-/// A zip of some of the files in a folder.
-pub fn zip_of_files(folder: &Path, files: &[String]) -> Result<Vec<u8>, String> {
-    let mut buffer = std::io::Cursor::new(Vec::new());
-    let mut zip = zip::ZipWriter::new(&mut buffer);
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
-        .large_file(true);
-    for name in files {
+/// The files of a folder to zip, each named once, with their paths. They are
+/// checked before the zip starts, since once its first bytes are sent, a file
+/// that cannot be read can only cut the download short.
+pub fn files_to_zip(folder: &Path, names: &[String]) -> Result<Vec<(String, PathBuf)>, String> {
+    let mut seen = HashSet::new();
+    let mut files = Vec::new();
+    for name in names {
+        if !seen.insert(name.as_str()) {
+            continue;
+        }
         let path = file_in_folder(folder, name)?;
-        let data = std::fs::read(&path).map_err(|err| format!("Could not read {name}: {err}"))?;
-        zip.start_file(name, options)
-            .map_err(|err| err.to_string())?;
-        zip.write_all(&data).map_err(|err| err.to_string())?;
+        match File::open(&path).and_then(|file| file.metadata()) {
+            Ok(meta) if meta.is_file() => files.push((name.clone(), path)),
+            Ok(_) => return Err(format!("{name} is not a file")),
+            Err(err) => return Err(format!("Could not read {name}: {err}")),
+        }
     }
-    zip.finish().map_err(|err| err.to_string())?;
-    Ok(buffer.into_inner())
+    Ok(files)
+}
+
+/// Write a zip of files to `out` as it is made, a file at a time, so that it
+/// never has to fit in memory. Audio files are best `Stored`: deflate gains
+/// next to nothing on them, and costs a Raspberry Pi a lot of CPU.
+pub fn write_zip(
+    files: &[(String, PathBuf)],
+    method: zip::CompressionMethod,
+    out: &mut impl Write,
+) -> std::io::Result<()> {
+    let mut zip = zip::ZipWriter::new_stream(&mut *out);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(method)
+        .large_file(true);
+    for (name, path) in files {
+        let mut file = File::open(path)?;
+        zip.start_file(name.as_str(), options)?;
+        std::io::copy(&mut file, &mut zip)?;
+    }
+    zip.finish()?;
+    out.flush()
 }
 
 /// What an uploaded config file is stored as: a config with every coefficient
@@ -433,6 +458,96 @@ mod tests {
         rename_file(dir.path(), "a", "c").unwrap();
         assert!(dir.path().join("c").is_file());
         assert!(rename_file(dir.path(), "c", "../d").is_err());
+    }
+
+    #[test]
+    fn zips_are_checked_first() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), "1").unwrap();
+        std::fs::create_dir(dir.path().join("sub")).unwrap();
+        let names = |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>()
+        };
+        let files = files_to_zip(dir.path(), &names(&["a.txt", "a.txt"])).unwrap();
+        assert_eq!(files, [("a.txt".to_string(), dir.path().join("a.txt"))]);
+        let missing = files_to_zip(dir.path(), &names(&["a.txt", "b.txt"])).unwrap_err();
+        assert!(missing.starts_with("Could not read b.txt"), "{missing}");
+        assert_eq!(
+            files_to_zip(dir.path(), &names(&["sub"])).unwrap_err(),
+            "sub is not a file"
+        );
+        assert!(files_to_zip(dir.path(), &names(&["../a.txt"])).is_err());
+    }
+
+    /// The entries of a zip: name, compression and content.
+    fn unzip(bytes: &[u8]) -> Vec<(String, zip::CompressionMethod, Vec<u8>)> {
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        (0..archive.len())
+            .map(|index| {
+                let mut entry = archive.by_index(index).unwrap();
+                let mut content = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut content).unwrap();
+                (entry.name().to_string(), entry.compression(), content)
+            })
+            .collect()
+    }
+
+    /// A zip of some files in a folder, sent as a response body would be.
+    async fn streamed_zip(
+        folder: &Path,
+        names: &[&str],
+        method: zip::CompressionMethod,
+    ) -> Vec<u8> {
+        let names: Vec<String> = names.iter().map(|name| name.to_string()).collect();
+        let files = files_to_zip(folder, &names).unwrap();
+        let (mut writer, body) = crate::reply::BodyWriter::new();
+        tokio::task::spawn_blocking(move || write_zip(&files, method, &mut writer).unwrap());
+        axum::body::to_bytes(body, usize::MAX)
+            .await
+            .unwrap()
+            .to_vec()
+    }
+
+    #[tokio::test]
+    async fn streamed_zip_unpacks_to_the_files() {
+        let dir = tempfile::tempdir().unwrap();
+        // Larger than the chunks that may wait, so the writer has to wait too.
+        let audio: Vec<u8> = (0..1_000_000u32).map(|i| (i % 251) as u8).collect();
+        let other_audio = vec![1u8; 1000];
+        let coeff = "0.5\n0.25\n0.125\n".repeat(1000);
+        std::fs::write(dir.path().join("track.wav"), &audio).unwrap();
+        std::fs::write(dir.path().join("other.wav"), &other_audio).unwrap();
+        std::fs::write(dir.path().join("coeff.txt"), &coeff).unwrap();
+        let stored = zip::CompressionMethod::Stored;
+        let audio_zip = streamed_zip(dir.path(), &["track.wav", "other.wav"], stored).await;
+        assert_eq!(
+            unzip(&audio_zip),
+            [
+                ("track.wav".to_string(), stored, audio),
+                ("other.wav".to_string(), stored, other_audio),
+            ]
+        );
+        let deflated = zip::CompressionMethod::Deflated;
+        let coeff_zip = streamed_zip(dir.path(), &["coeff.txt"], deflated).await;
+        assert!(coeff_zip.len() < coeff.len() / 10);
+        assert_eq!(
+            unzip(&coeff_zip),
+            [("coeff.txt".to_string(), deflated, coeff.into_bytes())]
+        );
+    }
+
+    #[test]
+    fn streamed_zip_stops_when_the_client_goes() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("big.wav"), vec![0u8; 1_000_000]).unwrap();
+        let files = files_to_zip(dir.path(), &["big.wav".to_string()]).unwrap();
+        let (mut writer, body) = crate::reply::BodyWriter::new();
+        drop(body);
+        let err = write_zip(&files, zip::CompressionMethod::Stored, &mut writer).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::BrokenPipe);
     }
 
     #[test]

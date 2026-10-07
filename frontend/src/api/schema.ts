@@ -223,7 +223,12 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Some of the files in a folder, as a zip file. */
+    /**
+     * Some of the files in a folder, as a zip file to save.
+     * @description The body is a form, as the browser posts it, so that the browser saves
+     *     the zip as it arrives. The zip is made as it is sent. The files are
+     *     checked first, and an error after the zip started cuts it short.
+     */
     post: operations["zip_files"]
     delete?: never
     options?: never
@@ -2522,7 +2527,7 @@ export interface operations {
     }
     requestBody: {
       content: {
-        "application/json": components["schemas"]["FileNames"]
+        "application/x-www-form-urlencoded": components["schemas"]["FileNames"]
       }
     }
     responses: {
@@ -2534,8 +2539,8 @@ export interface operations {
           "application/octet-stream": string
         }
       }
-      /** @description No audiofiles_dir is set */
-      404: {
+      /** @description A file name is not valid, or a file could not be read */
+      400: {
         headers: {
           [name: string]: unknown
         }
@@ -2543,8 +2548,8 @@ export interface operations {
           "application/json": components["schemas"]["ErrorBody"]
         }
       }
-      /** @description A file could not be read */
-      default: {
+      /** @description No audiofiles_dir is set */
+      404: {
         headers: {
           [name: string]: unknown
         }

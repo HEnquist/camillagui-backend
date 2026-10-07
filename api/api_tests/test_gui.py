@@ -6,7 +6,9 @@ CamillaDSP through an event stream to the screen. Keep them few, a browser
 test costs far more than an API test.
 """
 
+import shutil
 import time
+import zipfile
 
 import pytest
 
@@ -51,6 +53,31 @@ def test_offline_when_camilladsp_goes_away(page, server):
 def test_files_tab_lists_the_files(page, server):
     page.get_by_role("tab", name="Files").click()
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
+
+
+def test_zip_download_goes_to_the_browser(page, server, tmp_path):
+    """The zip is a native download, and a refusal still shows its message."""
+    gone = server.config_dir / "gone.yml"
+    shutil.copy(server.config_dir / "config2.yml", gone)
+    page.get_by_role("tab", name="Files").click()
+    configs = page.locator(".box").filter(has_text="config2.yml").first
+    rows = configs.get_by_role("row")
+    download_button = configs.locator('[data-tooltip-html="Download 1 file as zip file"]')
+
+    rows.filter(has_text="gone.yml").locator("input[type=checkbox]").check()
+    gone.unlink()
+    download_button.click()
+    expect(configs.get_by_text("Could not read gone.yml", exact=False)).to_be_visible()
+
+    rows.filter(has_text="gone.yml").locator("input[type=checkbox]").uncheck()
+    rows.filter(has_text="config2.yml").locator("input[type=checkbox]").check()
+    with page.expect_download() as download_info:
+        download_button.click()
+    download = download_info.value
+    assert download.suggested_filename == "configs.zip"
+    download.save_as(tmp_path / "configs.zip")
+    archive = zipfile.ZipFile(tmp_path / "configs.zip")
+    assert archive.read("config2.yml") == (server.config_dir / "config2.yml").read_bytes()
 
 
 def test_device_capabilities_show_the_supported_rates(page, server):

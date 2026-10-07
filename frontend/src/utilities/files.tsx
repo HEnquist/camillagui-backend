@@ -1,4 +1,5 @@
-import { api, errorMessage, responseErrorMessage, Schemas } from "../api/client"
+import { api, errorBodyMessage, errorMessage, responseErrorMessage, Schemas } from "../api/client"
+import type { paths } from "../api/schema"
 import { completeConfig, Config } from "../camilladsp/config"
 
 export type ValidationIssue = Schemas["ValidationIssue"]
@@ -129,15 +130,49 @@ export async function renameFile(type: StoredFileType, source: string, target: s
   if (!response.ok) throw new Error(errorMessage(error, response))
 }
 
-/** Download some of the files in a folder as `<type>s.zip`. */
-export async function downloadAsZip(type: StoredFileType, names: string[]): Promise<void> {
-  const { data, error, response } = await api.POST("/api/files/{kind}/zip", {
-    params: { path: { kind: type } },
-    body: { names },
-    parseAs: "blob",
-  })
-  if (!data) throw new Error(errorMessage(error, response))
-  download(`${type}s.zip`, data)
+type ZipForm = paths["/api/files/{kind}/zip"]["post"]["requestBody"]["content"]["application/x-www-form-urlencoded"]
+
+/** The hidden frame that zip downloads are posted into. */
+let zipFrame: HTMLIFrameElement | undefined
+
+/**
+ * Download some of the files in a folder as `<type>s.zip`. It is a form posted into a hidden
+ * frame, so that the browser saves the zip as it arrives rather than holding all of it first. The
+ * backend checks the files before it starts the zip, and a refusal loads its error into the frame,
+ * which is passed on to `onError`. A download that starts is the browser's to show.
+ */
+export function downloadAsZip(type: StoredFileType, names: string[], onError: (message: string) => void) {
+  if (!zipFrame) {
+    zipFrame = document.createElement("iframe")
+    zipFrame.name = "zip-download"
+    zipFrame.hidden = true
+    document.body.appendChild(zipFrame)
+  }
+  const frame = zipFrame
+  // An earlier error must not be taken for one about this download.
+  frame.contentDocument?.body?.replaceChildren()
+  frame.onload = () => {
+    const page = frame.contentDocument
+    // Browsers show a JSON body in a <pre>, with or without more around it.
+    const text = (page?.querySelector("pre") ?? page?.body)?.textContent?.trim()
+    if (text) onError(errorBodyMessage(text) ?? "The download failed")
+  }
+  const fields: ZipForm = { names }
+  const form = document.createElement("form")
+  form.method = "post"
+  form.action = `/api/files/${type}/zip`
+  form.target = frame.name
+  form.hidden = true
+  for (const name of fields.names) {
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = "names"
+    input.value = name
+    form.appendChild(input)
+  }
+  document.body.appendChild(form)
+  form.submit()
+  form.remove()
 }
 
 export function issueSeverity(issue: ValidationIssue): Schemas["Severity"] {

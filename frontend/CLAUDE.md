@@ -110,8 +110,10 @@ OpenAPI spec, `../api/openapi.json`.
 
 `src/api/schema.ts` is generated from the spec by openapi-typescript. Call the API through `api`
 in `src/api/client.ts` (openapi-fetch), so tsc checks the path, parameters, body and response.
-The exceptions are the event streams (`EventSource`) and `/api/convcoeffs` (binary), which use
-the generated payload types with their own code. The demo backend uses the same generated types.
+The exceptions are the event streams (`EventSource`), `/api/convcoeffs` (binary) and the zip
+download (a form posted into a hidden frame, so the browser saves the zip as it arrives), which use
+the generated payload types with their own code. The demo backend uses the same generated types,
+and answers the zip form too.
 Every error is a JSON `ErrorBody` with a `message`: use `errorMessage` after an `api` call and
 `responseErrorMessage` after a plain `fetch`, both in `src/api/client.ts`.
 
