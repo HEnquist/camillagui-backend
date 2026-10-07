@@ -258,18 +258,25 @@ impl CamillaClient {
         };
         self.check_offline()?;
         let mut guard = self.ws.lock().await;
-        if guard.is_none() {
-            // Again, since a connect may have failed while this one waited.
-            self.check_offline()?;
-            *guard = Some(self.connect_checked().await?);
-            self.connections.fetch_add(1, Ordering::Relaxed);
-        }
-        let ws = guard.as_mut().expect("connected above");
-        let result = request_on(ws, &command, timeout).await;
-        if let Err(DspError::Io(_)) = result {
-            // A lost connection, or a reply that never came and might still
-            // arrive and be taken for the answer to the next command.
-            *guard = None;
+        // The socket is taken out of the slot, and only put back once the
+        // reply is in. A request dropped halfway, by a closed tab or an
+        // aborted fetch, drops the socket with it, since the reply would
+        // otherwise be taken for the answer to the next command.
+        let mut ws = match guard.take() {
+            Some(ws) => ws,
+            None => {
+                // Again, since a connect may have failed while this one waited.
+                self.check_offline()?;
+                let ws = self.connect_checked().await?;
+                self.connections.fetch_add(1, Ordering::Relaxed);
+                ws
+            }
+        };
+        let result = request_on(&mut ws, &command, timeout).await;
+        // Not after a lost connection either, or a reply that never came and
+        // might still arrive.
+        if !matches!(result, Err(DspError::Io(_))) {
+            *guard = Some(ws);
         }
         result
     }
@@ -481,5 +488,58 @@ impl CamillaClient {
             device: device.to_string(),
         };
         value_of!(self.request(command).await?, GetPlaybackDeviceCapabilities)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::net::TcpListener;
+
+    /// A fake CamillaDSP that answers GetVersion at once, and GetState after a
+    /// delay, so that a request can be dropped while it waits.
+    async fn fake_camilladsp() -> u16 {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                    while let Some(Ok(Message::Text(text))) = ws.next().await {
+                        let reply = match serde_json::from_str(&text).unwrap() {
+                            WsCommand::GetVersion => WsReply::GetVersion {
+                                result: WsResult::Ok,
+                                value: "5.0.0".to_string(),
+                            },
+                            WsCommand::GetState => {
+                                tokio::time::sleep(Duration::from_millis(200)).await;
+                                WsReply::GetState {
+                                    result: WsResult::Ok,
+                                    value: ProcessingState::Running,
+                                }
+                            }
+                            command => panic!("unexpected command {command:?}"),
+                        };
+                        let text = serde_json::to_string(&reply).unwrap();
+                        ws.send(Message::text(text)).await.unwrap();
+                    }
+                });
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn dropped_request_does_not_leave_its_reply_for_the_next() {
+        let port = fake_camilladsp().await;
+        let client = CamillaClient::new("127.0.0.1", port);
+        assert_eq!(client.version().await.unwrap(), "5.0.0");
+        assert_eq!(client.connection(), 1);
+        // Dropped before the reply comes, like the handler of an aborted fetch.
+        let dropped = tokio::time::timeout(Duration::from_millis(50), client.state()).await;
+        assert!(dropped.is_err());
+        // The late GetState reply must not be read as the answer to this one.
+        assert_eq!(client.version().await.unwrap(), "5.0.0");
+        assert_eq!(client.connection(), 2);
     }
 }
