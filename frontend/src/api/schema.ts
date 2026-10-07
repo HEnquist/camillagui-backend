@@ -2127,7 +2127,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2151,7 +2150,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2202,7 +2200,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2234,7 +2231,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2258,7 +2254,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2294,7 +2289,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2336,7 +2330,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2367,7 +2360,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2402,7 +2394,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2444,7 +2435,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2486,7 +2476,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2537,7 +2526,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2575,7 +2563,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2595,7 +2582,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2629,7 +2615,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2667,7 +2652,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2705,7 +2689,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2743,7 +2726,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2763,7 +2745,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -2792,7 +2773,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2821,7 +2801,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2857,7 +2836,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2891,7 +2869,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2918,7 +2895,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -2951,7 +2927,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -2978,7 +2953,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3011,7 +2985,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3042,7 +3015,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3091,7 +3063,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3131,7 +3102,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3189,7 +3159,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -3218,7 +3187,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Server-sent events */
       200: {
         headers: {
           [name: string]: unknown
@@ -3247,7 +3215,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3267,7 +3234,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description Done */
       204: {
         headers: {
           [name: string]: unknown
@@ -3307,7 +3273,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3339,7 +3304,6 @@ export interface operations {
     }
     requestBody?: never
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown
@@ -3381,7 +3345,6 @@ export interface operations {
       }
     }
     responses: {
-      /** @description OK */
       200: {
         headers: {
           [name: string]: unknown

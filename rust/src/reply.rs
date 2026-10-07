@@ -114,12 +114,14 @@ impl<T: BodySchema> BodySchema for Arc<T> {
     }
 }
 
+/// A success response. Its description is left empty, which utoipa leaves out
+/// of the spec: what the response means is in the handler's doc comment, and
+/// a generic text would only repeat the status code.
 fn response(
     status: StatusCode,
-    description: &str,
     content: Option<(&str, RefOr<Schema>)>,
 ) -> BTreeMap<String, RefOr<SpecResponse>> {
-    let mut builder = utoipa::openapi::ResponseBuilder::new().description(description);
+    let mut builder = utoipa::openapi::ResponseBuilder::new();
     if let Some((content_type, schema)) = content {
         builder = builder.content(content_type, Content::new(Some(schema)));
     }
@@ -144,11 +146,7 @@ impl<T: Serialize> IntoResponse for Reply<T> {
 
 impl<T: BodySchema> IntoResponses for Reply<T> {
     fn responses() -> BTreeMap<String, RefOr<SpecResponse>> {
-        response(
-            StatusCode::OK,
-            "OK",
-            Some(("application/json", T::body_schema())),
-        )
+        response(StatusCode::OK, Some(("application/json", T::body_schema())))
     }
 }
 
@@ -163,7 +161,7 @@ impl IntoResponse for NoContent {
 
 impl IntoResponses for NoContent {
     fn responses() -> BTreeMap<String, RefOr<SpecResponse>> {
-        response(StatusCode::NO_CONTENT, "Done", None)
+        response(StatusCode::NO_CONTENT, None)
     }
 }
 
@@ -178,7 +176,7 @@ impl IntoResponse for Text {
 
 impl IntoResponses for Text {
     fn responses() -> BTreeMap<String, RefOr<SpecResponse>> {
-        response(StatusCode::OK, "OK", Some(("text/plain", String::schema())))
+        response(StatusCode::OK, Some(("text/plain", String::schema())))
     }
 }
 
@@ -234,7 +232,6 @@ impl IntoResponses for Binary {
             .description(Some("Raw bytes, not JSON."));
         response(
             StatusCode::OK,
-            "OK",
             Some(("application/octet-stream", schema.into())),
         )
     }
@@ -274,7 +271,6 @@ impl<T: BodySchema> IntoResponses for EventStream<T> {
     fn responses() -> BTreeMap<String, RefOr<SpecResponse>> {
         response(
             StatusCode::OK,
-            "Server-sent events",
             Some(("text/event-stream", T::body_schema())),
         )
     }
