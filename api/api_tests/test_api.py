@@ -689,11 +689,34 @@ def test_translate_eqapo_needs_the_channels(server):
     assert server.post("/api/eqapotojson", json_body={"text": "blank"}).status == 422
 
 
+def test_translate_eqapo_skips_non_finite_numbers(server):
+    text = "Filter: ON PK Fc 1000 Hz Gain inf dB Q 1\nFilter: ON PK Fc 2000 Hz Gain 3 dB Q 1\n"
+    resp = server.post("/api/eqapotojson", json_body={"text": text, "channels": 2})
+    assert resp.status == 200
+    filters = resp.json()["filters"]
+    assert list(filters) == ["Filter_1"]
+    assert filters["Filter_1"]["parameters"]["freq"] == 2000.0
+
+
+def test_translate_eqapo_that_is_not_a_fragment(server):
+    # A negative channel count gives a mixer that no config can have.
+    body = {"text": "Copy: L=R\n", "channels": -1}
+    resp = server.post("/api/eqapotojson", json_body=body)
+    assert resp.status == 400
+    assert resp.json()["message"].startswith("mixers.Copy_1")
+
+
 def test_translate_convolver(server):
     resp = server.post("/api/convolvertojson", json_body={"text": "96000 1 2 0\n0\n0"})
     assert resp.status == 200
     content = resp.json()
     assert content["devices"]["samplerate"] == 96000
+
+
+def test_translate_convolver_that_is_not_a_fragment(server):
+    resp = server.post("/api/convolvertojson", json_body={"text": "-1 1 2 0\n0\n0"})
+    assert resp.status == 400
+    assert resp.json()["message"].startswith("devices.samplerate")
 
 
 def test_yml_to_json_migrates(server):

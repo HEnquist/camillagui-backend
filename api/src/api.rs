@@ -1014,7 +1014,7 @@ pub async fn translate_convolver_to_json(
     Json(body): Json<ImportText>,
 ) -> ApiResult<Reply<ConfigFragment>> {
     let translated = convolver::translate(&body.text).map_err(bad_request)?;
-    let fragment = ConfigFragment::parse(translated).map_err(internal)?;
+    let fragment = ConfigFragment::parse(translated).map_err(bad_request)?;
     Ok(Reply(fragment))
 }
 
@@ -1038,7 +1038,7 @@ pub async fn translate_eqapo_to_json(
     Json(body): Json<EqApoImport>,
 ) -> ApiResult<Reply<ConfigFragment>> {
     let translated = eqapo::EqApo::new(body.channels).translate(&body.text);
-    let fragment = ConfigFragment::parse(translated).map_err(internal)?;
+    let fragment = ConfigFragment::parse(translated).map_err(bad_request)?;
     Ok(Reply(fragment))
 }
 

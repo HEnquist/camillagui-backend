@@ -43,11 +43,20 @@ fn channel_map(channels: i64) -> &'static [(&'static str, i64)] {
     }
 }
 
-/// Inline expressions are not supported, only a plain number gives a value.
+/// A finite number. Rust also parses `nan`, `inf` and `infinity`, which JSON
+/// has no numbers for.
+fn finite_number(text: &str) -> Option<f64> {
+    text.parse::<f64>().ok().filter(|n| n.is_finite())
+}
+
+/// Inline expressions are not supported, only a plain finite number gives a
+/// value.
 fn parse_number(text: &str) -> Option<f64> {
-    let number = text.parse::<f64>().ok();
+    let number = finite_number(text);
     if number.is_none() {
-        log::warn!("Unable to parse '{text}' as number, inline expressions are not supported.");
+        log::warn!(
+            "Unable to parse '{text}' as a finite number, inline expressions are not supported."
+        );
     }
     number
 }
@@ -354,13 +363,12 @@ fn is_shelf(camilla_type: &str) -> bool {
 /// A slope at the start of the parameters, `6dB` or `6 dB`, and how many
 /// tokens it took.
 fn parse_slope(tokens: &[&str]) -> (Option<f64>, usize) {
-    let number = |text: &str| text.parse::<f64>().ok();
     match tokens {
-        [first, ..] if first.ends_with("dB") => match number(&first[..first.len() - 2]) {
+        [first, ..] if first.ends_with("dB") => match finite_number(&first[..first.len() - 2]) {
             Some(slope) => (Some(slope), 1),
             None => (None, 0),
         },
-        [first, "dB", ..] => match number(first) {
+        [first, "dB", ..] => match finite_number(first) {
             Some(slope) => (Some(slope), 2),
             None => (None, 0),
         },
@@ -413,7 +421,9 @@ fn corner_to_center(low: bool, params: &mut Map<String, Value>) {
     }
     let factor = 10f64.powf(gain.abs() / 80.0 / s);
     let center = if low { freq * factor } else { freq / factor };
-    params.insert("freq".into(), json!(center));
+    if center.is_finite() {
+        params.insert("freq".into(), json!(center));
+    }
 }
 
 /// The width EqAPO uses when the line leaves it out. CamillaDSP has no such
@@ -538,6 +548,29 @@ Filter: ON  NO       Fc     50 Hz
         eqapo.parse_line("Filter 3: ON PK Fc 3000 Hz Gain 3 dB Q 1");
         assert_eq!(eqapo.filters.len(), 1);
         assert_eq!(eqapo.filters["Filter_1"]["parameters"]["freq"], 3000.0);
+    }
+
+    #[test]
+    fn non_finite_numbers_are_skipped() {
+        let mut eqapo = EqApo::new(2);
+        eqapo.parse_line("Filter 1: ON PK Fc 1000 Hz Gain inf dB Q 1");
+        eqapo.parse_line("Filter 2: ON PK Fc nan Hz Gain 3 dB Q 1");
+        eqapo.parse_line("Filter 3: ON PK Fc 1000 Hz Gain 3 dB Q -Infinity");
+        eqapo.parse_line("Preamp: NaN dB");
+        eqapo.parse_line("Delay: infinity ms");
+        eqapo.parse_line("Filter 4: ON PK Fc 3000 Hz Gain 3 dB Q 1");
+        assert_eq!(eqapo.filters.len(), 1);
+        assert_eq!(eqapo.filters["Filter_1"]["parameters"]["freq"], 3000.0);
+        // A slope that is not finite is not taken as a slope.
+        let mut eqapo = EqApo::new(2);
+        eqapo.parse_line("Filter: ON LS infdB Fc 100 Hz Gain 6 dB");
+        assert_eq!(eqapo.filters["Filter_1"]["parameters"]["slope"], 10.8);
+        // Nor is a gain in a Copy, which drops that source.
+        let copy = EqApo::new(2).parse_copy("L=inf*R+L");
+        assert_eq!(
+            copy["mapping"][0]["sources"],
+            json!([{"channel": 0, "gain": 0.0, "inverted": false, "scale": "dB"}])
+        );
     }
 
     #[test]
