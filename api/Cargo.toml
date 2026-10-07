@@ -22,7 +22,7 @@ serde_html_form = { version = "0.4.1", default-features = false, features = ["de
 serde_path_to_error = "0.1.20"
 tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "fs", "process"] }
 tokio-tungstenite = "0.30.0"
-tower-http = { version = "0.6", features = ["fs"] }
+tower-http = { version = "0.7", features = ["fs"] }
 utoipa = { version = "6.0.0", features = ["axum_extras", "auto_into_responses"] }
 utoipa-axum = "0.3.0"
 waveadapter = "0.3.0"
