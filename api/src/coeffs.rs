@@ -98,11 +98,11 @@ fn parse_pattern(name: &str) -> Vec<Part> {
     }
 }
 
-/// Match the start of `text` against the pattern, like a regex match with
+/// Match all of `text` against the pattern, like an anchored regex match with
 /// `(\d*)` for each token: digit runs are greedy and give back as needed.
 fn match_pattern(parts: &[Part], text: &str, found: &mut Vec<(usize, String)>) -> bool {
     let Some((first, rest)) = parts.split_first() else {
-        return true;
+        return text.is_empty();
     };
     match first {
         Part::Literal(literal) => match text.strip_prefix(literal.as_str()) {
@@ -286,6 +286,21 @@ mod tests {
             as_json(options),
             json!([{"name": "f_441002.raw", "samplerate": 44100}])
         );
+    }
+
+    #[test]
+    fn pattern_must_match_the_whole_name() {
+        let files: Vec<String> = ["f_44100.raw", "f_44100.raw.bak", "other.f32.old"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let options = filter_plot_options(&files, "f_$samplerate$.raw");
+        assert_eq!(
+            as_json(options),
+            json!([{"name": "f_44100.raw", "samplerate": 44100}])
+        );
+        let options = filter_plot_options(&files, "other.f32");
+        assert!(options.is_empty());
     }
 
     #[test]
