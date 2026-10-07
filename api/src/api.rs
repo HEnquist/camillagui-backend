@@ -791,7 +791,7 @@ fn read_and_migrate(
             "Migration failed: input is not a valid CamillaDSP config object.",
         ));
     }
-    legacy::migrate_legacy_config(&mut config);
+    legacy::migrate_if_older(&mut config);
     let settings = &app.settings;
     paths::make_config_filter_paths_relative(
         &mut config,
@@ -1015,7 +1015,7 @@ pub async fn yaml_to_json(Json(body): Json<ImportText>) -> ApiResult<Reply<Confi
     let parsed = yaml::parse(&body.text).map_err(|err| bad_request(err.to_string()))?;
     check_finite(&parsed).map_err(bad_request)?;
     let mut loaded = parsed.value;
-    legacy::migrate_legacy_config(&mut loaded);
+    legacy::migrate_if_older(&mut loaded);
     let fragment = ConfigFragment::parse(loaded).map_err(bad_request)?;
     Ok(Reply(fragment))
 }

@@ -468,6 +468,18 @@ pub fn migrate_legacy_config(config: &mut Value) {
     modify_processor_time_units(config);
 }
 
+/// Migrate a config, or part of one, only if it is written for an older
+/// version. Some migration steps are not safe on a current config, so one that
+/// is identified as current, or not at all, is left alone. A REW export is
+/// fixed up first whatever its version, since its single pipeline step hides
+/// the version from `identify_version`.
+pub fn migrate_if_older(config: &mut Value) {
+    fix_rew_pipeline(config);
+    if identify_version(config).is_some_and(|version| version < CURRENT_VERSION) {
+        migrate_legacy_config(config);
+    }
+}
+
 // ── Version detection ──────────────────────────────────────────────────────
 
 fn filters_any(config: &Value, check: impl Fn(&Value) -> bool) -> bool {
@@ -700,6 +712,117 @@ mod tests {
                 {"type": "Processor", "name": "comp"},
             ],
         })
+    }
+
+    /// A current config, using what older versions spelled differently or not
+    /// at all: a Delay in samples, File playback, and the CoreAudio formats.
+    fn v5_config() -> Value {
+        json!({
+            "devices": {
+                "samplerate": 48000,
+                "chunksize": 1024,
+                "adjust_interval_s": 10.0,
+                "silence_timeout_s": 3.0,
+                "rate_measure_interval_s": 1.0,
+                "volume_ramp_time_ms": 400.0,
+                "capture": {"type": "CoreAudio", "channels": 2, "device": "BlackHole 2ch", "format": "S16"},
+                "playback": {"type": "File", "channels": 2, "filename": "out.raw", "format": "S32_LE"},
+            },
+            "filters": {
+                "dly": {"type": "Delay", "parameters": {"delay": 32.0, "delay_unit": "samples"}},
+                "vol": {"type": "Volume", "parameters": {"ramp_time_ms": 200.0, "fader": "Aux1"}},
+                "clip": {"type": "Clipper", "parameters": {"clip_limit": -3.0}},
+                "peq": {"type": "BiquadCombo", "parameters": {"type": "NPointPeq", "bands": [
+                    {"freq": 80.0, "q": 0.7, "gain": 1.0},
+                ]}},
+            },
+            "processors": {
+                "comp": {"type": "Compressor", "parameters": {
+                    "channels": 2, "attack": 25.0, "attack_unit": "ms", "release": 1.0,
+                    "release_unit": "s", "threshold": -25.0, "factor": 5.0,
+                }},
+            },
+            "pipeline": [
+                {"type": "Filter", "channels": [0, 1], "names": ["dly", "vol", "clip", "peq"]},
+                {"type": "Processor", "name": "comp"},
+            ],
+        })
+    }
+
+    /// The v5 config with each of the Wasapi and CoreAudio v5 formats.
+    fn v5_configs() -> Vec<Value> {
+        let devices = [
+            (
+                json!({"type": "Wasapi", "channels": 2, "device": "Line In", "format": "S32"}),
+                json!({"type": "CoreAudio", "channels": 2, "device": "Speakers", "format": "F32"}),
+            ),
+            (
+                json!({"type": "CoreAudio", "channels": 2, "format": "S32"}),
+                json!({"type": "Wasapi", "channels": 2, "format": "S16"}),
+            ),
+            (
+                json!({"type": "Wasapi", "channels": 2, "format": "F32"}),
+                json!({"type": "CoreAudio", "channels": 2, "format": "S16"}),
+            ),
+        ];
+        let mut configs = vec![v5_config()];
+        for (capture, playback) in devices {
+            let mut config = v5_config();
+            config["devices"]["capture"] = capture;
+            config["devices"]["playback"] = playback;
+            configs.push(config);
+        }
+        configs
+    }
+
+    #[test]
+    fn v5_config_is_current() {
+        for config in v5_configs() {
+            crate::validate::parse(config.clone()).expect("the fixture is a valid v5 config");
+            assert_eq!(identify_version(&config), Some(CURRENT_VERSION));
+        }
+    }
+
+    #[test]
+    fn current_config_is_not_migrated() {
+        for config in v5_configs() {
+            let mut migrated = config.clone();
+            migrate_if_older(&mut migrated);
+            assert_eq!(migrated, config);
+        }
+        let filters_only = json!({"filters": v5_config()["filters"]});
+        let mut migrated = filters_only.clone();
+        migrate_if_older(&mut migrated);
+        assert_eq!(migrated, filters_only);
+    }
+
+    #[test]
+    fn older_config_is_migrated() {
+        let mut config = v4_config();
+        migrate_if_older(&mut config);
+        assert_eq!(identify_version(&config), Some(CURRENT_VERSION));
+    }
+
+    #[test]
+    fn current_rew_export_gets_a_pipeline_list() {
+        let mut config = v5_config();
+        let step = json!({"type": "Filter", "channels": [0], "names": ["peq"]});
+        config["pipeline"] = step.clone();
+        migrate_if_older(&mut config);
+        assert_eq!(config["pipeline"], json!([step]));
+        assert_eq!(config["devices"], v5_config()["devices"]);
+    }
+
+    #[test]
+    #[ignore = "migrate_legacy_config still overwrites delay_unit, renames File playback to \
+                RawFile and wipes the v5 CoreAudio and Wasapi formats; un-ignore once those \
+                steps only touch old configs"]
+    fn migration_leaves_current_config_unchanged() {
+        for config in v5_configs() {
+            let mut migrated = config.clone();
+            migrate_legacy_config(&mut migrated);
+            assert_eq!(migrated, config);
+        }
     }
 
     #[test]
