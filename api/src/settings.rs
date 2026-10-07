@@ -186,16 +186,38 @@ impl Settings {
     }
 }
 
-/// Whether a file can be written, or created if it does not exist yet.
+/// Whether a file can be written, or created if it does not exist yet. Tried
+/// for real rather than read from the permission bits, which say nothing
+/// about who owns the file or folder.
 fn is_file_writable(path: &Path) -> bool {
     if path.is_file() {
+        // Opening for appending writes nothing and truncates nothing.
         return std::fs::OpenOptions::new().append(true).open(path).is_ok();
     }
-    match path.parent() {
-        Some(parent) if parent.is_dir() => std::fs::metadata(parent)
-            .map(|meta| !meta.permissions().readonly())
-            .unwrap_or(false),
-        _ => false,
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+        return false;
+    };
+    if !parent.is_dir() {
+        return false;
+    }
+    // A file of our own next to it, so that nothing ever sees an empty statefile.
+    let mut probe_name = std::ffi::OsString::from(".");
+    probe_name.push(name);
+    probe_name.push(format!(".camillagui-{}", std::process::id()));
+    let probe = parent.join(probe_name);
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe)
+    {
+        Ok(file) => {
+            drop(file);
+            if let Err(err) = std::fs::remove_file(&probe) {
+                log::warn!("Could not remove {}: {err}", probe.display());
+            }
+            true
+        }
+        Err(_) => false,
     }
 }
 
@@ -528,6 +550,45 @@ mod tests {
             config.custom_shortcuts[0].shortcuts[0].kind,
             Some(ShortcutType::Number)
         );
+    }
+
+    #[test]
+    fn statefile_check_leaves_no_trace() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("state.yml");
+        assert!(is_file_writable(&missing));
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+
+        let existing = dir.path().join("existing.yml");
+        std::fs::write(&existing, "config_path: /a.yml\n").unwrap();
+        assert!(is_file_writable(&existing));
+        assert_eq!(
+            std::fs::read_to_string(&existing).unwrap(),
+            "config_path: /a.yml\n"
+        );
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+
+        assert!(!is_file_writable(&dir.path().join("nofolder/state.yml")));
+    }
+
+    /// The root folder is typically 0755 and owned by root, so its permission
+    /// bits say writable while only root can create a file in it.
+    #[cfg(unix)]
+    #[test]
+    fn statefile_in_a_folder_of_another_user_is_not_writable() {
+        use std::os::unix::fs::MetadataExt;
+        let dir = tempfile::tempdir().unwrap();
+        let mine = dir.path().join("mine");
+        std::fs::write(&mine, "").unwrap();
+        let uid = std::fs::metadata(&mine).unwrap().uid();
+        let root = std::fs::metadata("/").unwrap();
+        if uid == 0 || root.uid() == uid {
+            eprintln!("skipped: running as root, or the root folder is our own");
+            return;
+        }
+        let statefile = Path::new("/camillagui-statefile-test.yml");
+        assert!(!statefile.exists());
+        assert!(!is_file_writable(statefile));
     }
 
     #[test]
