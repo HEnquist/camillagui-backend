@@ -261,15 +261,32 @@ impl StatusCache {
             playback: playback_types.clone(),
             capture: capture_types.clone(),
         });
+        // A backend that cannot list its devices, like Jack with no server
+        // running, must not keep the others from being cached. A lost
+        // connection ends it.
         for backend in &playback_types {
-            let devices = camilla.playback_devices(backend).await?;
-            log::debug!("Updated {backend} playback devices: {devices:?}");
-            self.store_device_list(false, backend, devices);
+            match camilla.playback_devices(backend).await {
+                Ok(devices) => {
+                    log::debug!("Updated {backend} playback devices: {devices:?}");
+                    self.store_device_list(false, backend, devices);
+                }
+                Err(err @ DspError::Command { .. }) => {
+                    log::debug!("Could not read the {backend} playback devices: {err}");
+                }
+                Err(err) => return Err(err),
+            }
         }
         for backend in &capture_types {
-            let devices = camilla.capture_devices(backend).await?;
-            log::debug!("Updated {backend} capture devices: {devices:?}");
-            self.store_device_list(true, backend, devices);
+            match camilla.capture_devices(backend).await {
+                Ok(devices) => {
+                    log::debug!("Updated {backend} capture devices: {devices:?}");
+                    self.store_device_list(true, backend, devices);
+                }
+                Err(err @ DspError::Command { .. }) => {
+                    log::debug!("Could not read the {backend} capture devices: {err}");
+                }
+                Err(err) => return Err(err),
+            }
         }
         Ok(())
     }
@@ -300,5 +317,74 @@ mod tests {
         assert_eq!(nearest_standard_rate(0), None);
         assert_eq!(nearest_standard_rate(60000), None);
         assert_eq!(nearest_standard_rate(1_000_000), None);
+    }
+
+    /// A fake CamillaDSP with Jack and Alsa, where Jack cannot list devices.
+    async fn fake_camilladsp_without_jack() -> u16 {
+        use camilladsp_schema::protocol::{WsCommand, WsReply, WsResult};
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::Message;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                    while let Some(Ok(Message::Text(text))) = ws.next().await {
+                        let no_jack = || WsResult::ConfigValidationError {
+                            message: "No jack server".to_string(),
+                        };
+                        let alsa = || vec![("hw:0".to_string(), "Card".to_string())];
+                        let reply = match serde_json::from_str(&text).unwrap() {
+                            WsCommand::GetVersion => WsReply::GetVersion {
+                                result: WsResult::Ok,
+                                value: "5.0.0".to_string(),
+                            },
+                            WsCommand::GetSupportedDeviceTypes => {
+                                WsReply::GetSupportedDeviceTypes {
+                                    result: WsResult::Ok,
+                                    value: (
+                                        vec!["Jack".to_string(), "Alsa".to_string()],
+                                        vec!["Jack".to_string(), "Alsa".to_string()],
+                                    ),
+                                }
+                            }
+                            WsCommand::GetAvailablePlaybackDevices { backend } => {
+                                let jack = backend == "Jack";
+                                WsReply::GetAvailablePlaybackDevices {
+                                    result: if jack { no_jack() } else { WsResult::Ok },
+                                    value: if jack { vec![] } else { alsa() },
+                                }
+                            }
+                            WsCommand::GetAvailableCaptureDevices { backend } => {
+                                let jack = backend == "Jack";
+                                WsReply::GetAvailableCaptureDevices {
+                                    result: if jack { no_jack() } else { WsResult::Ok },
+                                    value: if jack { vec![] } else { alsa() },
+                                }
+                            }
+                            command => panic!("unexpected command {command:?}"),
+                        };
+                        let text = serde_json::to_string(&reply).unwrap();
+                        ws.send(Message::text(text)).await.unwrap();
+                    }
+                });
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn failing_backend_does_not_stop_the_others_from_being_cached() {
+        let port = fake_camilladsp_without_jack().await;
+        let camilla = CamillaClient::new("127.0.0.1", port);
+        let cache = StatusCache::new();
+        cache.refresh_devices(&camilla).await.unwrap();
+        let alsa = vec![("hw:0".to_string(), "Card".to_string())];
+        assert_eq!(cache.device_list(false, "Jack"), None);
+        assert_eq!(cache.device_list(false, "Alsa"), Some(alsa.clone()));
+        assert_eq!(cache.device_list(true, "Jack"), None);
+        assert_eq!(cache.device_list(true, "Alsa"), Some(alsa));
     }
 }
