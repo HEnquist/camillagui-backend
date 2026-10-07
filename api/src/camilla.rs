@@ -178,6 +178,25 @@ struct Offline {
     retry_at: Instant,
 }
 
+/// Puts back the retry time a connect pushed ahead, when the connect is
+/// dropped before it finishes, by a reload or a closed tab. Otherwise every
+/// request would fail with the old error until the pushed time, although
+/// CamillaDSP may well be back.
+struct RestoreRetry<'a> {
+    offline: &'a std::sync::Mutex<Option<Offline>>,
+    retry_at: Option<Instant>,
+}
+
+impl Drop for RestoreRetry<'_> {
+    fn drop(&mut self) {
+        if let Some(retry_at) = self.retry_at
+            && let Some(offline) = &mut *self.offline.lock().unwrap()
+        {
+            offline.retry_at = retry_at;
+        }
+    }
+}
+
 /// A shared connection for request/response commands. Connects on first use
 /// and again after any connection error, so there is no reconnect thread.
 ///
@@ -226,17 +245,25 @@ impl CamillaClient {
     /// Connect, and ask for the version, like pycamilladsp, which also checks
     /// that the other end really is CamillaDSP.
     async fn connect_checked(&self) -> Result<Ws, DspError> {
-        if let Some(offline) = &mut *self.offline.lock().unwrap() {
-            // Long enough for this try to finish, so that the requests that
-            // come meanwhile fail at once rather than queue up behind it.
-            offline.retry_at = Instant::now() + CONNECT_TIMEOUT + REPLY_TIMEOUT;
-        }
+        // Long enough for this try to finish, so that the requests that come
+        // meanwhile fail at once rather than queue up behind it.
+        let previous = self.offline.lock().unwrap().as_mut().map(|offline| {
+            std::mem::replace(
+                &mut offline.retry_at,
+                Instant::now() + CONNECT_TIMEOUT + REPLY_TIMEOUT,
+            )
+        });
+        let mut restore = RestoreRetry {
+            offline: &self.offline,
+            retry_at: previous,
+        };
         let result: Result<Ws, DspError> = async {
             let mut ws = connect(&self.url).await?;
             request_on(&mut ws, &WsCommand::GetVersion, REPLY_TIMEOUT).await?;
             Ok(ws)
         }
         .await;
+        restore.retry_at = None;
         *self.offline.lock().unwrap() = match &result {
             Ok(_) => None,
             Err(err) => Some(Offline {
@@ -497,12 +524,19 @@ mod tests {
     use tokio::net::TcpListener;
 
     /// A fake CamillaDSP that answers GetVersion at once, and GetState after a
-    /// delay, so that a request can be dropped while it waits.
-    async fn fake_camilladsp() -> u16 {
+    /// delay, so that a request can be dropped while it waits. The first
+    /// `stalled` connections are accepted but never get the websocket
+    /// handshake, so that a connect can be dropped while it waits.
+    async fn fake_camilladsp(stalled: usize) -> u16 {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         tokio::spawn(async move {
+            let mut held = Vec::new();
             while let Ok((stream, _)) = listener.accept().await {
+                if held.len() < stalled {
+                    held.push(stream);
+                    continue;
+                }
                 tokio::spawn(async move {
                     let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
                     while let Some(Ok(Message::Text(text))) = ws.next().await {
@@ -531,7 +565,7 @@ mod tests {
 
     #[tokio::test]
     async fn dropped_request_does_not_leave_its_reply_for_the_next() {
-        let port = fake_camilladsp().await;
+        let port = fake_camilladsp(0).await;
         let client = CamillaClient::new("127.0.0.1", port);
         assert_eq!(client.version().await.unwrap(), "5.0.0");
         assert_eq!(client.connection(), 1);
@@ -541,5 +575,29 @@ mod tests {
         // The late GetState reply must not be read as the answer to this one.
         assert_eq!(client.version().await.unwrap(), "5.0.0");
         assert_eq!(client.connection(), 2);
+    }
+
+    #[tokio::test]
+    async fn dropped_connect_does_not_hold_off_the_next() {
+        let port = fake_camilladsp(1).await;
+        let client = CamillaClient::new("127.0.0.1", port);
+        // A connect that failed earlier, and is due for another try.
+        *client.offline.lock().unwrap() = Some(Offline {
+            error: "Old error".to_string(),
+            retry_at: Instant::now(),
+        });
+        // The first try stalls in the handshake and is dropped, like the
+        // handler of a reloaded page. A request meanwhile fails at once.
+        let stalled = tokio::time::timeout(Duration::from_millis(100), client.version());
+        let meanwhile = async {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            client.version().await
+        };
+        let (stalled, meanwhile) = tokio::join!(stalled, meanwhile);
+        assert!(stalled.is_err());
+        assert_eq!(meanwhile.unwrap_err().to_string(), "Old error");
+        // The next request tries again rather than answer with the old error.
+        assert_eq!(client.version().await.unwrap(), "5.0.0");
+        assert_eq!(client.connection(), 1);
     }
 }
