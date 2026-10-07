@@ -115,7 +115,7 @@ the generated payload types with their own code. The demo backend uses the same 
 Every error is a JSON `ErrorBody` with a `message`: use `errorMessage` after an `api` call and
 `responseErrorMessage` after a plain `fetch`, both in `src/api/client.ts`.
 
-The config types in `camilladsp/config.ts` are the generated ones from camilladsp-config, wrapped
+The config types in `camilladsp/config.ts` are the generated ones from camilladsp-schema, wrapped
 in `Complete<>`, since the backend sends every optional field (as null) and the GUI always writes
 them all. The filter and processor editors and the evaluator handle parameters by name, so they
 work on `LooseFilter` and `LooseProcessor`, which every `Filter` and `Processor` is. A config
@@ -187,10 +187,10 @@ Four test files cover it:
 - `filters.test.ts` covers the behaviour of each type: band roles, defaults, null handling, unknown
   types raising rather than being dropped.
 - `variants.test.ts` evaluates a case for every filter type, subtype and optional parameter, from
-  `fixtures/variants.json`. **The filter types are in Rust (camilladsp-config) and the evaluator
+  `fixtures/variants.json`. **The filter types are in Rust (camilladsp-schema) and the evaluator
   is in TypeScript**, so this is the only thing keeping them coupled. The fixture is edited by
   hand, and the backend's `rust/src/filter_variants.rs` fails to compile or fails its tests when
-  camilladsp-config has something the fixture does not cover.
+  camilladsp-schema has something the fixture does not cover.
 - `eval.test.ts` covers the plumbing rather than the numbers: the coefficient cache, combining a
   whole pipeline step, and the samplerate and channel options a step offers.
 

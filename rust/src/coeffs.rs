@@ -1,9 +1,9 @@
 //! Coefficient and wav files: reading them for the frontend's filter plots,
 //! and describing them.
 
-use camilladsp_config::ToF64;
-use camilladsp_config::config::{ConvParameters, FileSampleFormat};
-use camilladsp_config::filters::fftconv::coeffs_from_config;
+use camilladsp_schema::ToF64;
+use camilladsp_schema::config::{ConvParameters, FileSampleFormat};
+use camilladsp_schema::filters::fftconv::coeffs_from_config;
 use serde::Serialize;
 use std::path::Path;
 use utoipa::ToSchema;

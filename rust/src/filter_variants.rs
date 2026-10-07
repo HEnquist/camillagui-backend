@@ -1,4 +1,4 @@
-//! Keeps the frontend's filter fixture in step with camilladsp-config.
+//! Keeps the frontend's filter fixture in step with camilladsp-schema.
 //!
 //! `frontend/src/camilladsp/eval/fixtures/variants.json` holds filter configs
 //! that the frontend's `variants.test.ts` evaluates. Each comes twice, as a
@@ -9,13 +9,13 @@
 //! - every filter type and subtype has a case,
 //! - every optional parameter is set in at least one case.
 //!
-//! A new filter type, subtype or parameter in camilladsp-config makes
+//! A new filter type, subtype or parameter in camilladsp-schema makes
 //! `parameters` below fail to compile. Add it there, then add cases to the
 //! fixture until these tests pass, and run the frontend tests.
 
 use crate::camilla::to_json;
 use crate::validate;
-use camilladsp_config::config::{
+use camilladsp_schema::config::{
     BiquadComboParameters, BiquadParameters, ClipperParameters, ConvParameters, DelayParameters,
     DiffEqParameters, DitherParameters, Filter, GainParameters, GeneralNotchParams,
     LookaheadLimiterParameters, LoudnessParameters, NotchWidth, PeakingWidth, ShelfSteepness,
@@ -44,7 +44,7 @@ fn opt<T>(name: &'static str, value: &Option<T>) -> Param {
 /// may be left out, with whether they are set.
 ///
 /// Everything is destructured without `..`, so that anything new in
-/// camilladsp-config fails to compile here instead of going unnoticed.
+/// camilladsp-schema fails to compile here instead of going unnoticed.
 /// Parameters that every case must have are matched with `_`. Alternatives in
 /// an untagged enum, like a peaking filter's Q or bandwidth, count as
 /// parameters too, so that the fixture has a case for each.

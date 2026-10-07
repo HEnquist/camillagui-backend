@@ -8,7 +8,7 @@
 use crate::camilla::{self, CamillaClient, DspError, Ws, check};
 use crate::reply::EventStream;
 use axum::response::sse::{Event, KeepAlive, Sse};
-use camilladsp_config::protocol::{
+use camilladsp_schema::protocol::{
     ProcessingState, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels, VuSubscription,
     WsCommand, WsReply, WsResult,
 };

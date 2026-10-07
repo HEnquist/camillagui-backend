@@ -3,7 +3,7 @@ import { api } from "../api/client"
 import { components } from "../api/schema"
 import { sortedAlphabetically } from "../utilities/arrays"
 
-/** The config types, generated from camilladsp-config through the backend's API spec. */
+/** The config types, generated from camilladsp-schema through the backend's API spec. */
 type Schemas = components["schemas"]
 
 /**

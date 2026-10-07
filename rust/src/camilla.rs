@@ -1,8 +1,8 @@
 //! A client for CamillaDSP's websocket API, using the protocol types from
-//! camilladsp-config so the messages are exactly the ones the DSP itself uses.
+//! camilladsp-schema so the messages are exactly the ones the DSP itself uses.
 
-use camilladsp_config::config::{self, Configuration};
-use camilladsp_config::protocol::{
+use camilladsp_schema::config::{self, Configuration};
+use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, ChannelLabels, Fader, ProcessingState, StopReason, WsCommand, WsReply,
     WsResult,
 };

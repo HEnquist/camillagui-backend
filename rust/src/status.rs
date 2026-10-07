@@ -3,7 +3,7 @@
 
 use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
-use camilladsp_config::protocol::{AudioDeviceDescriptor, ChannelLabels};
+use camilladsp_schema::protocol::{AudioDeviceDescriptor, ChannelLabels};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};

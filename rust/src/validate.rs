@@ -1,6 +1,6 @@
 //! Config validation, with camilladsp's own code.
 
-use camilladsp_config::config::{self, Configuration, Issue, IssueKind, PathElement};
+use camilladsp_schema::config::{self, Configuration, Issue, IssueKind, PathElement};
 use serde::Serialize;
 use serde_json::Value;
 use utoipa::ToSchema;
@@ -279,7 +279,7 @@ mod tests {
                 .iter()
                 .any(|issue| json!(issue.path) == json!(["devices", "capture", "type"]))
         };
-        // Wasapi only parses at all where camilladsp-config says it exists, so
+        // Wasapi only parses at all where camilladsp-schema says it exists, so
         // a Linux or macOS build reports it as unsupported, unless the DSP has it.
         let issues = validate(config.clone(), &lists(&["Wasapi", "Stdin"]));
         assert!(!type_issue(&issues), "{issues:#?}");

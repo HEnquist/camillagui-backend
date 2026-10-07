@@ -208,9 +208,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
-name = "camilladsp-config"
+name = "camilladsp-schema"
 version = "5.0.0"
-source = "git+https://github.com/HEnquist/camilladsp?branch=config_crate#cbce2270fa9d3ebb3eadd7058a5e344dab0a5409"
+source = "git+https://github.com/HEnquist/camilladsp?branch=config_crate#450c5f4bcbe50ec873d9a17c8bcc919e7874f886"
 dependencies = [
  "audioadapter",
  "audioadapter-sample",
@@ -229,7 +229,7 @@ name = "camillagui"
 version = "5.0.0-beta.1"
 dependencies = [
  "axum",
- "camilladsp-config",
+ "camilladsp-schema",
  "clap",
  "env_logger",
  "futures-util",

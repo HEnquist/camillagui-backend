@@ -516,7 +516,7 @@ Filter: ON  NO       Fc     50 Hz
         assert_eq!(filters.len(), 10);
         for (name, filter) in filters {
             let parsed =
-                serde_json::from_value::<camilladsp_config::config::Filter>(filter.clone());
+                serde_json::from_value::<camilladsp_schema::config::Filter>(filter.clone());
             assert!(parsed.is_ok(), "{name}: {filter} {parsed:?}");
         }
     }

@@ -40,10 +40,10 @@ api.rs         the /api handlers, the counterpart of the old views.py
 extract.rs     axum's Json, Query and Path, with rejections as JSON error bodies
 reply.rs       what handlers answer (Reply, NoContent, Text, Binary, EventStream), typed for the spec
 openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check tests
-camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_config::protocol
+camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_schema::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
 events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
-validate.rs    validation with camilladsp-config, plus the GUI's device type rules
+validate.rs    validation with camilladsp-schema, plus the GUI's device type rules
 settings.rs    camillagui.yml, and gui-config.yml as the GuiConfig the frontend gets
 paths.rs       resolving, relativizing and policing coefficient and audio paths
 files.rs       folder listings, uploads, renames, zips, the statefile
@@ -54,7 +54,7 @@ coeffs.rs      /api/convcoeffs framing, coefficient defaults, $samplerate$ optio
 wav.rs         wav headers
 yaml.rs        YAML to JSON values, with NaN/infinity detection
 gui.rs         the embedded frontend, and the css-variables.css override
-filter_variants.rs  tests only: the frontend's filter fixture against camilladsp-config
+filter_variants.rs  tests only: the frontend's filter fixture against camilladsp-schema
 ```
 
 `config/` holds the default `camillagui.yml` and `gui-config.yml`. A release ships them in
@@ -82,7 +82,7 @@ the path parameters, and the few request bodies the argument cannot give (JSON n
 booleans, multipart uploads, `validateconfig`). A handler returning a plain `Response` does not
 compile. The spec is committed as `rust/openapi.json`, and the frontend generates
 `frontend/src/api/schema.ts` from it, both its API types and its config types. After changing a
-handler, a type it uses or a type in camilladsp-config:
+handler, a type it uses or a type in camilladsp-schema:
 
 ```sh
 cd rust && UPDATE_OPENAPI=1 cargo test committed_spec_is_current   # rewrite rust/openapi.json
@@ -104,21 +104,22 @@ Things to keep in mind:
 - Binary bodies (zips, `/api/convcoeffs`) are `reply::Binary`, described as a binary string; a
   `Vec<u8>` would come out as an array of numbers. Uploads are `multipart/form-data` with a
   `files` field per file.
-- Configs go in and out as camilladsp-config's `Configuration`. The path rewriting in `paths.rs`
+- Configs go in and out as camilladsp-schema's `Configuration`. The path rewriting in `paths.rs`
   still works on JSON values, so a config is turned into one with `camilla::to_json` and parsed
   back with `validate::parse`. `validateconfig` is the one handler that takes a `Value`, while its
   spec says `Configuration`: a config that does not parse is reported as an issue like any other.
-- Imports answer a `ConfigFragment`, whose `DevicesFragment` has every field of camilladsp-config's
+- Imports answer a `ConfigFragment`, whose `DevicesFragment` has every field of camilladsp-schema's
   `Devices`, all optional. A test in `api.rs` destructures `Devices` without `..`, so a field added
   there fails to compile until the fragment has it.
 
-## camilladsp-config
+## camilladsp-schema
 
 Config types, validation, coefficient reading and the websocket protocol all come from the
-`camilladsp-config` crate in the camilladsp repository, so the GUI checks configs with exactly the
-code the DSP runs. Until it is published with CamillaDSP 5.0 it is a git dependency on the
-`config_crate` branch, pinned by `Cargo.lock`; see the comment in `rust/Cargo.toml` for building
-against a local checkout. Fix validation problems there, not here.
+`camilladsp-schema` crate in the camilladsp repository, so the GUI checks configs with exactly the
+code the DSP runs. It is a git dependency rather than the crates.io release, so a GUI build never
+waits for a publish: a branch while developing, a camilladsp tag for a release, pinned by
+`Cargo.lock` either way. See the comment in `rust/Cargo.toml` for building against a local
+checkout. Fix validation problems there, not here.
 
 Device types: a type is allowed if the connected CamillaDSP lists it (`GetSupportedDeviceTypes`,
 read on every reconnect), narrowed by `supported_*_types` in the settings. Only before CamillaDSP
@@ -136,4 +137,4 @@ and returns the samples, framed as binary rather than JSON (see `coeffs::frame_c
 `frontend/src/camilladsp/eval/fixtures/variants.json` holds a case for every filter type,
 subtype and optional parameter, for the frontend's `variants.test.ts`. It is edited by hand.
 `rust/src/filter_variants.rs` destructures every filter type without `..`, so anything new in
-camilladsp-config fails to compile there, and its tests fail until the fixture covers it.
+camilladsp-schema fails to compile there, and its tests fail until the fixture covers it.

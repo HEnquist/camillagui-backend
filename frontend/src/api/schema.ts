@@ -1178,7 +1178,7 @@ export interface components {
     }
     /**
      * @description Any of the device settings, since an import may have only some of them.
-     *     The fields of camilladsp-config's `Devices`, every one optional and left
+     *     The fields of camilladsp-schema's `Devices`, every one optional and left
      *     out when the import does not have it.
      */
     DevicesFragment: {

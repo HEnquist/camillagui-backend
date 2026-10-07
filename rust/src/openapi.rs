@@ -7,7 +7,7 @@ use crate::api::{Direction, FileKind};
 use crate::coeffs::CoeffsHeader;
 use axum::http::header;
 use axum::response::{IntoResponse, Response};
-use camilladsp_config::config::Configuration;
+use camilladsp_schema::config::Configuration;
 use std::sync::LazyLock;
 use utoipa::OpenApi;
 

@@ -50,7 +50,7 @@ export default MyPage
 ### `config: Config`
 
 The current CamillaDSP configuration, read-only. `Config` in `../camilladsp/config` is generated
-from camilladsp-config's own types (see [The API](#the-api)), so tsc knows every field, and your
+from camilladsp-schema's own types (see [The API](#the-api)), so tsc knows every field, and your
 editor shows them as you type. Every optional field is present, as `null` when it is not set.
 
 ```ts

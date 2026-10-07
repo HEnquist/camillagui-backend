@@ -14,8 +14,8 @@ use crate::validate::{DeviceTypeLists, ValidationIssue};
 use crate::wav::WavInfo;
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use camilladsp_config::config::Configuration;
-use camilladsp_config::protocol::{
+use camilladsp_schema::config::Configuration;
+use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, Fader, SpectrumData, StateUpdate, VuLevels,
 };
 use serde::Serialize;

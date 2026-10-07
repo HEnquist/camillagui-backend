@@ -17,11 +17,11 @@ use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
-use camilladsp_config::config::{
+use camilladsp_schema::config::{
     CaptureDevice, Configuration, ConvParameters, Filter, FiniteF32, FiniteF64, Mixer, PathElement,
     PipelineStep, PlaybackDevice, Processor, Resampler,
 };
-use camilladsp_config::protocol::{
+use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels,
     VuSubscription,
 };
@@ -869,7 +869,7 @@ pub struct ConfigFragment {
 }
 
 /// Any of the device settings, since an import may have only some of them.
-/// The fields of camilladsp-config's `Devices`, every one optional and left
+/// The fields of camilladsp-schema's `Devices`, every one optional and left
 /// out when the import does not have it.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -1643,11 +1643,11 @@ pub async fn get_backends(State(app): Shared) -> Reply<Option<DeviceTypeLists>> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use camilladsp_config::config::Devices;
+    use camilladsp_schema::config::Devices;
     use serde_json::json;
 
     /// Every field of `Devices`, destructured without `..`, so that a field
-    /// added in camilladsp-config fails to compile here until the fragment
+    /// added in camilladsp-schema fails to compile here until the fragment
     /// has it too.
     fn fragment_of(devices: Devices) -> DevicesFragment {
         let Devices {

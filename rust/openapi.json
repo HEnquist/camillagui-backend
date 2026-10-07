@@ -3578,7 +3578,7 @@
       },
       "DevicesFragment": {
         "type": "object",
-        "description": "Any of the device settings, since an import may have only some of them.\nThe fields of camilladsp-config's `Devices`, every one optional and left\nout when the import does not have it.",
+        "description": "Any of the device settings, since an import may have only some of them.\nThe fields of camilladsp-schema's `Devices`, every one optional and left\nout when the import does not have it.",
         "properties": {
           "adjust_interval_s": {
             "$ref": "#/components/schemas/FiniteF32"
