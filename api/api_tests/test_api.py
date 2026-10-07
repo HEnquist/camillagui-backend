@@ -8,6 +8,7 @@ import random
 import shutil
 import string
 import struct
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -1027,6 +1028,28 @@ def test_wav_info(make_backend, tmp_path):
     assert listing["x.wav"]["samplerate"] == 44100
     assert listing["y.wav"]["valid"] is False
     assert "samplerate" not in listing["y.wav"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Needs symlinks")
+def test_symlinked_audio_files_keep_their_names(make_backend, tmp_path):
+    audiofiles = tmp_path / "audio"
+    (audiofiles / "sub").mkdir(parents=True)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "song.wav").write_bytes(wav_bytes())
+    (audiofiles / "sub" / "current.wav").symlink_to(elsewhere / "song.wav")
+    backend = make_backend({"audiofiles_dir": str(audiofiles)})
+    config = yaml.safe_load((backend.config_dir / "config2.yml").read_text())
+    linked = str(audiofiles / "sub" / "current.wav")
+    config["devices"]["capture"] = {"type": "WavFile", "filename": linked}
+    (backend.config_dir / "linked.yml").write_text(yaml.dump(config))
+
+    config = backend.get("/api/getconfigfile", params={"name": "linked.yml"}).json()
+    assert config["devices"]["capture"]["filename"] == "sub/current.wav"
+    assert backend.get("/api/wavinfo", params={"filename": "sub/current.wav"}).status == 200
+    resp = backend.post("/api/setconfig", json_body={"config": config})
+    assert resp.status == 204, resp.text
+    assert backend.fake.state["config"]["devices"]["capture"]["filename"] == linked
 
 
 # ── Coefficients ──────────────────────────────────────────────────────────

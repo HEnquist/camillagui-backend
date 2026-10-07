@@ -27,10 +27,15 @@ pub fn normalize(path: &Path) -> PathBuf {
     out
 }
 
+/// An absolute, lexically normalized path, with no symlinks followed.
+fn absolute(path: &Path) -> PathBuf {
+    normalize(&std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf()))
+}
+
 /// Resolve symlinks like `os.path.realpath`: the part of the path that exists
 /// is canonicalized, and the rest is appended as it is written.
 pub fn realpath(path: &Path) -> PathBuf {
-    let path = normalize(&std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf()));
+    let path = absolute(path);
     let mut existing = path.as_path();
     let mut rest = Vec::new();
     loop {
@@ -54,6 +59,26 @@ pub fn realpath(path: &Path) -> PathBuf {
 /// Whether `path` is `folder` or inside it, comparing whole components.
 pub fn is_path_in_folder(path: &Path, folder: &Path) -> bool {
     path.starts_with(folder)
+}
+
+/// `path` relative to `folder`, if it is inside it.
+///
+/// The path is taken as written, with `.` and `..` resolved lexically, so a
+/// symlink placed in the folder counts as inside it and keeps its name,
+/// wherever it points. It is compared with the folder as written and as
+/// resolved, for a path written with the folder's real location (`/private/tmp`
+/// for `/tmp` on macOS). Failing both, the path is resolved too, for one that
+/// reaches the folder through a symlink outside it.
+fn relative_in_folder(path: &Path, folder: &Path) -> Option<PathBuf> {
+    let path = absolute(path);
+    let real_folder = realpath(folder);
+    for folder in [absolute(folder), real_folder.clone()] {
+        if is_path_in_folder(&path, &folder) {
+            return Some(relpath(&path, &folder));
+        }
+    }
+    let real_path = realpath(&path);
+    is_path_in_folder(&real_path, &real_folder).then(|| relpath(&real_path, &real_folder))
 }
 
 /// The last part of a path, splitting on both `/` and `\` whatever the
@@ -153,8 +178,10 @@ pub fn coeff_path_to_relative(path: &str, config_dir: &Path, coeff_dir: &Path) -
 /// has to land inside configured_dir. Where a path points matters, not how it
 /// is written: a config in `~/camilladsp/configs` referring to
 /// `../coeffs/filter.raw` is the ordinary layout and lands in coeff_dir, while
-/// `../../../etc/passwd` does not and is refused. Without a base_dir a relative
-/// path cannot be resolved, so it is refused.
+/// `../../../etc/passwd` does not and is refused. A symlink in configured_dir
+/// is inside it, wherever it points: the GUI cannot make one, so it was put
+/// there on purpose.
+/// Without a base_dir a relative path cannot be resolved, so it is refused.
 pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<&Path>) -> bool {
     if is_bare(path) {
         return true;
@@ -170,17 +197,15 @@ pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<
             None => return false,
         }
     };
-    is_path_in_folder(&realpath(&resolved), &realpath(configured_dir))
+    relative_in_folder(&resolved, configured_dir).is_some()
 }
 
 /// Make a path relative to `directory` if it is inside it, subfolders and all,
 /// which is what relative paths are resolved against. A relative path outside
 /// it is reduced to a bare file name, and an absolute one is left as it is.
 fn to_path_in_folder(path: &str, directory: &Path) -> String {
-    let directory = realpath(directory);
-    let canonical = realpath(&directory.join(path));
-    if is_path_in_folder(&canonical, &directory) {
-        return to_string(&relpath(&canonical, &directory));
+    if let Some(relative) = relative_in_folder(&directory.join(path), directory) {
+        return to_string(&relative);
     }
     if Path::new(path).is_absolute() {
         path.to_string()
@@ -475,6 +500,87 @@ mod tests {
         let audio = Some(audio.as_path());
         assert!(path_is_safe("sub/in.wav", audio, audio));
         assert!(!path_is_safe("sub/../../x.wav", audio, audio));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinks_in_the_folders_keep_their_names() {
+        use std::os::unix::fs::symlink;
+        let dir = tempfile::tempdir().unwrap();
+        let elsewhere = dir.path().join("elsewhere");
+        let audio = dir.path().join("audio");
+        let configs = dir.path().join("configs");
+        let coeffs = dir.path().join("coeffs");
+        for folder in [
+            &elsewhere,
+            &audio.join("sub"),
+            &configs,
+            &coeffs.join("sub"),
+        ] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        let song = elsewhere.join("song.wav");
+        std::fs::write(&song, "x").unwrap();
+        std::fs::write(elsewhere.join("f.raw"), "x").unwrap();
+        symlink(&song, audio.join("current.wav")).unwrap();
+        symlink(&song, audio.join("sub/current.wav")).unwrap();
+        symlink(&elsewhere, audio.join("music")).unwrap();
+        symlink(elsewhere.join("f.raw"), coeffs.join("sub/f.raw")).unwrap();
+
+        let linked = to_string(&audio.join("sub/current.wav"));
+        let mut config = json!({
+            "devices": {
+                "capture": {"type": "WavFile", "filename": to_string(&audio.join("current.wav"))},
+                "playback": {"type": "File", "filename": linked},
+            },
+        });
+        make_audio_file_paths_relative(&mut config, Some(&audio));
+        assert_eq!(config["devices"]["capture"]["filename"], "current.wav");
+        assert_eq!(config["devices"]["playback"]["filename"], "sub/current.wav");
+        assert_eq!(
+            to_path_in_folder(&to_string(&audio.join("music/song.wav")), &audio),
+            "music/song.wav"
+        );
+
+        let audio = Some(audio.as_path());
+        assert!(path_is_safe("sub/current.wav", audio, audio));
+        assert!(path_is_safe("music/song.wav", audio, audio));
+        assert!(path_is_safe(&linked, audio, audio));
+        assert!(path_is_safe(
+            "../coeffs/sub/f.raw",
+            Some(&coeffs),
+            Some(&configs)
+        ));
+        make_audio_file_paths_absolute(&mut config, audio);
+        assert_eq!(paths_outside_folders(&config, &coeffs, audio, &configs), []);
+
+        // Walking out of the folder by name is still refused.
+        assert!(!path_is_safe(
+            "music/../../elsewhere/song.wav",
+            audio,
+            audio
+        ));
+        assert!(!path_is_safe("sub/../../elsewhere/song.wav", audio, audio));
+        assert!(!path_is_safe(&to_string(&song), audio, audio));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_folder_is_compared_like_with_like() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real");
+        let linked = dir.path().join("linked");
+        std::fs::create_dir_all(real.join("sub")).unwrap();
+        std::fs::write(real.join("sub/in.wav"), "x").unwrap();
+        std::os::unix::fs::symlink(&real, &linked).unwrap();
+        for (path, folder) in [(&real, &linked), (&linked, &linked), (&linked, &real)] {
+            let input = to_string(&path.join("sub/in.wav"));
+            assert_eq!(to_path_in_folder(&input, folder), "sub/in.wav");
+            assert!(path_is_safe(&input, Some(folder), Some(folder)));
+        }
+        let outside = to_string(&linked.join("../x.wav"));
+        assert!(!path_is_safe(&outside, Some(&linked), Some(&linked)));
+        assert!(!path_is_safe(&outside, Some(&real), Some(&real)));
     }
 
     #[test]
