@@ -233,11 +233,18 @@ pub fn delete_files(folder: &Path, files: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// Rename a file within a folder, refusing to overwrite another one.
+/// Rename a file within a folder, refusing to overwrite another one. On a
+/// case-insensitive filesystem a change of case finds the file itself under
+/// the new name, which is not another one: the canonical paths, which have
+/// the case on disk, are then the same.
 pub fn rename_file(folder: &Path, source: &str, target: &str) -> Result<(), String> {
     let source_path = file_in_folder(folder, source)?;
     let target_path = file_in_folder(folder, target)?;
-    if target_path.is_file() {
+    let same_file = matches!(
+        (source_path.canonicalize(), target_path.canonicalize()),
+        (Ok(a), Ok(b)) if a == b
+    );
+    if target_path.is_file() && !same_file {
         return Err(format!("File {target} already exists"));
     }
     std::fs::rename(&source_path, &target_path)
@@ -464,6 +471,20 @@ mod tests {
         rename_file(dir.path(), "a", "c").unwrap();
         assert!(dir.path().join("c").is_file());
         assert!(rename_file(dir.path(), "c", "../d").is_err());
+    }
+
+    /// Case-insensitive filesystems (APFS, NTFS) find `case.yml` under
+    /// `Case.yml` too, which must not count as another file.
+    #[test]
+    fn rename_can_change_only_the_case() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("case.yml"), "1").unwrap();
+        rename_file(dir.path(), "case.yml", "Case.yml").unwrap();
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["Case.yml"]);
     }
 
     #[test]
