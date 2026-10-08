@@ -194,8 +194,6 @@ If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
 
 #### Setting and getting the active config
-_NOTE: This functionality is experimental, there may be significant changes in future versions._
-
 The configuration options `on_set_active_config` and `on_get_active_config` can be used to customize
 the way the active config file path is stored.
 These are shell commands that will be run to set and get the active config.
