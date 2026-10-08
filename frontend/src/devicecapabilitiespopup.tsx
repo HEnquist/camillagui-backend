@@ -1,22 +1,36 @@
 import React, { useState } from "react"
 import ReactjsPopup from "reactjs-popup"
+import type { Schemas } from "./api/client"
 import { getFormatOptions } from "./camilladsp/config"
 import { CloseButton } from "./utilities/ui-components"
 
-export type DeviceCapabilitySamplerate = {
-  samplerate: number
-  formats: string[]
-}
+export type DeviceCapabilitySamplerate = Schemas["SamplerateCapability"]
 
-export type DeviceChannelCapability = {
-  channels: number
-  samplerates: DeviceCapabilitySamplerate[]
-}
+export type DeviceChannelCapability = Schemas["ChannelCapability"]
 
+/** What a device can do, opened the way the config opens it. */
 export type DeviceCapabilities = {
   name: string
   description: string
   capabilities: DeviceChannelCapability[]
+}
+
+/**
+ * The capabilities of a device in the mode the config opens it in. Only WASAPI has more than one
+ * mode, shared or exclusive; the other backends have a single unified set.
+ */
+export function capabilitiesForMode(
+  descriptor: Schemas["AudioDeviceDescriptor"],
+  exclusive: boolean | null,
+): DeviceCapabilities {
+  const sets = descriptor.capability_sets
+  const wanted = exclusive ? "Exclusive" : "Shared"
+  const set = sets.find((s) => s.mode === wanted) ?? sets.find((s) => s.mode === "Unified") ?? sets[0]
+  return {
+    name: descriptor.name,
+    description: descriptor.description,
+    capabilities: set?.capabilities ?? [],
+  }
 }
 
 function normalizeCapabilityFormat(backend: string, format: string): string | null {

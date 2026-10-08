@@ -6,7 +6,7 @@
  * either from the config or from the backend, so it lives in `conv.ts` and is
  * driven from `index.ts`.
  */
-import { Filter } from "../config"
+import { LooseFilter } from "../config"
 import { BiquadCoefficients, biquadComplexGain, biquadGroupDelay, evalBiquad, evalBiquadGroupDelay } from "./biquad"
 import { applyDelayInto, ComplexCurve, constantCurve, multiplyInto, unitCurve, zeroCurve } from "./complex"
 import {
@@ -297,7 +297,7 @@ function diffEqComplexGain(params: Params, fs: number, freq: ArrayLike<number>):
  * `groupdelay.ts` for why that is not read off the phase.
  */
 export function groupDelaySamples(
-  filterconf: Filter,
+  filterconf: LooseFilter,
   fs: number,
   volume: number,
   freq: ArrayLike<number>,
@@ -330,7 +330,12 @@ export function groupDelaySamples(
  * The transfer function of any filter except Conv, which needs coefficients
  * and is evaluated from `index.ts` instead.
  */
-export function complexGain(filterconf: Filter, fs: number, volume: number, freq: ArrayLike<number>): ComplexCurve {
+export function complexGain(
+  filterconf: LooseFilter,
+  fs: number,
+  volume: number,
+  freq: ArrayLike<number>,
+): ComplexCurve {
   const params = (filterconf.parameters ?? {}) as Params
   switch (filterconf.type) {
     case "Biquad":

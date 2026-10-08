@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import "./index.css"
 import { mdiFileSearch, mdiMagnify, mdiTune } from "@mdi/js"
 import { Range } from "immutable"
+import { api, errorMessage, Schemas } from "./api/client"
 import {
   AlsaFormat,
   AsioFormat,
@@ -27,7 +28,7 @@ import {
   WasapiFormat,
   Signals,
 } from "./camilladsp/config"
-import { DeviceCapabilities, DeviceCapabilitiesPopup } from "./devicecapabilitiespopup"
+import { capabilitiesForMode, DeviceCapabilities, DeviceCapabilitiesPopup } from "./devicecapabilitiespopup"
 import { CaptureType, GuiConfig, PlaybackType } from "./guiconfig"
 import { Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
@@ -84,6 +85,25 @@ function getPlaybackSamplerateDescription(devices: Devices): string {
   return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
 }
 
+/** The devices of a device type, as name and description, none if they cannot be listed. */
+async function loadDevices(direction: Schemas["Direction"], backend: string): Promise<[string, string][]> {
+  const { data } = await api.GET("/api/devices/{direction}/{backend}", { params: { path: { direction, backend } } })
+  return (data ?? []).map((device) => [device.name, device.description])
+}
+
+async function loadCapabilities(
+  direction: Schemas["Direction"],
+  backend: string,
+  device: string,
+  exclusive: boolean | null,
+): Promise<DeviceCapabilities> {
+  const { data, error, response } = await api.GET("/api/devices/{direction}/{backend}/capabilities", {
+    params: { path: { direction, backend }, query: { device } },
+  })
+  if (!data) throw new Error(errorMessage(error, response))
+  return capabilitiesForMode(data, exclusive)
+}
+
 // TODO redo resampler config
 
 export function DevicesTab(props: {
@@ -94,13 +114,16 @@ export function DevicesTab(props: {
 }) {
   const updateDevices = (update: Update<Devices>) => props.updateConfig((config) => update(config.devices))
   const { guiConfig, devices, errors } = props
-  const [availableBackends, setAvailableBackends] = useState([
-    guiConfig.supported_playback_types,
-    guiConfig.supported_capture_types,
-  ])
+  const [availableBackends, setAvailableBackends] = useState<{
+    playback: string[] | null
+    capture: string[] | null
+  }>({
+    playback: guiConfig.supported_playback_types,
+    capture: guiConfig.supported_capture_types,
+  })
   useEffect(() => {
-    fetch("/api/backends").then((response) => {
-      if (response.ok) return response.json().then((backends) => setAvailableBackends(backends))
+    api.GET("/api/backends").then(({ data }) => {
+      if (data) setAvailableBackends(data)
     })
   }, [])
   return (
@@ -143,7 +166,7 @@ export function DevicesTab(props: {
           />
           <CaptureOptions
             hide_capture_device={guiConfig.hide_capture_device}
-            supported_capture_types={availableBackends[1] as CaptureType[]}
+            supported_capture_types={(availableBackends.capture ?? undefined) as CaptureType[] | undefined}
             devices={devices}
             capture={devices.capture}
             errors={errors.forSubpath("capture")}
@@ -153,7 +176,7 @@ export function DevicesTab(props: {
           />
           <PlaybackOptions
             hide_playback_device={guiConfig.hide_playback_device}
-            supported_playback_types={availableBackends[0] as PlaybackType[]}
+            supported_playback_types={(availableBackends.playback ?? undefined) as PlaybackType[] | undefined}
             devices={devices}
             playback={devices.playback}
             errors={errors.forSubpath("playback")}
@@ -616,7 +639,7 @@ function CaptureOptions(props: {
   allowAbsolutePaths?: boolean
 }) {
   const [popupState, setPopupState] = useState(false)
-  const [availableDevices, setAvailableDevices] = useState([])
+  const [availableDevices, setAvailableDevices] = useState<[string, string][]>([])
   const [capabilitiesPopupState, setCapabilitiesPopupState] = useState(false)
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null)
   const [deviceCapabilitiesError, setDeviceCapabilitiesError] = useState<string | null>(null)
@@ -711,7 +734,7 @@ function CaptureOptions(props: {
   const captureTypes = supported_capture_types
     ? defaultCaptureTypes.filter((type) => supported_capture_types.includes(type))
     : defaultCaptureTypes
-  if (!captureTypes.includes(props.capture.type)) {
+  if (!(captureTypes as string[]).includes(props.capture.type)) {
     // The selected type isn't available, change to one that is
     props.onChange((devices) => (devices.capture = defaults[captureTypes[0]]))
   }
@@ -759,14 +782,8 @@ function CaptureOptions(props: {
       return
     }
     setDeviceCapabilitiesError(null)
-    fetch("/api/capturedevicecapabilities/" + capture.type + "?device=" + encodeURIComponent(capture.device))
-      .then(async (response) => {
-        if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || "Failed to load capture device capabilities")
-        }
-        return response.json()
-      })
+    const exclusive = "exclusive" in capture ? capture.exclusive : null
+    loadCapabilities("capture", capture.type, capture.device, exclusive)
       .then((capabilities) => setDeviceCapabilities(capabilities))
       .catch((error: Error) => {
         setDeviceCapabilities(null)
@@ -915,9 +932,7 @@ function CaptureOptions(props: {
             })
           }
           onButtonClick={() => {
-            fetch("/api/capturedevices/" + capture.type)
-              .then((devices) => devices.json())
-              .then((names) => setAvailableDevices(names))
+            loadDevices("capture", capture.type).then(setAvailableDevices)
             setPopupState(true)
           }}
           extraButtons={
@@ -945,9 +960,7 @@ function CaptureOptions(props: {
               })
             }
             onButtonClick={() => {
-              fetch("/api/capturedevices/" + capture.type)
-                .then((devices) => devices.json())
-                .then((names) => setAvailableDevices(names))
+              loadDevices("capture", capture.type).then(setAvailableDevices)
               setPopupState(true)
             }}
             extraButtons={
@@ -1014,9 +1027,7 @@ function CaptureOptions(props: {
             })
           }
           onButtonClick={() => {
-            fetch("/api/capturedevices/" + capture.type)
-              .then((devices) => devices.json())
-              .then((names) => setAvailableDevices(names))
+            loadDevices("capture", capture.type).then(setAvailableDevices)
             setPopupState(true)
           }}
           extraButtons={
@@ -1304,7 +1315,7 @@ function PlaybackOptions(props: {
   allowAbsolutePaths?: boolean
 }) {
   const [popupState, setPopupState] = useState(false)
-  const [availableDevices, setAvailableDevices] = useState([])
+  const [availableDevices, setAvailableDevices] = useState<[string, string][]>([])
   const [capabilitiesPopupState, setCapabilitiesPopupState] = useState(false)
   const [deviceCapabilities, setDeviceCapabilities] = useState<DeviceCapabilities | null>(null)
   const [deviceCapabilitiesError, setDeviceCapabilitiesError] = useState<string | null>(null)
@@ -1363,7 +1374,7 @@ function PlaybackOptions(props: {
   const playbackDeviceTypes = supported_playback_types
     ? defaultPlaybackTypes.filter((type) => supported_playback_types.includes(type))
     : defaultPlaybackTypes
-  if (!playbackDeviceTypes.includes(props.playback.type)) {
+  if (!(playbackDeviceTypes as string[]).includes(props.playback.type)) {
     // The selected type isn't available, change to one that is
     props.onChange((devices) => (devices.playback = defaults[playbackDeviceTypes[0]]))
   }
@@ -1373,14 +1384,8 @@ function PlaybackOptions(props: {
       return
     }
     setDeviceCapabilitiesError(null)
-    fetch("/api/playbackdevicecapabilities/" + playback.type + "?device=" + encodeURIComponent(playback.device))
-      .then(async (response) => {
-        if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || "Failed to load playback device capabilities")
-        }
-        return response.json()
-      })
+    const exclusive = "exclusive" in playback ? playback.exclusive : null
+    loadCapabilities("playback", playback.type, playback.device, exclusive)
       .then((capabilities) => setDeviceCapabilities(capabilities))
       .catch((error: Error) => {
         setDeviceCapabilities(null)
@@ -1502,9 +1507,7 @@ function PlaybackOptions(props: {
           }
           error={errors.messageFor("device")}
           onButtonClick={() => {
-            fetch("/api/playbackdevices/" + playback.type)
-              .then((devices) => devices.json())
-              .then((names) => setAvailableDevices(names))
+            loadDevices("playback", playback.type).then(setAvailableDevices)
             setPopupState(true)
           }}
           extraButtons={
@@ -1531,9 +1534,7 @@ function PlaybackOptions(props: {
           }
           error={errors.messageFor("device")}
           onButtonClick={() => {
-            fetch("/api/playbackdevices/" + playback.type)
-              .then((devices) => devices.json())
-              .then((names) => setAvailableDevices(names))
+            loadDevices("playback", playback.type).then(setAvailableDevices)
             setPopupState(true)
           }}
           extraButtons={
@@ -1560,9 +1561,7 @@ function PlaybackOptions(props: {
           }
           error={errors.messageFor("device")}
           onButtonClick={() => {
-            fetch("/api/playbackdevices/" + playback.type)
-              .then((devices) => devices.json())
-              .then((names) => setAvailableDevices(names))
+            loadDevices("playback", playback.type).then(setAvailableDevices)
             setPopupState(true)
           }}
           extraButtons={

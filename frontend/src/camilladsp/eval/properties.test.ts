@@ -2,9 +2,9 @@
  * Closed-form properties every filter must satisfy.
  *
  * These are the tests that trust neither implementation. Each one asserts
- * something that follows from what the filter *is* — a Butterworth is 3 dB
+ * something that follows from what the filter *is* (a Butterworth is 3 dB
  * down at its cutoff whatever its order, an allpass passes every frequency at
- * unity, a delay of N samples has a group delay of N/fs — so they catch a
+ * unity, a delay of N samples has a group delay of N/fs), so they catch a
  * wrong coefficient without reference to any other code, and a genuine fix
  * makes them go green rather than red.
  *
@@ -14,7 +14,7 @@
  * delay test below fails outright on that bug.
  */
 import { describe, expect, it } from "vitest"
-import { Filter } from "../config"
+import { LooseFilter } from "../config"
 import { magnitudeDb, multiplyInto, phaseDegrees } from "./complex"
 import { convComplexGain, convGroupDelay } from "./conv"
 import { complexGain, groupDelaySamples } from "./filters"
@@ -26,16 +26,16 @@ const FS = 48000
 /** A wide log grid, deliberately not the one the plots use. */
 const SWEEP = Array.from({ length: 400 }, (_, n) => 10.0 * Math.pow(10.0 ** (1 / 133), n))
 
-function filter(type: string, parameters: Filter["parameters"]): Filter {
+function filter(type: string, parameters: LooseFilter["parameters"]): LooseFilter {
   return { type, description: null, parameters }
 }
 
-function gainAt(f: Filter, freqs: number[]): number[] {
+function gainAt(f: LooseFilter, freqs: number[]): number[] {
   return magnitudeDb(complexGain(f, FS, 0.0, Float64Array.from(freqs)))
 }
 
 /** Group delay in ms across the sweep, from the same path the plots use. */
-function groupDelay(f: Filter, freqs: number[]): number[] {
+function groupDelay(f: LooseFilter, freqs: number[]): number[] {
   return delayInMs(groupDelaySamples(f, FS, 0.0, Float64Array.from(freqs)), FS)
 }
 
@@ -75,7 +75,7 @@ describe("a notch is a true zero at its centre frequency", () => {
 
 describe("an allpass passes every frequency at unity gain", () => {
   it.each(["Allpass", "AllpassFO"])("%s", (type) => {
-    const params: Filter["parameters"] = { type, freq: 1200.0 }
+    const params: LooseFilter["parameters"] = { type, freq: 1200.0 }
     if (type === "Allpass") params.q = 1.5
     gainAt(filter("Biquad", params), SWEEP).forEach((gain) => expect(gain).toBeCloseTo(0.0, 9))
   })
@@ -285,7 +285,7 @@ describe("group delay comes from the coefficients, not from the phase", () => {
    * away from any null, doing it numerically is accurate enough to pin the
    * closed form to several digits.
    */
-  function slopeOfPhase(f: Filter, freq: number): number {
+  function slopeOfPhase(f: LooseFilter, freq: number): number {
     const h = 0.05
     const [below, above] = phaseDegrees(complexGain(f, FS, 0.0, Float64Array.from([freq - h, freq + h])))
     let step = above - below
@@ -296,7 +296,7 @@ describe("group delay comes from the coefficients, not from the phase", () => {
     return (-step / (2.0 * h) / 360.0) * 1000.0
   }
 
-  const cases: [string, Filter][] = [
+  const cases: [string, LooseFilter][] = [
     ["Butterworth lowpass", filter("BiquadCombo", { type: "ButterworthLowpass", order: 6, freq: 800.0 })],
     ["peaking", filter("Biquad", { type: "Peaking", freq: 1000.0, q: 4.0, gain: 8.0 })],
     ["low shelf", filter("Biquad", { type: "Lowshelf", freq: 300.0, q: 0.7, gain: -6.0 })],

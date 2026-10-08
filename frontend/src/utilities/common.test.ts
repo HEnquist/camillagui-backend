@@ -7,6 +7,7 @@ import {
   setNumberValue,
   setBoolValue,
 } from "./common"
+import { Shortcut } from "../guiconfig"
 
 test("modifiedCopyOf", () => {
   const object = { a: 1, b: 2 }
@@ -70,7 +71,7 @@ describe("asFormattedText", () => {
   })
 
   test("numberValue returns undefined, if property is absent", () => {
-    const shortcut = {
+    const shortcut: Shortcut = {
       name: "dummy",
       range_from: -5,
       range_to: 5,
@@ -86,7 +87,7 @@ describe("asFormattedText", () => {
   })
 
   test("numberValue returns undefined, if parent property is absent", () => {
-    const shortcut = {
+    const shortcut: Shortcut = {
       name: "dummy",
       range_from: -5,
       range_to: 5,
@@ -102,7 +103,7 @@ describe("asFormattedText", () => {
   })
 
   test("numberValue for simple object", () => {
-    const shortcut = {
+    const shortcut: Shortcut = {
       name: "dummy",
       range_from: -5,
       range_to: 5,
@@ -118,7 +119,7 @@ describe("asFormattedText", () => {
   })
 
   test("numberValue for complex object", () => {
-    const shortcut = {
+    const shortcut: Shortcut = {
       name: "dummy",
       range_from: -5,
       range_to: 5,
@@ -134,7 +135,7 @@ describe("asFormattedText", () => {
   })
 
   test("numberValue with reverse", () => {
-    const shortcut = {
+    const shortcut: Shortcut = {
       name: "dummy",
       range_from: 0,
       range_to: 10,

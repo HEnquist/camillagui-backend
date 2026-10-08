@@ -3,8 +3,8 @@ import { mdiAlertCircle, mdiCheck, mdiDelete, mdiDownload, mdiPencil, mdiUpload 
 import { StoredFileType } from "./files"
 import { MdiButton, UploadButton } from "./ui-components"
 
-export type FileAction = "load" | "save" | "upload" | "rename" | "play" | "open"
-export const EMPTY_FILENAME = "" // used only for FileAction 'upload'
+export type FileAction = "load" | "save" | "upload" | "delete" | "download" | "rename" | "play" | "open"
+export const EMPTY_FILENAME = "" // for the actions on several files: upload, delete and download
 export type FileStatus =
   | {
       filename: string

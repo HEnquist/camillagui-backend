@@ -1,125 +1,140 @@
-# camillagui-backend — the CamillaGUI backend and frontend
+# camillagui-backend: the CamillaGUI backend and frontend
 
-AIOHTTP web server that bridges the React frontend to a running CamillaDSP instance via WebSocket. Targets CamillaDSP 5.0.x.
+The web GUI for CamillaDSP. Targets CamillaDSP 5.0.x.
 
-The frontend lives in `frontend/`, with its own `frontend/CLAUDE.md`. It was a separate repository
-(HEnquist/camillagui) until 5.0; it was merged in with its full history, every old commit rewritten
-to sit under `frontend/`, so `git log` and `git blame` work on its files without `--follow`. One
-CI workflow builds and tests both, and the backend's bundles ship the frontend built from the same
-commit, so there is no frontend version to pin any more.
+- `api/` is the backend: an axum server that bridges the browser to a running CamillaDSP over
+  its websocket, serves the config, coefficient and audio file folders, and embeds the frontend
+  build in the binary. It replaced the Python backend for 5.0.
+- `frontend/` is the React frontend, with its own `frontend/CLAUDE.md`. It was a separate
+  repository (HEnquist/camillagui) until 5.0, merged in with its full history, every old commit
+  rewritten to sit under `frontend/`, so `git log` and `git blame` work without `--follow`.
+- The Python backend it replaced was removed after the port. Check out a commit before
+  "Remove the Python backend" to run the parity tests against it.
 
-## Run commands (from this directory)
+## Run commands
 
 ```sh
-# Install deps (pick one)
-pip install -r requirements.txt
-# or: poetry install
+# Frontend: build it first, the backend embeds frontend/build at compile time
+cd frontend && npm ci && npm run build
 
-# Start server (default port 5005)
-python main.py
+# Backend (from api/)
+cargo build                      # or --release
+cargo test
+cargo clippy --all-targets -- -D warnings
+./target/debug/camillagui -c ../config/camillagui.yml -l debug
 
-# Tests
-pytest tests/
+# Frontend dev server on :5173, proxying /api to :5005, see frontend/CLAUDE.md
+cd frontend && npm run dev
 
-# Frontend: dev server on :5173 proxying /api to :5005, see frontend/CLAUDE.md
-cd frontend && npm ci && npm run dev
-# Build it for the backend to serve, which expects it in build/
-cd frontend && npm run build && rm -rf ../build/* && cp -r build/* ../build/
+# Black-box API tests against the backend process and a fake CamillaDSP (from the repo root),
+# plus GUI tests in headless Chromium against the frontend in frontend/build (build it first).
+# The GUI tests are skipped without Playwright, see api/api_tests/conftest.py to install it.
+.venv/bin/python -m pytest api/api_tests
 ```
 
-## Source layout
+## Source layout (api/src)
 
 ```
-main.py                          # Entry point — creates aiohttp app, loads config, starts server
-config/
-  camillagui.yml                 # Server config (ports, file paths, etc.)
-  gui-config.yml                 # GUI config sent to frontend
-
-backend/
-  routes.py                      # URL -> view function mapping (all /api/* routes)
-  views.py                       # Request handlers (the bulk of the API logic)
-  settings.py                    # Reads camillagui.yml; BASEPATH, GUI_CONFIG_PATH, etc.
-  settings_schemas.py            # Pydantic/jsonschema for settings validation
-  filemanagement.py              # Config/coeff file operations (load, save, rename, zip)
-  filters.py                     # Filter plot option helpers
-  eventstream.py                 # SSE event streaming: LevelEventStream + SpectrumEventStream
-  statics.py                     # NoCacheStaticResource (serves built frontend)
-  version.py                     # Backend version string
-  legacy_config_import.py        # Migrates old config formats to current version
-  convolver_config_import.py     # Imports Convolver project configs
-  eqapo_config_import.py         # Imports EqAPO configs
-  dsp/                           # Config validation
-    validate_config.py           # CamillaValidator — schema + semantic validation
-    defaults.py                  # CamillaDSP's defaults for optional parameters
-    audiofileread.py             # wav header + coefficient file reading
-    schemas/                     # JSON schemas for every config section
-
-tools/
-  dump_filter_variants.py        # Exports every schema-valid filter to the frontend's test fixture
-
-tests/                           # pytest test suite
-build/                           # Place compiled frontend files here before bundling
-frontend/                        # The React frontend, see frontend/CLAUDE.md
+main.rs        routes, startup, the file folders as static files
+api.rs         the /api handlers, the counterpart of the old views.py
+extract.rs     axum's Json, Query and Path, with rejections as JSON error bodies
+reply.rs       what handlers answer (Reply, NoContent, Text, Binary, EventStream), typed for the spec
+openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check tests
+camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_schema::protocol
+status.rs      the /api/status cache; device and backend lists, read on reconnect
+events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
+validate.rs    validation with camilladsp-schema, plus the GUI's device type rules
+settings.rs    camillagui.yml, and gui-config.yml as the GuiConfig the frontend gets
+paths.rs       resolving, relativizing and policing coefficient and audio paths
+files.rs       folder listings, uploads, renames, zips, the statefile
+legacy.rs      identifying and migrating configs for older CamillaDSP versions
+convolver.rs   Convolver config import
+eqapo.rs       Equalizer APO config import
+coeffs.rs      /api/convcoeffs framing, coefficient defaults, $samplerate$ options
+wav.rs         wav headers
+yaml.rs        YAML to JSON values, with NaN/infinity detection
+gui.rs         the embedded frontend, and the css-variables.css override
+filter_variants.rs  tests only: the frontend's filter fixture against camilladsp-schema
 ```
+
+`config/` holds the default `camillagui.yml` and `gui-config.yml`. A release ships them in
+`config/` next to the binary, which is where the binary looks by default. A
+`css-variables.css` placed there by the user is served in place of the embedded one; the
+release does not ship one, so an upgrade always brings the current stylesheet.
+
+## The API is internal
+
+`/api` exists for this frontend only, it is not a public API. Change it freely when that makes
+the GUI simpler or cheaper, and change the frontend, the demo backend
+(`frontend/src/demo/mockBackend.ts`) and the API and GUI tests in `api/api_tests` with it.
+An endpoint the frontend does not call is deleted rather than kept.
+
+Every error is a JSON `ErrorBody`: a `message`, and `result` when CamillaDSP refused a command.
+That holds for requests that do not parse too, since the extractors in `extract.rs` turn axum's
+rejections into the same body.
+
+Every handler has `#[utoipa::path]` and is registered with `routes!` in `main.rs`, which puts it
+in the OpenAPI spec. The spec is taken from the handler's signature where utoipa can: the success
+response from the return type (utoipa's `auto_into_responses`, with the types in `reply.rs`), the
+request body from the `Json<T>` argument, and the query parameters from `Query<T>`, merged into
+`params(T)`, which still has to be listed. What the attribute adds by hand is the error responses,
+the path parameters, and the few request bodies the argument cannot give (JSON numbers and
+booleans, multipart uploads, `validateconfig`). A handler returning a plain `Response` does not
+compile. The spec is committed as `api/openapi.json`, and the frontend generates
+`frontend/src/api/schema.ts` from it, both its API types and its config types. After changing a
+handler, a type it uses or a type in camilladsp-schema:
+
+```sh
+cd api && UPDATE_OPENAPI=1 cargo test committed_spec_is_current   # rewrite api/openapi.json
+cd frontend && npm run generate-api                                # rewrite src/api/schema.ts
+```
+
+`cargo test` fails while `openapi.json` is stale, and CI fails while `schema.ts` is.
+
+Things to keep in mind:
+- serde_json widens an f32 to f64 when it builds a `Value`, so 0.2 becomes 0.20000000298023224.
+  Anything CamillaDSP sends as f32 goes through `camilla::to_json`, which keeps the short form.
+- Handlers take `Json`, `Query`, `Path` and `Multipart` from `extract.rs`, not from axum. `Json`
+  needs `Content-Type: application/json`, which openapi-fetch always sends.
+- An `Option` field that is left out when `None`, rather than sent as null, gets
+  `#[schema(nullable = false)]`, so the frontend type is `T | undefined` and not `T | null`.
+- A JSON reply is `Reply<T>`, and `T` needs a `BodySchema`: a type with a schema of its own goes
+  in `named_bodies!` in `reply.rs`, which makes the body a reference to it and lists the schema for
+  the components. A test fails if any reference in the spec does not resolve.
+- Binary bodies (zips, `/api/convcoeffs`) are `reply::Binary`, described as a binary string; a
+  `Vec<u8>` would come out as an array of numbers. Uploads are `multipart/form-data` with a
+  `files` field per file.
+- Configs go in and out as camilladsp-schema's `Configuration`. The path rewriting in `paths.rs`
+  still works on JSON values, so a config is turned into one with `camilla::to_json` and parsed
+  back with `validate::parse`. `validateconfig` is the one handler that takes a `Value`, while its
+  spec says `Configuration`: a config that does not parse is reported as an issue like any other.
+- Imports answer a `ConfigFragment`, whose `DevicesFragment` has every field of camilladsp-schema's
+  `Devices`, all optional. A test in `api.rs` destructures `Devices` without `..`, so a field added
+  there fails to compile until the fragment has it.
+
+## camilladsp-schema
+
+Config types, validation, coefficient reading and the websocket protocol all come from the
+`camilladsp-schema` crate in the camilladsp repository, so the GUI checks configs with exactly the
+code the DSP runs. It is a git dependency rather than the crates.io release, so a GUI build never
+waits for a publish: a branch while developing, a camilladsp tag for a release, pinned by
+`Cargo.lock` either way. See the comment in `api/Cargo.toml` for building against a local
+checkout. Fix validation problems there, not here.
+
+Device types: a type is allowed if the connected CamillaDSP lists it (`GetSupportedDeviceTypes`,
+read on every reconnect), narrowed by `supported_*_types` in the settings. Only before CamillaDSP
+has been reached does this build's own platform decide.
+
+No C dependencies anywhere in the tree. Keep it that way, it is what lets every Linux target
+build as a static musl binary with cargo-zigbuild from one CI runner.
 
 ## Filter evaluation lives in the frontend
 
-There is no DSP in this backend. Filter transfer functions are evaluated in the browser, in
-`frontend/src/camilladsp/eval/`, which is both faster (the GUI is usually browsed from a laptop
-while the backend runs on an SBC) and one implementation instead of two. The backend keeps only
-what needs a server: `POST /api/convcoeffs` resolves a Conv filter's path, applies the
-`$samplerate$` and `$channels$` tokens, and returns the decoded coefficients.
+Filter transfer functions are evaluated in the browser, in `frontend/src/camilladsp/eval/`. The
+backend only resolves a Conv filter's file, applies the `$samplerate$` and `$channels$` tokens,
+and returns the samples, framed as binary rather than JSON (see `coeffs::frame_coefficients`).
 
-**The one thing to watch:** the JSON schemas are here, in Python, while the evaluator is in
-TypeScript. `tools/dump_filter_variants.py` exports every schema-valid filter config to
-`frontend/src/camilladsp/eval/fixtures/variants.json`, and the frontend's `variants.test.ts`
-evaluates all of them. **When you change a filter schema, re-run that tool and commit the result
-with the schema change**, or the evaluator gets a new parameter with nothing testing it.
-`tests/test_eval_validated_configs.py` fails until you do.
-
-The numbers themselves are covered by `properties.test.ts` in the frontend, which asserts
-closed-form properties rather than captured curves, so it does not depend on this backend having
-been right.
-
-## Key API routes (from routes.py)
-
-| Method | Path | Handler |
-|---|---|---|
-| GET | `/api/events` | SSE stream: status + level events |
-| GET | `/api/status` | CamillaDSP status JSON |
-| GET | `/api/getconfig` | Active config as JSON |
-| POST | `/api/setconfig` | Push config to DSP |
-| GET | `/api/getconfigfile` | Config file from disk |
-| POST | `/api/saveconfigfile` | Save config to disk |
-| POST | `/api/convcoeffs` | Coefficients of a file-backed Conv filter, for the frontend to evaluate |
-| GET | `/api/storedconfigs` | List config files |
-| POST | `/api/storeconfigs` | Upload config files |
-| GET | `/api/guiconfig` | Serve gui-config.yml as JSON |
-| GET | `/api/capturedevices` | List available capture devices |
-| GET | `/api/playbackdevices` | List available playback devices |
-
-## Dependencies
-
-- `pycamilladsp` — WebSocket client to talk to CamillaDSP (from `../pycamilladsp/`), editable install via `pip install -e ../pycamilladsp`
-- `aiohttp` — async HTTP server
-- `PyYAML` — config file parsing
-- `jsonschema` — config validation
-
-**No numpy, and no other compiled dependency.** It was required while the filter evaluation lived
-here. Once that left, the only uses were decoding coefficient files and one pole test, and both are
-plain Python now: `audiofileread.py` reads samples through the `array` module, and
-`validate_config.diffeq_is_stable` is the Schur-Cohn test the DSP itself uses. Decoding is 2 to 3x
-slower for the 16 and 24 bit formats, worth at most 23 ms on a million taps against the 400 ms the
-same request spends encoding that list as JSON, and it is faster for the 32 bit float files that
-coefficients usually come in. Do not reintroduce it without a reason of that size.
-
-`pycamilladsp-plot` used to provide validation and filter evaluation. As of CamillaDSP 5.0 the
-validation is merged into `backend/dsp/` and the library is deprecated, so it must **not** be
-installed. The evaluation went to the frontend instead, see above.
-
-## Talking to CamillaDSP
-
-Request/response commands go through `pycamilladsp`. The pushed subscriptions in
-`backend/eventstream.py` (VU levels and spectrum) open their own websocket and repeat the
-CamillaDSP 5.0 message framing, so keep `_format_command` / `_parse_reply` there in step with
-`pycamilladsp/camilladsp/camillaws.py`.
+`frontend/src/camilladsp/eval/fixtures/variants.json` holds a case for every filter type,
+subtype and optional parameter, for the frontend's `variants.test.ts`. It is edited by hand.
+`api/src/filter_variants.rs` destructures every filter type without `..`, so anything new in
+camilladsp-schema fails to compile there, and its tests fail until the fixture covers it.

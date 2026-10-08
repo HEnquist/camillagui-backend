@@ -1,5 +1,21 @@
 import { List } from "immutable"
+import { api } from "../api/client"
+import { components } from "../api/schema"
 import { sortedAlphabetically } from "../utilities/arrays"
+
+/** The config types, generated from camilladsp-schema through the backend's API spec. */
+type Schemas = components["schemas"]
+
+/**
+ * A config type with every optional field present. The spec has them optional, since
+ * CamillaDSP accepts a config without them, but the backend sends every one of them, as null
+ * when it is unset, and the GUI always writes them all.
+ */
+type Complete<T> = T extends (infer U)[]
+  ? Complete<U>[]
+  : T extends object
+    ? { [K in keyof T]-?: Complete<Exclude<T[K], undefined>> }
+    : T
 
 export function defaultConfig(): Config {
   return {
@@ -89,7 +105,7 @@ function compare_values(a: number, b: number, reverse: boolean): number {
 
 export function filtersSortedAlphabeticallyOnKey(filters: Filters, key: string, reverse: boolean): string[] {
   const names = Object.keys(filters)
-  const filters_as_list = names.map((n) => ({ name: n, def: filters[n] }))
+  const filters_as_list = names.map((n) => ({ name: n, def: filters[n] as LooseFilter }))
   const rev = reverse ? -1 : 1
   switch (key) {
     case "Name":
@@ -250,7 +266,7 @@ export function filterNamesOf(configOrFilters: Config | Filters | null): string[
   return sortedAlphabetically(Object.keys(filters))
 }
 
-function isConfig(maybeConfig: Config | Filters | Mixers): maybeConfig is Config {
+function isConfig(maybeConfig: Config | Filters | Mixers | Processors): maybeConfig is Config {
   return maybeConfig !== null && Object.hasOwn(maybeConfig, "devices")
 }
 
@@ -599,11 +615,11 @@ export const DefaultFilterParameters: {
   },
 }
 
-export function defaultFilter() {
+export function defaultFilter(): Filter {
   return {
     type: "Biquad",
     description: null,
-    parameters: DefaultFilterParameters.Biquad.Lowpass,
+    parameters: { type: "Lowpass", freq: 1000, q: 0.5 },
   }
 }
 
@@ -660,7 +676,7 @@ export function newProcessorName(processors: Processors | null): string {
   return newName("Unnamed Processor ", processorNamesOf(processors))
 }
 
-export function defaultProcessor() {
+export function defaultProcessor(): Processor {
   return {
     type: "Compressor",
     description: null,
@@ -798,50 +814,12 @@ export function defaultProcessorStep(config: Config): ProcessorStep {
 
 export const CURRENT_CONFIG_VERSION = 4
 
-export interface Config {
-  devices: Devices
-  filters: Filters | null
-  mixers: Mixers | null
-  processors: Processors | null
-  pipeline: Pipeline | null
-  title: string | null
-  description: string | null
-}
+export type Config = Complete<Schemas["Configuration"]>
+export type Devices = Config["devices"]
 
-export interface Devices {
-  samplerate: number
-
-  //Buffers
-  chunksize: number
-  queuelimit: number | null
-
-  //Silence
-  silence_threshold: number | null
-  silence_timeout_s: number | null
-
-  //Rate adjust
-  enable_rate_adjust: boolean | null
-  adjust_interval_s: number | null
-  target_level: number | null
-
-  //Resampler
-  resampler: Resampler | null
-  capture_samplerate: number | null
-
-  //Rate monitoring
-  stop_on_rate_change: boolean | null
-  rate_measure_interval_s: number | null
-
-  //Volume control settings
-  volume_ramp_time_ms: number | null
-  volume_limit: number | null
-
-  //Multithreading
-  multithreaded: boolean | null
-  worker_threads: number | null
-
-  capture: CaptureDevice
-  playback: PlaybackDevice
+/** A config the backend sent, which has every optional field, as null when it is unset. */
+export function completeConfig(config: Schemas["Configuration"]): Config {
+  return config as Config
 }
 
 export type ResamplerType = null | "AsyncSinc" | "AsyncPoly" | "Synchronous" | "Slip"
@@ -921,19 +899,7 @@ export const AsyncPolyDegreeOptions: {
   },
 ]
 
-export type Resampler =
-  | { type: "AsyncSinc"; profile: AsyncSincProfile }
-  | {
-      type: "AsyncSinc"
-      sinc_len: number
-      oversampling_factor: number
-      interpolation: AsyncSincInterpolation
-      window: AsyncSincWindow
-      f_cutoff: number | null
-    }
-  | { type: "AsyncPoly"; interpolation: AsyncPolyInterpolation }
-  | { type: "Synchronous" }
-  | { type: "Slip" }
+export type Resampler = Complete<Schemas["Resampler"]>
 
 export function defaultResampler(type: ResamplerType): Resampler {
   if (type === "AsyncSinc") {
@@ -977,168 +943,27 @@ export type Fader = "Main" | "Aux1" | "Aux2" | "Aux3" | "Aux4"
 export const LoudnessFaders: Fader[] = ["Main", "Aux1", "Aux2", "Aux3", "Aux4"]
 export const VolumeFaders: Fader[] = ["Aux1", "Aux2", "Aux3", "Aux4"]
 
-export type CaptureDevice =
-  | {
-      type: "Alsa"
-      channels: number
-      format: AlsaFormat | null
-      device: string
-      stop_on_inactive: boolean | null
-      link_volume_control: string | null
-      link_mute_control: string | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "Wasapi"
-      channels: number
-      format: WasapiFormat | null
-      device: string | null
-      exclusive: boolean | null
-      polling: boolean | null
-      loopback: boolean | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "Asio"
-      channels: number
-      format: AsioFormat | null
-      device: string
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "CoreAudio"
-      channels: number
-      format: CoreAudioFormat | null
-      device: string | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "PipeWire"
-      channels: number
-      node_name: string | null
-      node_description: string | null
-      node_group_name: string | null
-      autoconnect_to: string | null
-      loopback: boolean | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "RawFile"
-      channels: number
-      format: BinaryFormat
-      filename: string
-      extra_samples: number | null
-      skip_bytes: number | null
-      read_bytes: number | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "WavFile"
-      filename: string
-      extra_samples: number | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "Stdin"
-      channels: number
-      format: BinaryFormat
-      extra_samples: number | null
-      skip_bytes: number | null
-      read_bytes: number | null
-      labels: (string | null)[] | null
-    }
-  | {
-      type: "SignalGenerator"
-      channels: number
-      signal: SignalType
-      labels: (string | null)[] | null
-    }
+export type CaptureDevice = Devices["capture"]
 
-export type SignalType =
-  | {
-      type: "Sine"
-      freq: number
-      level: number
-    }
-  | {
-      type: "Square"
-      freq: number
-      level: number
-    }
-  | {
-      type: "WhiteNoise"
-      level: number
-    }
+export type SignalType = Complete<Schemas["Signal"]>
 
-export type Signal = "Sine" | "Square" | "WhiteNoise"
+export type Signal = SignalType["type"]
 
 export const Signals: Signal[] = ["Sine", "Square", "WhiteNoise"]
 
-export type PlaybackDevice =
-  | {
-      type: "Wasapi"
-      channels: number
-      format: WasapiFormat | null
-      device: string | null
-      exclusive: boolean | null
-      polling: boolean | null
-    }
-  | {
-      type: "Asio"
-      channels: number
-      format: AsioFormat | null
-      device: string
-    }
-  | {
-      type: "Alsa"
-      channels: number
-      format: AlsaFormat | null
-      device: string
-    }
-  | {
-      type: "PipeWire"
-      channels: number
-      node_name: string | null
-      node_description: string | null
-      node_group_name: string | null
-      autoconnect_to: string | null
-    }
-  | {
-      type: "CoreAudio"
-      channels: number
-      format: CoreAudioFormat | null
-      device: string | null
-      exclusive: boolean | null
-    }
-  | {
-      type: "File"
-      channels: number
-      format: BinaryFormat
-      filename: string
-      wav_header: boolean | null
-      use_rf64: boolean | null
-    }
-  | { type: "Stdout"; channels: number; format: BinaryFormat; wav_header: boolean | null }
+export type PlaybackDevice = Devices["playback"]
 
-export type BinaryFormat = "S16_LE" | "S24_3_LE" | "S24_4_LJ_LE" | "S24_4_RJ_LE" | "S32_LE" | "F32_LE" | "F64_LE"
+export type BinaryFormat = Schemas["BinarySampleFormat"]
 
-export type ConvBinaryFormat =
-  | "S16_LE"
-  | "S24_3_LE"
-  | "S24_4_LJ_LE"
-  | "S24_4_RJ_LE"
-  | "S32_LE"
-  | "F32_LE"
-  | "F64_LE"
-  | "TEXT"
+export type ConvBinaryFormat = Schemas["FileSampleFormat"]
 
-export type AlsaFormat = null | "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"
+export type AlsaFormat = Schemas["AlsaSampleFormat"] | null
 
-export type WasapiFormat = null | "S16" | "S24" | "S32" | "F32"
+export type WasapiFormat = Schemas["WasapiSampleFormat"] | null
 
-export type CoreAudioFormat = null | "S16" | "S24" | "S32" | "F32"
+export type CoreAudioFormat = Schemas["CoreAudioSampleFormat"] | null
 
-export type AsioFormat = null | "S16_LE" | "S24_4_LE" | "S24_3_LE" | "S32_LE" | "F32_LE" | "F64_LE"
+export type AsioFormat = Schemas["AsioSampleFormat"] | null
 
 export const CoreAudioFormatOptions: {
   value: CoreAudioFormat
@@ -1333,90 +1158,49 @@ export function getFormatOptions(backend: string): { value: string | null; label
   return BinaryFormatOptions
 }
 
-export type GainScale = "linear" | "dB"
+export type GainScale = Schemas["GainScale"]
 export const GainScales: GainScale[] = ["linear", "dB"]
 
-export interface Filters {
-  [name: string]: Filter
-}
-export interface Filter {
+export type Filters = Record<string, Filter>
+export type Filter = Complete<Schemas["Filter"]>
+
+export type Processors = Record<string, Processor>
+export type Processor = Complete<Schemas["Processor"]>
+
+export type FilterParameterValue = string | number | number[] | boolean | null | PeqBand[]
+
+export type PeqBand = Complete<Schemas["PeqBand"]>
+export type ProcessorParameterValue = string | number | number[] | boolean | null
+
+/**
+ * A filter with its parameters as values by name, for the code that handles them by name: the
+ * filter editor, which switches a filter's type by swapping in that type's default parameters,
+ * and the evaluator, which also takes the partial parameters a config file may have. Every
+ * Filter is a LooseFilter. What the editor makes of one is checked by the backend's validation.
+ */
+export interface LooseFilter {
   type: string
   description: string | null
   parameters: { [name: string]: FilterParameterValue }
 }
 
-export interface Processors {
-  [name: string]: Processor
-}
-export interface Processor {
+/** A processor with its parameters as values by name, see LooseFilter. */
+export interface LooseProcessor {
   type: string
   description: string | null
   parameters: { [name: string]: ProcessorParameterValue }
 }
 
-export type FilterParameterValue = string | number | number[] | boolean | null | PeqBand[]
-
-/**
- * One band of an NPointPeq parametric equalizer. The role follows the position
- * in the list: the first band is a low shelf, the last a high shelf, and the
- * ones in between are peaking filters.
- */
-export interface PeqBand {
-  freq: number
-  q: number
-  gain: number
-}
-export type ProcessorParameterValue = string | number | number[] | boolean | null
-
-export type Mixers = {
-  [name: string]: Mixer
-}
-
-export interface Mixer {
-  description: string | null
-  channels: {
-    in: number
-    out: number
-  }
-  mapping: Mapping[]
-  labels: (string | null)[] | null
-}
-
-export interface Mapping {
-  dest: number
-  sources: Source[]
-  mute: boolean | null
-}
-
-export interface Source {
-  channel: number
-  gain: number | null
-  scale: GainScale | null
-  inverted: boolean | null
-  mute: boolean | null
-}
+export type Mixers = Record<string, Mixer>
+export type Mixer = Complete<Schemas["Mixer"]>
+export type Mapping = Mixer["mapping"][number]
+export type Source = Mapping["sources"][number]
 
 export type Pipeline = PipelineStep[]
-export type PipelineStep = MixerStep | FilterStep | ProcessorStep
-export interface MixerStep {
-  type: "Mixer"
-  name: string
-  description: string | null
-  bypassed: boolean | null
-}
-export interface ProcessorStep {
-  type: "Processor"
-  name: string
-  description: string | null
-  bypassed: boolean | null
-}
-export interface FilterStep {
-  type: "Filter"
-  channels: number[] | null
-  names: string[]
-  description: string | null
-  bypassed: boolean | null
-}
+export type PipelineStep = Complete<Schemas["PipelineStep"]>
+export type MixerStep = Extract<PipelineStep, { type: "Mixer" }>
+export type ProcessorStep = Extract<PipelineStep, { type: "Processor" }>
+export type FilterStep = Extract<PipelineStep, { type: "Filter" }>
 
 export async function maxChannelCount(config: Config, pipelineStepIndex: number): Promise<number> {
   let lastValidMixerStepBeforeIndex = null
@@ -1432,24 +1216,9 @@ export async function maxChannelCount(config: Config, pipelineStepIndex: number)
   return getCaptureDeviceChannelCount(config.devices.capture)
 }
 
-export interface WavInfo {
-  dataoffset: number
-  datalength: number
-  sampleformat: string
-  bitspersample: number
-  channels: number
-  byterate: number
-  samplerate: number
-  bytesperframe: number
-}
-
-async function getWavInfo(filename: string): Promise<WavInfo | null> {
-  const info_resp = await fetch(`/api/wavinfo?filename=${encodeURIComponent(filename)}`)
-  if (info_resp.ok) {
-    const info = await info_resp.json()
-    return info == null ? null : (info as WavInfo)
-  }
-  return null
+async function getWavInfo(filename: string): Promise<Schemas["WavInfo"] | null> {
+  const { data } = await api.GET("/api/wavinfo", { params: { query: { filename } } })
+  return data ?? null
 }
 
 export async function getCaptureDeviceChannelCount(config: CaptureDevice): Promise<number> {

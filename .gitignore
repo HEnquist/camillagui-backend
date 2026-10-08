@@ -1,10 +1,6 @@
 *.pyc
-build/*
 .venv
 .DS_Store
-poetry.lock
-requirements.txt
-cdsp_conda.yml
 .vscode/
 *.crt
 *.key

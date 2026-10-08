@@ -10,11 +10,12 @@ import {
 } from "@mdi/js"
 import { isEqual } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
+import { api, Schemas } from "./api/client"
 import {
   Config,
   defaultFilter,
   DefaultFilterParameters,
-  Filter,
+  LooseFilter,
   FilterTypeOptions,
   newFilterName,
   removeFilter,
@@ -160,7 +161,7 @@ export class FiltersTab extends React.Component<
     return !this.filterNames().includes(name)
   }
 
-  private updateFilter(name: string, update: Update<Filter>) {
+  private updateFilter(name: string, update: Update<LooseFilter>) {
     this.props.updateConfig((config) => {
       if (!config.filters) {
         config.filters = {}
@@ -237,11 +238,11 @@ export class FiltersTab extends React.Component<
   }
 }
 
-function isConvolutionFileFilter(filter: Filter): boolean {
+function isConvolutionFileFilter(filter: LooseFilter): boolean {
   return filter.type === "Conv" && (filter.parameters.type === "Raw" || filter.parameters.type === "Wav")
 }
 
-function isGraphicEqualizer(filter: Filter): boolean {
+function isGraphicEqualizer(filter: LooseFilter): boolean {
   return filter.type === "BiquadCombo" && filter.parameters.type === "GraphicEqualizer"
 }
 
@@ -251,7 +252,7 @@ const peqBandTooltips = {
   gain: "Band gain in dB. A band with zero gain is left out when the filter is built",
 }
 
-function isNPointPeq(filter: Filter): boolean {
+function isNPointPeq(filter: LooseFilter): boolean {
   return filter.type === "BiquadCombo" && filter.parameters.type === "NPointPeq"
 }
 
@@ -266,20 +267,14 @@ function asBands(value: FilterParameterValue): PeqBand[] | undefined {
     : undefined
 }
 
-interface FilterDefaults {
-  type?: string
-  format?: string
-  skip_bytes_lines?: number
-  read_bytes_lines?: number
-  errors?: string[]
-}
+type FilterDefaults = Schemas["CoeffDefaults"]
 
 interface FilterViewProps {
   name: string
-  filter: Filter
+  filter: LooseFilter
   errors: Errors
   availableCoeffFiles: FileInfo[]
-  updateFilter: (update: Update<Filter>) => void
+  updateFilter: (update: Update<LooseFilter>) => void
   rename: (newName: string) => void
   isFreeFilterName: (name: string) => boolean
   remove: () => void
@@ -368,16 +363,14 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
   private updateDefaults(filename: string, updateFilter: boolean = false) {
     const filter = this.props.filter
     if (isConvolutionFileFilter(filter)) {
-      fetch(`/api/defaultsforcoeffs?file=${encodeURIComponent(filename)}`).then((response) =>
-        response.json().then((json) => {
-          const defaults = json as FilterDefaults
-          this.setState({
-            filterDefaults: defaults,
-            showDefaults: false,
-          })
-          if (updateFilter) this.updateFilterParamsWithDefaults(defaults)
-        }),
-      )
+      api.GET("/api/defaultsforcoeffs", { params: { query: { file: filename } } }).then(({ data: defaults }) => {
+        if (!defaults) return
+        this.setState({
+          filterDefaults: defaults,
+          showDefaults: false,
+        })
+        if (updateFilter) this.updateFilterParamsWithDefaults(defaults)
+      })
     }
   }
 
@@ -387,10 +380,9 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       if (typeof subtype === "string") {
         const guiDefaults = DefaultFilterParameters[filter.type][subtype]
         const channel = filter.parameters.channel
-        const defaultsWithoutErrors = Object.fromEntries(Object.entries(defaults).filter(([key]) => key !== "errors"))
         filter.parameters = {
           ...guiDefaults,
-          ...defaultsWithoutErrors,
+          ...defaults,
           filename: filter.parameters.filename,
         }
         if (channel) filter.parameters.channel = channel
@@ -598,7 +590,7 @@ function coeffFilePath(coeffDir: string, filename: string) {
   return coeffDir + filename
 }
 
-function coeffFileNameUpdate(coeffDir: string, filename: string): Update<Filter> {
+function coeffFileNameUpdate(coeffDir: string, filename: string): Update<LooseFilter> {
   return (filter) => (filter.parameters.filename = coeffFilePath(coeffDir, filename))
 }
 
@@ -620,9 +612,9 @@ type ParameterInfo =
     }
 
 interface FilterParamsProps {
-  filter: Filter
+  filter: LooseFilter
   errors: Errors
-  updateFilter: (update: Update<Filter>) => void
+  updateFilter: (update: Update<LooseFilter>) => void
   availableCoeffFiles: FileInfo[]
   coeffDir: string
   allowAbsolutePaths: boolean

@@ -3,6 +3,7 @@ import "../index.css"
 import { mdiVolumeMedium, mdiVolumeOff, mdiVolumePlus, mdiVolumeMinus } from "@mdi/js"
 import { throttle, DebouncedFuncLeading } from "lodash"
 import { VuMeterGroup, VuMeterSize } from "./vumeter"
+import { api, errorMessage } from "../api/client"
 import { VuMeterStatus } from "../camilladsp/status"
 import { useVuMeterLevels } from "../camilladsp/usevumeterstatus"
 import { GuiConfig } from "../guiconfig"
@@ -71,14 +72,11 @@ export class VolumePoller {
       return
     }
     try {
-      const volreq = await fetch("/api/getparam/volume")
-      const mutereq = await fetch("/api/getparam/mute")
+      const volreq = await api.GET("/api/param/volume")
+      const mutereq = await api.GET("/api/param/mute")
       const volume: Volume =
-        volreq.ok && mutereq.ok
-          ? {
-              volume: parseFloat(await volreq.text()),
-              mute: "True" === (await mutereq.text()),
-            }
+        volreq.data !== undefined && mutereq.data !== undefined
+          ? { volume: volreq.data, mute: mutereq.data }
           : {
               volume: Number.NEGATIVE_INFINITY,
               mute: false,
@@ -208,23 +206,13 @@ class VolumeBoxInner extends React.Component<Props, State> {
   }
 
   private async setDspVolume(value: number) {
-    const vol_req = await fetch("/api/setparam/volume", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain; charset=us-ascii" },
-      body: value.toString(),
-    })
-    const message = await vol_req.text()
-    this.props.setMessage(message)
+    const { error, response } = await api.POST("/api/param/volume", { body: value })
+    this.props.setMessage(error ? errorMessage(error, response) : "OK")
   }
 
   private async setDspMute(value: boolean) {
-    const mute_req = await fetch("/api/setparam/mute", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain; charset=us-ascii" },
-      body: value.toString(),
-    })
-    const message = await mute_req.text()
-    this.props.setMessage(message)
+    const { error, response } = await api.POST("/api/param/mute", { body: value })
+    this.props.setMessage(error ? errorMessage(error, response) : "OK")
   }
 
   render() {

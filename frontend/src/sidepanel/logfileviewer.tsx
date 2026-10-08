@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import ReactjsPopup from "reactjs-popup"
+import { api, errorMessage } from "../api/client"
 
 export function LogFileViewerPopup(props: { open: boolean; onClose: () => void }) {
   const { open, onClose } = props
@@ -7,13 +8,11 @@ export function LogFileViewerPopup(props: { open: boolean; onClose: () => void }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     if (open) {
-      fetch("/api/logfile")
-        .then((response) => response.text())
-        .then((text) => {
-          setLog(text)
-          const textarea = textareaRef.current
-          if (textarea) textarea.scrollTop = textarea.scrollHeight
-        })
+      api.GET("/api/logfile", { parseAs: "text" }).then(({ data, error, response }) => {
+        setLog(data ?? errorMessage(error, response))
+        const textarea = textareaRef.current
+        if (textarea) textarea.scrollTop = textarea.scrollHeight
+      })
     }
   }, [open])
   return (

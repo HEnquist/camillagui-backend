@@ -17,6 +17,7 @@ import { Scatter } from "react-chartjs-2"
 import { Tooltip as ReactTooltip } from "react-tooltip"
 import ReactjsPopup from "reactjs-popup"
 import { CloseButton, cssStyles, MdiButton } from "./ui-components"
+import type { Schemas } from "../api/client"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
 
@@ -89,11 +90,8 @@ export interface ChartContent {
   f_groupdelay?: number[]
 }
 
-export interface FilterOption {
-  name: string
-  channels?: number
-  samplerate?: number
-}
+/** A variant of a coefficient file, for another samplerate or channel count. */
+export type FilterOption = Schemas["FilterOption"]
 
 export function Chart(props: { data: ChartContent; onChange: (item: string) => void }) {
   const chartRef = useRef<ChartJS<"scatter"> & { resetZoom: () => void }>(null)

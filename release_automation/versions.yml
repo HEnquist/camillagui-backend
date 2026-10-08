@@ -1,6 +1,0 @@
-# Git ref of pycamilladsp that CI builds and tests against. Between releases
-# this names the development branch, so CI exercises the version that will ship
-# together with this one. Set it to the release tag (vX.Y.Z, or vX.Y.Z-suffix
-# for a pre-release) before tagging a release, the release build refuses
-# anything else.
-pycamilladsp_tag: next5

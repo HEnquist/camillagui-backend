@@ -1,5 +1,6 @@
 import React from "react"
 import isEqual from "lodash/isEqual"
+import { api } from "../api/client"
 import { Config } from "../camilladsp/config"
 import { Errors, NoErrors } from "../utilities/errors"
 import { delayedExecutor } from "../utilities/ui-components"
@@ -26,18 +27,14 @@ export class Configcheckmessage extends React.Component<ConfigcheckmessageProps,
 
   private async get_config_errors(config: Config) {
     try {
-      const request = await fetch("/api/validateconfig", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
-      })
-      if (request.ok) {
-        const message = await request.text()
-        this.setState({ message: message })
+      const { data: issues } = await api.POST("/api/validateconfig", { body: config })
+      if (issues === undefined) {
+        throw new Error("Validation failed")
+      } else if (issues.length === 0) {
+        this.setState({ message: "OK" })
         this.props.setErrors(NoErrors)
       } else {
-        const json = await request.json()
-        const errors = new Errors(json)
+        const errors = new Errors(issues.map((issue) => [issue.path, issue.message]))
         const globalErrors = errors.rootMessage()
         this.setState({
           message: "Config has errors" + (globalErrors ? ":\n" + globalErrors : ""),

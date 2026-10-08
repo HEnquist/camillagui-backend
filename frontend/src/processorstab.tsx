@@ -5,7 +5,7 @@ import {
   Config,
   defaultProcessor,
   getProcessorChannelLabels,
-  Processor,
+  LooseProcessor,
   newProcessorName,
   removeProcessor,
   renameProcessor,
@@ -120,7 +120,7 @@ export class ProcessorsTab extends React.Component<
     return !this.processorNames().includes(name)
   }
 
-  private updateProcessor(name: string, update: Update<Processor>) {
+  private updateProcessor(name: string, update: Update<LooseProcessor>) {
     this.props.updateConfig((config) => {
       if (config.processors) {
         update(config.processors[name])
@@ -175,16 +175,16 @@ export class ProcessorsTab extends React.Component<
   }
 }
 
-function hasChannelSelectors(processor: Processor): boolean {
+function hasChannelSelectors(processor: LooseProcessor): boolean {
   return processor.type === "Compressor" || processor.type === "NoiseGate" || processor.type === "LookaheadLimiter"
 }
 
 interface ProcessorViewProps {
   name: string
-  processor: Processor
+  processor: LooseProcessor
   config: Config
   errors: Errors
-  updateProcessor: (update: Update<Processor>) => void
+  updateProcessor: (update: Update<LooseProcessor>) => void
   rename: (newName: string) => void
   isFreeProcessorName: (name: string) => boolean
   remove: () => void
@@ -305,9 +305,9 @@ const defaultParameters: {
 }
 
 interface ProcessorParamsProps {
-  processor: Processor
+  processor: LooseProcessor
   errors: Errors
-  updateProcessor: (update: Update<Processor>) => void
+  updateProcessor: (update: Update<LooseProcessor>) => void
   labels: (string | null)[] | null
 }
 

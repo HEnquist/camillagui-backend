@@ -1,30 +1,7 @@
-export interface GuiConfig {
-  hide_capture_samplerate: boolean
-  hide_silence: boolean
-  hide_capture_device: boolean
-  hide_playback_device: boolean
-  hide_rate_monitoring: boolean
-  hide_multithreading: boolean
-  coeff_dir: string
-  supported_capture_types?: CaptureType[]
-  supported_playback_types?: PlaybackType[]
-  apply_config_automatically: boolean
-  save_config_automatically: boolean
-  status_update_interval: number
-  can_update_active_config: boolean
-  custom_shortcuts: ShortcutSection[]
-  volume_max: number
-  volume_range: number
-  page_title: string
-  spectrum_min_freq: number
-  spectrum_max_freq: number
-  spectrum_n_bins: number
-  spectrum_min_db: number
-  spectrum_max_db: number
-  spectrum_max_rate: number
-  audiofiles_supported: boolean
-  allow_absolute_paths: boolean
-}
+import type { Schemas } from "./api/client"
+
+/** The GUI settings, from `/api/guiconfig`. */
+export type GuiConfig = Schemas["GuiConfig"]
 
 export type CaptureType =
   | "Alsa"
@@ -39,27 +16,13 @@ export type CaptureType =
 
 export type PlaybackType = "Alsa" | "Asio" | "Wasapi" | "CoreAudio" | "PipeWire" | "File" | "Stdout"
 
-export interface ShortcutSection {
-  section: string
-  description?: string
-  shortcuts: Shortcut[]
-}
+export type ShortcutSection = Schemas["ShortcutSection"]
 
-export interface Shortcut {
-  name: string
-  description?: string
-  config_elements: ConfigElement[]
-  range_from?: number
-  range_to?: number
-  step?: number
-  type?: string
-}
+export type Shortcut = Schemas["Shortcut"]
 
-export interface ConfigElement {
-  path: string[]
-  reverse?: boolean
-}
+export type ConfigElement = Schemas["ConfigElement"]
 
+/** What the GUI uses until the backend has sent its settings. */
 export function defaultGuiConfig(): GuiConfig {
   return {
     hide_capture_samplerate: false,
@@ -69,6 +32,8 @@ export function defaultGuiConfig(): GuiConfig {
     hide_rate_monitoring: false,
     hide_multithreading: false,
     coeff_dir: "",
+    supported_capture_types: null,
+    supported_playback_types: null,
     apply_config_automatically: false,
     save_config_automatically: false,
     status_update_interval: 500,
