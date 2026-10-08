@@ -265,6 +265,8 @@ pub fn files_to_zip(folder: &Path, names: &[String]) -> Result<Vec<(String, Path
         match File::open(&path).and_then(|file| file.metadata()) {
             Ok(meta) if meta.is_file() => files.push((name.clone(), path)),
             Ok(_) => return Err(format!("{name} is not a file")),
+            // Windows does not open a folder as a file at all.
+            Err(_) if path.is_dir() => return Err(format!("{name} is not a file")),
             Err(err) => return Err(format!("Could not read {name}: {err}")),
         }
     }
