@@ -264,6 +264,11 @@ pub fn files_to_zip(folder: &Path, names: &[String]) -> Result<Vec<(String, Path
     Ok(files)
 }
 
+/// The file size from which a zip entry gets zip64 sizes. A little under
+/// 4 GiB, since deflate can grow incompressible data a few bytes per block.
+/// Offsets past 4 GiB get zip64 without it.
+const ZIP64_SIZE: u64 = 0xFF00_0000;
+
 /// Write a zip of files to `out` as it is made, a file at a time, so that it
 /// never has to fit in memory. Audio files are best `Stored`: deflate gains
 /// next to nothing on them, and costs a Raspberry Pi a lot of CPU.
@@ -273,12 +278,13 @@ pub fn write_zip(
     out: &mut impl Write,
 ) -> std::io::Result<()> {
     let mut zip = zip::ZipWriter::new_stream(&mut *out);
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(method)
-        .large_file(true);
+    let options = zip::write::SimpleFileOptions::default().compression_method(method);
     for (name, path) in files {
         let mut file = File::open(path)?;
-        zip.start_file(name.as_str(), options)?;
+        // Zip64 only where it is needed: a Stored entry with zip64 data
+        // descriptors does not extract with macOS `ditto`.
+        let large = file.metadata()?.len() >= ZIP64_SIZE;
+        zip.start_file(name.as_str(), options.large_file(large))?;
         std::io::copy(&mut file, &mut zip)?;
     }
     zip.finish()?;
