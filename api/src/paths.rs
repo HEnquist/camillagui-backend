@@ -56,9 +56,62 @@ pub fn realpath(path: &Path) -> PathBuf {
     }
 }
 
+/// Whether two path components name the same thing.
+#[cfg(not(windows))]
+fn same_component(a: Component, b: Component) -> bool {
+    a == b
+}
+
+/// Whether two path components name the same thing. Windows names are case
+/// insensitive, and `\\?\C:`, as `canonicalize` writes it, is the same drive
+/// as `C:`. Only ASCII letters are folded: NTFS folds more, but taking two
+/// names of one file for different files only refuses a path, never lets one
+/// out.
+#[cfg(windows)]
+fn same_component(a: Component, b: Component) -> bool {
+    use std::ffi::OsString;
+    use std::path::Prefix;
+    fn plain(component: Component) -> OsString {
+        let Component::Prefix(prefix) = component else {
+            return component.as_os_str().to_os_string();
+        };
+        match prefix.kind() {
+            Prefix::Disk(drive) | Prefix::VerbatimDisk(drive) => {
+                OsString::from(format!("{}:", drive as char))
+            }
+            Prefix::UNC(server, share) | Prefix::VerbatimUNC(server, share) => {
+                let mut plain = OsString::from(r"\\");
+                plain.push(server);
+                plain.push(r"\");
+                plain.push(share);
+                plain
+            }
+            _ => prefix.as_os_str().to_os_string(),
+        }
+    }
+    std::mem::discriminant(&a) == std::mem::discriminant(&b)
+        && plain(a).eq_ignore_ascii_case(plain(b))
+}
+
 /// Whether `path` is `folder` or inside it, comparing whole components.
 pub fn is_path_in_folder(path: &Path, folder: &Path) -> bool {
-    path.starts_with(folder)
+    let mut parts = path.components();
+    folder
+        .components()
+        .all(|part| parts.next().is_some_and(|own| same_component(own, part)))
+}
+
+/// Whether two paths name the same file or folder, compared like
+/// `is_path_in_folder`.
+fn is_same_path(a: &Path, b: &Path) -> bool {
+    is_path_in_folder(a, b) && a.components().count() == b.components().count()
+}
+
+/// A path with a drive but no root, like `D:f.raw`, which Windows resolves
+/// against the current folder of that drive. Joining it to a folder leaves it
+/// as it is, so it is not relative to anything of ours.
+fn is_drive_relative(path: &Path) -> bool {
+    !path.is_absolute() && matches!(path.components().next(), Some(Component::Prefix(_)))
 }
 
 /// `path` relative to `folder`, if it is inside it.
@@ -91,11 +144,7 @@ pub fn nt_basename(path: &str) -> &str {
 /// `D:secret.raw` has no separator, but joining it to a folder gives a file
 /// on D:, not in the folder.
 pub fn is_bare(path: &str) -> bool {
-    nt_basename(path) == path
-        && !matches!(
-            Path::new(path).components().next(),
-            Some(Component::Prefix(_))
-        )
+    nt_basename(path) == path && !is_drive_relative(Path::new(path))
 }
 
 /// The last component of a path, like `os.path.basename`.
@@ -107,6 +156,8 @@ pub fn basename(path: &str) -> String {
 }
 
 /// A path relative to `base`, like `os.path.relpath`, for two absolute paths.
+/// A path on another Windows drive has no relative form, so it comes back as
+/// it is.
 pub fn relpath(path: &Path, base: &Path) -> PathBuf {
     let path = normalize(path);
     let base = normalize(base);
@@ -115,8 +166,11 @@ pub fn relpath(path: &Path, base: &Path) -> PathBuf {
     let common = path_parts
         .iter()
         .zip(&base_parts)
-        .take_while(|(a, b)| a == b)
+        .take_while(|(a, b)| same_component(**a, **b))
         .count();
+    if common == 0 {
+        return path;
+    }
     let mut out = PathBuf::new();
     for _ in common..base_parts.len() {
         out.push("..");
@@ -180,7 +234,10 @@ pub fn coeff_path_to_relative(path: &str, config_dir: &Path, coeff_dir: &Path) -
         return path.to_string();
     }
     let normalized = normalize(Path::new(path));
-    if normalized.parent() == Some(coeff_dir) {
+    if normalized
+        .parent()
+        .is_some_and(|parent| is_same_path(parent, coeff_dir))
+    {
         return basename(&to_string(&normalized));
     }
     to_string(&relpath(Path::new(path), config_dir))
@@ -197,7 +254,10 @@ pub fn coeff_path_to_relative(path: &str, config_dir: &Path, coeff_dir: &Path) -
 /// `../../../etc/passwd` does not and is refused. A symlink in configured_dir
 /// is inside it, wherever it points: the GUI cannot make one, so it was put
 /// there on purpose.
-/// Without a base_dir a relative path cannot be resolved, so it is refused.
+/// Without a base_dir a relative path cannot be resolved, so it is refused,
+/// and so is a Windows path relative to a drive's current folder (`D:f.raw`).
+/// A Windows path with a root but no drive (`\etc\passwd`) is on base_dir's
+/// drive, as joining it gives.
 pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<&Path>) -> bool {
     if is_bare(path) {
         return true;
@@ -205,6 +265,9 @@ pub fn path_is_safe(path: &str, configured_dir: Option<&Path>, base_dir: Option<
     let Some(configured_dir) = configured_dir else {
         return false;
     };
+    if is_drive_relative(Path::new(path)) {
+        return false;
+    }
     let resolved = if Path::new(path).is_absolute() {
         PathBuf::from(path)
     } else {
@@ -418,29 +481,40 @@ mod tests {
         assert_eq!(normalize(Path::new("a/../../b")), PathBuf::from("../b"));
     }
 
+    /// A relative path written with `/`, as this system writes it.
+    fn native(path: &str) -> String {
+        to_string(&normalize(Path::new(path)))
+    }
+
+    /// A path in `folder`, written with `/`, as this system writes it.
+    fn under(folder: &Path, path: &str) -> String {
+        to_string(&normalize(&folder.join(path)))
+    }
+
     #[test]
     fn coeff_paths_round_trip() {
-        let config_dir = Path::new("/c/configs");
-        let coeff_dir = Path::new("/c/coeffs");
+        let (dir, config_dir, coeff_dir, _audio) = folders();
+        let (config_dir, coeff_dir) = (config_dir.as_path(), coeff_dir.as_path());
         assert_eq!(
             coeff_path_to_absolute("fir.wav", config_dir, coeff_dir),
-            "/c/coeffs/fir.wav"
+            under(coeff_dir, "fir.wav")
         );
         assert_eq!(
             coeff_path_to_absolute("../coeffs/sub/fir.wav", config_dir, coeff_dir),
-            "/c/coeffs/sub/fir.wav"
+            under(coeff_dir, "sub/fir.wav")
+        );
+        let elsewhere = under(dir.path(), "abs/fir.wav");
+        assert_eq!(
+            coeff_path_to_absolute(&elsewhere, config_dir, coeff_dir),
+            elsewhere
         );
         assert_eq!(
-            coeff_path_to_absolute("/abs/fir.wav", config_dir, coeff_dir),
-            "/abs/fir.wav"
-        );
-        assert_eq!(
-            coeff_path_to_relative("/c/coeffs/fir.wav", config_dir, coeff_dir),
+            coeff_path_to_relative(&under(coeff_dir, "fir.wav"), config_dir, coeff_dir),
             "fir.wav"
         );
         assert_eq!(
-            coeff_path_to_relative("/c/other/fir.wav", config_dir, coeff_dir),
-            "../other/fir.wav"
+            coeff_path_to_relative(&under(dir.path(), "other/fir.wav"), config_dir, coeff_dir),
+            native("../other/fir.wav")
         );
         assert_eq!(
             coeff_path_to_relative("x/fir.wav", config_dir, coeff_dir),
@@ -450,16 +524,18 @@ mod tests {
 
     #[test]
     fn coeff_paths_in_subfolders_round_trip() {
-        let config_dir = Path::new("/c/configs");
-        let coeff_dir = Path::new("/c/coeffs");
-        let relative = coeff_path_to_relative("/c/coeffs/sub/fir.wav", config_dir, coeff_dir);
-        assert_eq!(relative, "../coeffs/sub/fir.wav");
+        let (_dir, config_dir, coeff_dir, _audio) = folders();
+        let (config_dir, coeff_dir) = (config_dir.as_path(), coeff_dir.as_path());
+        let absolute = under(coeff_dir, "sub/fir.wav");
+        let relative = coeff_path_to_relative(&absolute, config_dir, coeff_dir);
+        assert_eq!(relative, native("../coeffs/sub/fir.wav"));
         assert_eq!(
             coeff_path_to_absolute(&relative, config_dir, coeff_dir),
-            "/c/coeffs/sub/fir.wav"
+            absolute
         );
+        let walking_back = to_string(&coeff_dir.join("sub/../fir.wav"));
         assert_eq!(
-            coeff_path_to_relative("/c/coeffs/sub/../fir.wav", config_dir, coeff_dir),
+            coeff_path_to_relative(&walking_back, config_dir, coeff_dir),
             "fir.wav"
         );
     }
@@ -469,8 +545,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let audio = dir.path().join("audio");
         std::fs::create_dir_all(audio.join("sub")).unwrap();
-        let input = to_string(&audio.join("sub/in.wav"));
-        let output = to_string(&audio.join("sub/out.wav"));
+        let input = under(&audio, "sub/in.wav");
+        let output = under(&audio, "sub/out.wav");
         let mut config = json!({
             "devices": {
                 "capture": {"type": "WavFile", "filename": input},
@@ -478,15 +554,19 @@ mod tests {
             },
         });
         make_audio_file_paths_relative(&mut config, Some(&audio));
-        assert_eq!(config["devices"]["capture"]["filename"], "sub/in.wav");
-        assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+        assert_eq!(
+            config["devices"]["capture"]["filename"],
+            native("sub/in.wav")
+        );
+        assert_eq!(
+            config["devices"]["playback"]["filename"],
+            native("sub/out.wav")
+        );
         make_audio_file_paths_absolute(&mut config, Some(&audio));
         assert_eq!(config["devices"]["capture"]["filename"], input.as_str());
         assert_eq!(config["devices"]["playback"]["filename"], output.as_str());
-        assert_eq!(
-            to_path_in_folder("/elsewhere/x.wav", &audio),
-            "/elsewhere/x.wav"
-        );
+        let elsewhere = under(dir.path(), "elsewhere/x.wav");
+        assert_eq!(to_path_in_folder(&elsewhere, &audio), elsewhere);
     }
 
     #[test]
@@ -498,7 +578,7 @@ mod tests {
         std::fs::create_dir_all(&configs).unwrap();
         let escaping = to_string(&coeffs.join("sub/../../secret.raw"));
         let relative = coeff_path_to_relative(&escaping, &configs, &coeffs);
-        assert_eq!(relative, "../secret.raw");
+        assert_eq!(relative, native("../secret.raw"));
         assert!(!path_is_safe(&relative, Some(&coeffs), Some(&configs)));
         assert!(path_is_safe(
             "../coeffs/sub/f.raw",
@@ -518,10 +598,29 @@ mod tests {
         assert!(!path_is_safe("sub/../../x.wav", audio, audio));
     }
 
-    #[cfg(unix)]
+    /// Make a symlink to a file or a folder. Windows needs a privilege for it,
+    /// which CI has, so without it the test is skipped.
+    fn symlink(target: &Path, link: &Path) -> bool {
+        #[cfg(windows)]
+        let made = if target.is_dir() {
+            std::os::windows::fs::symlink_dir(target, link)
+        } else {
+            std::os::windows::fs::symlink_file(target, link)
+        };
+        #[cfg(not(windows))]
+        let made = std::os::unix::fs::symlink(target, link);
+        match made {
+            Ok(()) => true,
+            Err(err) if cfg!(windows) => {
+                eprintln!("skipped: cannot make symlinks here, {err}");
+                false
+            }
+            Err(err) => panic!("cannot make a symlink: {err}"),
+        }
+    }
+
     #[test]
     fn symlinks_in_the_folders_keep_their_names() {
-        use std::os::unix::fs::symlink;
         let dir = tempfile::tempdir().unwrap();
         let elsewhere = dir.path().join("elsewhere");
         let audio = dir.path().join("audio");
@@ -538,24 +637,29 @@ mod tests {
         let song = elsewhere.join("song.wav");
         std::fs::write(&song, "x").unwrap();
         std::fs::write(elsewhere.join("f.raw"), "x").unwrap();
-        symlink(&song, audio.join("current.wav")).unwrap();
-        symlink(&song, audio.join("sub/current.wav")).unwrap();
-        symlink(&elsewhere, audio.join("music")).unwrap();
-        symlink(elsewhere.join("f.raw"), coeffs.join("sub/f.raw")).unwrap();
+        if !symlink(&song, &audio.join("current.wav")) {
+            return;
+        }
+        symlink(&song, &audio.join("sub/current.wav"));
+        symlink(&elsewhere, &audio.join("music"));
+        symlink(&elsewhere.join("f.raw"), &coeffs.join("sub/f.raw"));
 
-        let linked = to_string(&audio.join("sub/current.wav"));
+        let linked = under(&audio, "sub/current.wav");
         let mut config = json!({
             "devices": {
-                "capture": {"type": "WavFile", "filename": to_string(&audio.join("current.wav"))},
+                "capture": {"type": "WavFile", "filename": under(&audio, "current.wav")},
                 "playback": {"type": "File", "filename": linked},
             },
         });
         make_audio_file_paths_relative(&mut config, Some(&audio));
         assert_eq!(config["devices"]["capture"]["filename"], "current.wav");
-        assert_eq!(config["devices"]["playback"]["filename"], "sub/current.wav");
         assert_eq!(
-            to_path_in_folder(&to_string(&audio.join("music/song.wav")), &audio),
-            "music/song.wav"
+            config["devices"]["playback"]["filename"],
+            native("sub/current.wav")
+        );
+        assert_eq!(
+            to_path_in_folder(&under(&audio, "music/song.wav"), &audio),
+            native("music/song.wav")
         );
 
         let audio = Some(audio.as_path());
@@ -580,7 +684,6 @@ mod tests {
         assert!(!path_is_safe(&to_string(&song), audio, audio));
     }
 
-    #[cfg(unix)]
     #[test]
     fn a_linked_folder_is_compared_like_with_like() {
         let dir = tempfile::tempdir().unwrap();
@@ -588,10 +691,12 @@ mod tests {
         let linked = dir.path().join("linked");
         std::fs::create_dir_all(real.join("sub")).unwrap();
         std::fs::write(real.join("sub/in.wav"), "x").unwrap();
-        std::os::unix::fs::symlink(&real, &linked).unwrap();
+        if !symlink(&real, &linked) {
+            return;
+        }
         for (path, folder) in [(&real, &linked), (&linked, &linked), (&linked, &real)] {
-            let input = to_string(&path.join("sub/in.wav"));
-            assert_eq!(to_path_in_folder(&input, folder), "sub/in.wav");
+            let input = under(path, "sub/in.wav");
+            assert_eq!(to_path_in_folder(&input, folder), native("sub/in.wav"));
             assert!(path_is_safe(&input, Some(folder), Some(folder)));
         }
         let outside = to_string(&linked.join("../x.wav"));
@@ -732,23 +837,26 @@ mod tests {
             make_audio_file_paths_absolute(&mut config, Some(&audio));
             assert_eq!(
                 config["devices"]["capture"]["filename"],
-                to_string(&audio.join("in.wav"))
+                under(&audio, "in.wav")
             );
             assert_eq!(
                 config["devices"]["playback"]["filename"],
-                to_string(&audio.join("sub/out.wav"))
+                under(&audio, "sub/out.wav")
             );
             make_audio_file_paths_relative(&mut config, Some(&audio));
             assert_eq!(config["devices"]["capture"]["filename"], "in.wav");
-            assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+            assert_eq!(
+                config["devices"]["playback"]["filename"],
+                native("sub/out.wav")
+            );
         }
     }
 
     #[test]
     fn absolute_audio_paths_stay_absolute() {
-        let (_dir, _configs, _coeffs, audio) = folders();
+        let (dir, _configs, _coeffs, audio) = folders();
         let original = json!({
-            "devices": {"capture": {"type": "WavFile", "filename": "/elsewhere/in.wav"}},
+            "devices": {"capture": {"type": "WavFile", "filename": under(dir.path(), "elsewhere/in.wav")}},
         });
         let mut config = original.clone();
         make_audio_file_paths_absolute(&mut config, Some(&audio));
@@ -912,6 +1020,165 @@ mod tests {
         strip_config_paths_to_bare_filenames(&mut config);
         assert_eq!(config["filters"]["a"]["parameters"]["filename"], "f.raw");
         assert_eq!(config["devices"]["playback"]["filename"], "out.wav");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_coeff_paths_round_trip() {
+        let config_dir = Path::new(r"C:\cdsp\configs");
+        let coeff_dir = Path::new(r"C:\cdsp\coeffs");
+        for (relative, absolute) in [
+            ("f.raw", r"C:\cdsp\coeffs\f.raw"),
+            (r"..\coeffs\sub\f.raw", r"C:\cdsp\coeffs\sub\f.raw"),
+            (r"..\other\f.raw", r"C:\cdsp\other\f.raw"),
+            // Other drives and network shares have no relative form.
+            (r"D:\cdsp\coeffs\f.raw", r"D:\cdsp\coeffs\f.raw"),
+            (r"\\server\share\f.raw", r"\\server\share\f.raw"),
+        ] {
+            assert_eq!(
+                coeff_path_to_absolute(relative, config_dir, coeff_dir),
+                absolute
+            );
+            assert_eq!(
+                coeff_path_to_relative(absolute, config_dir, coeff_dir),
+                relative
+            );
+        }
+        for path in [
+            r"C:/cdsp/coeffs/f.raw",
+            r"c:\CDSP\Coeffs\f.raw",
+            r"\\?\C:\cdsp\coeffs\f.raw",
+            r"C:\cdsp\coeffs\sub\..\f.raw",
+        ] {
+            assert_eq!(
+                coeff_path_to_relative(path, config_dir, coeff_dir),
+                "f.raw",
+                "{path}"
+            );
+        }
+        assert_eq!(
+            coeff_path_to_relative(r"\\?\C:\cdsp\coeffs\sub\f.raw", config_dir, coeff_dir),
+            r"..\coeffs\sub\f.raw"
+        );
+        assert_eq!(
+            coeff_path_to_absolute("../coeffs/sub/f.raw", config_dir, coeff_dir),
+            r"C:\cdsp\coeffs\sub\f.raw"
+        );
+        // A root without a drive is on config_dir's drive.
+        assert_eq!(
+            coeff_path_to_absolute(r"\cdsp\other\f.raw", config_dir, coeff_dir),
+            r"C:\cdsp\other\f.raw"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_are_safe_where_they_land() {
+        let (_dir, configs, coeffs, _audio) = folders();
+        std::fs::create_dir_all(coeffs.join("sub")).unwrap();
+        std::fs::write(coeffs.join("f.raw"), "x").unwrap();
+        let written = to_string(&coeffs);
+        let real = to_string(&std::fs::canonicalize(&coeffs).unwrap());
+        assert!(real.starts_with(r"\\?\"), "{real}");
+        let drive = &written[..2];
+        let safe = |path: &str| path_is_safe(path, Some(&coeffs), Some(&configs));
+        for path in [
+            format!(r"{written}\f.raw"),
+            format!("{}/f.raw", written.replace('\\', "/")),
+            format!(r"{}\F.RAW", written.to_uppercase()),
+            format!(r"{}\new.raw", written.to_lowercase()),
+            format!(r"{real}\f.raw"),
+            format!(r"{real}\new.raw"),
+            // The long name of a folder the temp folder may give a short name.
+            format!(r"{}\new.raw", &real[4..]),
+            r"..\coeffs\sub\f.raw".to_string(),
+            "../coeffs/sub/f.raw".to_string(),
+        ] {
+            assert!(safe(&path), "{path}");
+        }
+        for path in [
+            r"..\..\..\Windows\win.ini".to_string(),
+            format!(r"{drive}\Windows\win.ini"),
+            r"\Windows\win.ini".to_string(),
+            "/Windows/win.ini".to_string(),
+            format!(r"{written}-elsewhere\f.raw"),
+            format!(r"{written}\..\f.raw"),
+            format!("{drive}f.raw"),
+            "D:f.raw".to_string(),
+            r"\\localhost\share\f.raw".to_string(),
+            format!(r"\\?\{drive}\Windows\win.ini"),
+            r"\\?\UNC\localhost\share\f.raw".to_string(),
+        ] {
+            assert!(!safe(&path), "{path}");
+        }
+        for folder in [&real, &written.to_uppercase(), &written.replace('\\', "/")] {
+            let inside = format!(r"{written}\f.raw");
+            assert!(
+                path_is_safe(&inside, Some(Path::new(folder)), None),
+                "{folder}"
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_audio_paths_round_trip() {
+        let (_dir, _configs, _coeffs, audio) = folders();
+        std::fs::create_dir_all(audio.join("sub")).unwrap();
+        std::fs::write(audio.join(r"sub\in.wav"), "x").unwrap();
+        let real = to_string(&std::fs::canonicalize(&audio).unwrap());
+        let shouting = to_string(&audio).to_uppercase().replace('\\', "/");
+        let mut config = json!({
+            "devices": {
+                "capture": {"type": "WavFile", "filename": format!(r"{real}\sub\in.wav")},
+                "playback": {"type": "File", "filename": format!("{shouting}/out.wav")},
+            },
+        });
+        make_audio_file_paths_relative(&mut config, Some(&audio));
+        assert_eq!(config["devices"]["capture"]["filename"], r"sub\in.wav");
+        assert_eq!(config["devices"]["playback"]["filename"], "out.wav");
+        make_audio_file_paths_absolute(&mut config, Some(&audio));
+        assert_eq!(
+            config["devices"]["capture"]["filename"],
+            under(&audio, "sub/in.wav")
+        );
+        assert_eq!(
+            config["devices"]["playback"]["filename"],
+            under(&audio, "out.wav")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_outside_the_folders_are_found() {
+        let (_dir, configs, coeffs, audio) = folders();
+        let config = json!({
+            "filters": {
+                "inside": conv("Raw", &format!(r"{}\f.raw", to_string(&coeffs).to_uppercase())),
+                "relative": conv("Raw", r"..\coeffs\f.raw"),
+                "other_drive": conv("Raw", r"D:\coeffs\f.raw"),
+                "drive_relative": conv("Raw", "C:f.raw"),
+                "rooted": conv("Raw", r"\Windows\win.ini"),
+                "share": conv("Wav", r"\\localhost\share\f.wav"),
+            },
+            "devices": {
+                "capture": {"type": "WavFile", "filename": r"..\in.wav"},
+                "playback": {"type": "File", "filename": r"sub\out.wav"},
+            },
+        });
+        let offenders = paths_outside_folders(&config, &coeffs, Some(&audio), &configs);
+        let mut filenames: Vec<&str> = offenders.iter().map(|o| o.filename.as_str()).collect();
+        filenames.sort();
+        assert_eq!(
+            filenames,
+            [
+                r"..\in.wav",
+                "C:f.raw",
+                r"D:\coeffs\f.raw",
+                r"\Windows\win.ini",
+                r"\\localhost\share\f.wav",
+            ]
+        );
     }
 
     #[test]
