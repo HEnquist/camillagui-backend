@@ -1447,9 +1447,9 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "waveadapter"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea698b1ff94f5856d65d89926585abd62bf1e50271f9363e81ad92d0d34bd0d"
+checksum = "6287de596a6cb4f1af1e9de55ea45532f5fc083bcd7f00f3d5c1477a2e79a2fc"
 dependencies = [
  "audioadapter",
  "audioadapter-buffers",
