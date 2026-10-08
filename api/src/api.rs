@@ -1950,6 +1950,59 @@ mod tests {
         assert_eq!(output, "done");
     }
 
+    /// cmd hands a config file name on as text, to its own commands and to
+    /// other programs: nothing in it ends the quoting, expands a variable or
+    /// runs anything.
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn on_set_active_config_passes_the_path_to_cmd_as_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("active.yml");
+        let copy = format!(r#"copy /Y {{}} "{}""#, target.display());
+        for name in [
+            "a b.yml",
+            "a&echo injected&.yml",
+            "a & echo injected.yml",
+            "a|b.yml",
+            "%PATH%.yml",
+            "%CMDCMDLINE%.yml",
+            "a^b^^c.yml",
+            "(a) b).yml",
+            "a!PATH!.yml",
+            "a;b,c=d.yml",
+            "a'b`c$d @e.yml",
+        ] {
+            // `|` cannot be in a Windows file name, so that one is not copied.
+            let path = dir.path().join(name);
+            let path = path.to_str().unwrap();
+            if !name.contains('|') {
+                std::fs::write(path, name).unwrap();
+                let output = run_on_set_active_config(&copy, path).await.unwrap();
+                assert!(!output.contains("injected"), "{name}: {output}");
+                assert_eq!(
+                    std::fs::read_to_string(&target).unwrap_or_default(),
+                    name,
+                    "{name}: {output}"
+                );
+                let output = run_on_set_active_config("findstr /m . {}", path)
+                    .await
+                    .unwrap();
+                assert_eq!(output, format!("{path}\r\n"), "{name}");
+            }
+            let output = run_on_set_active_config("echo {}", path).await.unwrap();
+            assert_eq!(output, format!("\"{path}\"\r\n"), "{name}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn on_set_active_config_without_placeholder_in_cmd() {
+        let output = run_on_set_active_config("echo done", r"C:\configs\a.yml")
+            .await
+            .unwrap();
+        assert_eq!(output, "done\r\n");
+    }
+
     #[test]
     fn migration_errors_name_the_path_like_other_messages() {
         let error = |path: Vec<PathElement>, message: &str| ValidationIssue {
