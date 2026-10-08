@@ -16,20 +16,26 @@ fn biquad_type(eqapo: &str) -> Option<&'static str> {
     })
 }
 
-/// Channel labels to channel numbers, for a given number of channels.
+/// Channel labels to channel numbers, for a given number of channels. EqAPO
+/// names the channels from the speaker mask of the device. For 1, 2, 4, 6 and
+/// 8 channels these are the masks it assumes without one, see
+/// `ChannelHelper::getDefaultChannelMask` in EqAPO. It assumes none for 3, 5
+/// and 7, and the common layouts disagree there (3.0 or 2.1, 5.0 or 4.1, 7.0
+/// or 6.1), so those only get the labels they all share.
 fn channel_map(channels: i64) -> &'static [(&'static str, i64)] {
     match channels {
         1 => &[("C", 0)],
-        2 => &[("L", 0), ("R", 1)],
+        2 | 3 | 5 => &[("L", 0), ("R", 1)],
         4 => &[("L", 0), ("R", 1), ("RL", 2), ("RR", 3)],
         6 => &[
             ("L", 0),
             ("R", 1),
             ("C", 2),
             ("LFE", 3),
-            ("RL", 4),
-            ("RR", 5),
+            ("SL", 4),
+            ("SR", 5),
         ],
+        7 => &[("L", 0), ("R", 1), ("C", 2)],
         _ => &[
             ("L", 0),
             ("R", 1),
@@ -41,6 +47,31 @@ fn channel_map(channels: i64) -> &'static [(&'static str, i64)] {
             ("SR", 7),
         ],
     }
+}
+
+/// The index of a channel, from its label or its number counted from 1, the
+/// way EqAPO resolves them in `ChannelHelper::getChannelIndex`. A label the
+/// layout lacks may still name the side or rear channel on the same side, or
+/// with SUB the LFE.
+fn channel_index(channels: i64, label: &str) -> Option<i64> {
+    let map = channel_map(channels);
+    let find = |name: &str| map.iter().find(|(l, _)| *l == name).map(|(_, c)| *c);
+    let alias = match label {
+        "SL" => Some("RL"),
+        "SR" => Some("RR"),
+        "RL" => Some("SL"),
+        "RR" => Some("SR"),
+        "SUB" => Some("LFE"),
+        _ => None,
+    };
+    let number = || {
+        label
+            .parse::<i64>()
+            .ok()
+            .filter(|n| *n > 0 && label.chars().all(|c| c.is_ascii_digit()))
+            .map(|n| n - 1)
+    };
+    find(label).or_else(|| alias.and_then(find)).or_else(number)
 }
 
 /// A finite number. Rust also parses `nan`, `inf` and `infinity`, which JSON
@@ -105,18 +136,14 @@ impl EqApo {
     }
 
     /// The index of a channel, `None` for labels that are not known for the
-    /// number of channels, and for virtual channels.
+    /// number of channels, for numbers past the last channel, and for virtual
+    /// channels.
     fn lookup_channel_index(&self, label: &str) -> Option<i64> {
-        if let Some((_, channel)) = channel_map(self.channels).iter().find(|(l, _)| *l == label) {
-            return Some(*channel);
+        let index = channel_index(self.channels, label).filter(|i| *i < self.channels);
+        if index.is_none() {
+            log::warn!("Unknown or virtual channel, skipping channel {label}");
         }
-        if label.chars().all(|c| c.is_ascii_digit())
-            && let Some(number) = label.parse::<i64>().ok().filter(|n| *n > 0)
-        {
-            return Some(number - 1);
-        }
-        log::warn!("Unknown or virtual channel, skipping channel {label}");
-        None
+        index
     }
 
     /// The parameters of a Filter command, `None` for filters that are off,
@@ -549,6 +576,55 @@ Filter: ON  NO       Fc     50 Hz
         assert_eq!(mapping.len(), 1);
         assert_eq!(mapping[0]["dest"], 0);
         assert_eq!(mapping[0]["sources"][0]["channel"], 0);
+    }
+
+    #[test]
+    fn layouts_follow_eqapo() {
+        let index = |channels: i64, label: &str| EqApo::new(channels).lookup_channel_index(label);
+        assert_eq!(index(3, "R"), Some(1));
+        assert_eq!(index(3, "C"), None);
+        assert_eq!(index(3, "LFE"), None);
+        assert_eq!(index(5, "R"), Some(1));
+        assert_eq!(index(5, "C"), None);
+        assert_eq!(index(7, "C"), Some(2));
+        assert_eq!(index(7, "LFE"), None);
+        // A side channel stands in for a missing rear one, and the other way round.
+        assert_eq!(index(6, "SL"), Some(4));
+        assert_eq!(index(6, "RR"), Some(5));
+        assert_eq!(index(4, "SR"), Some(3));
+        assert_eq!(index(8, "RL"), Some(4));
+        assert_eq!(index(8, "SL"), Some(6));
+        assert_eq!(index(6, "SUB"), Some(3));
+        assert_eq!(index(2, "SL"), None);
+    }
+
+    #[test]
+    fn channels_past_the_last_are_skipped() {
+        for channels in [3, 5, 7] {
+            let text = format!(
+                "Channel: R SR {channels} {}\nFilter: ON PK Fc 1000 Hz Gain 3 dB Q 1\n\
+                 Copy: L=R+0.5*SR+{} SR=L\n",
+                channels + 1,
+                channels + 1
+            );
+            let conf = EqApo::new(channels).translate(&text);
+            assert_eq!(
+                conf["pipeline"][0]["channels"],
+                json!([1, channels - 1]),
+                "{channels}"
+            );
+            assert_eq!(conf["pipeline"][0]["names"], json!(["Filter_1"]));
+            let mapping = conf["mixers"]["Copy_1"]["mapping"].as_array().unwrap();
+            assert_eq!(mapping.len() as i64, channels, "{channels}");
+            assert_eq!(mapping[0]["dest"], 0);
+            assert_eq!(
+                mapping[0]["sources"],
+                json!([{"channel": 1, "gain": 0.0, "inverted": false, "scale": "dB"}])
+            );
+            for dest in mapping {
+                assert!(dest["dest"].as_i64().unwrap() < channels, "{dest}");
+            }
+        }
     }
 
     #[test]
