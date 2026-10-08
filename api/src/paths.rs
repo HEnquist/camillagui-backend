@@ -830,10 +830,14 @@ mod tests {
                     "playback": {"type": "File", "filename": "sub/out.wav"},
                 },
             });
-            // Already relative to the folder, so kept as they are.
+            // Already relative to the folder, so kept, with this system's
+            // separators.
             make_audio_file_paths_relative(&mut config, Some(&audio));
             assert_eq!(config["devices"]["capture"]["filename"], "in.wav");
-            assert_eq!(config["devices"]["playback"]["filename"], "sub/out.wav");
+            assert_eq!(
+                config["devices"]["playback"]["filename"],
+                native("sub/out.wav")
+            );
             make_audio_file_paths_absolute(&mut config, Some(&audio));
             assert_eq!(
                 config["devices"]["capture"]["filename"],
