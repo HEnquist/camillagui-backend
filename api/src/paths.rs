@@ -87,9 +87,15 @@ pub fn nt_basename(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
-/// A file name with no folder in it.
+/// A file name with no folder in it. On Windows that rules out a drive too:
+/// `D:secret.raw` has no separator, but joining it to a folder gives a file
+/// on D:, not in the folder.
 pub fn is_bare(path: &str) -> bool {
     nt_basename(path) == path
+        && !matches!(
+            Path::new(path).components().next(),
+            Some(Component::Prefix(_))
+        )
 }
 
 /// The last component of a path, like `os.path.basename`.
@@ -124,10 +130,20 @@ pub fn relpath(path: &Path, base: &Path) -> PathBuf {
     out
 }
 
-/// Join a folder and a plain file name, refusing anything with a separator in it.
+/// Join a folder and a plain file name, refusing anything with a separator in
+/// it, `.` and `..`, and on Windows a drive (`C:x.yml` joined to a folder is
+/// `C:x.yml` in the working directory, `push` drops the folder). A name that
+/// is one normal component is the only kind that stays in the folder.
 pub fn file_in_folder(folder: &Path, filename: &str) -> Result<PathBuf, String> {
     if filename.contains('/') || filename.contains('\\') {
         return Err("Filename may not contain any slashes/backslashes".to_string());
+    }
+    let mut components = Path::new(filename).components();
+    if !matches!(
+        (components.next(), components.next()),
+        (Some(Component::Normal(_)), None)
+    ) {
+        return Err(format!("Not a valid file name: {filename}"));
     }
     Ok(normalize(&folder.join(filename)))
 }
@@ -655,6 +671,30 @@ mod tests {
         assert!(!path_is_safe("sub/f.raw", Some(&coeffs), None));
         // `is_bare` splits on both separators, so this is not a bare name on Unix either.
         assert!(!path_is_safe("sub\\f.raw", Some(&coeffs), None));
+    }
+
+    #[test]
+    fn files_in_folders_stay_in_them() {
+        let folder = Path::new("/c/configs");
+        assert_eq!(
+            file_in_folder(folder, "x.yml").unwrap(),
+            Path::new("/c/configs/x.yml")
+        );
+        for name in ["", ".", "..", "a/b.yml", "a\\b.yml", "../x.yml"] {
+            assert!(file_in_folder(folder, name).is_err(), "{name:?}");
+        }
+        // Only Windows has drives, a colon is just a character elsewhere.
+        if cfg!(windows) {
+            assert!(file_in_folder(folder, "C:x.yml").is_err());
+            assert!(file_in_folder(folder, "D:x.yml").is_err());
+            assert!(!is_bare("D:secret.raw"));
+        } else {
+            assert_eq!(
+                file_in_folder(folder, "a:b.yml").unwrap(),
+                Path::new("/c/configs/a:b.yml")
+            );
+            assert!(is_bare("a:b.yml"));
+        }
     }
 
     #[test]
