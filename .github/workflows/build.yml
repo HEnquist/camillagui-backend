@@ -75,10 +75,38 @@ jobs:
     - name: API and GUI tests
       run: python -m pytest api/api_tests
 
+  # The unit tests again on Windows, for the code that differs there: paths
+  # with drives and the hook commands run by cmd. Formatting is checked on
+  # Linux, and the API and GUI tests run there only.
+  test_windows:
+    runs-on: windows-latest
+    needs: build_fe
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download frontend build
+      uses: actions/download-artifact@v4
+      with:
+        name: build
+        path: frontend/build
+
+    - name: Install stable toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+
+    - name: Clippy
+      working-directory: api
+      run: cargo clippy --all-targets -- -D warnings
+
+    - name: Unit tests
+      working-directory: api
+      run: cargo test
+
   build:
     name: Build ${{ matrix.asset }}
     runs-on: ${{ matrix.os }}
-    needs: test_be
+    needs: [test_be, test_windows]
     strategy:
       matrix:
         include:

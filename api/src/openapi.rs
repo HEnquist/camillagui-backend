@@ -53,7 +53,10 @@ mod tests {
             std::fs::write(&path, &generated).expect("api/openapi.json is writable");
             return;
         }
-        let committed = std::fs::read_to_string(&path).unwrap_or_default();
+        // Git on Windows may check the file out with CRLF line endings.
+        let committed = std::fs::read_to_string(&path)
+            .unwrap_or_default()
+            .replace("\r\n", "\n");
         assert!(
             committed == generated,
             "api/openapi.json is not what the code generates. Rewrite it with \
