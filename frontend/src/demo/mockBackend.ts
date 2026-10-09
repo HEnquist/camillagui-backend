@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Schemas } from "../api/client"
-import { completeConfig, Config, defaultConfig } from "../camilladsp/config"
+import { completeConfig, Config, CURRENT_CONFIG_VERSION, defaultConfig } from "../camilladsp/config"
 import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { download } from "../utilities/files"
@@ -37,7 +37,6 @@ const LEVEL_INTERVAL_MS = 140
 
 let spectrumShape = { offset: -38, slope: -3 }
 const MAIN_CONFIG_NAME = "living-room-demo.yml"
-const CURRENT_CONFIG_VERSION = 4
 const DEMO_AUDIOFILES_PREFIX = "/demo/audiofiles/"
 const DEMO_COEFF_PREFIX = "/demo/coeffs/"
 
