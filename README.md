@@ -367,6 +367,27 @@ Options:
 
 
 ## Development
+### Running while developing
+Run the frontend dev server and backend in separate terminals. The frontend uses Vite's
+hot reload, and proxies API requests to the backend on port 5005.
+
+In the first terminal:
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+In the second terminal:
+```sh
+cd api
+cargo run -- -c ../config/camillagui.yml -l debug
+```
+
+Open <http://localhost:5173/gui>. The backend runs as a debug build; restart it after
+backend code changes. Make sure the CamillaDSP host and port in
+`config/camillagui.yml` point to a running CamillaDSP instance.
+
 ### Building
 The backend embeds the frontend, so build that first:
 ```sh
@@ -391,4 +412,6 @@ python -m pytest api/api_tests
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Discuss new features and significant changes in an issue before starting work. Keep pull
+requests focused; bug fixes and small improvements can go straight to a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guidelines.
