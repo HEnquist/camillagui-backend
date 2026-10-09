@@ -2,7 +2,6 @@
 //! settings from `gui-config.yml`.
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 use utoipa::ToSchema;
 
@@ -113,12 +112,16 @@ impl Settings {
         }
         settings.settings_folder = absolute(path.parent().unwrap_or(Path::new(".")));
         if settings.gui_config_file.is_none() {
-            settings.gui_config_file = Some(settings.settings_folder.join("gui-config.yml"));
+            let default = settings.settings_folder.join("gui-config.yml");
+            settings.gui_config_file = default.is_file().then_some(default);
+        }
+        // A GUI config with problems stops the backend here, rather than the
+        // GUI quietly getting the defaults.
+        if let Some(gui_config_file) = &settings.gui_config_file {
+            GuiConfigFile::read(gui_config_file)?;
         }
         settings.can_update_active_config = settings.find_can_update_active_config();
         log::debug!("Backend configuration: {settings:#?}");
-        // Read the GUI config once, only to report any problems in it at startup.
-        gui_config(&settings);
         Ok(settings)
     }
 
@@ -238,8 +241,29 @@ pub fn absolute(path: &Path) -> PathBuf {
 
 /// The GUI settings: `gui-config.yml`, and the few settings from
 /// `camillagui.yml` that the frontend needs.
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GuiConfig {
+    #[serde(flatten)]
+    pub file: GuiConfigFile,
+    /// coeff_dir, relative to config_dir and ending with a separator, from
+    /// `camillagui.yml` like the rest below.
+    pub coeff_dir: String,
+    #[schema(required)]
+    pub supported_capture_types: Option<Vec<String>>,
+    #[schema(required)]
+    pub supported_playback_types: Option<Vec<String>>,
+    /// Whether the backend can store which config file is the active one.
+    pub can_update_active_config: bool,
+    /// Whether an audiofiles_dir is set.
+    pub audiofiles_supported: bool,
+    pub allow_absolute_paths: bool,
+}
+
+/// `gui-config.yml`. What it leaves out gets the default, and keys it does
+/// not know are ignored.
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[serde(default)]
+pub struct GuiConfigFile {
     /// The title of the browser tab.
     pub page_title: String,
     pub hide_capture_samplerate: bool,
@@ -265,19 +289,43 @@ pub struct GuiConfig {
     pub spectrum_max_db: f64,
     /// The most spectrum updates per second.
     pub spectrum_max_rate: f32,
+    /// `custom_shortcuts:` with nothing after it is null, and means none.
+    #[serde(deserialize_with = "null_as_empty")]
     pub custom_shortcuts: Vec<ShortcutSection>,
-    /// coeff_dir, relative to config_dir and ending with a separator, from
-    /// `camillagui.yml` like the rest below.
-    pub coeff_dir: String,
-    #[schema(required)]
-    pub supported_capture_types: Option<Vec<String>>,
-    #[schema(required)]
-    pub supported_playback_types: Option<Vec<String>>,
-    /// Whether the backend can store which config file is the active one.
-    pub can_update_active_config: bool,
-    /// Whether an audiofiles_dir is set.
-    pub audiofiles_supported: bool,
-    pub allow_absolute_paths: bool,
+}
+
+impl Default for GuiConfigFile {
+    fn default() -> Self {
+        GuiConfigFile {
+            page_title: "CamillaDSP".to_string(),
+            hide_capture_samplerate: false,
+            hide_silence: false,
+            hide_capture_device: false,
+            hide_playback_device: false,
+            hide_rate_monitoring: false,
+            hide_multithreading: false,
+            apply_config_automatically: false,
+            save_config_automatically: false,
+            status_update_interval: 500,
+            volume_range: 50.0,
+            volume_max: 0,
+            spectrum_min_freq: 20.0,
+            spectrum_max_freq: 20000.0,
+            spectrum_n_bins: 100,
+            spectrum_min_db: -100.0,
+            spectrum_max_db: 0.0,
+            spectrum_max_rate: 30.0,
+            custom_shortcuts: Vec::new(),
+        }
+    }
+}
+
+fn null_as_empty<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
 }
 
 // The shortcuts are sent as written, so what the file leaves out is left out.
@@ -340,216 +388,121 @@ pub struct ConfigElement {
     pub reverse: Option<bool>,
 }
 
-/// The defaults for what `gui-config.yml` leaves out.
-fn gui_config_defaults() -> Map<String, Value> {
-    let defaults = json!({
-        "page_title": "CamillaDSP",
-        "hide_capture_samplerate": false,
-        "hide_silence": false,
-        "hide_capture_device": false,
-        "hide_playback_device": false,
-        "hide_rate_monitoring": false,
-        "hide_multithreading": false,
-        "apply_config_automatically": false,
-        "save_config_automatically": false,
-        "status_update_interval": 500,
-        "volume_range": 50,
-        "volume_max": 0,
-        "spectrum_min_freq": 20,
-        "spectrum_max_freq": 20000,
-        "spectrum_n_bins": 100,
-        "spectrum_min_db": -100,
-        "spectrum_max_db": 0,
-        "spectrum_max_rate": 30,
-        "custom_shortcuts": [],
-    });
-    match defaults {
-        Value::Object(map) => map,
-        _ => unreachable!(),
+impl GuiConfigFile {
+    /// Read `gui-config.yml`, or say what is wrong with it.
+    pub fn read(path: &Path) -> Result<Self, String> {
+        let error = |problem: String| format!("Error in {}: {problem}", path.display());
+        let text = std::fs::read_to_string(path).map_err(|err| error(err.to_string()))?;
+        let file: GuiConfigFile =
+            yaml_serde::from_str(&text).map_err(|err| error(err.to_string()))?;
+        file.check().map_err(error)?;
+        Ok(file)
+    }
+
+    /// What the types do not rule out.
+    fn check(&self) -> Result<(), String> {
+        if self.volume_range <= 0.0 {
+            return Err("volume_range must be larger than 0".to_string());
+        }
+        let unranged_slider = self
+            .custom_shortcuts
+            .iter()
+            .flat_map(|section| &section.shortcuts)
+            .find(|shortcut| {
+                shortcut.kind != Some(ShortcutType::Boolean)
+                    && (shortcut.range_from.is_none()
+                        || shortcut.range_to.is_none()
+                        || shortcut.step.is_none())
+            });
+        if let Some(shortcut) = unranged_slider {
+            return Err(format!(
+                "the shortcut '{}' is a slider, and needs 'range_from', 'range_to' and 'step'",
+                shortcut.name
+            ));
+        }
+        Ok(())
     }
 }
 
-/// The settings the frontend gets from `camillagui.yml`.
-fn backend_values(settings: &Settings) -> Map<String, Value> {
-    let coeff_dir = crate::paths::relpath(&settings.coeff_dir, &settings.config_dir).join("");
-    let values = json!({
-        "coeff_dir": crate::paths::to_string(&coeff_dir),
-        "supported_capture_types": settings.supported_capture_types,
-        "supported_playback_types": settings.supported_playback_types,
-        "can_update_active_config": settings.can_update_active_config,
-        "audiofiles_supported": settings.audiofiles_dir.is_some(),
-        "allow_absolute_paths": settings.allow_absolute_paths,
-    });
-    match values {
-        Value::Object(map) => map,
-        _ => unreachable!(),
-    }
-}
-
-/// The GUI settings, with defaults for what `gui-config.yml` leaves out. The
-/// defaults alone if the file cannot be read or has problems.
+/// The GUI settings. The defaults stand in for a `gui-config.yml` that
+/// stopped being readable after the backend started.
 pub fn gui_config(settings: &Settings) -> GuiConfig {
-    gui_config_from(
-        settings.gui_config_file.as_deref(),
-        backend_values(settings),
-    )
-}
-
-fn gui_config_from(path: Option<&Path>, backend: Map<String, Value>) -> GuiConfig {
-    if let Some(path) = path {
-        match read_gui_config(path, backend.clone()) {
-            Ok(config) => return config,
-            Err(err) => {
-                log::error!("{err}");
-                log::warn!("Unable to read gui config file, using defaults");
-            }
-        }
-    }
-    let mut config = gui_config_defaults();
-    config.extend(backend);
-    serde_json::from_value(Value::Object(config)).expect("the defaults are a valid GUI config")
-}
-
-fn read_gui_config(path: &Path, backend: Map<String, Value>) -> Result<GuiConfig, String> {
-    let text = std::fs::read_to_string(path)
-        .map_err(|err| format!("Config file could not be opened: {}, {err}", path.display()))?;
-    let value: Value = yaml_serde::from_str(&text).map_err(|err| {
-        format!(
-            "Invalid yaml syntax in config file: {}, {err}",
-            path.display()
-        )
-    })?;
-    let error = |problem: String| format!("Error in config file '{}': {problem}", path.display());
-    let Value::Object(mut config) = value else {
-        return Err(error("not a mapping".to_string()));
+    let file = match &settings.gui_config_file {
+        Some(path) => GuiConfigFile::read(path).unwrap_or_else(|err| {
+            log::error!("{err}. Using the default GUI settings.");
+            GuiConfigFile::default()
+        }),
+        None => GuiConfigFile::default(),
     };
-    for (key, value) in gui_config_defaults() {
-        let entry = config.entry(key).or_insert(Value::Null);
-        if entry.is_null() {
-            *entry = value;
-        }
+    let coeff_dir = crate::paths::relpath(&settings.coeff_dir, &settings.config_dir).join("");
+    GuiConfig {
+        file,
+        coeff_dir: crate::paths::to_string(&coeff_dir),
+        supported_capture_types: settings.supported_capture_types.clone(),
+        supported_playback_types: settings.supported_playback_types.clone(),
+        can_update_active_config: settings.can_update_active_config,
+        audiofiles_supported: settings.audiofiles_dir.is_some(),
+        allow_absolute_paths: settings.allow_absolute_paths,
     }
-    // These come from camillagui.yml, whatever the file says.
-    config.extend(backend);
-    let config: GuiConfig =
-        serde_path_to_error::deserialize(Value::Object(config)).map_err(|err| {
-            let path = err.path().to_string();
-            error(format!("Parameter '{path}': {}", err.into_inner()))
-        })?;
-    let problems = gui_config_problems(&config);
-    if !problems.is_empty() {
-        return Err(error(problems.join(", ")));
-    }
-    Ok(config)
-}
-
-/// The checks of the Python backend's GUI config schema that the types do
-/// not make.
-fn gui_config_problems(config: &GuiConfig) -> Vec<String> {
-    let mut problems = Vec::new();
-    let mut bad = |key: &str, what: &str| problems.push(format!("Parameter '{key}': {what}"));
-    if config.page_title.is_empty() {
-        bad("page_title", "must be a non-empty string");
-    }
-    if config.volume_range <= 0.0 {
-        bad("volume_range", "must be a number larger than 0");
-    }
-    let unranged_number = config
-        .custom_shortcuts
-        .iter()
-        .flat_map(|section| &section.shortcuts)
-        .any(|shortcut| {
-            shortcut.kind == Some(ShortcutType::Number)
-                && (shortcut.range_from.is_none()
-                    || shortcut.range_to.is_none()
-                    || shortcut.step.is_none())
-        });
-    if unranged_number {
-        bad(
-            "custom_shortcuts",
-            "a number shortcut needs 'range_from', 'range_to' and 'step'",
-        );
-    }
-    problems
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn backend() -> Map<String, Value> {
-        match json!({
-            "coeff_dir": "../coeffs/",
-            "supported_capture_types": null,
-            "supported_playback_types": ["Alsa"],
-            "can_update_active_config": true,
-            "audiofiles_supported": false,
-            "allow_absolute_paths": false,
-        }) {
-            Value::Object(map) => map,
-            _ => unreachable!(),
-        }
-    }
-
-    fn read(text: &str) -> (Result<GuiConfig, String>, GuiConfig) {
+    fn read(text: &str) -> Result<GuiConfigFile, String> {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gui.yml");
         std::fs::write(&path, text).unwrap();
-        (
-            read_gui_config(&path, backend()),
-            gui_config_from(Some(&path), backend()),
-        )
+        GuiConfigFile::read(&path)
     }
 
     #[test]
     fn gui_config_gets_defaults() {
-        let (_, config) = read("page_title: Mine\nvolume_range: 30\ncustom_shortcuts:\n");
+        let config = read("page_title: Mine\nvolume_range: 30\ncustom_shortcuts:\n").unwrap();
         assert_eq!(config.page_title, "Mine");
         assert_eq!(config.volume_range, 30.0);
         assert_eq!(config.status_update_interval, 500);
         assert!(config.custom_shortcuts.is_empty());
-        assert_eq!(config.coeff_dir, "../coeffs/");
     }
 
     #[test]
-    fn gui_config_cannot_override_the_backend_settings() {
-        let (_, config) = read("allow_absolute_paths: true\ncoeff_dir: /\n");
-        assert!(!config.allow_absolute_paths);
-        assert_eq!(config.coeff_dir, "../coeffs/");
+    fn gui_config_problems_name_the_setting() {
+        let err = read("page_title: Mine\nhide_silence: maybe\n").unwrap_err();
+        assert!(err.contains("hide_silence"), "{err}");
+        let err = read("volume_range: 0\n").unwrap_err();
+        assert!(err.contains("volume_range"), "{err}");
     }
 
     #[test]
-    fn invalid_gui_config_gives_only_defaults() {
-        let (result, config) = read("page_title: Mine\nhide_silence: maybe\n");
-        assert!(
-            result.unwrap_err().contains("Parameter 'hide_silence'"),
-            "names the setting"
-        );
-        assert_eq!(config.page_title, "CamillaDSP");
-        assert_eq!(
-            config.supported_playback_types,
-            Some(vec!["Alsa".to_string()])
-        );
-    }
-
-    #[test]
-    fn number_shortcut_needs_a_range() {
+    fn slider_shortcut_needs_a_range() {
         let shortcut = "custom_shortcuts:\n  - section: S\n    shortcuts:\n      - name: x\n        \
-                        config_elements: [{path: [a]}]\n        type: number\n";
-        let (result, _) = read(shortcut);
-        assert!(
-            result
-                .unwrap_err()
-                .ends_with("a number shortcut needs 'range_from', 'range_to' and 'step'")
-        );
-        let (result, _) = read(&format!(
-            "{shortcut}        range_from: 0\n        range_to: 1\n        step: 0.1\n"
-        ));
-        let config = result.unwrap();
-        assert_eq!(
-            config.custom_shortcuts[0].shortcuts[0].kind,
-            Some(ShortcutType::Number)
-        );
+                        config_elements: [{path: [a]}]\n";
+        let range = "        range_from: 0\n        range_to: 1\n        step: 0.1\n";
+        for kind in ["", "        type: number\n"] {
+            let err = read(&format!("{shortcut}{kind}")).unwrap_err();
+            assert!(
+                err.ends_with(
+                    "the shortcut 'x' is a slider, and needs 'range_from', 'range_to' and 'step'"
+                ),
+                "{err}"
+            );
+            let config = read(&format!("{shortcut}{kind}{range}")).unwrap();
+            assert_eq!(config.custom_shortcuts[0].shortcuts[0].range_to, Some(1.0));
+        }
+        read(&format!("{shortcut}        type: boolean\n")).unwrap();
+    }
+
+    #[test]
+    fn gui_config_with_problems_stops_startup() {
+        let dir = tempfile::tempdir().unwrap();
+        let settings = dir.path().join("camillagui.yml");
+        std::fs::write(&settings, "config_dir: configs\ncoeff_dir: coeffs\n").unwrap();
+        let loaded = Settings::load(&settings).unwrap();
+        assert_eq!(loaded.gui_config_file, None, "no gui-config.yml is fine");
+        std::fs::write(dir.path().join("gui-config.yml"), "volume_range: -1\n").unwrap();
+        let err = Settings::load(&settings).unwrap_err();
+        assert!(err.contains("volume_range"), "{err}");
     }
 
     #[test]
@@ -594,6 +547,6 @@ mod tests {
     #[test]
     fn shipped_gui_config_is_valid() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../config/gui-config.yml");
-        read_gui_config(&path, backend()).unwrap();
+        GuiConfigFile::read(&path).unwrap();
     }
 }

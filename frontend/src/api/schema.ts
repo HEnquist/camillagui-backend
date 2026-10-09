@@ -1529,9 +1529,8 @@ export interface components {
      * @description The GUI settings: `gui-config.yml`, and the few settings from
      *     `camillagui.yml` that the frontend needs.
      */
-    GuiConfig: {
+    GuiConfig: components["schemas"]["GuiConfigFile"] & {
       allow_absolute_paths: boolean
-      apply_config_automatically: boolean
       /** @description Whether an audiofiles_dir is set. */
       audiofiles_supported: boolean
       /** @description Whether the backend can store which config file is the active one. */
@@ -1541,51 +1540,86 @@ export interface components {
        *     `camillagui.yml` like the rest below.
        */
       coeff_dir: string
+      supported_capture_types: string[] | null
+      supported_playback_types: string[] | null
+    }
+    /**
+     * @description `gui-config.yml`. What it leaves out gets the default, and keys it does
+     *     not know are ignored.
+     */
+    GuiConfigFile: {
+      /** @default false */
+      apply_config_automatically: boolean
+      /**
+       * @description `custom_shortcuts:` with nothing after it is null, and means none.
+       * @default []
+       */
       custom_shortcuts: components["schemas"]["ShortcutSection"][]
+      /** @default false */
       hide_capture_device: boolean
+      /** @default false */
       hide_capture_samplerate: boolean
+      /** @default false */
       hide_multithreading: boolean
+      /** @default false */
       hide_playback_device: boolean
+      /** @default false */
       hide_rate_monitoring: boolean
+      /** @default false */
       hide_silence: boolean
-      /** @description The title of the browser tab. */
+      /**
+       * @description The title of the browser tab.
+       * @default CamillaDSP
+       */
       page_title: string
+      /** @default false */
       save_config_automatically: boolean
-      /** Format: double */
+      /**
+       * Format: double
+       * @default 0
+       */
       spectrum_max_db: number
       /**
        * Format: double
        * @description In Hz.
+       * @default 20000
        */
       spectrum_max_freq: number
       /**
        * Format: float
        * @description The most spectrum updates per second.
+       * @default 30
        */
       spectrum_max_rate: number
-      /** Format: double */
+      /**
+       * Format: double
+       * @default -100
+       */
       spectrum_min_db: number
       /**
        * Format: double
        * @description In Hz.
+       * @default 20
        */
       spectrum_min_freq: number
+      /** @default 100 */
       spectrum_n_bins: number
       /**
        * Format: int32
        * @description In milliseconds.
+       * @default 500
        */
       status_update_interval: number
-      supported_capture_types: string[] | null
-      supported_playback_types: string[] | null
       /**
        * Format: int32
        * @description The top of the volume sliders, in dB.
+       * @default 0
        */
       volume_max: number
       /**
        * Format: double
        * @description The range of the volume sliders, in dB.
+       * @default 50
        */
       volume_range: number
     }

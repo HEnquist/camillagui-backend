@@ -4671,145 +4671,159 @@
         "additionalProperties": false
       },
       "GuiConfig": {
-        "type": "object",
-        "description": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs.",
-        "required": [
-          "page_title",
-          "hide_capture_samplerate",
-          "hide_silence",
-          "hide_capture_device",
-          "hide_playback_device",
-          "hide_rate_monitoring",
-          "hide_multithreading",
-          "apply_config_automatically",
-          "save_config_automatically",
-          "status_update_interval",
-          "volume_range",
-          "volume_max",
-          "spectrum_min_freq",
-          "spectrum_max_freq",
-          "spectrum_n_bins",
-          "spectrum_min_db",
-          "spectrum_max_db",
-          "spectrum_max_rate",
-          "custom_shortcuts",
-          "coeff_dir",
-          "supported_capture_types",
-          "supported_playback_types",
-          "can_update_active_config",
-          "audiofiles_supported",
-          "allow_absolute_paths"
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/GuiConfigFile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "coeff_dir",
+              "supported_capture_types",
+              "supported_playback_types",
+              "can_update_active_config",
+              "audiofiles_supported",
+              "allow_absolute_paths"
+            ],
+            "properties": {
+              "allow_absolute_paths": {
+                "type": "boolean"
+              },
+              "audiofiles_supported": {
+                "type": "boolean",
+                "description": "Whether an audiofiles_dir is set."
+              },
+              "can_update_active_config": {
+                "type": "boolean",
+                "description": "Whether the backend can store which config file is the active one."
+              },
+              "coeff_dir": {
+                "type": "string",
+                "description": "coeff_dir, relative to config_dir and ending with a separator, from\n`camillagui.yml` like the rest below."
+              },
+              "supported_capture_types": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "supported_playback_types": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         ],
+        "description": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs."
+      },
+      "GuiConfigFile": {
+        "type": "object",
+        "description": "`gui-config.yml`. What it leaves out gets the default, and keys it does\nnot know are ignored.",
         "properties": {
-          "allow_absolute_paths": {
-            "type": "boolean"
-          },
           "apply_config_automatically": {
-            "type": "boolean"
-          },
-          "audiofiles_supported": {
             "type": "boolean",
-            "description": "Whether an audiofiles_dir is set."
-          },
-          "can_update_active_config": {
-            "type": "boolean",
-            "description": "Whether the backend can store which config file is the active one."
-          },
-          "coeff_dir": {
-            "type": "string",
-            "description": "coeff_dir, relative to config_dir and ending with a separator, from\n`camillagui.yml` like the rest below."
+            "default": false
           },
           "custom_shortcuts": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ShortcutSection"
-            }
+            },
+            "description": "`custom_shortcuts:` with nothing after it is null, and means none.",
+            "default": []
           },
           "hide_capture_device": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "hide_capture_samplerate": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "hide_multithreading": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "hide_playback_device": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "hide_rate_monitoring": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "hide_silence": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "page_title": {
             "type": "string",
-            "description": "The title of the browser tab."
+            "description": "The title of the browser tab.",
+            "default": "CamillaDSP"
           },
           "save_config_automatically": {
-            "type": "boolean"
+            "type": "boolean",
+            "default": false
           },
           "spectrum_max_db": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "default": 0.0
           },
           "spectrum_max_freq": {
             "type": "number",
             "format": "double",
-            "description": "In Hz."
+            "description": "In Hz.",
+            "default": 20000.0
           },
           "spectrum_max_rate": {
             "type": "number",
             "format": "float",
-            "description": "The most spectrum updates per second."
+            "description": "The most spectrum updates per second.",
+            "default": 30.0
           },
           "spectrum_min_db": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "default": -100.0
           },
           "spectrum_min_freq": {
             "type": "number",
             "format": "double",
-            "description": "In Hz."
+            "description": "In Hz.",
+            "default": 20.0
           },
           "spectrum_n_bins": {
             "type": "integer",
+            "default": 100,
             "minimum": 0
           },
           "status_update_interval": {
             "type": "integer",
             "format": "int32",
             "description": "In milliseconds.",
+            "default": 500,
             "minimum": 0
-          },
-          "supported_capture_types": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "supported_playback_types": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
           },
           "volume_max": {
             "type": "integer",
             "format": "int32",
-            "description": "The top of the volume sliders, in dB."
+            "description": "The top of the volume sliders, in dB.",
+            "default": 0
           },
           "volume_range": {
             "type": "number",
             "format": "double",
-            "description": "The range of the volume sliders, in dB."
+            "description": "The range of the volume sliders, in dB.",
+            "default": 50.0
           }
         }
       },

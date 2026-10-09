@@ -245,9 +245,10 @@ within the range from -10 to 0 db in steps of 0.1 dB.
 For `MyOtherFilter`, the scale is reversed, such that moving the slider from -10 to -9 dB
 changes the gain of `MyOtherFilter` fom 0 to -1 dB.
 The `type` property is set to `number`.
-This creates a slider control, used to control numerical values.
+This creates a slider control, used to control numerical values,
+and is also what a shortcut without a `type` gets.
 It can also be set to `boolean` which creates a checkbox.
-For `number`, the `range_from`, `range_to` and `step` properties are required.
+For a slider, the `range_from`, `range_to` and `step` properties are required.
 They are not used by `boolean` controls and may be left out.
 
 ```yaml
@@ -320,12 +321,15 @@ Their update rate and smoothing are controlled by the backend settings `level_ma
 and `level_smoothing_ms` in `config/camillagui.yml`.
 
 ### Gui config syntax check
-The gui config is checked when the backend starts, and any problems are logged.
-For example, a shortcut of type `number` needs `range_from`, `range_to` and `step`.
-If one is missing, the whole file is ignored and this is logged:
+The gui config is checked when the backend starts, and the backend does not start
+if it has a problem. For example, a slider shortcut needs `range_from`, `range_to` and `step`.
+If one is missing, the backend stops with:
 ```
-ERROR camillagui::settings] Error in config file '/path/to/gui-config.yml': Parameter 'custom_shortcuts': a number shortcut needs 'range_from', 'range_to' and 'step'
+Error in /path/to/gui-config.yml: the shortcut 'My filter gain' is a slider, and needs 'range_from', 'range_to' and 'step'
 ```
+The file is read again each time the GUI is opened, so changes take effect on a reload.
+If a change breaks it while the backend is running, the problem is logged
+and the GUI gets the default settings until it is fixed.
 
 ## Running
 Start the server by running the executable.
