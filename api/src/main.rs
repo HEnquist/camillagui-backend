@@ -129,6 +129,7 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
         .routes(routes!(api::get_wav_info))
         .routes(routes!(api::get_defaults_for_coeffs))
         .routes(routes!(api::get_files))
+        .routes(routes!(api::get_file_fingerprints))
         .routes(routes!(api::upload_files))
         .routes(routes!(api::delete_files))
         .routes(routes!(api::rename_file))
@@ -232,6 +233,7 @@ async fn main() {
         settings,
         camilla,
         status,
+        coeff_details: Default::default(),
     });
     let router = build_router(app);
 

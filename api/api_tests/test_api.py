@@ -235,6 +235,32 @@ def test_level_stream(server):
     pytest.fail("No levels event")
 
 
+def test_folder_fingerprints(split_server):
+    def fingerprints():
+        return split_server.get("/api/files/fingerprints").json()
+
+    before = fingerprints()
+    assert fingerprints() == before
+    coeff = split_server.coeff_dir / "changed.txt"
+    coeff.write_text("1.0\n")
+    try:
+        after = fingerprints()
+        assert after["coeff"] != before["coeff"]
+        assert (after["config"], after["audiofile"]) == (before["config"], before["audiofile"])
+    finally:
+        coeff.unlink()
+    assert fingerprints() == before
+    (split_server.audiofiles_dir / ".hidden").write_text("x")
+    try:
+        assert fingerprints() == before
+    finally:
+        (split_server.audiofiles_dir / ".hidden").unlink()
+
+
+def test_folder_fingerprints_without_an_audio_folder(server):
+    assert set(server.get("/api/files/fingerprints").json()) == {"config", "coeff"}
+
+
 SPECTRUM_PARAMS = {
     "side": "playback",
     "channel": None,
@@ -1130,6 +1156,41 @@ def test_wav_info(make_backend, tmp_path):
     assert listing["x.wav"]["samplerate"] == 44100
     assert listing["y.wav"]["valid"] is False
     assert "samplerate" not in listing["y.wav"]
+
+
+def test_coeff_file_details(split_server):
+    coeffs = split_server.coeff_dir
+    written = {
+        "ir.wav": wav_bytes(),
+        "ir.txt": b"1.0\n0.5\n0.25\n",
+        "bad.txt": b"1.0\nnope\n",
+        "ir.raw": struct.pack("<4f", 1.0, 0.5, 0.25, 0.0),
+    }
+    for name, content in written.items():
+        (coeffs / name).write_bytes(content)
+    try:
+        listing = {file["name"]: file for file in split_server.get("/api/files/coeff").json()}
+        wav = listing["ir.wav"]
+        assert (wav["sampleformat"], wav["samplerate"], wav["channels"]) == ("F32_LE", 44100, 2)
+        assert wav["length"] == 1
+        assert wav["valid"] is True
+        text = listing["ir.txt"]
+        assert (text["sampleformat"], text["length"], text["valid"]) == ("TEXT", 3, True)
+        assert "channels" not in text
+        bad = listing["bad.txt"]
+        assert bad["valid"] is False
+        assert "length" not in bad
+        assert "line 2" in bad["errors"][0]["message"]
+        # A raw file's values depend on the format the filter gives.
+        assert set(listing["ir.raw"]) == {"name", "last_modified", "size"}
+
+        # A file changed since the last listing is read again.
+        (coeffs / "ir.txt").write_bytes(b"1.0\n0.5\n0.25\n0.125\n")
+        listing = {file["name"]: file for file in split_server.get("/api/files/coeff").json()}
+        assert listing["ir.txt"]["length"] == 4
+    finally:
+        for name in written:
+            (coeffs / name).unlink()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Needs symlinks")

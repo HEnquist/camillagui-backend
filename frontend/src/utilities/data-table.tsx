@@ -49,6 +49,8 @@ export function DataTable<RowData extends TanStackRowData>(props: {
   highlightOnHover?: boolean
   pointerOnHover?: boolean
   fixedLayout?: boolean
+  /** Shown across the table while it has no rows, such as while they load. */
+  placeholder?: React.ReactNode
 }) {
   const {
     columns,
@@ -61,6 +63,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
     highlightOnHover,
     pointerOnHover,
     fixedLayout,
+    placeholder,
   } = props
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
@@ -176,6 +179,13 @@ export function DataTable<RowData extends TanStackRowData>(props: {
           ))}
         </thead>
         <tbody>
+          {placeholder && table.getRowModel().rows.length === 0 ? (
+            <tr>
+              <td className="data-table-placeholder" colSpan={table.getVisibleLeafColumns().length}>
+                {placeholder}
+              </td>
+            </tr>
+          ) : null}
           {table.getRowModel().rows.map((row: Row<RowData>) => {
             const clickable = !!onRowClicked
             const rowClassNames = [

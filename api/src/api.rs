@@ -4,7 +4,7 @@ use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::coeffs::CoeffDefaults;
 use crate::events::{self, SubscribeError};
 use crate::extract::{Form, Json, Multipart, Path as UrlPath, Query};
-use crate::files::{self, ConfigContext, Details, FileInfo};
+use crate::files::{self, CoeffDetailsCache, ConfigContext, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
 use crate::reply::{Binary, BodyWriter, EventStream, NO_STORE, NoContent, Reply, Text};
 use crate::settings::{self, GuiConfig, Settings};
@@ -38,6 +38,7 @@ pub struct AppState {
     pub settings: Settings,
     pub camilla: Arc<CamillaClient>,
     pub status: Arc<StatusCache>,
+    pub coeff_details: CoeffDetailsCache,
 }
 
 impl AppState {
@@ -1385,7 +1386,11 @@ pub async fn get_files(
                 };
                 files::list_files(&folder, details, Some(&context))
             }
-            FileKind::Coeff => files::list_files(&folder, Details::default(), None),
+            FileKind::Coeff => {
+                let mut files = files::list_files(&folder, Details::default(), None);
+                app.coeff_details.fill(&folder, &mut files);
+                files
+            }
             FileKind::Audiofile => {
                 let details = Details {
                     wav: true,
@@ -1395,6 +1400,38 @@ pub async fn get_files(
             }
         };
         Ok(Reply(files))
+    })
+    .await
+}
+
+/// A fingerprint of each folder, as an opaque string that changes whenever a
+/// file in the folder is added, removed, renamed or rewritten.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FolderFingerprints {
+    pub config: String,
+    pub coeff: String,
+    /// Left out when no audiofiles_dir is set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub audiofile: Option<String>,
+}
+
+/// The fingerprints of the folders, for noticing changes made behind the GUI's
+/// back. Polling these is cheap, since only the file names, sizes and times
+/// are read, so a folder is listed again only when it changed.
+///
+/// A poll rather than an event stream, since a browser has only six
+/// connections to the backend for all its tabs, and an open stream holds one.
+#[utoipa::path(get, path = "/files/fingerprints")]
+pub async fn get_file_fingerprints(State(app): Shared) -> ApiResult<Reply<FolderFingerprints>> {
+    blocking(move || {
+        let of = |folder: &Path| format!("{:016x}", files::fingerprint(folder));
+        let settings = &app.settings;
+        Ok(Reply(FolderFingerprints {
+            config: of(&settings.config_dir),
+            coeff: of(&settings.coeff_dir),
+            audiofile: settings.audiofiles_dir.as_deref().map(of),
+        }))
     })
     .await
 }

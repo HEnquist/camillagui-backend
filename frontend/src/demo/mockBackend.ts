@@ -496,11 +496,25 @@ function makeConfigFileInfo(name: string, config: Config): FileInfo {
 
 function makeCoeffFileInfo(name: string): FileInfo {
   const coeff = state.storedCoeffs[name]
-  return {
-    name,
-    last_modified: coeff.last_modified,
-    size: coeff.size,
+  const info: FileInfo = { name, last_modified: coeff.last_modified, size: coeff.size }
+  const extension = name.toLowerCase().split(".").pop()
+  if (extension === "wav") {
+    // The demo keeps no real header, so every wav is taken as stereo F32_LE.
+    const length = Math.max(0, Math.floor((coeff.size - 44) / 8))
+    return { ...info, sampleformat: "F32_LE", samplerate: 48000, channels: 2, length, valid: true }
   }
+  if (extension === "txt" || extension === "csv" || extension === "tsv") {
+    // Like CamillaDSP, one number per line, and every line must be one.
+    const lines = coeff.content.split("\n")
+    if (lines.at(-1) === "") lines.pop()
+    const bad = lines.findIndex((line) => line.trim() === "" || !Number.isFinite(Number(line.trim())))
+    if (bad >= 0) {
+      const message = `Can't parse value on line ${bad + 1} of file '${name}'.`
+      return { ...info, sampleformat: "TEXT", valid: false, errors: [{ path: [], message }] }
+    }
+    return { ...info, sampleformat: "TEXT", length: lines.length, valid: true }
+  }
+  return info
 }
 
 function makeAudioFileInfo(name: string): FileInfo {
@@ -821,6 +835,12 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       ? { type: "Wav" }
       : { type: "Raw", format: "F32_LE", skip_bytes_lines: 0, read_bytes_lines: 0 }
     return jsonResponse(defaults)
+  }
+
+  if (pathname === "/api/files/fingerprints" && method === "GET") {
+    // The demo's files change only through the GUI, which lists them again by itself.
+    const fingerprints: Schemas["FolderFingerprints"] = { config: "demo", coeff: "demo", audiofile: "demo" }
+    return jsonResponse(fingerprints)
   }
 
   const filesRequest = /^\/api\/files\/(config|coeff|audiofile)(?:\/(upload|delete|rename|zip))?$/.exec(pathname)

@@ -5,7 +5,9 @@
 //! does not say what it sends does not compile. The errors are still listed in
 //! `#[utoipa::path]`, since which ones a handler can give is not in its type.
 
-use crate::api::{ActiveConfigFile, ApiError, AvailableDevice, ConfigFragment, StartConfig};
+use crate::api::{
+    ActiveConfigFile, ApiError, AvailableDevice, ConfigFragment, FolderFingerprints, StartConfig,
+};
 use crate::coeffs;
 use crate::files::FileInfo;
 use crate::settings::GuiConfig;
@@ -71,6 +73,7 @@ named_bodies!(
     DeviceTypeLists,
     Fader,
     FileInfo,
+    FolderFingerprints,
     GuiConfig,
     SpectrumData,
     StartConfig,

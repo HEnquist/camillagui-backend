@@ -59,10 +59,11 @@ pub fn read_info(path: &Path) -> Option<WavInfo> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    fn wav_bytes(format_code: u16, bits: u16, channels: u16, frames: u32) -> Vec<u8> {
+    /// A 44.1 kHz wav file of silence.
+    pub(crate) fn wav_bytes(format_code: u16, bits: u16, channels: u16, frames: u32) -> Vec<u8> {
         let rate = 44100u32;
         let block_align = channels * bits / 8;
         let data_len = frames * block_align as u32;

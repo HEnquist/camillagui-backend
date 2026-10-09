@@ -140,6 +140,11 @@ Key endpoints used by the frontend:
 - `POST /api/convcoeffs`: coefficients of a Conv filter that reads a file
 - `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip`: the
   config, coeff and audiofile folders, helpers in `utilities/files.tsx`
+- `GET /api/files/fingerprints`: a hash per folder that changes when a file in it is added,
+  removed, renamed or rewritten, by anyone. `subscribeFileChanges` polls it every 2 s for all
+  the file tables, which list a folder again only when its hash changed. A poll rather than an
+  event stream, since a browser has six connections to the backend for all its tabs, and each
+  open stream holds one
 - `GET /api/devices/{direction}/{backend}` and `.../capabilities?device=...`, `GET /api/backends`
   (the devices CamillaDSP can use)
 

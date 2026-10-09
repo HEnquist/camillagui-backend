@@ -309,6 +309,24 @@
         }
       }
     },
+    "/api/files/fingerprints": {
+      "get": {
+        "summary": "The fingerprints of the folders, for noticing changes made behind the GUI's\nback. Polling these is cheap, since only the file names, sizes and times\nare read, so a folder is listed again only when it changed.",
+        "description": "A poll rather than an event stream, since a browser has only six\nconnections to the backend for all its tabs, and an open stream holds one.",
+        "operationId": "get_file_fingerprints",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderFingerprints"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/files/{kind}": {
       "get": {
         "summary": "The files in a folder, sorted by name.",
@@ -4151,7 +4169,7 @@
       },
       "FileInfo": {
         "type": "object",
-        "description": "A file in a listing. What is known about it beyond its name, size and time\ndepends on the folder: configs have their title, version and validity, and\nwav files their format. What is not known is left out.",
+        "description": "A file in a listing. What is known about it beyond its name, size and time\ndepends on the folder: configs have their title, version and validity, wav\nfiles their format, and coefficient files their format and length, for wav\nand text files. What is not known is left out.",
         "required": [
           "name",
           "last_modified",
@@ -4177,12 +4195,18 @@
             "items": {
               "$ref": "#/components/schemas/ValidationIssue"
             },
-            "description": "For a config, its errors and warnings."
+            "description": "For a config, its errors and warnings. For a text coefficient file,\nwhy CamillaDSP cannot read it."
           },
           "last_modified": {
             "type": "integer",
             "format": "int64",
             "description": "The time of the last change, in seconds since the epoch.",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "format": "int64",
+            "description": "For a coefficient file, the number of values per channel.",
             "minimum": 0
           },
           "loadable": {
@@ -4198,7 +4222,7 @@
           },
           "sampleformat": {
             "type": "string",
-            "description": "For a wav file, the CamillaDSP name of its sample format."
+            "description": "For a wav file, the CamillaDSP name of its sample format. For a text\ncoefficient file, `TEXT`."
           },
           "samplerate": {
             "type": "integer",
@@ -4217,7 +4241,7 @@
           },
           "valid": {
             "type": "boolean",
-            "description": "For a config, whether it has no errors. For a wav file, whether\nCamillaDSP can read it."
+            "description": "For a config, whether it has no errors. For a wav file, and a wav or\ntext coefficient file, whether CamillaDSP can read it."
           },
           "version": {
             "type": "integer",
@@ -4563,6 +4587,26 @@
       "FiniteF64": {
         "type": "number",
         "format": "double"
+      },
+      "FolderFingerprints": {
+        "type": "object",
+        "description": "A fingerprint of each folder, as an opaque string that changes whenever a\nfile in the folder is added, removed, renamed or rewritten.",
+        "required": [
+          "config",
+          "coeff"
+        ],
+        "properties": {
+          "audiofile": {
+            "type": "string",
+            "description": "Left out when no audiofiles_dir is set."
+          },
+          "coeff": {
+            "type": "string"
+          },
+          "config": {
+            "type": "string"
+          }
+        }
       },
       "GainParameters": {
         "type": "object",

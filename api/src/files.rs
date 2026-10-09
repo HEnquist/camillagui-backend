@@ -1,16 +1,21 @@
 //! The config, coefficient and audio file folders: listing, storing, renaming,
 //! deleting and zipping their files.
 
+use crate::coeffs::{self, ConvFileType};
 use crate::paths::file_in_folder;
 use crate::validate::{self, DeviceTypes, ValidationIssue};
 use crate::{legacy, paths, wav, yaml};
+use camilladsp_schema::config::FileSampleFormat;
+use camilladsp_schema::filters::read_coeff_file;
 use serde::Serialize;
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
+use std::sync::{Mutex, PoisonError};
+use std::time::{SystemTime, UNIX_EPOCH};
 use utoipa::ToSchema;
 
 /// Refuse to write into a folder that does not exist, saying so.
@@ -44,8 +49,9 @@ pub struct ConfigContext<'a> {
 }
 
 /// A file in a listing. What is known about it beyond its name, size and time
-/// depends on the folder: configs have their title, version and validity, and
-/// wav files their format. What is not known is left out.
+/// depends on the folder: configs have their title, version and validity, wav
+/// files their format, and coefficient files their format and length, for wav
+/// and text files. What is not known is left out.
 #[derive(Debug, Default, Serialize, ToSchema)]
 pub struct FileInfo {
     pub name: String,
@@ -70,8 +76,8 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub outdated: Option<bool>,
-    /// For a config, whether it has no errors. For a wav file, whether
-    /// CamillaDSP can read it.
+    /// For a config, whether it has no errors. For a wav file, and a wav or
+    /// text coefficient file, whether CamillaDSP can read it.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub valid: Option<bool>,
@@ -80,7 +86,8 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub loadable: Option<bool>,
-    /// For a config, its errors and warnings.
+    /// For a config, its errors and warnings. For a text coefficient file,
+    /// why CamillaDSP cannot read it.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub errors: Option<Vec<ValidationIssue>>,
@@ -92,7 +99,8 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub channels: Option<usize>,
-    /// For a wav file, the CamillaDSP name of its sample format.
+    /// For a wav file, the CamillaDSP name of its sample format. For a text
+    /// coefficient file, `TEXT`.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub sampleformat: Option<String>,
@@ -100,27 +108,52 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub duration: Option<f64>,
+    /// For a coefficient file, the number of values per channel.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub length: Option<u64>,
 }
 
-/// The visible files of a folder, sorted by name. A folder that does not
-/// exist has no files; the backend warned about it at startup.
-pub fn list_files(
-    folder: &Path,
-    details: Details,
-    context: Option<&ConfigContext>,
-) -> Vec<FileInfo> {
-    let Ok(entries) = std::fs::read_dir(folder) else {
-        return Vec::new();
-    };
-    let mut files: Vec<FileInfo> = entries
+/// The names and paths of the visible files of a folder, in no particular
+/// order. A folder that does not exist has no files; the backend warned about
+/// it at startup.
+fn visible_files(folder: &Path) -> impl Iterator<Item = (String, PathBuf)> + use<> {
+    std::fs::read_dir(folder)
+        .into_iter()
+        .flatten()
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let name = entry.file_name().to_string_lossy().into_owned();
             let path = entry.path();
             // `is_file` follows symlinks, like `os.path.isfile`.
-            if name.starts_with('.') || !path.is_file() {
-                return None;
-            }
+            (!name.starts_with('.') && path.is_file()).then_some((name, path))
+        })
+}
+
+/// A hash of the names, sizes and change times of the visible files of a
+/// folder, which changes when a file is added, removed, renamed or rewritten.
+pub fn fingerprint(folder: &Path) -> u64 {
+    let mut files: Vec<(String, u64, Option<SystemTime>)> = visible_files(folder)
+        .map(|(name, path)| {
+            let meta = std::fs::metadata(&path).ok();
+            let size = meta.as_ref().map_or(0, |meta| meta.len());
+            (name, size, meta.and_then(|meta| meta.modified().ok()))
+        })
+        .collect();
+    files.sort();
+    let mut hasher = DefaultHasher::new();
+    files.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// The visible files of a folder, sorted by name.
+pub fn list_files(
+    folder: &Path,
+    details: Details,
+    context: Option<&ConfigContext>,
+) -> Vec<FileInfo> {
+    let mut files: Vec<FileInfo> = visible_files(folder)
+        .map(|(name, path)| {
             let mut info = FileInfo::default();
             if let Ok(meta) = std::fs::metadata(&path) {
                 info.last_modified = meta
@@ -139,7 +172,7 @@ pub fn list_files(
                 wav_details(&path, &mut info);
             }
             info.name = name;
-            Some(info)
+            info
         })
         .collect();
     files.sort_by_key(|info| info.name.to_lowercase());
@@ -239,6 +272,127 @@ fn wav_details(path: &Path, info: &mut FileInfo) {
     info.sampleformat = Some(wav.sample_format.to_string());
     if wav.byte_rate > 0 {
         info.duration = Some(wav.data_length as f64 / wav.byte_rate as f64);
+    }
+}
+
+/// What is known about a coefficient file beyond its name, size and time.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct CoeffDetails {
+    sampleformat: Option<&'static str>,
+    samplerate: Option<usize>,
+    channels: Option<usize>,
+    length: Option<u64>,
+    /// Whether CamillaDSP can read it, for a wav or text file.
+    valid: Option<bool>,
+    /// Why CamillaDSP cannot read a text file.
+    error: Option<String>,
+}
+
+impl CoeffDetails {
+    /// Read the details of a wav or text file, the kinds the extension says
+    /// they are. A raw file's values depend on the format the filter gives, so
+    /// there is nothing to tell about it.
+    fn read(path: &Path) -> Self {
+        let defaults = coeffs::defaults_for_filter(&path.to_string_lossy());
+        if defaults.subtype == Some(ConvFileType::Wav) {
+            let Some(wav) = wav::read_info(path) else {
+                return CoeffDetails {
+                    valid: Some(false),
+                    ..Default::default()
+                };
+            };
+            return CoeffDetails {
+                sampleformat: Some(wav.sample_format),
+                samplerate: Some(wav.sample_rate),
+                channels: Some(wav.channels),
+                length: (wav.bytes_per_frame > 0)
+                    .then(|| wav.data_length / u64::from(wav.bytes_per_frame)),
+                valid: Some(true),
+                error: None,
+            };
+        }
+        if defaults.format != Some(FileSampleFormat::TEXT) {
+            return CoeffDetails::default();
+        }
+        // The values CamillaDSP would read, with its rules for what is one.
+        let full_path = path.to_string_lossy();
+        let values = read_coeff_file(&full_path, &FileSampleFormat::TEXT, 0, 0);
+        match values {
+            Ok(values) => CoeffDetails {
+                sampleformat: Some("TEXT"),
+                length: Some(values.len() as u64),
+                valid: Some(true),
+                ..Default::default()
+            },
+            Err(err) => {
+                // The row already says which file, the folder is noise.
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                CoeffDetails {
+                    sampleformat: Some("TEXT"),
+                    valid: Some(false),
+                    error: Some(err.to_string().replace(&*full_path, &name)),
+                    ..Default::default()
+                }
+            }
+        }
+    }
+
+    fn apply(&self, info: &mut FileInfo) {
+        info.sampleformat = self.sampleformat.map(String::from);
+        info.samplerate = self.samplerate;
+        info.channels = self.channels;
+        info.length = self.length;
+        info.valid = self.valid;
+        info.errors = self
+            .error
+            .as_ref()
+            .map(|message| vec![ValidationIssue::error(message)]);
+    }
+}
+
+struct CachedDetails {
+    size: u64,
+    modified: Option<SystemTime>,
+    details: CoeffDetails,
+}
+
+/// The details of the coefficient files, by name, kept for as long as a file
+/// keeps its size and time. A text file is only known after parsing all of
+/// it, which for a large filter on a Pi takes a noticeable part of a second,
+/// so only new and changed files are read.
+#[derive(Default)]
+pub struct CoeffDetailsCache {
+    entries: Mutex<HashMap<String, CachedDetails>>,
+}
+
+impl CoeffDetailsCache {
+    /// Fill in the details of the files in a listing of `folder`, reading
+    /// those not known yet. Files no longer in the listing are forgotten.
+    pub fn fill(&self, folder: &Path, files: &mut [FileInfo]) {
+        // Held while reading, so a second listing at the same time waits for
+        // the files this one reads rather than reading them too.
+        let mut entries = self.entries.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut kept = HashMap::with_capacity(files.len());
+        for info in files.iter_mut() {
+            let path = folder.join(&info.name);
+            let meta = std::fs::metadata(&path).ok();
+            let size = meta.as_ref().map_or(0, |meta| meta.len());
+            let modified = meta.and_then(|meta| meta.modified().ok());
+            let details = match entries.remove(&info.name) {
+                Some(cached) if cached.size == size && cached.modified == modified => {
+                    cached.details
+                }
+                _ => CoeffDetails::read(&path),
+            };
+            details.apply(info);
+            let cached = CachedDetails {
+                size,
+                modified,
+                details,
+            };
+            kept.insert(info.name.clone(), cached);
+        }
+        *entries = kept;
     }
 }
 
@@ -430,6 +584,128 @@ mod tests {
         assert_eq!(names, ["A.txt", "b.txt"]);
         assert_eq!(files[0].size, 2);
         assert!(list_files(&dir.path().join("missing"), Details::default(), None).is_empty());
+    }
+
+    #[test]
+    fn fingerprint_follows_the_visible_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path();
+        let empty = fingerprint(folder);
+        assert_eq!(fingerprint(&folder.join("missing")), empty);
+
+        std::fs::write(folder.join("a.txt"), "x").unwrap();
+        let added = fingerprint(folder);
+        assert_ne!(added, empty);
+        assert_eq!(fingerprint(folder), added);
+
+        std::fs::write(folder.join(".hidden"), "x").unwrap();
+        std::fs::create_dir(folder.join("sub")).unwrap();
+        assert_eq!(fingerprint(folder), added);
+
+        // The same size, only newer.
+        let file = File::options()
+            .write(true)
+            .open(folder.join("a.txt"))
+            .unwrap();
+        let later =
+            file.metadata().unwrap().modified().unwrap() + std::time::Duration::from_secs(5);
+        file.set_modified(later).unwrap();
+        let rewritten = fingerprint(folder);
+        assert_ne!(rewritten, added);
+
+        std::fs::write(folder.join("a.txt"), "xy").unwrap();
+        let grown = fingerprint(folder);
+        assert_ne!(grown, rewritten);
+
+        std::fs::rename(folder.join("a.txt"), folder.join("b.txt")).unwrap();
+        let renamed = fingerprint(folder);
+        assert_ne!(renamed, grown);
+
+        std::fs::remove_file(folder.join("b.txt")).unwrap();
+        assert_eq!(fingerprint(folder), empty);
+    }
+
+    fn coeff_listing(cache: &CoeffDetailsCache, folder: &Path) -> HashMap<String, FileInfo> {
+        let mut files = list_files(folder, Details::default(), None);
+        cache.fill(folder, &mut files);
+        files
+            .into_iter()
+            .map(|info| (info.name.clone(), info))
+            .collect()
+    }
+
+    #[test]
+    fn coeff_details() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path();
+        std::fs::write(
+            folder.join("ir.wav"),
+            crate::wav::tests::wav_bytes(3, 32, 2, 10),
+        )
+        .unwrap();
+        std::fs::write(folder.join("broken.wav"), "not a wav file").unwrap();
+        std::fs::write(folder.join("ir.txt"), "1.0\n-0.5\n 0.25 \n").unwrap();
+        std::fs::write(folder.join("bad.txt"), "1.0\nnope\n").unwrap();
+        std::fs::write(folder.join("ir.raw"), [0u8; 16]).unwrap();
+        let files = coeff_listing(&CoeffDetailsCache::default(), folder);
+
+        let wav = &files["ir.wav"];
+        assert_eq!(wav.sampleformat.as_deref(), Some("F32_LE"));
+        assert_eq!(wav.samplerate, Some(44100));
+        assert_eq!(wav.channels, Some(2));
+        assert_eq!(wav.length, Some(10));
+        assert_eq!(wav.valid, Some(true));
+        assert!(wav.errors.is_none());
+
+        let broken = &files["broken.wav"];
+        assert_eq!(broken.valid, Some(false));
+        assert!(broken.length.is_none());
+
+        let text = &files["ir.txt"];
+        assert_eq!(text.sampleformat.as_deref(), Some("TEXT"));
+        assert_eq!(text.length, Some(3));
+        assert_eq!(text.valid, Some(true));
+        assert!(text.channels.is_none() && text.samplerate.is_none());
+
+        let bad = &files["bad.txt"];
+        assert_eq!(bad.valid, Some(false));
+        assert!(bad.length.is_none());
+        let message = &bad.errors.as_ref().unwrap()[0].message;
+        assert!(message.contains("line 2 of file 'bad.txt'"), "{message}");
+
+        // A raw file's values depend on the format the filter gives.
+        let raw = &files["ir.raw"];
+        assert!(raw.sampleformat.is_none() && raw.length.is_none() && raw.valid.is_none());
+    }
+
+    #[test]
+    fn coeff_details_are_read_again_only_when_a_file_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path();
+        let path = folder.join("ir.txt");
+        std::fs::write(&path, "1.0\n2.0\n").unwrap();
+        let cache = CoeffDetailsCache::default();
+        assert_eq!(coeff_listing(&cache, folder)["ir.txt"].valid, Some(true));
+
+        // The same size and time: the cached details, without reading it.
+        let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
+        std::fs::write(&path, "1.0\nx.0\n").unwrap();
+        let file = File::options().write(true).open(&path).unwrap();
+        file.set_modified(modified).unwrap();
+        assert_eq!(coeff_listing(&cache, folder)["ir.txt"].valid, Some(true));
+
+        // A new time: read again.
+        file.set_modified(modified + std::time::Duration::from_secs(5))
+            .unwrap();
+        assert_eq!(coeff_listing(&cache, folder)["ir.txt"].valid, Some(false));
+
+        // A new size: read again.
+        std::fs::write(&path, "1.0\n2.0\n3.0\n").unwrap();
+        assert_eq!(coeff_listing(&cache, folder)["ir.txt"].length, Some(3));
+
+        std::fs::remove_file(&path).unwrap();
+        assert!(coeff_listing(&cache, folder).is_empty());
+        assert!(cache.entries.lock().unwrap().is_empty());
     }
 
     #[test]

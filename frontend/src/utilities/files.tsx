@@ -1,3 +1,4 @@
+import { escape } from "lodash"
 import { api, errorBodyMessage, errorMessage, responseErrorMessage, Schemas } from "../api/client"
 import type { paths } from "../api/schema"
 import { completeConfig, Config } from "../camilladsp/config"
@@ -19,6 +20,80 @@ export async function loadFiles(type: StoredFileType): Promise<FileInfo[]> {
     console.log("Failed to fetch", err)
   }
   return []
+}
+
+type FolderFingerprints = Schemas["FolderFingerprints"]
+
+const FOLDER_CHECK_INTERVAL_MS = 2000
+const FOLDER_KINDS: StoredFileType[] = ["config", "coeff", "audiofile"]
+
+const fileChangeListeners = new Set<(kind: StoredFileType) => void>()
+let lastFingerprints: FolderFingerprints | undefined
+let folderCheckTimer: ReturnType<typeof setInterval> | undefined
+let folderCheckRunning = false
+
+/** Compare the folders' fingerprints with the last ones, and tell the listeners which changed. */
+async function checkFolders() {
+  if (folderCheckRunning) return
+  folderCheckRunning = true
+  try {
+    const { data } = await api.GET("/api/files/fingerprints")
+    if (!data || fileChangeListeners.size === 0) return
+    const previous = lastFingerprints
+    lastFingerprints = data
+    if (!previous) return
+    for (const kind of FOLDER_KINDS) {
+      if (data[kind] !== previous[kind]) for (const listener of fileChangeListeners) listener(kind)
+    }
+  } catch {
+    // The backend is away, try again on the next check.
+  } finally {
+    folderCheckRunning = false
+  }
+}
+
+function startFolderChecks() {
+  if (document.hidden || folderCheckTimer !== undefined) return
+  void checkFolders()
+  folderCheckTimer = setInterval(checkFolders, FOLDER_CHECK_INTERVAL_MS)
+}
+
+function stopFolderChecks() {
+  if (folderCheckTimer !== undefined) {
+    clearInterval(folderCheckTimer)
+    folderCheckTimer = undefined
+  }
+}
+
+// The last fingerprints are kept while the page is hidden, so the first check after it shows
+// again reports what changed in the meantime.
+function handleFolderCheckVisibility() {
+  if (document.hidden) stopFolderChecks()
+  else startFolderChecks()
+}
+
+/**
+ * Follow the changes to the files in the folders, the GUI's own and those made behind its back.
+ * `onChange` gets the kind of each folder that changed, within a check interval or so. Subscribe
+ * before listing the files, so the first check is taken no later than the listing. All
+ * listeners share one poll of `/api/files/fingerprints`, a short request rather than an event
+ * stream, since the browser has only six connections to the backend for all its tabs. Returns
+ * the function that stops listening.
+ */
+export function subscribeFileChanges(onChange: (kind: StoredFileType) => void): () => void {
+  fileChangeListeners.add(onChange)
+  if (fileChangeListeners.size === 1) {
+    document.addEventListener("visibilitychange", handleFolderCheckVisibility)
+    startFolderChecks()
+  }
+  return () => {
+    fileChangeListeners.delete(onChange)
+    if (fileChangeListeners.size === 0) {
+      document.removeEventListener("visibilitychange", handleFolderCheckVisibility)
+      stopFolderChecks()
+      lastFingerprints = undefined
+    }
+  }
 }
 
 export function loadFilenames(type: StoredFileType): Promise<string[]> {
@@ -182,6 +257,13 @@ export const CONFIG_FILE_STATUS_ICONS: Record<ConfigFileStatus, string> = {
   valid: "✔️",
   errors: "❗",
   unloadable: "🚫",
+}
+
+/** Why CamillaDSP cannot read a coefficient file, for a file whose `valid` is false. */
+export function coeffFileErrorDesc(file: FileInfo): string {
+  // The message names the file, which may have anything in its name.
+  const reason = file.errors?.map((issue) => escape(issue.message)).join("<br>")
+  return "CamillaDSP cannot read this file." + (reason ? "<br><br>" + reason : "")
 }
 
 export function fileStatusDesc(file: FileInfo): string {

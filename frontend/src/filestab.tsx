@@ -32,6 +32,7 @@ import {
   UploadFilesButton,
 } from "./utilities/file-actions"
 import {
+  coeffFileErrorDesc,
   CONFIG_FILE_STATUS_ICONS,
   configFileStatus,
   deleteFiles,
@@ -47,6 +48,7 @@ import {
   loadFiles,
   renameFile,
   StoredFileType,
+  subscribeFileChanges,
 } from "./utilities/files"
 import {
   Box,
@@ -114,6 +116,8 @@ class FileTable extends Component<
   FileTableProps,
   {
     files: FileInfo[]
+    /** Whether the files have been listed once. */
+    loaded: boolean
     selectedFiles: FileInfo[]
     activeConfigFileName: string | null
     newFileName: string
@@ -131,15 +135,7 @@ class FileTable extends Component<
   }
 > {
   private readonly type: FileType = this.props.type
-  private timerId: ReturnType<typeof setInterval> | undefined
-  private readonly handleVisibilityChange = () => {
-    if (document.hidden) {
-      this.stopPolling()
-      return
-    }
-    this.startPolling()
-    this.update()
-  }
+  private unsubscribeFileChanges?: () => void
 
   constructor(props: FileTableProps) {
     super(props)
@@ -161,6 +157,7 @@ class FileTable extends Component<
     this.toggleFileMenu = this.toggleFileMenu.bind(this)
     this.state = {
       files: [],
+      loaded: false,
       selectedFiles: [],
       activeConfigFileName: null,
       newFileName: "New config.yml",
@@ -181,29 +178,16 @@ class FileTable extends Component<
   componentDidUpdate() {}
 
   componentDidMount() {
+    this.unsubscribeFileChanges = subscribeFileChanges((kind) => {
+      // A config's validity depends on the filter files it uses.
+      if (kind === this.type || (this.type === "config" && kind === "coeff")) this.update()
+    })
     this.update()
-    document.addEventListener("visibilitychange", this.handleVisibilityChange)
-    this.startPolling()
     this.loadActiveConfigName()
   }
 
   componentWillUnmount() {
-    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
-    this.stopPolling()
-  }
-
-  private startPolling() {
-    if (document.hidden || this.timerId !== undefined) {
-      return
-    }
-    this.timerId = setInterval(this.update, 10000)
-  }
-
-  private stopPolling() {
-    if (this.timerId !== undefined) {
-      clearInterval(this.timerId)
-      this.timerId = undefined
-    }
+    this.unsubscribeFileChanges?.()
   }
 
   /**
@@ -217,9 +201,10 @@ class FileTable extends Component<
 
   private update() {
     loadFiles(this.type).then((files) => {
-      if (!isEqual(files, this.state.files)) {
+      if (!this.state.loaded || !isEqual(files, this.state.files)) {
         return this.setState(() => ({
           files: files,
+          loaded: true,
         }))
       }
     })
@@ -455,6 +440,44 @@ class FileTable extends Component<
           compact: true,
         },
       })
+      columns.push({
+        id: "sampleformat",
+        header: "Format",
+        accessorFn: (row) => row.sampleformat ?? "",
+        cell: ({ row }) =>
+          row.original.valid === false ? (
+            <div data-tooltip-html={coeffFileErrorDesc(row.original)} data-tooltip-id="main-tooltip">
+              {CONFIG_FILE_STATUS_ICONS.errors} {row.original.sampleformat ?? ""}
+            </div>
+          ) : (
+            (row.original.sampleformat ?? "")
+          ),
+        meta: { width: "100px", compact: true },
+      })
+      columns.push({
+        id: "samplerate",
+        header: "Rate",
+        accessorFn: (row) => row.samplerate ?? null,
+        cell: ({ row }) => row.original.samplerate ?? "",
+        sortingFn: sortByRows((a, b) => (a.samplerate ?? -1) - (b.samplerate ?? -1)),
+        meta: { width: "70px", compact: true, right: true },
+      })
+      columns.push({
+        id: "channels",
+        header: "Ch",
+        accessorFn: (row) => row.channels ?? null,
+        cell: ({ row }) => row.original.channels ?? "",
+        sortingFn: sortByRows((a, b) => (a.channels ?? -1) - (b.channels ?? -1)),
+        meta: { width: "40px", compact: true, right: true },
+      })
+      columns.push({
+        id: "length",
+        header: "Length",
+        accessorFn: (row) => row.length ?? null,
+        cell: ({ row }) => row.original.length ?? "",
+        sortingFn: sortByRows((a, b) => (a.length ?? -1) - (b.length ?? -1)),
+        meta: { width: "80px", compact: true, right: true },
+      })
     } else if (this.type === "config") {
       columns.push({
         id: "actions",
@@ -617,6 +640,7 @@ class FileTable extends Component<
           <DataTable
             columns={columns}
             data={files}
+            placeholder={this.state.loaded ? undefined : "Loading…"}
             globalFilter={filterText}
             toolbar={
               <>

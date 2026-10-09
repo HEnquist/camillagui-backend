@@ -142,6 +142,29 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/files/fingerprints": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The fingerprints of the folders, for noticing changes made behind the GUI's
+     *     back. Polling these is cheap, since only the file names, sizes and times
+     *     are read, so a folder is listed again only when it changed.
+     * @description A poll rather than an event stream, since a browser has only six
+     *     connections to the backend for all its tabs, and an open stream holds one.
+     */
+    get: operations["get_file_fingerprints"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/files/{kind}": {
     parameters: {
       query?: never
@@ -1363,8 +1386,9 @@ export interface components {
     }
     /**
      * @description A file in a listing. What is known about it beyond its name, size and time
-     *     depends on the folder: configs have their title, version and validity, and
-     *     wav files their format. What is not known is left out.
+     *     depends on the folder: configs have their title, version and validity, wav
+     *     files their format, and coefficient files their format and length, for wav
+     *     and text files. What is not known is left out.
      */
     FileInfo: {
       /** @description For a wav file. */
@@ -1376,13 +1400,21 @@ export interface components {
        * @description For a wav file, in seconds.
        */
       duration?: number
-      /** @description For a config, its errors and warnings. */
+      /**
+       * @description For a config, its errors and warnings. For a text coefficient file,
+       *     why CamillaDSP cannot read it.
+       */
       errors?: components["schemas"]["ValidationIssue"][]
       /**
        * Format: int64
        * @description The time of the last change, in seconds since the epoch.
        */
       last_modified: number
+      /**
+       * Format: int64
+       * @description For a coefficient file, the number of values per channel.
+       */
+      length?: number
       /**
        * @description For a config, whether the GUI can load it, migrating it first if it is
        *     for an older version. It may still have errors to fix in the GUI.
@@ -1394,7 +1426,10 @@ export interface components {
        *     when loaded.
        */
       outdated?: boolean
-      /** @description For a wav file, the CamillaDSP name of its sample format. */
+      /**
+       * @description For a wav file, the CamillaDSP name of its sample format. For a text
+       *     coefficient file, `TEXT`.
+       */
       sampleformat?: string
       /** @description For a wav file, in Hz. */
       samplerate?: number
@@ -1406,8 +1441,8 @@ export interface components {
       /** @description For a config, its title. */
       title?: string
       /**
-       * @description For a config, whether it has no errors. For a wav file, whether
-       *     CamillaDSP can read it.
+       * @description For a config, whether it has no errors. For a wav file, and a wav or
+       *     text coefficient file, whether CamillaDSP can read it.
        */
       valid?: boolean
       /**
@@ -1513,6 +1548,16 @@ export interface components {
     FiniteF32: number
     /** Format: double */
     FiniteF64: number
+    /**
+     * @description A fingerprint of each folder, as an opaque string that changes whenever a
+     *     file in the folder is added, removed, renamed or rewritten.
+     */
+    FolderFingerprints: {
+      /** @description Left out when no audiofiles_dir is set. */
+      audiofile?: string
+      coeff: string
+      config: string
+    }
     /** @description Parameters for the static gain filter. */
     GainParameters: {
       gain: components["schemas"]["FiniteF64"]
@@ -2391,6 +2436,25 @@ export interface operations {
         }
         content: {
           "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_file_fingerprints: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["FolderFingerprints"]
         }
       }
     }

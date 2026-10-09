@@ -24,6 +24,7 @@ import {
   loadConfigJson,
   loadFiles,
   renameFile,
+  subscribeFileChanges,
 } from "./utilities/files"
 import { Box, ErrorBoundary, fileDateSort, fileNameSort, MdiButton } from "./utilities/ui-components"
 
@@ -50,6 +51,8 @@ class WavFileTable extends Component<
   { loadConfig?: (config: Config) => void },
   {
     files: FileInfo[]
+    /** Whether the audio files have been listed once. */
+    loaded: boolean
     configs: FileInfo[]
     baseConfigName: string
     baseConfig: Config | null
@@ -58,15 +61,7 @@ class WavFileTable extends Component<
     filterText: string
   }
 > {
-  private timerId: ReturnType<typeof setInterval> | undefined
-  private readonly handleVisibilityChange = () => {
-    if (document.hidden) {
-      this.stopPolling()
-      return
-    }
-    this.startPolling()
-    this.update()
-  }
+  private unsubscribeFileChanges?: () => void
 
   constructor(props: { loadConfig?: (config: Config) => void }) {
     super(props)
@@ -81,6 +76,7 @@ class WavFileTable extends Component<
     this.setBaseConfigName = this.setBaseConfigName.bind(this)
     this.state = {
       files: [],
+      loaded: false,
       configs: [],
       baseConfigName: "",
       baseConfig: null,
@@ -105,34 +101,32 @@ class WavFileTable extends Component<
   }
 
   componentDidMount() {
+    this.unsubscribeFileChanges = subscribeFileChanges((kind) => {
+      if (kind === "audiofile") this.updateAudioFiles()
+      // A config's validity depends on the filter files it uses.
+      else this.updateConfigs()
+    })
     this.update()
-    document.addEventListener("visibilitychange", this.handleVisibilityChange)
-    this.startPolling()
   }
 
   componentWillUnmount() {
-    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
-    this.stopPolling()
-  }
-
-  private startPolling() {
-    if (document.hidden || this.timerId !== undefined) return
-    this.timerId = setInterval(this.update, 10000)
-  }
-
-  private stopPolling() {
-    if (this.timerId !== undefined) {
-      clearInterval(this.timerId)
-      this.timerId = undefined
-    }
+    this.unsubscribeFileChanges?.()
   }
 
   private update() {
+    this.updateAudioFiles()
+    this.updateConfigs()
+  }
+
+  private updateAudioFiles() {
     loadFiles("audiofile").then((files) => {
-      if (!isEqual(files, this.state.files)) {
-        this.setState({ files })
+      if (!this.state.loaded || !isEqual(files, this.state.files)) {
+        this.setState({ files, loaded: true })
       }
     })
+  }
+
+  private updateConfigs() {
     loadFiles("config").then((configs) => {
       if (!isEqual(configs, this.state.configs)) {
         this.setState((prev) => {
@@ -386,6 +380,7 @@ class WavFileTable extends Component<
         <DataTable
           columns={columns}
           data={files}
+          placeholder={this.state.loaded ? undefined : "Loading…"}
           globalFilter={filterText}
           toolbar={
             <>

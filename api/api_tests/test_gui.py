@@ -52,8 +52,29 @@ def test_offline_when_camilladsp_goes_away(page, server):
 
 
 def test_files_tab_lists_the_files(page, server):
+    """Also those added and removed behind the GUI's back, which it notices
+    by polling /api/files/fingerprints, within a check or so."""
     page.get_by_role("tab", name="Files").click()
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
+    added = server.config_dir / "added_tmp.yml"
+    shutil.copy(server.config_dir / "config2.yml", added)
+    try:
+        expect(page.get_by_text("added_tmp.yml", exact=True).first).to_be_visible(timeout=4000)
+    finally:
+        added.unlink()
+    expect(page.get_by_text("added_tmp.yml", exact=True)).to_have_count(0, timeout=4000)
+
+
+def test_files_tab_in_a_second_gui_tab(page, server):
+    """A browser has six connections to the backend for all its tabs, and each
+    open event stream holds one, so a second GUI tab must leave room for its
+    requests."""
+    page.get_by_role("tab", name="Files").click()
+    expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
+    second = page.context.new_page()
+    second.goto(page.url)
+    second.get_by_role("tab", name="Files").click()
+    expect(second.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
 def test_config_with_errors_loads_into_the_gui(page, server):

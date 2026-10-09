@@ -252,6 +252,12 @@ textarea.logfileviewer {
   text-align: left;
 }
 
+.data-table .data-table-placeholder {
+  color: var(--muted-cell-color);
+  font-style: italic;
+  text-align: center;
+}
+
 .data-table-sortable,
 .data-table-static-header {
   padding: 0;
