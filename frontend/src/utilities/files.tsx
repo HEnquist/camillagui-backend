@@ -32,20 +32,13 @@ export function fileNamesOf(files: FileInfo[]): string[] {
   return files.map((f) => f.name)
 }
 
-async function loadConfigFile(name: string, migrate: boolean, onNotOk: (reason: string) => void): Promise<Config> {
-  const { data, error, response } = await api.GET("/api/getconfigfile", { params: { query: { name, migrate } } })
+/** A config file, migrated by the backend if it is for an older CamillaDSP. */
+export async function loadConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
+  const { data, error, response } = await api.GET("/api/getconfigfile", { params: { query: { name } } })
   if (data) return completeConfig(data)
   const reason = errorMessage(error, response)
   onNotOk(reason)
   throw new Error(reason)
-}
-
-export function loadConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return loadConfigFile(name, false, onNotOk)
-}
-
-export function loadMigratedConfigJson(name: string, onNotOk: (reason: string) => void = () => {}): Promise<Config> {
-  return loadConfigFile(name, true, onNotOk)
 }
 
 export async function loadDefaultConfigJson(): Promise<Config> {

@@ -812,9 +812,6 @@ export function defaultProcessorStep(config: Config): ProcessorStep {
   }
 }
 
-/** The config version this GUI edits, `legacy::CURRENT_VERSION` in the backend. */
-export const CURRENT_CONFIG_VERSION = 5
-
 export type Config = Complete<Schemas["Configuration"]>
 export type Devices = Config["devices"]
 

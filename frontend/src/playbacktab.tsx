@@ -3,7 +3,7 @@ import { mdiAlertCircle, mdiCheck, mdiOpenInApp, mdiPlay } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { cloneDeep, isEqual } from "lodash"
 import { api, errorMessage } from "./api/client"
-import { CaptureDevice, Config, CURRENT_CONFIG_VERSION, Mixer, PlaybackDevice } from "./camilladsp/config"
+import { CaptureDevice, Config, Mixer, PlaybackDevice } from "./camilladsp/config"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import {
   DeleteFilesButton,
@@ -30,7 +30,7 @@ import { Box, ErrorBoundary, fileDateSort, fileNameSort, MdiButton } from "./uti
 const PLAYBACK_MIXER_NAME = "__file_playback_adapter__"
 
 function isEligibleConfig(c: FileInfo): boolean {
-  return c.valid === true && c.version === CURRENT_CONFIG_VERSION
+  return c.valid === true && c.outdated !== true
 }
 
 export function FilePlayback(props: { loadConfig?: (config: Config) => void }) {

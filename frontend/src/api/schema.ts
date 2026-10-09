@@ -280,7 +280,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** A config file, with the file paths relative to the configured folders. */
+    /**
+     * A config file, migrated if it is for an older CamillaDSP, with the file
+     *     paths relative to the configured folders.
+     */
     get: operations["get_config_file"]
     put?: never
     post?: never
@@ -1386,6 +1389,11 @@ export interface components {
        */
       loadable?: boolean
       name: string
+      /**
+       * @description For a config, whether it is for an older CamillaDSP, and is migrated
+       *     when loaded.
+       */
+      outdated?: boolean
       /** @description For a wav file, the CamillaDSP name of its sample format. */
       sampleformat?: string
       /** @description For a wav file, in Hz. */
@@ -2644,8 +2652,6 @@ export interface operations {
       query: {
         /** @description The file name, in config_dir. */
         name: string
-        /** @description Bring a config for an older CamillaDSP up to date. */
-        migrate?: boolean
       }
       header?: never
       path?: never
@@ -2661,7 +2667,7 @@ export interface operations {
           "application/json": components["schemas"]["Configuration"]
         }
       }
-      /** @description The file is not a config the GUI can use, or could not be migrated */
+      /** @description The file is not a config the GUI can use */
       400: {
         headers: {
           [name: string]: unknown

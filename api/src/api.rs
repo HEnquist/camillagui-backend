@@ -708,10 +708,14 @@ fn check_finite(parsed: &yaml::Parsed) -> Result<(), String> {
     }
 }
 
-/// A config read from a file, as the GUI wants it.
+/// A config read from a file, as the GUI wants it, migrated first if it is for
+/// an older CamillaDSP. It only has to parse, any errors left in it are fixed
+/// in the GUI.
 fn config_for_gui(app: &AppState, parsed: yaml::Parsed) -> Result<Configuration, String> {
     check_finite(&parsed)?;
-    with_relative_paths(app, parsed.value)
+    let mut config = parsed.value;
+    legacy::migrate_if_older(&mut config);
+    with_relative_paths(app, config)
 }
 
 /// The config CamillaDSP runs, as the GUI wants it, the same as for a file.
@@ -741,20 +745,16 @@ fn read_config_for_gui(app: &AppState, path: &Path) -> Result<Configuration, Rea
 pub struct ConfigFileQuery {
     /// The file name, in config_dir.
     name: String,
-    /// Bring a config for an older CamillaDSP up to date.
-    #[serde(default)]
-    #[param(required = false)]
-    migrate: bool,
 }
 
-/// A config file, with the file paths relative to the configured folders.
+/// A config file, migrated if it is for an older CamillaDSP, with the file
+/// paths relative to the configured folders.
 #[utoipa::path(
     get,
     path = "/getconfigfile",
     params(ConfigFileQuery),
     responses(
-        (status = 400, description = "The file is not a config the GUI can use, or could not be \
-            migrated", body = ErrorBody),
+        (status = 400, description = "The file is not a config the GUI can use", body = ErrorBody),
         (status = 404, description = "There is no such file", body = ErrorBody),
     )
 )]
@@ -762,40 +762,13 @@ pub async fn get_config_file(
     State(app): Shared,
     Query(query): Query<ConfigFileQuery>,
 ) -> ApiResult<Reply<Configuration>> {
-    let ConfigFileQuery { name, migrate } = query;
+    let ConfigFileQuery { name } = query;
     let path = file_in_folder(&app.settings.config_dir, &name).map_err(bad_request)?;
     blocking(move || {
-        let config = if migrate {
-            read_and_migrate(&app, &path, &name)?
-        } else {
-            read_config_for_gui(&app, &path).map_err(|err| err.for_file(&name))?
-        };
+        let config = read_config_for_gui(&app, &path).map_err(|err| err.for_file(&name))?;
         Ok(Reply(config))
     })
     .await
-}
-
-/// Read an older config and bring it up to date. The result only has to parse,
-/// like a current config read for the GUI, so any errors left in it can be
-/// fixed there.
-fn read_and_migrate(app: &AppState, path: &Path, name: &str) -> Result<Configuration, ApiError> {
-    let parsed = read_yaml_file(path).map_err(|err| err.for_file(name))?;
-    check_finite(&parsed).map_err(bad_request)?;
-    let mut config = parsed.value;
-    if !config.is_object() {
-        return Err(bad_request(
-            "Migration failed: input is not a valid CamillaDSP config object.",
-        ));
-    }
-    legacy::migrate_if_older(&mut config);
-    let settings = &app.settings;
-    paths::make_config_filter_paths_relative(
-        &mut config,
-        &settings.config_dir,
-        &settings.coeff_dir,
-    );
-    paths::make_audio_file_paths_relative(&mut config, app.audiofiles_dir());
-    validate::parse(config).map_err(|err| bad_request(format!("Migration failed: {err}")))
 }
 
 /// The default config file, `default_config` in the settings, with the file

@@ -619,7 +619,7 @@
     },
     "/api/getconfigfile": {
       "get": {
-        "summary": "A config file, with the file paths relative to the configured folders.",
+        "summary": "A config file, migrated if it is for an older CamillaDSP, with the file\npaths relative to the configured folders.",
         "operationId": "get_config_file",
         "parameters": [
           {
@@ -629,15 +629,6 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "migrate",
-            "in": "query",
-            "description": "Bring a config for an older CamillaDSP up to date.",
-            "required": false,
-            "schema": {
-              "type": "boolean"
             }
           }
         ],
@@ -652,7 +643,7 @@
             }
           },
           "400": {
-            "description": "The file is not a config the GUI can use, or could not be migrated",
+            "description": "The file is not a config the GUI can use",
             "content": {
               "application/json": {
                 "schema": {
@@ -4200,6 +4191,10 @@
           },
           "name": {
             "type": "string"
+          },
+          "outdated": {
+            "type": "boolean",
+            "description": "For a config, whether it is for an older CamillaDSP, and is migrated\nwhen loaded."
           },
           "sampleformat": {
             "type": "string",

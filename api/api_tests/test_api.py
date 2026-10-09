@@ -867,7 +867,7 @@ def test_get_config_file_that_is_not_a_config(server):
     assert resp.json()["message"].startswith("devices")
 
 
-def test_get_config_file_with_migration(server):
+def test_get_config_file_migrates(server):
     legacy = {
         "devices": {
             "samplerate": 48000,
@@ -880,7 +880,7 @@ def test_get_config_file_with_migration(server):
     }
     (server.config_dir / "legacy_tmp.yml").write_text(yaml.dump(legacy))
     try:
-        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml", "migrate": "true"})
+        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml"})
     finally:
         (server.config_dir / "legacy_tmp.yml").unlink()
     assert resp.status == 200, resp.text
@@ -905,11 +905,12 @@ def test_older_config_with_errors_is_migrated_and_loadable(server):
     (server.config_dir / "legacy_tmp.yml").write_text(yaml.dump(legacy))
     try:
         files = server.get("/api/files/config").json()
-        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml", "migrate": "true"})
+        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml"})
     finally:
         (server.config_dir / "legacy_tmp.yml").unlink()
     config_file = next(item for item in files if item["name"] == "legacy_tmp.yml")
     assert config_file["version"] == 2
+    assert config_file["outdated"] is True
     assert config_file["valid"] is False
     assert config_file["loadable"] is True
     messages = [issue["message"] for issue in config_file["errors"]]
@@ -929,6 +930,7 @@ def test_current_config_with_errors_is_loadable(server):
     finally:
         (server.config_dir / "errors_tmp.yml").unlink()
     config_file = next(item for item in files if item["name"] == "errors_tmp.yml")
+    assert config_file["outdated"] is False
     assert config_file["valid"] is False
     assert config_file["loadable"] is True
     assert resp.status == 200, resp.text

@@ -13,7 +13,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
 import { api, errorMessage } from "./api/client"
-import { Config, CURRENT_CONFIG_VERSION, defaultConfig } from "./camilladsp/config"
+import { Config, defaultConfig } from "./camilladsp/config"
 import { clearCoefficientCache } from "./camilladsp/eval"
 import { GuiConfig } from "./guiconfig"
 import { ImportPopup, ImportPopupProps } from "./import/importpopup"
@@ -45,7 +45,6 @@ import {
   loadConfigJson,
   loadDefaultConfigJson,
   loadFiles,
-  loadMigratedConfigJson,
   renameFile,
   StoredFileType,
 } from "./utilities/files"
@@ -263,16 +262,15 @@ class FileTable extends Component<
     )
   }
 
-  private async loadConfig(name: string, migrateLegacyConfig = false) {
+  private async loadConfig(name: string, outdated = false) {
     try {
-      const loadConfigJsonFn = migrateLegacyConfig ? loadMigratedConfigJson : loadConfigJson
-      const jsonConfig = await loadConfigJsonFn(name)
+      const jsonConfig = await loadConfigJson(name)
       this.props.setCurrentConfig!(name, jsonConfig)
       this.showSuccess(name, "load")
     } catch (e) {
       const error = e as Error
       const message = error instanceof Error ? error.message : String(error)
-      if (migrateLegacyConfig) {
+      if (outdated) {
         const importHint = "Please try using the Import config functionality instead."
         const errorMessage = message.toLowerCase().includes("import config") ? message : `${message} ${importHint}`
         this.showErrorMessage(name, "load", errorMessage)
@@ -285,7 +283,7 @@ class FileTable extends Component<
   private async compareConfig(file: FileInfo) {
     const name = file.name
     try {
-      const otherConfig = await loadFileConfig(file)
+      const otherConfig = await loadConfigJson(name)
       const guiConfig = this.props.config
       this.setState({
         showDiffPopup: true,
@@ -305,8 +303,8 @@ class FileTable extends Component<
     const name_left = left.name
     const name_right = right.name
     try {
-      const leftConfig = await loadFileConfig(left)
-      const rightConfig = await loadFileConfig(right)
+      const leftConfig = await loadConfigJson(name_left)
+      const rightConfig = await loadConfigJson(name_right)
       this.setState({
         showDiffPopup: true,
         diffConfigLeft: leftConfig,
@@ -324,7 +322,7 @@ class FileTable extends Component<
   private async plotConfig(file: FileInfo) {
     const name = file.name
     try {
-      const config = await loadFileConfig(file)
+      const config = await loadConfigJson(name)
       this.setState({ showPipelinePlot: true, configToPlot: config })
     } catch (e) {
       console.log(e)
@@ -474,7 +472,7 @@ class FileTable extends Component<
               filename={row.original.name}
               fileStatus={fileStatus}
               loadable={row.original.loadable}
-              for_version={row.original.version}
+              outdated={row.original.outdated === true}
               loadConfig={this.loadConfig}
             />
             <div
@@ -719,15 +717,6 @@ class FileTable extends Component<
   }
 }
 
-function isOlderVersion(version: number | null | undefined): boolean {
-  return version !== null && version !== undefined && version < CURRENT_CONFIG_VERSION
-}
-
-/** A config file as the GUI loads it, migrated first if it is for an older version. */
-function loadFileConfig(file: FileInfo): Promise<Config> {
-  return isOlderVersion(file.version) ? loadMigratedConfigJson(file.name) : loadConfigJson(file.name)
-}
-
 function SetActiveButton(props: { active: boolean; onClick: () => void; canUpdate?: boolean; file: FileInfo }) {
   const { active, onClick, canUpdate, file } = props
   let disabledReason = ""
@@ -736,7 +725,7 @@ function SetActiveButton(props: { active: boolean; onClick: () => void; canUpdat
       "Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
   } else if (file.loadable !== true) {
     disabledReason = "Disabled since this config file cannot be loaded."
-  } else if (file.version !== CURRENT_CONFIG_VERSION) {
+  } else if (file.outdated === true) {
     disabledReason =
       "Disabled since this config file is made for an older version of CamillaDSP.<br>Load it and save it to migrate it first."
   }
@@ -792,15 +781,14 @@ function SaveButton(props: {
 function LoadButton(props: {
   filename: string
   fileStatus: FileStatus | null
-  loadConfig: (filename: string, migrateLegacyConfig: boolean) => void
+  loadConfig: (filename: string, outdated: boolean) => void
   loadable: boolean | undefined
-  for_version: number | null | undefined
+  outdated: boolean
 }) {
-  const { filename, fileStatus, loadConfig, loadable, for_version } = props
-  const shouldMigrate = isOlderVersion(for_version)
+  const { filename, fileStatus, loadConfig, loadable, outdated } = props
 
   let loadIcon: { icon: string; className?: string } = {
-    icon: shouldMigrate ? mdiUpdate : mdiFileImport,
+    icon: outdated ? mdiUpdate : mdiFileImport,
   }
   if (fileStatus !== null && fileStatus.action === "load" && fileStatus.filename === filename) {
     loadIcon = fileStatus.success
@@ -808,7 +796,7 @@ function LoadButton(props: {
       : { icon: mdiAlertCircle, className: "error-text" }
   }
 
-  const tooltipAction = shouldMigrate
+  const tooltipAction = outdated
     ? `Load "${filename}" into the GUI with automatic migration.`
     : `Load "${filename}" into the GUI.`
   const disabledReason = loadable ? "" : "<br>Disabled because this config file cannot be loaded."
@@ -819,7 +807,7 @@ function LoadButton(props: {
       className={loadIcon.className}
       tooltip={`${tooltipAction}${disabledReason}`}
       enabled={loadable === true}
-      onClick={() => loadConfig(filename, shouldMigrate)}
+      onClick={() => loadConfig(filename, outdated)}
     />
   )
 }

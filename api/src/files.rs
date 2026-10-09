@@ -65,6 +65,11 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub version: Option<u32>,
+    /// For a config, whether it is for an older CamillaDSP, and is migrated
+    /// when loaded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub outdated: Option<bool>,
     /// For a config, whether it has no errors. For a wav file, whether
     /// CamillaDSP can read it.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -195,17 +200,19 @@ fn config_file_details(path: &Path, info: &mut FileInfo, context: &ConfigContext
         info.errors = single_error(not_a_config);
         return;
     };
+    let outdated = version < legacy::CURRENT_VERSION;
     info.version = Some(version);
-    let mut config = parsed;
+    info.outdated = Some(outdated);
     let mut issues = Vec::new();
-    if version < legacy::CURRENT_VERSION {
-        // The issues are those of the migrated config, the one the GUI loads.
+    if outdated {
         issues.push(ValidationIssue::error(format!(
             "This config is made for the previous version {version} of CamillaDSP, \
             and is migrated when loaded."
         )));
-        legacy::migrate_if_older(&mut config);
     }
+    // The issues are those of the config the GUI loads, migrated the same way.
+    let mut config = parsed;
+    legacy::migrate_if_older(&mut config);
     paths::make_config_filter_paths_absolute(&mut config, context.config_dir, context.coeff_dir);
     paths::make_audio_file_paths_absolute(&mut config, context.audiofiles_dir);
     match validate::validate_if_parses(config, context.device_types) {
@@ -477,6 +484,7 @@ mod tests {
         let good = get("good.yml");
         assert_eq!(good.valid, Some(true), "{good:?}");
         assert_eq!(good.loadable, Some(true));
+        assert_eq!(good.outdated, Some(false));
         assert_eq!(good.title.as_deref(), Some("Good"));
         assert!(good.errors.is_none());
 
@@ -491,6 +499,7 @@ mod tests {
         assert_eq!(old.loadable, Some(false), "{old:?}");
         let old_complete = get("old_complete.yml");
         assert_eq!(old_complete.version, Some(3));
+        assert_eq!(old_complete.outdated, Some(true));
         assert_eq!(old_complete.valid, Some(false));
         assert_eq!(old_complete.loadable, Some(true), "{old_complete:?}");
         assert_eq!(

@@ -1,6 +1,6 @@
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 import { Schemas } from "../api/client"
-import { completeConfig, Config, CURRENT_CONFIG_VERSION, defaultConfig } from "../camilladsp/config"
+import { completeConfig, Config, defaultConfig } from "../camilladsp/config"
 import { LevelsEvent, SpectrumEvent, SpectrumSubscriptionParams, StateEvent } from "../camilladsp/status"
 import { defaultGuiConfig, GuiConfig } from "../guiconfig"
 import { download } from "../utilities/files"
@@ -487,7 +487,8 @@ function makeConfigFileInfo(name: string, config: Config): FileInfo {
     size: JSON.stringify(config).length,
     title: config.title ?? undefined,
     description: config.description ?? undefined,
-    version: CURRENT_CONFIG_VERSION,
+    version: 5,
+    outdated: false,
     valid: true,
     loadable: true,
   }

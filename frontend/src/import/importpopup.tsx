@@ -18,7 +18,7 @@ import {
 } from "./configimport"
 import { Config } from "../camilladsp/config"
 import { asFormattedText, isComplexObject, Update, withoutEmptyProperties } from "../utilities/common"
-import { loadMigratedConfigJson, loadFilenames } from "../utilities/files"
+import { loadConfigJson, loadFilenames } from "../utilities/files"
 import { bottomMargin } from "../utilities/styles"
 import { Box, Button, CheckBox, CloseButton, ErrorMessage, MdiIcon, UploadButton } from "../utilities/ui-components"
 
@@ -120,7 +120,7 @@ function FileList(props: {
     importedEqAPOConfigAsJson(files, 2).then((config) => setImportConfig(file.name, config))
   }
   function loadJsonConfigWithName(name: string): void {
-    loadMigratedConfigJson(name)
+    loadConfigJson(name)
       .then((config) => {
         setImportErrorMessage(undefined)
         setImportConfig(name, config)
