@@ -97,19 +97,7 @@ impl Settings {
             .map_err(|err| format!("Could not read {}: {err}", path.display()))?;
         let mut settings: Settings = yaml_serde::from_str(&text)
             .map_err(|err| format!("Invalid settings in {}: {err}", path.display()))?;
-        settings.check()?;
-        settings.config_dir = absolute(&settings.config_dir);
-        settings.coeff_dir = absolute(&settings.coeff_dir);
-        for path in [
-            &mut settings.audiofiles_dir,
-            &mut settings.default_config,
-            &mut settings.statefile_path,
-            &mut settings.gui_config_file,
-            &mut settings.ssl_certificate,
-            &mut settings.ssl_private_key,
-        ] {
-            *path = path.as_deref().map(absolute);
-        }
+        settings.make_paths_absolute()?;
         settings.settings_folder = absolute(path.parent().unwrap_or(Path::new(".")));
         if settings.gui_config_file.is_none() {
             let default = settings.settings_folder.join("gui-config.yml");
@@ -125,42 +113,23 @@ impl Settings {
         Ok(settings)
     }
 
-    /// The rules the Python backend's settings schema had beyond the types.
-    fn check(&self) -> Result<(), String> {
-        let mut empty = Vec::new();
-        let strings = [
-            ("camilla_host", Some(self.camilla_host.as_str())),
-            ("bind_address", Some(self.bind_address.as_str())),
-            ("config_dir", self.config_dir.to_str()),
-            ("coeff_dir", self.coeff_dir.to_str()),
-            ("log_file", self.log_file.as_deref()),
-            ("on_set_active_config", self.on_set_active_config.as_deref()),
-            ("on_get_active_config", self.on_get_active_config.as_deref()),
-        ];
-        for (name, value) in strings {
-            if value == Some("") {
-                empty.push(name);
-            }
-        }
+    /// Make the path settings absolute. An empty one would quietly become the
+    /// working directory, so it is refused.
+    fn make_paths_absolute(&mut self) -> Result<(), String> {
         let paths = [
-            ("ssl_certificate", &self.ssl_certificate),
-            ("ssl_private_key", &self.ssl_private_key),
-            ("gui_config_file", &self.gui_config_file),
-            ("audiofiles_dir", &self.audiofiles_dir),
-            ("default_config", &self.default_config),
-            ("statefile_path", &self.statefile_path),
+            ("config_dir", Some(&mut self.config_dir)),
+            ("coeff_dir", Some(&mut self.coeff_dir)),
+            ("audiofiles_dir", self.audiofiles_dir.as_mut()),
+            ("default_config", self.default_config.as_mut()),
+            ("statefile_path", self.statefile_path.as_mut()),
+            ("gui_config_file", self.gui_config_file.as_mut()),
         ];
-        for (name, value) in paths {
-            if value.as_ref().is_some_and(|p| p.as_os_str().is_empty()) {
-                empty.push(name);
-            }
-        }
-        for (name, types) in [
-            ("supported_capture_types", &self.supported_capture_types),
-            ("supported_playback_types", &self.supported_playback_types),
-        ] {
-            if types.iter().flatten().any(String::is_empty) {
-                empty.push(name);
+        let mut empty = Vec::new();
+        for (name, path) in paths {
+            match path {
+                Some(path) if path.as_os_str().is_empty() => empty.push(name),
+                Some(path) => *path = absolute(path),
+                None => {}
             }
         }
         if empty.is_empty() {
@@ -503,6 +472,17 @@ mod tests {
         std::fs::write(dir.path().join("gui-config.yml"), "volume_range: -1\n").unwrap();
         let err = Settings::load(&settings).unwrap_err();
         assert!(err.contains("volume_range"), "{err}");
+    }
+
+    #[test]
+    fn empty_paths_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let settings = dir.path().join("camillagui.yml");
+        std::fs::write(&settings, "config_dir: ''\ncoeff_dir: c\naudiofiles_dir: ''\n").unwrap();
+        assert_eq!(
+            Settings::load(&settings).unwrap_err(),
+            "These settings must not be empty: config_dir, audiofiles_dir"
+        );
     }
 
     #[test]
