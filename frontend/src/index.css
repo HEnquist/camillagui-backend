@@ -969,20 +969,13 @@ div .popup-content {
   --rt-opacity: 1;
   --rt-color-dark: var(--button-background-color);
   --rt-color-white: var(--text-color);
+  text-align: left;
   z-index: 1000;
 }
 
 .import-tab-tooltip {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   font-size: smaller;
-}
-
-.tooltip {
-  text-align: center;
-}
-
-.tooltip.tooltip-left {
-  text-align: left;
 }
 
 .pipeline-tooltip {

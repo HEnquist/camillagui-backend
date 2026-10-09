@@ -569,11 +569,7 @@ class FileTable extends Component<
         header: "Valid",
         accessorFn: (row) => row.valid,
         cell: ({ row }) => (
-          <div
-            data-tooltip-html={fileStatusDesc(row.original)}
-            data-tooltip-id="main-tooltip"
-            data-tooltip-class-name="tooltip-left"
-          >
+          <div data-tooltip-html={fileStatusDesc(row.original)} data-tooltip-id="main-tooltip">
             {CONFIG_FILE_STATUS_ICONS[configFileStatus(row.original)]}
           </div>
         ),
