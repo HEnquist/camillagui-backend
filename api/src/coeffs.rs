@@ -4,6 +4,7 @@
 use camilladsp_schema::ToF64;
 use camilladsp_schema::config::{ConvParameters, FileSampleFormat};
 use camilladsp_schema::filters::fftconv::coeffs_from_config;
+use regex::{Captures, Regex};
 use serde::Serialize;
 use std::path::Path;
 use utoipa::ToSchema;
@@ -61,69 +62,6 @@ pub fn defaults_for_filter(file_path: &str) -> CoeffDefaults {
     }
 }
 
-/// One piece of a coefficient file name with tokens in it.
-enum Part {
-    Literal(String),
-    Samplerate,
-    Channels,
-}
-
-fn parse_pattern(name: &str) -> Vec<Part> {
-    let mut parts = Vec::new();
-    let mut rest = name;
-    loop {
-        let next = [("$samplerate$", 0), ("$channels$", 1)]
-            .iter()
-            .filter_map(|(token, kind)| rest.find(token).map(|pos| (pos, *token, *kind)))
-            .min_by_key(|(pos, _, _)| *pos);
-        match next {
-            Some((pos, token, kind)) => {
-                if pos > 0 {
-                    parts.push(Part::Literal(rest[..pos].to_string()));
-                }
-                parts.push(if kind == 0 {
-                    Part::Samplerate
-                } else {
-                    Part::Channels
-                });
-                rest = &rest[pos + token.len()..];
-            }
-            None => {
-                if !rest.is_empty() {
-                    parts.push(Part::Literal(rest.to_string()));
-                }
-                return parts;
-            }
-        }
-    }
-}
-
-/// Match all of `text` against the pattern, like an anchored regex match with
-/// `(\d*)` for each token: digit runs are greedy and give back as needed.
-fn match_pattern(parts: &[Part], text: &str, found: &mut Vec<(usize, String)>) -> bool {
-    let Some((first, rest)) = parts.split_first() else {
-        return text.is_empty();
-    };
-    match first {
-        Part::Literal(literal) => match text.strip_prefix(literal.as_str()) {
-            Some(remaining) => match_pattern(rest, remaining, found),
-            None => false,
-        },
-        Part::Samplerate | Part::Channels => {
-            let kind = usize::from(matches!(first, Part::Channels));
-            let digits = text.bytes().take_while(u8::is_ascii_digit).count();
-            for len in (0..=digits).rev() {
-                found.push((kind, text[..len].to_string()));
-                if match_pattern(rest, &text[len..], found) {
-                    return true;
-                }
-                found.pop();
-            }
-            false
-        }
-    }
-}
-
 /// A variant of a coefficient file that exists, with the samplerate and
 /// channels its name gives for the `$samplerate$` and `$channels$` tokens.
 #[derive(Debug, PartialEq, Serialize, ToSchema)]
@@ -140,32 +78,29 @@ pub struct FilterOption {
 /// The samplerate and channel variants of a coefficient file that exist, for
 /// a file name that may have `$samplerate$` and `$channels$` tokens in it.
 pub fn filter_plot_options(filter_file_names: &[String], filename: &str) -> Vec<FilterOption> {
-    let parts = parse_pattern(&crate::paths::basename(filename));
-    let mut options = Vec::new();
-    for file in filter_file_names {
-        let mut found = Vec::new();
-        if !match_pattern(&parts, file, &mut found) {
-            continue;
-        }
-        let mut option = FilterOption {
-            name: file.clone(),
-            samplerate: None,
-            channels: None,
-        };
-        for (kind, digits) in found {
-            // An empty match is not a number. Python failed on it, here the
-            // value is just left out.
-            if let Ok(number) = digits.parse::<u64>() {
-                if kind == 0 {
-                    option.samplerate = Some(number);
-                } else {
-                    option.channels = Some(number);
-                }
-            }
-        }
-        options.push(option);
-    }
-    options
+    let pattern = regex::escape(&crate::paths::basename(filename))
+        .replace(r"\$samplerate\$", "(?<samplerate>[0-9]+)")
+        .replace(r"\$channels\$", "(?<channels>[0-9]+)");
+    // Fails only for a name with the same token twice, which nothing is named after.
+    let Ok(pattern) = Regex::new(&format!("^{pattern}$")) else {
+        return Vec::new();
+    };
+    let number = |captures: &Captures, token| {
+        captures
+            .name(token)
+            .and_then(|digits| digits.as_str().parse().ok())
+    };
+    filter_file_names
+        .iter()
+        .filter_map(|file| {
+            let captures = pattern.captures(file)?;
+            Some(FilterOption {
+                name: file.clone(),
+                samplerate: number(&captures, "samplerate"),
+                channels: number(&captures, "channels"),
+            })
+        })
+        .collect()
 }
 
 /// Replace the tokens in a coefficient file path.
@@ -290,10 +225,17 @@ mod tests {
 
     #[test]
     fn pattern_must_match_the_whole_name() {
-        let files: Vec<String> = ["f_44100.raw", "f_44100.raw.bak", "other.f32.old"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let files: Vec<String> = [
+            "f_44100.raw",
+            "f_44100.raw.bak",
+            "f_.raw",
+            "f_44100xraw",
+            "other.f32.old",
+            "eq (v2)+.f32",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
         let options = filter_plot_options(&files, "f_$samplerate$.raw");
         assert_eq!(
             as_json(options),
@@ -301,6 +243,8 @@ mod tests {
         );
         let options = filter_plot_options(&files, "other.f32");
         assert!(options.is_empty());
+        let options = filter_plot_options(&files, "eq (v2)+.f32");
+        assert_eq!(as_json(options), json!([{"name": "eq (v2)+.f32"}]));
     }
 
     #[test]

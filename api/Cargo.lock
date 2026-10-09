@@ -222,6 +222,7 @@ dependencies = [
  "flexi_logger",
  "futures-util",
  "log",
+ "regex",
  "rust-embed",
  "serde",
  "serde_html_form",

@@ -15,6 +15,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 flexi_logger = "0.30.2"
 futures-util = "0.3.34"
 log = "0.4.34"
+regex = "1.13.1"
 rust-embed = { version = "8.12.0", features = ["mime-guess"] }
 serde = { version = "1.0.229", features = ["derive", "rc"] }
 serde_json = { version = "1.0.151", features = ["raw_value"] }
