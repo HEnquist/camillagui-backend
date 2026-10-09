@@ -347,6 +347,9 @@ or hostname of the machine running the gui server.
 ### Command line options
 The logging level is `warn` by default.
 It can be changed with a command line argument, which may be useful when debugging some problem.
+The level can also be set per module, for example `-l warn,camillagui::camilla=debug` to see
+only the traffic to CamillaDSP in detail.
+The log goes to stderr, in color when that is a terminal.
 
 The backend normally reads its settings from `config/camillagui.yml` next to the executable.
 A different file can be given as a command line argument.
@@ -360,7 +363,7 @@ Usage: camillagui [OPTIONS]
 
 Options:
   -c, --config <CONFIG>        The backend config file. Defaults to config/camillagui.yml next to the executable
-  -l, --log-level <LOG_LEVEL>  Logging level: error, warn, info, debug or trace [default: warn]
+  -l, --log-level <LOG_LEVEL>  Logging level: error, warn, info, debug or trace. Also takes a level per module, for example warn,camillagui::camilla=debug [default: warn]
   -h, --help                   Print help
   -V, --version                Print version
 ```

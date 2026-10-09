@@ -28,6 +28,7 @@ use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use axum::routing::get;
 use clap::Parser;
+use flexi_logger::{AdaptiveFormat, DeferredNow, FlexiLoggerError, Logger, LoggerHandle, Record};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tower_http::services::ServeDir;
@@ -41,9 +42,58 @@ struct Args {
     /// The backend config file. Defaults to config/camillagui.yml next to the executable.
     #[arg(short, long)]
     config: Option<PathBuf>,
-    /// Logging level: error, warn, info, debug or trace.
+    /// Logging level: error, warn, info, debug or trace. Also takes a level per module, for
+    /// example warn,camillagui::camilla=debug.
     #[arg(short, long, default_value = "warn")]
     log_level: String,
+}
+
+/// A log line: time, level, module, source location and message, as CamillaDSP writes them.
+fn log_format(
+    w: &mut dyn std::io::Write,
+    now: &mut DeferredNow,
+    record: &Record,
+) -> std::io::Result<()> {
+    write!(
+        w,
+        "{} {:<5} [{}] <{}:{}> {}",
+        now.now().format("%Y-%m-%d %H:%M:%S%.6f"),
+        record.level(),
+        record.module_path().unwrap_or("*unknown module*"),
+        record.file().unwrap_or("*unknown file*"),
+        record.line().unwrap_or(0),
+        record.args()
+    )
+}
+
+/// `log_format`, with the level in color.
+fn colored_log_format(
+    w: &mut dyn std::io::Write,
+    now: &mut DeferredNow,
+    record: &Record,
+) -> std::io::Result<()> {
+    let level = record.level();
+    write!(
+        w,
+        "{} {} [{}] <{}:{}> {}",
+        now.now().format("%Y-%m-%d %H:%M:%S%.6f"),
+        // Padded before painting, the escape codes would count as width otherwise.
+        flexi_logger::style(level).paint(format!("{level:<5}")),
+        record.module_path().unwrap_or("*unknown module*"),
+        record.file().unwrap_or("*unknown file*"),
+        record.line().unwrap_or(0),
+        record.args()
+    )
+}
+
+/// Log to stderr, in color when it is a terminal, with the palette CamillaDSP uses. The
+/// returned handle must be kept for as long as the program logs.
+fn start_logger(spec: &str) -> Result<LoggerHandle, FlexiLoggerError> {
+    Logger::try_with_str(spec)?
+        .adaptive_format_for_stderr(AdaptiveFormat::Custom(log_format, colored_log_format))
+        .set_palette("196;208;-;27;8".to_string())
+        .log_to_stderr()
+        .start()
 }
 
 /// Uploads can be large audio files.
@@ -143,9 +193,13 @@ pub fn build_router(app: Arc<AppState>) -> Router {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    env_logger::Builder::new()
-        .parse_filters(&args.log_level)
-        .init();
+    let _logger = match start_logger(&args.log_level) {
+        Ok(logger) => logger,
+        Err(err) => {
+            eprintln!("Invalid log level '{}': {err}", args.log_level);
+            std::process::exit(1);
+        }
+    };
 
     let config_path = args
         .config
