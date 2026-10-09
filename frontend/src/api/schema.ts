@@ -1380,6 +1380,11 @@ export interface components {
        * @description The time of the last change, in seconds since the epoch.
        */
       last_modified: number
+      /**
+       * @description For a config, whether the GUI can load it, migrating it first if it is
+       *     for an older version. It may still have errors to fix in the GUI.
+       */
+      loadable?: boolean
       name: string
       /** @description For a wav file, the CamillaDSP name of its sample format. */
       sampleformat?: string
@@ -1936,11 +1941,6 @@ export interface components {
       /** @description The file name, in config_dir. */
       filename: string
     }
-    /**
-     * @description How much an issue matters to the GUI.
-     * @enum {string}
-     */
-    Severity: "error" | "warning"
     /** @description Shelf steepness specified either as a Q factor or a slope in dB/octave. */
     ShelfSteepness:
       | {
@@ -2098,7 +2098,7 @@ export interface components {
        */
       files: string[]
     }
-    /** @description A problem with a config. */
+    /** @description A problem with a config, one that CamillaDSP would refuse it for. */
     ValidationIssue: {
       message: string
       /**
@@ -2106,7 +2106,6 @@ export interface components {
        *     the config as a whole.
        */
       path: components["schemas"]["PathElement"][]
-      severity: components["schemas"]["Severity"]
     }
     /**
      * @description Which aux fader a Volume filter is linked to (faders 1–4; the main fader is always 0).

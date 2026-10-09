@@ -176,40 +176,33 @@ export function downloadAsZip(type: StoredFileType, names: string[], onError: (m
   form.remove()
 }
 
-export function issueSeverity(issue: ValidationIssue): Schemas["Severity"] {
-  return issue.severity
+/** How usable a config file is, from best to worst. */
+export type ConfigFileStatus = "valid" | "errors" | "unloadable"
+
+export function configFileStatus(file: FileInfo): ConfigFileStatus {
+  if (file.loadable !== true) return "unloadable"
+  if (file.valid !== true) return "errors"
+  return "valid"
 }
 
-export function hasWarningIssues(errors: ValidationIssue[] | null | undefined): boolean {
-  return !!errors && errors.some((issue) => issueSeverity(issue) === "warning")
+export const CONFIG_FILE_STATUS_ICONS: Record<ConfigFileStatus, string> = {
+  valid: "✔️",
+  errors: "❗",
+  unloadable: "🚫",
 }
 
-export function fileStatusDesc(errors: ValidationIssue[] | null | undefined): string {
-  const hasIssues = errors !== null && errors !== undefined && errors.length > 0
-  if (!hasIssues) {
+export function fileStatusDesc(file: FileInfo): string {
+  const status = configFileStatus(file)
+  if (status === "valid") {
     return "Config is valid."
   }
-
-  const warningIssues = errors!.filter((issue) => issueSeverity(issue) === "warning")
-  const errorIssues = errors!.filter((issue) => issueSeverity(issue) === "error")
-
-  const formatIssues = (title: string, issues: ValidationIssue[]) => {
-    let desc = title
-    for (const issue of issues) {
-      let path = issue.path.join("/")
-      if (path) {
-        path = path + " : "
-      }
-      desc = desc + "<br>" + path + issue.message
-    }
-    return desc
+  let desc =
+    status === "unloadable"
+      ? "This config cannot be loaded into the GUI.<br><br>Errors:"
+      : "This config can be loaded, and its errors fixed in the GUI.<br><br>Errors:"
+  for (const issue of file.errors ?? []) {
+    const path = issue.path.join("/")
+    desc += "<br>" + (path ? path + " : " : "") + issue.message
   }
-
-  if (errorIssues.length > 0 && warningIssues.length > 0) {
-    return `${formatIssues("Errors:", errorIssues)}<br><br>${formatIssues("Warnings:", warningIssues)}`
-  }
-  if (errorIssues.length > 0) {
-    return formatIssues("Errors:", errorIssues)
-  }
-  return formatIssues("Warnings:", warningIssues)
+  return desc
 }

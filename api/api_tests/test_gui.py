@@ -11,6 +11,7 @@ import time
 import zipfile
 
 import pytest
+import yaml
 
 pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
 from playwright.sync_api import expect  # noqa: E402
@@ -53,6 +54,21 @@ def test_offline_when_camilladsp_goes_away(page, server):
 def test_files_tab_lists_the_files(page, server):
     page.get_by_role("tab", name="Files").click()
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
+
+
+def test_config_with_errors_loads_into_the_gui(page, server):
+    """A config CamillaDSP would refuse still loads, so it can be fixed in the GUI."""
+    config = yaml.safe_load((server.config_dir / "config2.yml").read_text())
+    config["pipeline"] = [{"type": "Filter", "channels": [0], "names": ["nosuchfilter"]}]
+    (server.config_dir / "errors_tmp.yml").write_text(yaml.dump(config))
+    try:
+        page.get_by_role("tab", name="Files").click()
+        page.locator("""[data-tooltip-html='Load "errors_tmp.yml" into the GUI.']""").click()
+        page.get_by_role("tab", name="Pipeline").click()
+        expect(page.get_by_text("nosuchfilter").first).to_be_visible()
+        expect(page.locator(".sidepanel .config-status")).not_to_have_text("OK")
+    finally:
+        (server.config_dir / "errors_tmp.yml").unlink()
 
 
 def test_zip_download_goes_to_the_browser(page, server, tmp_path):

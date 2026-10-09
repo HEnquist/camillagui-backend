@@ -106,49 +106,30 @@ impl DeviceTypes {
     }
 }
 
-/// How much an issue matters to the GUI.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum Severity {
-    /// CamillaDSP would refuse the config.
-    Error,
-    /// The config can be edited and saved as it is, but needs attention.
-    Warning,
-}
-
-/// A problem with a config.
+/// A problem with a config, one that CamillaDSP would refuse it for.
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub struct ValidationIssue {
     /// Where in the config, as keys and list indices from the top. Empty for
     /// the config as a whole.
     pub path: Vec<PathElement>,
     pub message: String,
-    pub severity: Severity,
 }
 
 impl ValidationIssue {
-    /// An error about the config as a whole.
+    /// An issue with the config as a whole.
     pub fn error(message: impl Into<String>) -> Self {
         ValidationIssue {
             path: Vec::new(),
             message: message.into(),
-            severity: Severity::Error,
         }
     }
 }
 
 impl From<Issue> for ValidationIssue {
     fn from(issue: Issue) -> Self {
-        let severity = match issue.kind {
-            // A config can be edited before its coefficient files are uploaded,
-            // so the GUI only warns about a missing file. CamillaDSP refuses it.
-            IssueKind::MissingFile => Severity::Warning,
-            IssueKind::Invalid | IssueKind::Unsupported => Severity::Error,
-        };
         ValidationIssue {
             path: issue.path,
             message: issue.message,
-            severity,
         }
     }
 }
@@ -175,10 +156,17 @@ pub fn parse(config: Value) -> Result<Configuration, String> {
 /// that the pipeline does not use, since a config editor wants to hear about
 /// those too.
 pub fn validate(config: Value, device_types: &DeviceTypes) -> Vec<ValidationIssue> {
-    let mut conf = match config::deserialize_config(config) {
-        Ok(conf) => conf,
-        Err(issue) => return vec![issue.into()],
-    };
+    validate_if_parses(config, device_types).unwrap_or_else(|issue| vec![issue])
+}
+
+/// Like `validate`, but a config that does not parse is an `Err` with the
+/// issue that says where. One that parses can be loaded into the GUI, and its
+/// errors fixed there.
+pub fn validate_if_parses(
+    config: Value,
+    device_types: &DeviceTypes,
+) -> Result<Vec<ValidationIssue>, ValidationIssue> {
+    let mut conf = config::deserialize_config(config).map_err(ValidationIssue::from)?;
     let mut issues = match config::validate_config(&mut conf, None) {
         Ok(_impulses) => Vec::new(),
         Err(issues) => issues.into_vec(),
@@ -187,12 +175,7 @@ pub fn validate(config: Value, device_types: &DeviceTypes) -> Vec<ValidationIssu
         issues.extend(unused.into_vec());
     }
     device_types.apply(&conf, &mut issues);
-    issues.into_iter().map(ValidationIssue::from).collect()
-}
-
-/// Whether any of the issues stops the config from running.
-pub fn has_errors(issues: &[ValidationIssue]) -> bool {
-    issues.iter().any(|issue| issue.severity == Severity::Error)
+    Ok(issues.into_iter().map(ValidationIssue::from).collect())
 }
 
 #[cfg(test)]
@@ -216,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn issues_have_paths_and_severity() {
+    fn issues_have_paths() {
         let mut config = json!({
             "devices": devices("Stdin"),
             "filters": {
@@ -235,33 +218,19 @@ mod tests {
             Path::new("/tmp"),
         );
         let issues = validate(config, &DeviceTypes::default());
-        let has = |path: Value, severity: Severity| {
-            issues
-                .iter()
-                .any(|issue| json!(issue.path) == path && issue.severity == severity)
-        };
+        let has = |path: Value| issues.iter().any(|issue| json!(issue.path) == path);
         assert!(
-            has(
-                json!(["filters", "lp", "parameters", "freq"]),
-                Severity::Error
-            ),
+            has(json!(["filters", "lp", "parameters", "freq"])),
             "{issues:#?}"
         );
         assert!(
-            has(
-                json!(["filters", "fir", "parameters", "filename"]),
-                Severity::Warning
-            ),
+            has(json!(["filters", "fir", "parameters", "filename"])),
             "{issues:#?}"
         );
         assert!(
-            has(
-                json!(["filters", "unused", "parameters", "freq"]),
-                Severity::Error
-            ),
+            has(json!(["filters", "unused", "parameters", "freq"])),
             "{issues:#?}"
         );
-        assert!(has_errors(&issues));
     }
 
     #[test]

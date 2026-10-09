@@ -739,8 +739,8 @@ def test_translate_eqapo_gives_valid_filters(server):
     }
     resp = server.post("/api/validateconfig", json_body=config)
     assert resp.status == 200
-    # The wav file does not exist, which is only a warning. Anything else is a real problem.
-    assert [issue for issue in resp.json() if issue["severity"] == "error"] == []
+    # The wav file does not exist. Anything else is a real problem.
+    assert [issue for issue in resp.json() if issue["path"][-1] != "filename"] == []
 
 
 def test_translate_eqapo_needs_the_channels(server):
@@ -891,6 +891,49 @@ def test_get_config_file_with_migration(server):
     assert content["filters"]["lim"]["type"] == "Clipper"
 
 
+def test_older_config_with_errors_is_migrated_and_loadable(server):
+    """Errors left after migration are fixed in the GUI, they do not stop the load."""
+    legacy = {
+        "devices": {
+            "samplerate": 48000,
+            "chunksize": 1024,
+            "capture": {"type": "Stdin", "channels": 2, "format": "S16LE"},
+            "playback": {"type": "Stdout", "channels": 2, "format": "S16LE"},
+        },
+        "pipeline": [{"type": "Filter", "channel": 0, "names": ["nosuchfilter"]}],
+    }
+    (server.config_dir / "legacy_tmp.yml").write_text(yaml.dump(legacy))
+    try:
+        files = server.get("/api/files/config").json()
+        resp = server.get("/api/getconfigfile", params={"name": "legacy_tmp.yml", "migrate": "true"})
+    finally:
+        (server.config_dir / "legacy_tmp.yml").unlink()
+    config_file = next(item for item in files if item["name"] == "legacy_tmp.yml")
+    assert config_file["version"] == 2
+    assert config_file["valid"] is False
+    assert config_file["loadable"] is True
+    messages = [issue["message"] for issue in config_file["errors"]]
+    assert messages[0] == "This config is made for the previous version 2 of CamillaDSP, and is migrated when loaded."
+    assert any("nosuchfilter" in message for message in messages[1:]), messages
+    assert resp.status == 200, resp.text
+    assert resp.json()["pipeline"][0]["names"] == ["nosuchfilter"]
+
+
+def test_current_config_with_errors_is_loadable(server):
+    config = yaml.safe_load((server.config_dir / "config.yml").read_text())
+    config["pipeline"] = [{"type": "Filter", "channels": [0], "names": ["nosuchfilter"]}]
+    (server.config_dir / "errors_tmp.yml").write_text(yaml.dump(config))
+    try:
+        files = server.get("/api/files/config").json()
+        resp = server.get("/api/getconfigfile", params={"name": "errors_tmp.yml"})
+    finally:
+        (server.config_dir / "errors_tmp.yml").unlink()
+    config_file = next(item for item in files if item["name"] == "errors_tmp.yml")
+    assert config_file["valid"] is False
+    assert config_file["loadable"] is True
+    assert resp.status == 200, resp.text
+
+
 def test_get_config_file_fills_in_defaults(server):
     content = server.get("/api/getconfigfile", params={"name": "config.yml"}).json()
     assert "queuelimit" in content["devices"]
@@ -901,11 +944,12 @@ def test_stored_configs(server):
     content = server.get("/api/files/config").json()
     config_file = next(item for item in content if item["name"] == "config.yml")
     assert config_file["valid"] is True
+    assert config_file["loadable"] is True
     assert "errors" not in config_file
     assert config_file["version"] == 5
 
 
-def test_stored_configs_missing_file_is_only_a_warning(server):
+def test_stored_configs_missing_file_still_loads(server):
     config = {
         "devices": {
             "samplerate": 44100,
@@ -922,9 +966,9 @@ def test_stored_configs_missing_file_is_only_a_warning(server):
     finally:
         (server.config_dir / "missingfile_tmp.yml").unlink()
     config_file = next(item for item in content if item["name"] == "missingfile_tmp.yml")
-    assert config_file["valid"] is True
+    assert config_file["valid"] is False
+    assert config_file["loadable"] is True
     assert config_file["errors"][0]["path"] == ["filters", "conv", "parameters", "filename"]
-    assert config_file["errors"][0]["severity"] == "warning"
 
 
 def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
@@ -942,6 +986,7 @@ def test_stored_configs_eqapo_text_does_not_crash_and_has_no_version(server):
     config_file = next(item for item in files if item["name"] == "eqapo_like.yml")
     assert "version" not in config_file
     assert config_file["valid"] is False
+    assert config_file["loadable"] is False
     assert config_file["errors"][0]["message"] == "This does not appear to be a CamillaDSP config file."
 
 
@@ -982,7 +1027,6 @@ def test_validate_config_that_does_not_parse(server):
     assert resp.status == 200
     [issue] = resp.json()
     assert issue["path"] == ["devices", "samplerate"]
-    assert issue["severity"] == "error"
 
 
 def test_validate_config_refuses_paths_outside_the_folders(server):
@@ -1001,7 +1045,6 @@ def test_validate_config_refuses_paths_outside_the_folders(server):
         (["devices", "capture", "filename"], "/etc/hosts"),
     ]:
         [issue] = [issue for issue in issues if issue["path"] == path]
-        assert issue["severity"] == "error"
         assert filename in issue["message"]
         assert "allow_absolute_paths" in issue["message"]
 
@@ -1351,7 +1394,6 @@ def test_validate_config_with_separate_folders(split_files):
     config["filters"]["fir"]["parameters"]["filename"] = "../audiofiles/in.wav"
     resp = server.post("/api/validateconfig", json_body=config)
     [issue] = [issue for issue in resp.json() if issue["path"] == coeff_path]
-    assert issue["severity"] == "error"
     assert "../audiofiles/in.wav" in issue["message"]
 
 

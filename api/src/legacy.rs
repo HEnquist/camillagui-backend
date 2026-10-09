@@ -960,12 +960,17 @@ mod tests {
     /// capture of its version, migrates to one that validates.
     #[test]
     fn file_devices_migrate_to_valid_config() {
+        // Validation opens the capture file.
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("in.raw");
+        std::fs::write(&input, []).unwrap();
+        let input = input.to_str().unwrap();
         let config = |capture: &str, format: &str| {
             json!({
                 "devices": {
                     "samplerate": 48000,
                     "chunksize": 1024,
-                    "capture": {"type": capture, "channels": 2, "filename": "in.raw", "format": format},
+                    "capture": {"type": capture, "channels": 2, "filename": input, "format": format},
                     "playback": {"type": "File", "channels": 2, "filename": "out.raw", "format": format},
                 },
                 "filters": {"hp": {"type": "Biquad", "parameters": {"type": "Highpass", "freq": 80, "q": 0.5}}},
@@ -983,10 +988,7 @@ mod tests {
             assert_eq!(config["devices"]["capture"]["type"], "RawFile");
             assert_eq!(config["devices"]["playback"]["type"], "File");
             let issues = crate::validate::validate(config, &Default::default());
-            assert!(
-                !crate::validate::has_errors(&issues),
-                "v{version}: {issues:?}"
-            );
+            assert!(issues.is_empty(), "v{version}: {issues:?}");
         }
     }
 

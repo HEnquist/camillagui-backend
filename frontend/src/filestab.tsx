@@ -32,13 +32,14 @@ import {
   UploadFilesButton,
 } from "./utilities/file-actions"
 import {
+  CONFIG_FILE_STATUS_ICONS,
+  configFileStatus,
   deleteFiles,
   doUpload,
   downloadAsZip,
   downloadFromUrl,
   FileInfo,
   fileNamesOf,
-  hasWarningIssues,
   fileStatusDesc,
   loadActiveConfigFilename,
   loadConfigJson,
@@ -281,9 +282,10 @@ class FileTable extends Component<
     }
   }
 
-  private async compareConfig(name: string) {
+  private async compareConfig(file: FileInfo) {
+    const name = file.name
     try {
-      const otherConfig = await loadConfigJson(name)
+      const otherConfig = await loadFileConfig(file)
       const guiConfig = this.props.config
       this.setState({
         showDiffPopup: true,
@@ -299,10 +301,12 @@ class FileTable extends Component<
     }
   }
 
-  private async compareConfigFiles(name_left: string, name_right: string) {
+  private async compareConfigFiles(left: FileInfo, right: FileInfo) {
+    const name_left = left.name
+    const name_right = right.name
     try {
-      const leftConfig = await loadConfigJson(name_left)
-      const rightConfig = await loadConfigJson(name_right)
+      const leftConfig = await loadFileConfig(left)
+      const rightConfig = await loadFileConfig(right)
       this.setState({
         showDiffPopup: true,
         diffConfigLeft: leftConfig,
@@ -317,9 +321,10 @@ class FileTable extends Component<
     }
   }
 
-  private async plotConfig(name: string) {
+  private async plotConfig(file: FileInfo) {
+    const name = file.name
     try {
-      const config = await loadConfigJson(name)
+      const config = await loadFileConfig(file)
       this.setState({ showPipelinePlot: true, configToPlot: config })
     } catch (e) {
       console.log(e)
@@ -461,14 +466,14 @@ class FileTable extends Component<
             <SetActiveButton
               active={row.original.name === activeConfigFileName}
               onClick={() => this.setActiveConfig(row.original.name)}
-              enabled={this.props.canUpdateActiveConfig && row.original.valid}
-              valid={row.original.valid}
+              canUpdate={this.props.canUpdateActiveConfig}
+              file={row.original}
             />
             <SaveButton filename={row.original.name} fileStatus={fileStatus} saveConfig={this.overwriteConfig} />
             <LoadButton
               filename={row.original.name}
               fileStatus={fileStatus}
-              valid={row.original.valid}
+              loadable={row.original.loadable}
               for_version={row.original.version}
               loadConfig={this.loadConfig}
             />
@@ -502,16 +507,12 @@ class FileTable extends Component<
                     fileStatus={fileStatus}
                     rename={() => this.rename(row.original.name, "config")}
                   />
-                  <CompareToGUIButton
-                    filename={row.original.name}
-                    valid={row.original.valid}
-                    compareConfig={this.compareConfig}
-                  />
+                  <CompareToGUIButton file={row.original} compareConfig={this.compareConfig} />
                   <PlotButton
                     tooltip="Plot the pipeline"
                     pipeline={true}
-                    enabled={row.original.valid}
-                    onClick={() => this.plotConfig(row.original.name)}
+                    enabled={row.original.loadable}
+                    onClick={() => this.plotConfig(row.original)}
                   />
                 </div>
               </DropdownBox>
@@ -568,8 +569,8 @@ class FileTable extends Component<
         header: "Valid",
         accessorFn: (row) => row.valid,
         cell: ({ row }) => (
-          <div data-tooltip-html={fileStatusDesc(row.original.errors)} data-tooltip-id="main-tooltip">
-            {row.original.valid === true ? (hasWarningIssues(row.original.errors) ? "❗" : "✔️") : "❌"}
+          <div data-tooltip-html={fileStatusDesc(row.original)} data-tooltip-id="main-tooltip">
+            {CONFIG_FILE_STATUS_ICONS[configFileStatus(row.original)]}
           </div>
         ),
         sortingFn: sortByRows(fileValidSort),
@@ -718,16 +719,31 @@ class FileTable extends Component<
   }
 }
 
-function SetActiveButton(props: { active: boolean; onClick: () => void; enabled?: boolean; valid?: boolean }) {
-  const { active, onClick, enabled, valid } = props
+function isOlderVersion(version: number | null | undefined): boolean {
+  return version !== null && version !== undefined && version < CURRENT_CONFIG_VERSION
+}
+
+/** A config file as the GUI loads it, migrated first if it is for an older version. */
+function loadFileConfig(file: FileInfo): Promise<Config> {
+  return isOlderVersion(file.version) ? loadMigratedConfigJson(file.name) : loadConfigJson(file.name)
+}
+
+function SetActiveButton(props: { active: boolean; onClick: () => void; canUpdate?: boolean; file: FileInfo }) {
+  const { active, onClick, canUpdate, file } = props
+  let disabledReason = ""
+  if (canUpdate === false) {
+    disabledReason =
+      "Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
+  } else if (file.loadable !== true) {
+    disabledReason = "Disabled since this config file cannot be loaded."
+  } else if (file.version !== CURRENT_CONFIG_VERSION) {
+    disabledReason =
+      "Disabled since this config file is made for an older version of CamillaDSP.<br>Load it and save it to migrate it first."
+  }
+  const enabled = !disabledReason
   let tooltip
-  if (enabled === false) {
-    if (valid) {
-      tooltip =
-        "Mark this config file as active.<br>Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
-    } else {
-      tooltip = "Mark this config file as active.<br>Disabled since this config file is not valid."
-    }
+  if (!enabled) {
+    tooltip = `Mark this config file as active.<br>${disabledReason}`
   } else {
     if (active) {
       tooltip = "This config file is marked as active."
@@ -777,14 +793,12 @@ function LoadButton(props: {
   filename: string
   fileStatus: FileStatus | null
   loadConfig: (filename: string, migrateLegacyConfig: boolean) => void
-  valid: boolean | undefined
+  loadable: boolean | undefined
   for_version: number | null | undefined
 }) {
-  const { filename, fileStatus, loadConfig, valid, for_version } = props
+  const { filename, fileStatus, loadConfig, loadable, for_version } = props
   const isLatestVersion = for_version === CURRENT_CONFIG_VERSION
-  const isOlderVersion = for_version !== null && for_version !== undefined && for_version < CURRENT_CONFIG_VERSION
-  const isFutureVersion = for_version !== null && for_version !== undefined && for_version > CURRENT_CONFIG_VERSION
-  const shouldMigrate = isOlderVersion
+  const shouldMigrate = isOlderVersion(for_version)
 
   let loadIcon: { icon: string; className?: string } = {
     icon: isLatestVersion ? mdiOpenInApp : mdiRefresh,
@@ -795,70 +809,56 @@ function LoadButton(props: {
       : { icon: mdiAlertCircle, className: "error-text" }
   }
 
-  let disabledReason = ""
-  let tooltipAction = `Load "${filename}" into the GUI.`
-  let enabled = false
-  if (isLatestVersion && valid) {
-    enabled = true
-  } else if (isOlderVersion) {
-    enabled = true
-    tooltipAction = `Load "${filename}" into the GUI with automatic migration.`
-  } else if (isFutureVersion) {
-    disabledReason =
-      "<br>Disabled because this config file was made for a newer CamillaDSP version than this GUI supports."
-  } else {
-    disabledReason = "<br>Disabled because this config file is invalid."
-  }
+  const tooltipAction = shouldMigrate
+    ? `Load "${filename}" into the GUI with automatic migration.`
+    : `Load "${filename}" into the GUI.`
+  const disabledReason = loadable ? "" : "<br>Disabled because this config file cannot be loaded."
 
   return (
     <MdiButton
       icon={loadIcon.icon}
       className={loadIcon.className}
       tooltip={`${tooltipAction}${disabledReason}`}
-      enabled={enabled}
+      enabled={loadable === true}
       onClick={() => loadConfig(filename, shouldMigrate)}
     />
   )
 }
 
-function CompareToGUIButton(props: {
-  filename: string
-  compareConfig: (filename: string) => void
-  valid: boolean | undefined
-}) {
-  const { filename, compareConfig, valid } = props
+function CompareToGUIButton(props: { file: FileInfo; compareConfig: (file: FileInfo) => void }) {
+  const { file, compareConfig } = props
   const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
   let disabled_reason = ""
-  if (!valid) {
-    disabled_reason = "<br>Disabled because this config file is invalid."
+  if (!file.loadable) {
+    disabled_reason = "<br>Disabled because this config file cannot be loaded."
   }
   return (
     <MdiButton
       icon={loadIcon.icon}
       className={loadIcon.className}
-      tooltip={`Compare ${filename} with config in GUI${disabled_reason}`}
-      enabled={valid}
-      onClick={() => compareConfig(filename)}
+      tooltip={`Compare ${file.name} with config in GUI${disabled_reason}`}
+      enabled={file.loadable === true}
+      onClick={() => compareConfig(file)}
     />
   )
 }
 
 function CompareFilesButton(props: {
   selectedFiles: FileInfo[]
-  compareConfigs: (name_left: string, name_right: string) => void
+  compareConfigs: (left: FileInfo, right: FileInfo) => void
 }) {
   const { selectedFiles, compareConfigs } = props
   const loadIcon: { icon: string; className?: string } = {
     icon: mdiScaleUnbalanced,
   }
-  const enabled = selectedFiles.length === 2 && selectedFiles[0].valid && selectedFiles[1].valid
+  const enabled = selectedFiles.length === 2 && !!selectedFiles[0].loadable && !!selectedFiles[1].loadable
   let tooltip
   if (enabled) {
     tooltip = `Compare ${selectedFiles[0].name} and ${selectedFiles[1].name}`
   } else {
-    tooltip = "Select two valid files to compare"
+    tooltip = "Select two loadable files to compare"
   }
   return (
     <MdiButton
@@ -866,7 +866,7 @@ function CompareFilesButton(props: {
       className={loadIcon.className}
       tooltip={tooltip}
       enabled={enabled}
-      onClick={() => compareConfigs(selectedFiles[0].name, selectedFiles[1].name)}
+      onClick={() => compareConfigs(selectedFiles[0], selectedFiles[1])}
     />
   )
 }

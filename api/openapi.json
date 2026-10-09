@@ -4194,6 +4194,10 @@
             "description": "The time of the last change, in seconds since the epoch.",
             "minimum": 0
           },
+          "loadable": {
+            "type": "boolean",
+            "description": "For a config, whether the GUI can load it, migrating it first if it is\nfor an older version. It may still have errors to fix in the GUI."
+          },
           "name": {
             "type": "string"
           },
@@ -6131,14 +6135,6 @@
           }
         }
       },
-      "Severity": {
-        "type": "string",
-        "description": "How much an issue matters to the GUI.",
-        "enum": [
-          "error",
-          "warning"
-        ]
-      },
       "ShelfSteepness": {
         "oneOf": [
           {
@@ -6605,11 +6601,10 @@
       },
       "ValidationIssue": {
         "type": "object",
-        "description": "A problem with a config.",
+        "description": "A problem with a config, one that CamillaDSP would refuse it for.",
         "required": [
           "path",
-          "message",
-          "severity"
+          "message"
         ],
         "properties": {
           "message": {
@@ -6621,9 +6616,6 @@
               "$ref": "#/components/schemas/PathElement"
             },
             "description": "Where in the config, as keys and list indices from the top. Empty for\nthe config as a whole."
-          },
-          "severity": {
-            "$ref": "#/components/schemas/Severity"
           }
         }
       },

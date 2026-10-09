@@ -129,7 +129,7 @@ Key endpoints used by the frontend:
   configured folders like every other config the GUI gets
 - `POST /api/setconfig`: push config to running DSP `{config}`
 - `POST /api/saveconfigfile`: save config to disk `{filename, config}`
-- `POST /api/validateconfig`: the config's issues, `{path, message, severity}`, none if valid
+- `POST /api/validateconfig`: the config's issues, `{path, message}`, none if valid
 - `GET` and `POST /api/param/volume` and `/api/param/mute`, `GET /api/param/faders`,
   `POST /api/param/faders/{index}/volume` and `.../mute`: the volume and the faders
 - `GET /api/levels`: SSE stream of VU levels, CamillaDSP's VuLevels as they came

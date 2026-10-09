@@ -10,7 +10,7 @@ use crate::reply::{Binary, BodyWriter, EventStream, NO_STORE, NoContent, Reply, 
 use crate::settings::{self, GuiConfig, Settings};
 use crate::status::Status;
 use crate::status::StatusCache;
-use crate::validate::{self, DeviceTypeLists, DeviceTypes, Severity, ValidationIssue};
+use crate::validate::{self, DeviceTypeLists, DeviceTypes, ValidationIssue};
 use crate::wav::WavInfo;
 use crate::{coeffs, convolver, eqapo, legacy, wav, yaml};
 use axum::extract::State;
@@ -655,7 +655,6 @@ pub async fn validate_config(
                  Set allow_absolute_paths: true in camillagui.yml to allow this.",
                 offender.filename
             ),
-            severity: Severity::Error,
         });
     }
     log::debug!("Validated config: {issues:?}");
@@ -765,10 +764,9 @@ pub async fn get_config_file(
 ) -> ApiResult<Reply<Configuration>> {
     let ConfigFileQuery { name, migrate } = query;
     let path = file_in_folder(&app.settings.config_dir, &name).map_err(bad_request)?;
-    let types = app.device_types();
     blocking(move || {
         let config = if migrate {
-            read_and_migrate(&app, &path, &name, &types)?
+            read_and_migrate(&app, &path, &name)?
         } else {
             read_config_for_gui(&app, &path).map_err(|err| err.for_file(&name))?
         };
@@ -777,30 +775,10 @@ pub async fn get_config_file(
     .await
 }
 
-/// Read an older config, bring it up to date, and check that the result is valid.
-/// The errors among `issues` as list lines, with the path written the same way
-/// as in the other validation messages.
-fn blocking_error_lines(issues: &[ValidationIssue]) -> Vec<String> {
-    issues
-        .iter()
-        .filter(|issue| issue.severity == Severity::Error)
-        .map(|issue| {
-            if issue.path.is_empty() {
-                format!("- config: {}", issue.message)
-            } else {
-                let location = camilladsp_schema::config::format_path(&issue.path);
-                format!("- {location}: {}", issue.message)
-            }
-        })
-        .collect()
-}
-
-fn read_and_migrate(
-    app: &AppState,
-    path: &Path,
-    name: &str,
-    types: &DeviceTypes,
-) -> Result<Configuration, ApiError> {
+/// Read an older config and bring it up to date. The result only has to parse,
+/// like a current config read for the GUI, so any errors left in it can be
+/// fixed there.
+fn read_and_migrate(app: &AppState, path: &Path, name: &str) -> Result<Configuration, ApiError> {
     let parsed = read_yaml_file(path).map_err(|err| err.for_file(name))?;
     check_finite(&parsed).map_err(bad_request)?;
     let mut config = parsed.value;
@@ -816,16 +794,8 @@ fn read_and_migrate(
         &settings.config_dir,
         &settings.coeff_dir,
     );
-    let issues = validate::validate(with_absolute_paths(app, config.clone()), types);
-    let blocking_errors = blocking_error_lines(&issues);
-    if !blocking_errors.is_empty() {
-        return Err(bad_request(format!(
-            "Migration failed: migrated config validation reported problems:\n{}",
-            blocking_errors.join("\n")
-        )));
-    }
     paths::make_audio_file_paths_relative(&mut config, app.audiofiles_dir());
-    validate::parse(config).map_err(bad_request)
+    validate::parse(config).map_err(|err| bad_request(format!("Migration failed: {err}")))
 }
 
 /// The default config file, `default_config` in the settings, with the file
@@ -1999,39 +1969,6 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(output, "done\r\n");
-    }
-
-    #[test]
-    fn migration_errors_name_the_path_like_other_messages() {
-        let error = |path: Vec<PathElement>, message: &str| ValidationIssue {
-            path,
-            message: message.to_string(),
-            severity: Severity::Error,
-        };
-        let issues = vec![
-            error(
-                vec![
-                    PathElement::Key("pipeline".into()),
-                    PathElement::Index(2),
-                    PathElement::Key("names".into()),
-                    PathElement::Index(0),
-                ],
-                "unknown filter",
-            ),
-            error(Vec::new(), "no devices"),
-            ValidationIssue {
-                path: vec![PathElement::Key("filters".into())],
-                message: "just a warning".to_string(),
-                severity: Severity::Warning,
-            },
-        ];
-        assert_eq!(
-            blocking_error_lines(&issues),
-            vec![
-                "- pipeline[2].names[0]: unknown filter",
-                "- config: no devices"
-            ]
-        );
     }
 
     #[test]

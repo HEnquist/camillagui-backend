@@ -489,6 +489,7 @@ function makeConfigFileInfo(name: string, config: Config): FileInfo {
     description: config.description ?? undefined,
     version: CURRENT_CONFIG_VERSION,
     valid: true,
+    loadable: true,
   }
 }
 

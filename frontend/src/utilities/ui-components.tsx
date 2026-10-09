@@ -6,7 +6,7 @@ import { Range } from "immutable"
 import ReactjsPopup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
 import { DataTable, sortByRows } from "./data-table"
-import { FileInfo, issueSeverity } from "./files"
+import { ConfigFileStatus, configFileStatus, FileInfo } from "./files"
 import { getLabelForChannel } from "../camilladsp/config"
 
 export function cssStyles(): CSSStyleDeclaration {
@@ -1219,17 +1219,8 @@ export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
 }
 
 export const fileValidSort = (rowA: FileInfo, rowB: FileInfo) => {
-  const hasWarning = (row: FileInfo) => !!row.errors && row.errors.some((issue) => issueSeverity(issue) === "warning")
-
-  const rank = (row: FileInfo) => {
-    if (row.valid !== true) {
-      return 0
-    }
-    if (hasWarning(row)) {
-      return 1
-    }
-    return 2
-  }
+  const ranks: Record<ConfigFileStatus, number> = { unloadable: 0, errors: 1, valid: 2 }
+  const rank = (row: FileInfo) => ranks[configFileStatus(row)]
 
   const a = rank(rowA)
   const b = rank(rowB)

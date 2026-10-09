@@ -70,6 +70,11 @@ pub struct FileInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub valid: Option<bool>,
+    /// For a config, whether the GUI can load it, migrating it first if it is
+    /// for an older version. It may still have errors to fix in the GUI.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(nullable = false)]
+    pub loadable: Option<bool>,
     /// For a config, its errors and warnings.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
@@ -149,6 +154,7 @@ fn single_error(message: &str) -> Option<Vec<ValidationIssue>> {
 
 fn config_file_details(path: &Path, info: &mut FileInfo, context: &ConfigContext) {
     info.valid = Some(false);
+    info.loadable = Some(false);
     let not_a_config = "This does not appear to be a CamillaDSP config file.";
     let text = match std::fs::read(path).map(String::from_utf8) {
         Ok(Ok(text)) => text,
@@ -162,6 +168,10 @@ fn config_file_details(path: &Path, info: &mut FileInfo, context: &ConfigContext
         }
     };
     let parsed = match yaml::parse(&text) {
+        Ok(parsed) if !parsed.nonfinite.is_empty() => {
+            info.errors = single_error(&yaml::nonfinite_message(&parsed.nonfinite));
+            return;
+        }
         Ok(parsed) => parsed.value,
         Err(err) => {
             let message = match err.location {
@@ -181,31 +191,33 @@ fn config_file_details(path: &Path, info: &mut FileInfo, context: &ConfigContext
     let text_of = |key: &str| parsed.get(key).and_then(Value::as_str).map(String::from);
     info.title = text_of("title");
     info.description = text_of("description");
-    let version = legacy::identify_version(&parsed);
-    info.version = version;
-    match version {
-        None => {
-            info.errors = single_error(not_a_config);
+    let Some(version) = legacy::identify_version(&parsed) else {
+        info.errors = single_error(not_a_config);
+        return;
+    };
+    info.version = Some(version);
+    let mut config = parsed;
+    let mut issues = Vec::new();
+    if version < legacy::CURRENT_VERSION {
+        // The issues are those of the migrated config, the one the GUI loads.
+        issues.push(ValidationIssue::error(format!(
+            "This config is made for the previous version {version} of CamillaDSP, \
+            and is migrated when loaded."
+        )));
+        legacy::migrate_if_older(&mut config);
+    }
+    paths::make_config_filter_paths_absolute(&mut config, context.config_dir, context.coeff_dir);
+    paths::make_audio_file_paths_absolute(&mut config, context.audiofiles_dir);
+    match validate::validate_if_parses(config, context.device_types) {
+        Ok(found) => {
+            info.loadable = Some(true);
+            issues.extend(found);
         }
-        Some(legacy::CURRENT_VERSION) => {
-            let mut config = parsed;
-            paths::make_config_filter_paths_absolute(
-                &mut config,
-                context.config_dir,
-                context.coeff_dir,
-            );
-            paths::make_audio_file_paths_absolute(&mut config, context.audiofiles_dir);
-            let issues = validate::validate(config, context.device_types);
-            info.valid = Some(!validate::has_errors(&issues));
-            if !issues.is_empty() {
-                info.errors = Some(issues);
-            }
-        }
-        Some(older) => {
-            info.errors = single_error(&format!(
-                "This config is made for the previous version {older} of CamillaDSP."
-            ));
-        }
+        Err(issue) => issues.push(issue),
+    }
+    info.valid = Some(issues.is_empty());
+    if !issues.is_empty() {
+        info.errors = Some(issues);
     }
 }
 
@@ -430,6 +442,15 @@ mod tests {
             "old.yml",
             "devices: {capture: {type: Stdin, channels: 2, format: S16LE}}\n",
         );
+        write(
+            "old_complete.yml",
+            "devices: {samplerate: 44100, chunksize: 1024, capture: {type: Stdin, channels: 2, format: S16LE}, playback: {type: Stdout, channels: 2, format: S16LE}}\n",
+        );
+        write(
+            "bad_mixer.yml",
+            "devices: {samplerate: 44100, chunksize: 1024, capture: {type: Stdin, channels: 2, format: S16_LE}, playback: {type: Stdout, channels: 2, format: S16_LE}}\npipeline: [{type: Mixer, name: nosuchmixer}]\n",
+        );
+        write("nan.yml", "devices: {samplerate: .nan}\n");
         let types = DeviceTypes::default();
         let context = ConfigContext {
             config_dir: dir.path(),
@@ -447,6 +468,7 @@ mod tests {
         let eqapo = get("eqapo.yml");
         assert_eq!(eqapo.version, None);
         assert_eq!(eqapo.valid, Some(false));
+        assert_eq!(eqapo.loadable, Some(false));
         assert_eq!(
             first_error("eqapo.yml"),
             "This does not appear to be a CamillaDSP config file."
@@ -454,9 +476,32 @@ mod tests {
         assert!(first_error("broken.yml").contains("YAML syntax error on line"));
         let good = get("good.yml");
         assert_eq!(good.valid, Some(true), "{good:?}");
+        assert_eq!(good.loadable, Some(true));
         assert_eq!(good.title.as_deref(), Some("Good"));
         assert!(good.errors.is_none());
-        assert_eq!(get("old.yml").version, Some(3));
+
+        // Errors that leave a config parsing are fixed in the GUI.
+        let bad_mixer = get("bad_mixer.yml");
+        assert_eq!(bad_mixer.valid, Some(false));
+        assert_eq!(bad_mixer.loadable, Some(true), "{bad_mixer:?}");
+
+        // An older config is judged as it will be once migrated.
+        let old = get("old.yml");
+        assert_eq!(old.version, Some(3));
+        assert_eq!(old.loadable, Some(false), "{old:?}");
+        let old_complete = get("old_complete.yml");
+        assert_eq!(old_complete.version, Some(3));
+        assert_eq!(old_complete.valid, Some(false));
+        assert_eq!(old_complete.loadable, Some(true), "{old_complete:?}");
+        assert_eq!(
+            first_error("old_complete.yml"),
+            "This config is made for the previous version 3 of CamillaDSP, and is migrated when loaded."
+        );
+        assert_eq!(old_complete.errors.as_ref().unwrap().len(), 1);
+
+        let nan = get("nan.yml");
+        assert_eq!(nan.loadable, Some(false));
+        assert!(first_error("nan.yml").contains("devices/samplerate"), "{nan:?}");
     }
 
     #[test]
