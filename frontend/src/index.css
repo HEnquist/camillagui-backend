@@ -963,17 +963,26 @@ div .popup-content {
   padding: 5px 5px;
 }
 
-.import-tab-tooltip {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-  opacity: 1 !important;
-  font-size: smaller;
+/* react-tooltip's dark variant takes its colors from these, the border is the Tooltip's prop */
+.import-tab-tooltip,
+.tooltip {
+  --rt-opacity: 1;
+  --rt-color-dark: var(--button-background-color);
+  --rt-color-white: var(--text-color);
   z-index: 1000;
 }
 
+.import-tab-tooltip {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-size: smaller;
+}
+
 .tooltip {
-  opacity: 1 !important;
   text-align: center;
-  z-index: 1000;
+}
+
+.tooltip.tooltip-left {
+  text-align: left;
 }
 
 .pipeline-tooltip {

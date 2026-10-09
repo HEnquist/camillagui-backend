@@ -270,7 +270,7 @@ function valueAppended(value: any, tooltipId?: string): ReactNode {
     return (
       <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
         <MdiIcon icon={mdiInformation} />
-        <Tooltip id={tooltipId} className="import-tab-tooltip">
+        <Tooltip id={tooltipId} className="import-tab-tooltip" border="var(--box-border)">
           <pre>{asFormattedText(value, 20)}</pre>
         </Tooltip>
       </span>
@@ -295,7 +295,7 @@ function collisionWarning(config: any, parentKey: string, valueKey: string): Rea
       return (
         <span data-tooltip-html={""} data-tooltip-id={tooltipId}>
           <MdiIcon icon={mdiAlert} style={{ color: "var(--error-text-color)" }} />
-          <Tooltip id={tooltipId} className="tooltip">
+          <Tooltip id={tooltipId} className="tooltip" border="var(--box-border)">
             {`${valueKey} is already present in the current config and will be overridden, when this item is imported`}
           </Tooltip>
         </span>

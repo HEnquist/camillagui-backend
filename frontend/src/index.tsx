@@ -231,7 +231,7 @@ class CamillaConfig extends React.Component<
   render() {
     return (
       <div className="configapp">
-        <Tooltip id="main-tooltip" className="tooltip" />
+        <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
         {this.state.viewMode === "compact" ? (
           <CompactView
             currentConfigName={this.state.currentConfigFile}

@@ -2,13 +2,13 @@ import React, { Component } from "react"
 import {
   mdiAlertCircle,
   mdiCheck,
-  mdiContentSave,
+  mdiFileExport,
+  mdiFileImport,
   mdiMenu,
-  mdiOpenInApp,
-  mdiRefresh,
   mdiScaleUnbalanced,
   mdiStar,
   mdiStarOutline,
+  mdiUpdate,
 } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
@@ -569,7 +569,11 @@ class FileTable extends Component<
         header: "Valid",
         accessorFn: (row) => row.valid,
         cell: ({ row }) => (
-          <div data-tooltip-html={fileStatusDesc(row.original)} data-tooltip-id="main-tooltip">
+          <div
+            data-tooltip-html={fileStatusDesc(row.original)}
+            data-tooltip-id="main-tooltip"
+            data-tooltip-class-name="tooltip-left"
+          >
             {CONFIG_FILE_STATUS_ICONS[configFileStatus(row.original)]}
           </div>
         ),
@@ -771,7 +775,7 @@ function SaveButton(props: {
 }) {
   const { disableReason, filename, fileStatus, saveConfig } = props
   let saveIcon: { icon: string; className?: string } = {
-    icon: mdiContentSave,
+    icon: mdiFileExport,
   }
   if (!disableReason && fileStatus !== null && fileStatus.action === "save" && fileStatus.filename === filename) {
     saveIcon = fileStatus.success
@@ -797,11 +801,10 @@ function LoadButton(props: {
   for_version: number | null | undefined
 }) {
   const { filename, fileStatus, loadConfig, loadable, for_version } = props
-  const isLatestVersion = for_version === CURRENT_CONFIG_VERSION
   const shouldMigrate = isOlderVersion(for_version)
 
   let loadIcon: { icon: string; className?: string } = {
-    icon: isLatestVersion ? mdiOpenInApp : mdiRefresh,
+    icon: shouldMigrate ? mdiUpdate : mdiFileImport,
   }
   if (fileStatus !== null && fileStatus.action === "load" && fileStatus.filename === filename) {
     loadIcon = fileStatus.success
