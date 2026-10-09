@@ -2,11 +2,6 @@ import React from "react"
 import { Status } from "./status"
 import { version } from "../../package.json"
 
-export interface Versions {
-  cdsp_version: string
-  backend_version: string
-}
-
 export function VersionLabels(props: { versions: Status }) {
   const { cdsp_version, backend_version } = props.versions
   const tooltip = `
@@ -17,7 +12,7 @@ export function VersionLabels(props: { versions: Status }) {
       </tr>
       <tr>
         <td class=namecol>CamillaDSP</td>
-        <td class=valuecol>${cdsp_version}</td>
+        <td class=valuecol>${cdsp_version ?? "(offline)"}</td>
       </tr>
       <tr>
         <td class=namecol>CamillaGUI frontend</td>

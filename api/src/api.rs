@@ -1229,7 +1229,6 @@ async fn set_active_config_path(app: &AppState, path: &str) -> Result<(), ApiErr
 pub struct ActiveConfigFile {
     /// The file name of the active config, null when there is none, or it is
     /// not in config_dir.
-    #[serde(rename = "configFileName")]
     #[schema(required)]
     config_file_name: Option<String>,
 }
@@ -1283,7 +1282,6 @@ pub struct StartConfig {
     pub config: Configuration,
     pub source: ConfigSource,
     /// The file the config came from, null if it is not known.
-    #[serde(rename = "configFileName")]
     #[schema(required)]
     pub config_file_name: Option<String>,
 }

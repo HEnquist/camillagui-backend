@@ -346,7 +346,7 @@ class FileTable extends Component<
   private async loadActiveConfigName() {
     try {
       const json = await loadActiveConfigFilename()
-      this.setState({ activeConfigFileName: json.configFileName })
+      this.setState({ activeConfigFileName: json.config_file_name })
     } catch (err) {
       console.log("Failed to get active config", err)
     }

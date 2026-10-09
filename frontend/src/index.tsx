@@ -95,7 +95,7 @@ class CamillaConfig extends React.Component<
   private async loadConfigAtStart() {
     try {
       const json = await loadStartupConfig()
-      this.setCurrentConfig(json.configFileName ? json.configFileName : undefined, json.config)
+      this.setCurrentConfig(json.config_file_name ? json.config_file_name : undefined, json.config)
       let message = ""
       if (json.source === "dsp") {
         message = "Loaded from DSP"

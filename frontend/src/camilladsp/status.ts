@@ -66,7 +66,7 @@ function offlineStatus(): Status {
     clippedsamples: null,
     processingload: null,
     resamplerload: null,
-    cdsp_version: "",
+    cdsp_version: null,
     backend_version: "",
     labels: { playback: null, capture: null },
     title: null,

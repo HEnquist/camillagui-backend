@@ -111,7 +111,7 @@ def wait_until_offline(server):
 def test_status_goes_offline(server):
     server.fake.go_offline()
     status = wait_until_offline(server)
-    assert status["cdsp_version"] == "(offline)"
+    assert status["cdsp_version"] is None
 
 
 def test_status_rereads_the_version_after_a_restart_it_did_not_see(server):
@@ -551,7 +551,8 @@ def test_stored_files_listing(server):
     assert "config.yml" in names
     assert ".gitignore" not in names
     assert names == sorted(names, key=str.lower)
-    assert set(files[0]) == {"name", "lastModified", "size"}
+    assert set(files[0]) == {"name", "last_modified", "size"}
+    assert isinstance(files[0]["last_modified"], int)
 
 
 def test_missing_directories_warn_instead_of_stopping_the_backend(server, make_backend, tmp_path):
@@ -651,13 +652,13 @@ def test_set_active_config_file_offline_updates_the_statefile(server):
     assert resp.status == 204
     state = yaml.safe_load(server.statefile.read_text())
     assert state["config_path"] == str(server.config_dir / "config.yml")
-    assert server.get("/api/getactiveconfigfilename").json() == {"configFileName": "config.yml"}
+    assert server.get("/api/getactiveconfigfilename").json() == {"config_file_name": "config.yml"}
 
 
 def test_active_config_file_online_without_dsp_statefile(server):
-    assert server.get("/api/getactiveconfigfilename").json() == {"configFileName": None}
+    assert server.get("/api/getactiveconfigfilename").json() == {"config_file_name": None}
     server.fake.state["state_file_path"] = "/somewhere/state.yml"
-    assert server.get("/api/getactiveconfigfilename").json() == {"configFileName": "config.yml"}
+    assert server.get("/api/getactiveconfigfilename").json() == {"config_file_name": "config.yml"}
 
 
 def test_startup_config_online(server):
@@ -666,7 +667,7 @@ def test_startup_config_online(server):
     content = resp.json()
     assert content["config"]["devices"]["samplerate"] == 44100
     assert content["source"] == "dsp"
-    assert content["configFileName"] == "config.yml"
+    assert content["config_file_name"] == "config.yml"
 
 
 def test_startup_config_offline(server):
@@ -676,7 +677,7 @@ def test_startup_config_offline(server):
     content = resp.json()
     assert content["config"]["devices"]["samplerate"] == 48000
     assert content["source"] == "active"
-    assert content["configFileName"] == "config2.yml"
+    assert content["config_file_name"] == "config2.yml"
 
 
 def test_startup_config_offline_falls_back_to_default_for_legacy_active(server):
@@ -699,7 +700,7 @@ def test_startup_config_offline_falls_back_to_default_for_legacy_active(server):
         assert resp.status == 200
         content = resp.json()
         assert content["source"] == "default"
-        assert content["configFileName"] == "config.yml"
+        assert content["config_file_name"] == "config.yml"
         assert content["config"]["devices"]["samplerate"] == 44100
     finally:
         legacy_path.unlink()

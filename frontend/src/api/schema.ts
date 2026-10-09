@@ -688,7 +688,7 @@ export interface components {
        * @description The file name of the active config, null when there is none, or it is
        *     not in config_dir.
        */
-      configFileName: string | null
+      config_file_name: string | null
     }
     /** @enum {string} */
     AlsaSampleFormat: "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"
@@ -1376,10 +1376,10 @@ export interface components {
       /** @description For a config, its errors and warnings. */
       errors?: components["schemas"]["ValidationIssue"][]
       /**
-       * Format: double
+       * Format: int64
        * @description The time of the last change, in seconds since the epoch.
        */
-      lastModified: number
+      last_modified: number
       name: string
       /** @description For a wav file, the CamillaDSP name of its sample format. */
       sampleformat?: string
@@ -2017,7 +2017,7 @@ export interface components {
     StartConfig: {
       config: components["schemas"]["Configuration"]
       /** @description The file the config came from, null if it is not known. */
-      configFileName: string | null
+      config_file_name: string | null
       source: components["schemas"]["ConfigSource"]
     }
     /** @description Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`]. */
@@ -2042,8 +2042,8 @@ export interface components {
       capturerate: number | null
       /** @description Whether CamillaDSP answered the last time it was asked. */
       cdsp_online: boolean
-      /** @description CamillaDSP's version, `(offline)` until it has been reached. */
-      cdsp_version: string
+      /** @description CamillaDSP's version, null while it is offline. */
+      cdsp_version: string | null
       clippedsamples: number | null
       description: string | null
       labels: components["schemas"]["ChannelLabels"]

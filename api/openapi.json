@@ -1499,10 +1499,10 @@
       "ActiveConfigFile": {
         "type": "object",
         "required": [
-          "configFileName"
+          "config_file_name"
         ],
         "properties": {
-          "configFileName": {
+          "config_file_name": {
             "type": [
               "string",
               "null"
@@ -4163,7 +4163,7 @@
         "description": "A file in a listing. What is known about it beyond its name, size and time\ndepends on the folder: configs have their title, version and validity, and\nwav files their format. What is not known is left out.",
         "required": [
           "name",
-          "lastModified",
+          "last_modified",
           "size"
         ],
         "properties": {
@@ -4188,10 +4188,11 @@
             },
             "description": "For a config, its errors and warnings."
           },
-          "lastModified": {
-            "type": "number",
-            "format": "double",
-            "description": "The time of the last change, in seconds since the epoch."
+          "last_modified": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The time of the last change, in seconds since the epoch.",
+            "minimum": 0
           },
           "name": {
             "type": "string"
@@ -6353,13 +6354,13 @@
         "required": [
           "config",
           "source",
-          "configFileName"
+          "config_file_name"
         ],
         "properties": {
           "config": {
             "$ref": "#/components/schemas/Configuration"
           },
-          "configFileName": {
+          "config_file_name": {
             "type": [
               "string",
               "null"
@@ -6436,8 +6437,11 @@
             "description": "Whether CamillaDSP answered the last time it was asked."
           },
           "cdsp_version": {
-            "type": "string",
-            "description": "CamillaDSP's version, `(offline)` until it has been reached."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CamillaDSP's version, null while it is offline."
           },
           "clippedsamples": {
             "type": [

@@ -12,7 +12,8 @@ export type StoredFileType = Schemas["FileKind"]
 export async function loadFiles(type: StoredFileType): Promise<FileInfo[]> {
   try {
     const { data, error, response } = await api.GET("/api/files/{kind}", { params: { path: { kind: type } } })
-    if (data) return data.map((file) => ({ ...file, formattedDate: new Date(1000 * file.lastModified).toDateString() }))
+    if (data)
+      return data.map((file) => ({ ...file, formattedDate: new Date(1000 * file.last_modified).toDateString() }))
     console.log("Failed to get file list", errorMessage(error, response))
   } catch (err) {
     console.log("Failed to fetch", err)
@@ -54,7 +55,7 @@ export async function loadDefaultConfigJson(): Promise<Config> {
 }
 
 export async function loadStartupConfig(): Promise<{
-  configFileName: string | null
+  config_file_name: string | null
   config: Config
   source: Schemas["ConfigSource"]
 }> {

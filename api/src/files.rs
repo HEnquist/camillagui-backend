@@ -50,8 +50,7 @@ pub struct ConfigContext<'a> {
 pub struct FileInfo {
     pub name: String,
     /// The time of the last change, in seconds since the epoch.
-    #[serde(rename = "lastModified")]
-    pub last_modified: f64,
+    pub last_modified: u64,
     /// In bytes.
     pub size: u64,
     /// For a config, its title.
@@ -118,8 +117,7 @@ pub fn list_files(
                     .modified()
                     .ok()
                     .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                    .map(|d| d.as_secs_f64())
-                    .unwrap_or(0.0);
+                    .map_or(0, |d| d.as_secs());
                 info.size = meta.len();
             }
             if details.config

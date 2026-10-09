@@ -1207,8 +1207,8 @@ const caseInsensitiveRowSort = (rowA: [string, string], rowB: [string, string]) 
 }
 
 export const fileDateSort = (rowA: FileInfo, rowB: FileInfo) => {
-  const a = rowA.lastModified
-  const b = rowB.lastModified
+  const a = rowA.last_modified
+  const b = rowB.last_modified
   if (a > b) {
     return 1
   }

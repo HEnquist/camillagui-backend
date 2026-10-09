@@ -43,8 +43,9 @@ fn nearest_standard_rate(rate: usize) -> Option<usize> {
 pub struct Status {
     /// Whether CamillaDSP answered the last time it was asked.
     pub cdsp_online: bool,
-    /// CamillaDSP's version, `(offline)` until it has been reached.
-    pub cdsp_version: String,
+    /// CamillaDSP's version, null while it is offline.
+    #[schema(required)]
+    pub cdsp_version: Option<String>,
     /// The version of this backend.
     pub backend_version: String,
     /// The capture rate in Hz, rounded to the nearest standard rate. Null when
@@ -74,7 +75,7 @@ impl Status {
     fn offline() -> Self {
         Status {
             cdsp_online: false,
-            cdsp_version: "(offline)".to_string(),
+            cdsp_version: None,
             backend_version: env!("CARGO_PKG_VERSION").to_string(),
             capturerate: None,
             rateadjust: None,
@@ -247,7 +248,7 @@ impl StatusCache {
     /// so they are fetched in the background.
     async fn on_reconnect(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
         let version = camilla.version().await?;
-        self.status.lock().unwrap().cdsp_version = version;
+        self.status.lock().unwrap().cdsp_version = Some(version);
         let cache = self.clone();
         let camilla = camilla.clone();
         tokio::spawn(async move {
@@ -463,6 +464,6 @@ mod tests {
         *cache.last_refresh.lock().unwrap() = None;
         let status = cache.refresh(&camilla).await;
         assert!(status.cdsp_online);
-        assert_eq!(status.cdsp_version, "5.0.0");
+        assert_eq!(status.cdsp_version.as_deref(), Some("5.0.0"));
     }
 }

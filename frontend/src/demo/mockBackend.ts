@@ -8,7 +8,7 @@ import { download } from "../utilities/files"
 type FileInfo = Schemas["FileInfo"]
 
 type DemoAudioFile = {
-  lastModified: number
+  last_modified: number
   size: number
   samplerate?: number
   channels?: number
@@ -23,8 +23,8 @@ type DemoState = {
   currentConfig: Config
   activeConfigFileName: string | null
   storedConfigs: Record<string, Config>
-  storedConfigMeta: Record<string, { lastModified: number }>
-  storedCoeffs: Record<string, { lastModified: number; size: number; content: string }>
+  storedConfigMeta: Record<string, { last_modified: number }>
+  storedCoeffs: Record<string, { last_modified: number; size: number; content: string }>
   storedAudioFiles: Record<string, DemoAudioFile>
   guiConfig: GuiConfig
   processingStopped: boolean
@@ -32,7 +32,7 @@ type DemoState = {
 }
 
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
-const STORAGE_KEY = "camillagui.demo.state.v1"
+const STORAGE_KEY = "camillagui.demo.state.v2"
 const LEVEL_INTERVAL_MS = 140
 
 let spectrumShape = { offset: -38, slope: -3 }
@@ -205,7 +205,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
     Math.round(samplerate * channels * bytesPerSample * seconds) + 44
   return {
     "REW_sweep_48k_20s.wav": {
-      lastModified: now - 3600,
+      last_modified: now - 3600,
       duration: 20.0,
       samplerate: 48000,
       channels: 2,
@@ -213,7 +213,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
       size: sizeForWav(48000, 2, 4, 20.0),
     },
     "REW_sweep_96k_30s.wav": {
-      lastModified: now - 7200,
+      last_modified: now - 7200,
       duration: 30.0,
       samplerate: 96000,
       channels: 2,
@@ -221,7 +221,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
       size: sizeForWav(96000, 2, 3, 30.0),
     },
     "REW_sweep_mono_48k_10s.wav": {
-      lastModified: now - 18000,
+      last_modified: now - 18000,
       duration: 10.0,
       samplerate: 48000,
       channels: 1,
@@ -229,7 +229,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
       size: sizeForWav(48000, 1, 2, 10.0),
     },
     "pink_noise_60s.wav": {
-      lastModified: now - 86400,
+      last_modified: now - 86400,
       duration: 60.0,
       samplerate: 48000,
       channels: 2,
@@ -237,7 +237,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
       size: sizeForWav(48000, 2, 3, 60.0),
     },
     "white_noise_44k1_120s.wav": {
-      lastModified: now - 172800,
+      last_modified: now - 172800,
       duration: 120.0,
       samplerate: 44100,
       channels: 2,
@@ -245,7 +245,7 @@ function defaultStoredAudioFiles(): Record<string, DemoAudioFile> {
       size: sizeForWav(44100, 2, 2, 120.0),
     },
     "raw_capture_48k_stereo.raw": {
-      lastModified: now - 259200,
+      last_modified: now - 259200,
       size: 48000 * 2 * 4 * 10,
     },
   }
@@ -274,17 +274,17 @@ function defaultState(): DemoState {
       },
     },
     storedConfigMeta: {
-      [MAIN_CONFIG_NAME]: { lastModified: Math.floor(Date.now() / 1000) - 3600 },
-      "headphones-demo.yml": { lastModified: Math.floor(Date.now() / 1000) - 7200 },
+      [MAIN_CONFIG_NAME]: { last_modified: Math.floor(Date.now() / 1000) - 3600 },
+      "headphones-demo.yml": { last_modified: Math.floor(Date.now() / 1000) - 7200 },
     },
     storedCoeffs: {
       "demo-room.wav": {
-        lastModified: Math.floor(Date.now() / 1000) - 14400,
+        last_modified: Math.floor(Date.now() / 1000) - 14400,
         size: 524288,
         content: "demo coeff content",
       },
       "demo-target.raw": {
-        lastModified: Math.floor(Date.now() / 1000) - 28800,
+        last_modified: Math.floor(Date.now() / 1000) - 28800,
         size: 262144,
         content: "demo raw coeff content",
       },
@@ -330,7 +330,7 @@ function appendLog(message: string) {
 }
 
 function touchConfigFile(name: string) {
-  state.storedConfigMeta[name] = { lastModified: Math.floor(Date.now() / 1000) }
+  state.storedConfigMeta[name] = { last_modified: Math.floor(Date.now() / 1000) }
 }
 
 function jsonResponse(body: unknown, status = 200, headers?: HeadersInit) {
@@ -481,10 +481,10 @@ function makeConvCoefficients(filename: string) {
 }
 
 function makeConfigFileInfo(name: string, config: Config): FileInfo {
-  const meta = state.storedConfigMeta[name] ?? { lastModified: Math.floor(Date.now() / 1000) }
+  const meta = state.storedConfigMeta[name] ?? { last_modified: Math.floor(Date.now() / 1000) }
   return {
     name,
-    lastModified: meta.lastModified,
+    last_modified: meta.last_modified,
     size: JSON.stringify(config).length,
     title: config.title ?? undefined,
     description: config.description ?? undefined,
@@ -497,7 +497,7 @@ function makeCoeffFileInfo(name: string): FileInfo {
   const coeff = state.storedCoeffs[name]
   return {
     name,
-    lastModified: coeff.lastModified,
+    last_modified: coeff.last_modified,
     size: coeff.size,
   }
 }
@@ -505,10 +505,10 @@ function makeCoeffFileInfo(name: string): FileInfo {
 function makeAudioFileInfo(name: string): FileInfo {
   const f = state.storedAudioFiles[name]
   const isWav = name.toLowerCase().endsWith(".wav")
-  if (!isWav) return { name, lastModified: f.lastModified, size: f.size }
+  if (!isWav) return { name, last_modified: f.last_modified, size: f.size }
   return {
     name,
-    lastModified: f.lastModified,
+    last_modified: f.last_modified,
     size: f.size,
     valid: true,
     samplerate: f.samplerate,
@@ -533,7 +533,7 @@ function listDemoFiles(kind: Schemas["FileKind"]): FileInfo[] {
 }
 
 async function storeDemoFile(kind: Schemas["FileKind"], file: File) {
-  const lastModified = Math.floor(Date.now() / 1000)
+  const last_modified = Math.floor(Date.now() / 1000)
   if (kind === "config") {
     const content = await file.text()
     try {
@@ -544,10 +544,10 @@ async function storeDemoFile(kind: Schemas["FileKind"], file: File) {
     }
     touchConfigFile(file.name)
   } else if (kind === "coeff") {
-    state.storedCoeffs[file.name] = { lastModified, size: file.size, content: await file.text() }
+    state.storedCoeffs[file.name] = { last_modified, size: file.size, content: await file.text() }
   } else if (file.name.toLowerCase().endsWith(".wav")) {
     state.storedAudioFiles[file.name] = {
-      lastModified,
+      last_modified,
       size: file.size,
       samplerate: 48000,
       channels: 2,
@@ -555,7 +555,7 @@ async function storeDemoFile(kind: Schemas["FileKind"], file: File) {
       duration: 0,
     }
   } else {
-    state.storedAudioFiles[file.name] = { lastModified, size: file.size }
+    state.storedAudioFiles[file.name] = { last_modified, size: file.size }
   }
 }
 
@@ -572,7 +572,7 @@ function renameDemoFile(kind: Schemas["FileKind"], source: string, target: strin
   files[target] = files[source]
   delete files[source]
   if (kind === "config") {
-    state.storedConfigMeta[target] = state.storedConfigMeta[source] ?? { lastModified: Math.floor(Date.now() / 1000) }
+    state.storedConfigMeta[target] = state.storedConfigMeta[source] ?? { last_modified: Math.floor(Date.now() / 1000) }
     delete state.storedConfigMeta[source]
     if (state.activeConfigFileName === source) state.activeConfigFileName = target
   }
@@ -663,7 +663,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     state.currentConfig = cloneConfig(config)
     persistState()
     const startConfig: Schemas["StartConfig"] = {
-      configFileName: activeName,
+      config_file_name: activeName,
       config: demoStripAudioPaths(cloneConfig(config)),
       source: activeName ? "active" : "dsp",
     }
@@ -671,7 +671,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/getactiveconfigfilename" && method === "GET") {
-    const active: Schemas["ActiveConfigFile"] = { configFileName: state.activeConfigFileName }
+    const active: Schemas["ActiveConfigFile"] = { config_file_name: state.activeConfigFileName }
     return jsonResponse(active)
   }
 

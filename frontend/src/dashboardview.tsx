@@ -29,8 +29,8 @@ export function DashboardView(props: {
     if (!cdspOnline) return
     let cancelled = false
     loadActiveConfigFilename()
-      .then(({ configFileName }) => {
-        if (!cancelled) setDspConfigFileName(configFileName)
+      .then(({ config_file_name }) => {
+        if (!cancelled) setDspConfigFileName(config_file_name)
       })
       .catch((error) => {
         if (!cancelled) {
