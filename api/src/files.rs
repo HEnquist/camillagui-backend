@@ -786,7 +786,10 @@ mod tests {
 
         let nan = get("nan.yml");
         assert_eq!(nan.loadable, Some(false));
-        assert!(first_error("nan.yml").contains("devices/samplerate"), "{nan:?}");
+        assert!(
+            first_error("nan.yml").contains("devices/samplerate"),
+            "{nan:?}"
+        );
     }
 
     #[test]

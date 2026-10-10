@@ -478,7 +478,11 @@ mod tests {
     fn empty_paths_are_refused() {
         let dir = tempfile::tempdir().unwrap();
         let settings = dir.path().join("camillagui.yml");
-        std::fs::write(&settings, "config_dir: ''\ncoeff_dir: c\naudiofiles_dir: ''\n").unwrap();
+        std::fs::write(
+            &settings,
+            "config_dir: ''\ncoeff_dir: c\naudiofiles_dir: ''\n",
+        )
+        .unwrap();
         assert_eq!(
             Settings::load(&settings).unwrap_err(),
             "These settings must not be empty: config_dir, audiofiles_dir"
