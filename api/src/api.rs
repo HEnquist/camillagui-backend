@@ -184,19 +184,8 @@ pub struct EventsQuery {
 
 impl EventsQuery {
     /// The parts to send. The levels and the spectrum are left out when the
-    /// level stream is disabled in the settings.
+    /// level stream is disabled in the settings, after the query is checked.
     fn parts(self, settings: &Settings) -> Result<events::Parts, ApiError> {
-        if !settings.enable_level_stream {
-            return Ok(events::Parts::default());
-        }
-        let levels = self.levels.unwrap_or(false).then(|| {
-            let smoothing_ms = settings.level_smoothing_ms.max(0.0) as f32;
-            VuSubscription {
-                max_rate: settings.level_max_update_hz.max(0.0) as f32,
-                attack: 0.1 * smoothing_ms,
-                release: smoothing_ms,
-            }
-        });
         let spectrum = match self.side {
             None => None,
             Some(side) => {
@@ -217,6 +206,17 @@ impl EventsQuery {
                 })
             }
         };
+        if !settings.enable_level_stream {
+            return Ok(events::Parts::default());
+        }
+        let levels = self.levels.unwrap_or(false).then(|| {
+            let smoothing_ms = settings.level_smoothing_ms.max(0.0) as f32;
+            VuSubscription {
+                max_rate: settings.level_max_update_hz.max(0.0) as f32,
+                attack: 0.1 * smoothing_ms,
+                release: smoothing_ms,
+            }
+        });
         Ok(events::Parts { levels, spectrum })
     }
 }
@@ -1884,6 +1884,9 @@ mod tests {
         let parts = event_parts(query, false).unwrap();
         assert!(parts.levels.is_none());
         assert!(parts.spectrum.is_none());
+        // The query is still checked.
+        let err = event_parts("side=playback", false).unwrap_err();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
     }
 
     /// Every field of `Devices`, destructured without `..`, so that a field

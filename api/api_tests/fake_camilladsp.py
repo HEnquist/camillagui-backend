@@ -101,6 +101,8 @@ class FakeCamillaDSP:
         self._runner = None
         self.port = None
         self._sockets = set()
+        # socket -> the name of the subscription on it
+        self._subscribed = {}
 
     def reset(self):
         self.state = default_state(self._initial_path)
@@ -150,6 +152,16 @@ class FakeCamillaDSP:
 
         asyncio.run_coroutine_threadsafe(close_all(), self._loop).result(5)
 
+    def drop_subscriptions(self, name):
+        """Close the sockets with this subscription, like a connection lost while running."""
+
+        async def close():
+            for ws, subscribed in list(self._subscribed.items()):
+                if subscribed == name:
+                    await ws.close()
+
+        asyncio.run_coroutine_threadsafe(close(), self._loop).result(5)
+
     # ── Protocol ──────────────────────────────────────────────────────────
 
     async def _handle(self, request):
@@ -175,6 +187,7 @@ class FakeCamillaDSP:
                     reply = self._subscribe(name)
                     await ws.send_str(json.dumps(reply))
                     if reply["result"] == "Ok":
+                        self._subscribed[ws] = name
                         subscription = asyncio.create_task(self._push_events(ws, name))
                     continue
                 if name == "StopSubscription":
@@ -188,6 +201,7 @@ class FakeCamillaDSP:
             if subscription is not None:
                 subscription.cancel()
             self._sockets.discard(ws)
+            self._subscribed.pop(ws, None)
         return ws
 
     def _subscribe(self, name):

@@ -315,6 +315,16 @@ def test_event_stream_spectrum_starts_when_processing_runs(server):
         assert len(server.fake.commands("SubscribeSpectrum")) == subscriptions + 1
 
 
+def test_event_stream_levels_come_back_while_running(server):
+    with open_events(server, levels=True) as stream:
+        assert read_events(stream, "levels", 1) == [LEVELS]
+        server.fake.drop_subscriptions("SubscribeVuLevels")
+        # The state stays Running, so no state event brings the levels back.
+        assert "state" not in event_names(stream, 0.5)
+        assert read_events(stream, "levels", 1, timeout=3) == [LEVELS]
+        assert len(server.fake.commands("SubscribeVuLevels")) == 2
+
+
 def test_event_stream_without_the_level_stream(make_backend):
     backend = make_backend({"enable_level_stream": False})
     with open_events(backend, levels=True, spectrum=True) as stream:

@@ -31,6 +31,9 @@ const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 /// but an `EventSource` does not show those to the page.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
 
+/// How long a part that ended while processing runs waits to subscribe again.
+const RETRY_DELAY: Duration = Duration::from_secs(1);
+
 /// How many events wait for a slow browser before the parts wait too.
 const EVENTS_WAITING: usize = 16;
 
@@ -83,7 +86,8 @@ pub struct Parts {
 ///
 /// The levels and the spectrum come and go inside the stream. One that is
 /// refused, for example a spectrum while processing is stopped, or that
-/// CamillaDSP ends, is subscribed again when a `state` event says `Running`.
+/// CamillaDSP ends, is subscribed again when a `state` event says `Running`,
+/// or a second later if processing is running already.
 pub async fn events(
     camilla: &CamillaClient,
     parts: Parts,
@@ -139,9 +143,16 @@ struct Part {
 
 impl Part {
     /// Subscribe, and pass the events on until CamillaDSP ends the
-    /// subscription. Then, or after a refusal, wait for the next `Running`
-    /// state and subscribe again. Returns when the browser has gone away.
-    async fn run(self, url: String, mut running: watch::Receiver<()>, sender: mpsc::Sender<Event>) {
+    /// subscription. Then, or after a refusal, subscribe again: at once when
+    /// a `state` event says `Running`, a second later when processing was
+    /// running all along, since then nothing else would bring it back.
+    /// Returns when the browser has gone away.
+    async fn run(
+        self,
+        url: String,
+        mut running: watch::Receiver<bool>,
+        sender: mpsc::Sender<Event>,
+    ) {
         loop {
             // A `Running` from now on means try again, even one that comes
             // while this attempt is still waiting for its answer.
@@ -162,9 +173,34 @@ impl Part {
                     log::debug!("{} failed: {message}", self.reply);
                 }
             }
-            if running.changed().await.is_err() {
+            if !wait_to_retry(&mut running).await {
                 return;
             }
+        }
+    }
+}
+
+/// Wait until a part should subscribe again. False when the stream is gone.
+async fn wait_to_retry(running: &mut watch::Receiver<bool>) -> bool {
+    loop {
+        let is_running = *running.borrow();
+        let retry = async move {
+            if is_running {
+                tokio::time::sleep(RETRY_DELAY).await
+            } else {
+                future::pending().await
+            }
+        };
+        tokio::select! {
+            changed = running.changed() => {
+                if changed.is_err() {
+                    return false;
+                }
+                if *running.borrow_and_update() {
+                    return true;
+                }
+            }
+            _ = retry => return true,
         }
     }
 }
@@ -177,7 +213,8 @@ async fn run(
     url: String,
     sender: mpsc::Sender<Event>,
 ) {
-    let (running, running_receiver) = watch::channel(());
+    // Whether processing is running, sent on every state event.
+    let (running, running_receiver) = watch::channel(false);
     let parts = future::join_all(
         parts
             .into_iter()
@@ -198,9 +235,7 @@ async fn run(
                         log::debug!("State stream ended");
                         return;
                     };
-                    if is_running(&value) {
-                        running.send_replace(());
-                    }
+                    running.send_replace(is_running(&value));
                     Event::default().event("state").data(value)
                 }
                 _ = heartbeat.tick() => Event::default().event("heartbeat").data("{}"),

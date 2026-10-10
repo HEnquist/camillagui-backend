@@ -188,10 +188,9 @@ import { useSpectrumData, useVuMeterLevels } from "../camilladsp/usevumeterstatu
 // dBFS per channel: levels.playbacksignalrms, levels.playbacksignalpeak, and the same for capture
 const levels = useVuMeterLevels()
 
-// Leave out channel to average all channels. It starts once processing runs.
+// All channels averaged, add `channel: 0` for the first one only. It starts once processing runs.
 const spectrum = useSpectrumData(true, {
   side: "playback",
-  channel: 0,
   min_freq: 20,
   max_freq: 20000,
   n_bins: 100,
