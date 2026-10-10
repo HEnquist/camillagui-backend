@@ -1,0 +1,6807 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CamillaGUI",
+    "description": "The API between the CamillaGUI backend and its frontend. It is internal to the GUI and changes with it, so it has no version of its own.",
+    "license": {
+      "name": ""
+    },
+    "version": "internal"
+  },
+  "paths": {
+    "/api/backends": {
+      "get": {
+        "summary": "The device types CamillaDSP supports, null until it has been reached. They\ncannot change while it runs, so this comes from the cache.",
+        "operationId": "get_backends",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeviceTypeLists"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/convcoeffs": {
+      "post": {
+        "summary": "The coefficients of a Conv filter that reads them from a file, and which\nsamplerate and channel variants of that file exist. The GUI evaluates\nfilters itself; this exists because only the server can reach the files.",
+        "description": "Not JSON: a little endian u32 giving the length of a JSON `CoeffsHeader`,\nthat header, padding to the next multiple of 8, and then the samples, in\nthe width the header gives.",
+        "operationId": "conv_coefficients",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoeffsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Raw bytes, not JSON."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The filter reads no file, or the file could not be read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The file is outside the configured folders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "There is no such file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/convolvertojson": {
+      "post": {
+        "summary": "Translate a Convolver config.",
+        "operationId": "translate_convolver_to_json",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportText"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigFragment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The text is not a Convolver config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/defaultsforcoeffs": {
+      "get": {
+        "summary": "Sensible parameters for a Conv filter reading a coefficient file, from\nthe file's extension.",
+        "operationId": "get_defaults_for_coeffs",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "query",
+            "description": "The coefficient file, relative to config_dir.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoeffDefaults"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{direction}/{backend}": {
+      "get": {
+        "summary": "The devices of a device type, or the ones read earlier while CamillaDSP\ncannot be reached.",
+        "operationId": "get_devices",
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Direction"
+            }
+          },
+          {
+            "name": "backend",
+            "in": "path",
+            "description": "The device type, for example `Alsa`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AvailableDevice"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{direction}/{backend}/capabilities": {
+      "get": {
+        "summary": "The capabilities of a device, or the ones read earlier if CamillaDSP\ncannot give them now.",
+        "operationId": "get_device_capabilities",
+        "parameters": [
+          {
+            "name": "direction",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Direction"
+            }
+          },
+          {
+            "name": "backend",
+            "in": "path",
+            "description": "The device type, for example `Alsa`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "device",
+            "in": "query",
+            "description": "The device, as a config names it.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioDeviceDescriptor"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No device is given, or CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/eqapotojson": {
+      "post": {
+        "summary": "Translate an Equalizer APO config.",
+        "operationId": "translate_eqapo_to_json",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EqApoImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigFragment"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The body is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/fingerprints": {
+      "get": {
+        "summary": "The fingerprints of the folders, for noticing changes made behind the GUI's\nback. Polling these is cheap, since only the file names, sizes and times\nare read, so a folder is listed again only when it changed.",
+        "description": "A poll rather than an event stream, since a browser has only six\nconnections to the backend for all its tabs, and an open stream holds one.",
+        "operationId": "get_file_fingerprints",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderFingerprints"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}": {
+      "get": {
+        "summary": "The files in a folder, sorted by name.",
+        "operationId": "get_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileInfo"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/delete": {
+      "post": {
+        "summary": "Delete files from a folder.",
+        "operationId": "delete_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileNames"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A file could not be deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/rename": {
+      "post": {
+        "summary": "Rename a file in a folder.",
+        "operationId": "rename_file",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "400": {
+            "description": "A file name is not valid, the new name is taken, or the file could not be renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/upload": {
+      "post": {
+        "summary": "Store files in a folder. Uploaded configs have their coefficient and audio\nfile paths reduced to bare file names, so that configs from other machines\nwork here.",
+        "operationId": "upload_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "400": {
+            "description": "A file name is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The folder does not exist, or a file could not be written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{kind}/zip": {
+      "post": {
+        "summary": "Some of the files in a folder, as a zip file to save.",
+        "description": "The body is a form, as the browser posts it, so that the browser saves\nthe zip as it arrives. The zip is made as it is sent. The files are\nchecked first, and an error after the zip started cuts it short.",
+        "operationId": "zip_files",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/FileKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/FileNames"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "description": "Raw bytes, not JSON."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A file name is not valid, or a file could not be read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No audiofiles_dir is set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/getactiveconfigfilename": {
+      "get": {
+        "summary": "The active config file, the one CamillaDSP loads when it starts.",
+        "operationId": "get_active_config_name",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveConfigFile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/getconfig": {
+      "get": {
+        "summary": "The config CamillaDSP runs, null if it has none. The file paths are\nrelative to the configured folders, as for a config file.",
+        "operationId": "get_config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Configuration"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached, or sent a config the GUI cannot read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/getconfigfile": {
+      "get": {
+        "summary": "A config file, migrated if it is for an older CamillaDSP, with the file\npaths relative to the configured folders.",
+        "operationId": "get_config_file",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "The file name, in config_dir.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Configuration"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The file is not a config the GUI can use",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "There is no such file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/getdefaultconfigfile": {
+      "get": {
+        "summary": "The default config file, `default_config` in the settings, with the file\npaths relative to the configured folders.",
+        "operationId": "get_default_config_file",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Configuration"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No default config is set, or the file is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The file is not a config the GUI can use",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/getstartconfig": {
+      "get": {
+        "summary": "The config to load into the GUI when it starts: the one in CamillaDSP if\nthere is one, otherwise the active config file, otherwise the default one.",
+        "operationId": "get_config_at_gui_start",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartConfig"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "There is no config to start with",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "No config file could be read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guiconfig": {
+      "get": {
+        "summary": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs.",
+        "operationId": "get_gui_config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuiConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/levels": {
+      "get": {
+        "summary": "The VU levels, as a stream of `levels` events, one for each update from\nCamillaDSP.",
+        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. Smoothing and rate come from the settings.",
+        "operationId": "get_levels",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/VuLevels"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CamillaDSP cannot be reached, or the level stream is disabled in the settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logfile": {
+      "get": {
+        "summary": "CamillaDSP's log file, `log_file` in the settings.",
+        "operationId": "get_log_file",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No log file is set, or it cannot be read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/param/faders": {
+      "get": {
+        "summary": "Every fader, the main volume first, then the aux faders from 1 up.",
+        "operationId": "get_faders",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Fader"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/param/faders/{index}/mute": {
+      "post": {
+        "summary": "Mute or unmute a fader.",
+        "operationId": "set_fader_mute",
+        "parameters": [
+          {
+            "name": "index",
+            "in": "path",
+            "description": "The fader, 0 for the main volume",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/param/faders/{index}/volume": {
+      "post": {
+        "summary": "Set the volume of a fader, in dB.",
+        "operationId": "set_fader_volume",
+        "parameters": [
+          {
+            "name": "index",
+            "in": "path",
+            "description": "The fader, 0 for the main volume",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "number",
+                "format": "float"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/param/mute": {
+      "get": {
+        "summary": "Whether the main volume is muted.",
+        "operationId": "get_mute",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Mute or unmute the main volume.",
+        "operationId": "set_mute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/param/volume": {
+      "get": {
+        "summary": "The main volume, in dB.",
+        "operationId": "get_volume",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "format": "float"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Set the main volume, in dB.",
+        "operationId": "set_volume",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "number",
+                "format": "float"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "default": {
+            "description": "CamillaDSP cannot be reached, or refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/saveconfigfile": {
+      "post": {
+        "summary": "Save a config to a file in config_dir, with absolute paths so that\nCamillaDSP can use it at startup without the GUI.",
+        "operationId": "save_config_file",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "400": {
+            "description": "The file name is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The config has paths outside the configured folders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The file could not be written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/setactiveconfigfile": {
+      "post": {
+        "summary": "Make a config file the active one, the one CamillaDSP loads when it\nstarts.",
+        "operationId": "set_active_config_name",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActiveConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "400": {
+            "description": "The file name is not valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/setconfig": {
+      "post": {
+        "summary": "Apply a config.",
+        "operationId": "set_config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {},
+          "403": {
+            "description": "The config has paths outside the configured folders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The body is not a config, or CamillaDSP refused it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/spectrum": {
+      "get": {
+        "summary": "The spectrum, as a stream of `spectrum` events, one for each update from\nCamillaDSP.",
+        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. The parameters come in the query string, since an EventSource\ncan only GET.",
+        "operationId": "get_spectrum",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "query",
+            "description": "Which side to analyze: `\"capture\"` or `\"playback\"`.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Side selector for spectrum analysis commands.\n\nSerialised as a lowercase string: `\"playback\"` or `\"capture\"`.",
+              "enum": [
+                "playback",
+                "capture"
+              ]
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based).",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          {
+            "name": "min_freq",
+            "in": "query",
+            "description": "Lower edge of the frequency range in Hz. Must be > 0.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "max_freq",
+            "in": "query",
+            "description": "Upper edge of the frequency range in Hz. Must be > `min_freq`.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "n_bins",
+            "in": "query",
+            "description": "Number of output bins. Must be ≥ 2.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "max_rate",
+            "in": "query",
+            "description": "Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop).",
+            "required": false,
+            "schema": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "float"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpectrumData"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Processing is not running (with the result `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is disabled in the settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/state": {
+      "get": {
+        "summary": "The processing state, as a stream of `state` events.",
+        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. It starts with a `state` event with the current state, then\nhas one for each change.",
+        "operationId": "get_state",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateUpdate"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "summary": "The values the GUI polls for, and the versions.",
+        "description": "CamillaDSP is asked at most once a second, however many browsers poll.",
+        "operationId": "get_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stop": {
+      "post": {
+        "summary": "Stop processing.",
+        "operationId": "stop_processing",
+        "responses": {
+          "204": {},
+          "400": {
+            "description": "CamillaDSP refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/validateconfig": {
+      "post": {
+        "summary": "Check a config without applying it, with the file paths as the GUI has\nthem. Answers every issue, none if the config is valid.",
+        "description": "The body is meant to be a config, but any JSON is taken, since a config\nthat does not parse is reported as an issue like any other. This is the\none request body the spec does not take from the handler.",
+        "operationId": "validate_config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Configuration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValidationIssue"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wavinfo": {
+      "get": {
+        "summary": "The header of a wav file.",
+        "operationId": "get_wav_info",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "query",
+            "description": "A file name in audiofiles_dir, or a path.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WavInfo"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The file is outside audiofiles_dir",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The file is not a wav file CamillaDSP can read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ymltojson": {
+      "post": {
+        "summary": "Read a YAML file to import from, which may be just part of a config,\nmigrating it from older versions of CamillaDSP if needed.",
+        "operationId": "yaml_to_json",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportText"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigFragment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The text is not YAML, or not part of a config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActiveConfigBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The file name, in config_dir."
+          }
+        }
+      },
+      "ActiveConfigFile": {
+        "type": "object",
+        "required": [
+          "config_file_name"
+        ],
+        "properties": {
+          "config_file_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The file name of the active config, null when there is none, or it is\nnot in config_dir."
+          }
+        }
+      },
+      "AlsaSampleFormat": {
+        "type": "string",
+        "enum": [
+          "S16_LE",
+          "S24_3_LE",
+          "S24_4_LE",
+          "S32_LE",
+          "F32_LE",
+          "F64_LE"
+        ]
+      },
+      "AsioSampleFormat": {
+        "type": "string",
+        "enum": [
+          "S16_LE",
+          "S24_4_LE",
+          "S24_3_LE",
+          "S32_LE",
+          "F32_LE",
+          "F64_LE"
+        ]
+      },
+      "AsyncPolyInterpolation": {
+        "type": "string",
+        "description": "Polynomial interpolation order for the async polynomial resampler.",
+        "enum": [
+          "Linear",
+          "Cubic",
+          "Quintic",
+          "Septic"
+        ]
+      },
+      "AsyncSincInterpolation": {
+        "type": "string",
+        "description": "Sinc interpolation quality for the async sinc resampler.",
+        "enum": [
+          "Nearest",
+          "Linear",
+          "Quadratic",
+          "Cubic"
+        ]
+      },
+      "AsyncSincParameters": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "profile"
+            ],
+            "properties": {
+              "profile": {
+                "$ref": "#/components/schemas/AsyncSincProfile"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "sinc_len",
+              "interpolation",
+              "window",
+              "oversampling_factor"
+            ],
+            "properties": {
+              "f_cutoff": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/FiniteF32"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "interpolation": {
+                "$ref": "#/components/schemas/AsyncSincInterpolation"
+              },
+              "oversampling_factor": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sinc_len": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "window": {
+                "$ref": "#/components/schemas/AsyncSincWindow"
+              }
+            }
+          }
+        ],
+        "description": "Parameters for the async sinc resampler: either a named profile or free parameters."
+      },
+      "AsyncSincProfile": {
+        "type": "string",
+        "description": "Preset quality profile for the async sinc resampler.",
+        "enum": [
+          "VeryFast",
+          "Fast",
+          "Balanced",
+          "Accurate"
+        ]
+      },
+      "AsyncSincWindow": {
+        "type": "string",
+        "description": "Window function used by the async sinc resampler.",
+        "enum": [
+          "Hann",
+          "Hann2",
+          "Blackman",
+          "Blackman2",
+          "BlackmanHarris",
+          "BlackmanHarris2"
+        ]
+      },
+      "AudioDeviceDescriptor": {
+        "type": "object",
+        "description": "Full capability descriptor for a named audio device.",
+        "required": [
+          "name",
+          "description",
+          "capability_sets"
+        ],
+        "properties": {
+          "capability_sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceCapabilitySet"
+            },
+            "description": "Capability sets, one per access mode supported by the backend."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable device name."
+          },
+          "name": {
+            "type": "string",
+            "description": "Backend-specific device identifier (e.g. `\"hw:0,0\"` for ALSA)."
+          }
+        }
+      },
+      "AvailableDevice": {
+        "type": "object",
+        "description": "A device CamillaDSP can use.",
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A readable name."
+          },
+          "name": {
+            "type": "string",
+            "description": "What a config calls it."
+          }
+        }
+      },
+      "BinarySampleFormat": {
+        "type": "string",
+        "enum": [
+          "S16_LE",
+          "S24_4_RJ_LE",
+          "S24_4_LJ_LE",
+          "S24_3_LE",
+          "S32_LE",
+          "F32_LE",
+          "F64_LE"
+        ]
+      },
+      "BiquadComboParameters": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "order",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LinkwitzRileyHighpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "order",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LinkwitzRileyLowpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "order",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ButterworthHighpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "order",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ButterworthLowpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "gain",
+              "type"
+            ],
+            "properties": {
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Tilt"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bands",
+              "type"
+            ],
+            "properties": {
+              "bands": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PeqBand"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "NPointPeq"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GraphicEqualizerParameters"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "GraphicEqualizer"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "Multi-section biquad combination type (crossover, EQ, tilt, …)."
+      },
+      "BiquadParameters": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "a1",
+              "a2",
+              "b0",
+              "b1",
+              "b2",
+              "type"
+            ],
+            "properties": {
+              "a1": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "a2": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "b0": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "b1": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "b2": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Free"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "q",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Highpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "q",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Lowpass"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PeakingWidth"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Peaking"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShelfSteepness"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Highshelf"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "gain",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "HighshelfFO"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShelfSteepness"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Lowshelf"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "gain",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LowshelfFO"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "HighpassFO"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LowpassFO"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotchWidth"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Allpass"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "AllpassFO"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotchWidth"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Bandpass"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotchWidth"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Notch"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GeneralNotchParams"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "GeneralNotch"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq_act",
+              "q_act",
+              "freq_target",
+              "q_target",
+              "type"
+            ],
+            "properties": {
+              "freq_act": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "freq_target": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q_act": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q_target": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LinkwitzTransform"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Biquad filter type and its frequency/gain/Q parameters."
+      },
+      "CapabilityMode": {
+        "type": "string",
+        "enum": [
+          "Unified",
+          "Shared",
+          "Exclusive"
+        ]
+      },
+      "CaptureDevice": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "device",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "device": {
+                "type": "string"
+              },
+              "format": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AlsaSampleFormat"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "labels": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "link_mute_control": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "link_volume_control": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stop_on_inactive": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Alsa"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "type"
+            ],
+            "properties": {
+              "autoconnect_to": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "labels": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "loopback": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "node_description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "node_group_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "node_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PipeWire"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceRawFile"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "RawFile"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceWavFile"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "WavFile"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceStdin"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Stdin"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceCA"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "CoreAudio"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceWasapi"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Wasapi"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CaptureDeviceAsio"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Asio"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "signal",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "labels": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "signal": {
+                "$ref": "#/components/schemas/Signal"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "SignalGenerator"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Test-only paced capture device, see `src/dummy_backend`.",
+            "required": [
+              "channels",
+              "signal",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "control_port": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32",
+                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
+                "minimum": 0
+              },
+              "labels": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "signal": {
+                "$ref": "#/components/schemas/Signal"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Dummy"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "CaptureDeviceAsio": {
+        "type": "object",
+        "required": [
+          "channels",
+          "device"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": "string"
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AsioSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptureDeviceCA": {
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CoreAudioSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptureDeviceRawFile": {
+        "type": "object",
+        "required": [
+          "channels",
+          "filename",
+          "format"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "extra_samples": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "filename": {
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/components/schemas/BinarySampleFormat"
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "read_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "skip_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptureDeviceStdin": {
+        "type": "object",
+        "required": [
+          "channels",
+          "format"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "extra_samples": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "format": {
+            "$ref": "#/components/schemas/BinarySampleFormat"
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "read_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "skip_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptureDeviceWasapi": {
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WasapiSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "loopback": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "polling": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptureDeviceWavFile": {
+        "type": "object",
+        "required": [
+          "filename"
+        ],
+        "properties": {
+          "extra_samples": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "filename": {
+            "type": "string"
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChannelCapability": {
+        "type": "object",
+        "description": "The sample rates (and their formats) supported by a device at a specific channel count.",
+        "required": [
+          "channels",
+          "samplerates"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "Number of channels.",
+            "minimum": 0
+          },
+          "samplerates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SamplerateCapability"
+            },
+            "description": "Supported sample rates for this channel count."
+          }
+        }
+      },
+      "ChannelLabels": {
+        "type": "object",
+        "description": "Channel display labels returned by [`WsCommand::GetChannelLabels`].",
+        "required": [
+          "playback",
+          "capture"
+        ],
+        "properties": {
+          "capture": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": "Labels for capture channels. Same structure as `playback`."
+          },
+          "playback": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": "Labels for playback channels. `null` if no labels are configured. Each entry is a label\nstring, or `null` if that specific channel has no label."
+          }
+        }
+      },
+      "ClipperParameters": {
+        "type": "object",
+        "description": "Parameters for the hard/soft-clipping filter.",
+        "properties": {
+          "clip_limit": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "soft_clip": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoeffDefaults": {
+        "type": "object",
+        "description": "Sensible parameters for a Conv filter reading a coefficient file, from the\nfile's extension. Empty when the extension says nothing.",
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/FileSampleFormat"
+          },
+          "read_bytes_lines": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skip_bytes_lines": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "$ref": "#/components/schemas/ConvFileType"
+          }
+        }
+      },
+      "CoeffsHeader": {
+        "type": "object",
+        "description": "The JSON header of a coefficient frame, see `frame_coefficients`.",
+        "required": [
+          "options",
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/SampleWidth"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FilterOption"
+            },
+            "description": "The variants of the file for other samplerates and channel counts."
+          }
+        }
+      },
+      "CoeffsRequest": {
+        "type": "object",
+        "required": [
+          "parameters",
+          "samplerate",
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "For the `$channels$` token in the file name.",
+            "minimum": 0
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/ConvParameters",
+            "description": "The parameters of a Raw or Wav Conv filter, with the file path as the\nGUI has it."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "For the `$samplerate$` token in the file name.",
+            "minimum": 0
+          }
+        }
+      },
+      "CompressorParameters": {
+        "type": "object",
+        "description": "Parameters for the dynamic range compressor processor.",
+        "required": [
+          "channels",
+          "attack",
+          "attack_unit",
+          "release",
+          "release_unit",
+          "threshold",
+          "factor"
+        ],
+        "properties": {
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clip_limit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "factor": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "makeup_gain": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "monitor_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "process_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "release": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "release_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "soft_clip": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfigBody": {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/Configuration",
+            "description": "With the file paths as the GUI has them, relative to the configured folders."
+          }
+        }
+      },
+      "ConfigElement": {
+        "type": "object",
+        "description": "A value in the config that a shortcut controls.",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The keys leading to the value."
+          },
+          "reverse": {
+            "type": "boolean",
+            "description": "Move this one the opposite way of the control."
+          }
+        }
+      },
+      "ConfigFragment": {
+        "type": "object",
+        "description": "Part of a config, as an import gives it: any of the sections, with any of\nthe device settings.",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "devices": {
+            "$ref": "#/components/schemas/DevicesFragment"
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Filter"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "mixers": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Mixer"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "pipeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PipelineStep"
+            }
+          },
+          "processors": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Processor"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ConfigSource": {
+        "type": "string",
+        "description": "Where the config the GUI starts with came from.",
+        "enum": [
+          "dsp",
+          "active",
+          "default"
+        ]
+      },
+      "Configuration": {
+        "type": "object",
+        "description": "A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline.",
+        "required": [
+          "devices"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "devices": {
+            "$ref": "#/components/schemas/Devices"
+          },
+          "filters": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Filter"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "mixers": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Mixer"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "pipeline": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PipelineStep"
+            }
+          },
+          "processors": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Processor"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConvFileType": {
+        "type": "string",
+        "description": "The Conv filter subtypes that read a file.",
+        "enum": [
+          "Raw",
+          "Wav"
+        ]
+      },
+      "ConvParameters": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConvParametersRaw"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Raw"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConvParametersWav"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Wav"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "values",
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Values"
+                ]
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FiniteF64"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "length",
+              "type"
+            ],
+            "properties": {
+              "length": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Dummy"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Source of convolution coefficients for the FFT convolution filter."
+      },
+      "ConvParametersRaw": {
+        "type": "object",
+        "description": "Coefficients loaded from a raw binary or text file.",
+        "required": [
+          "filename"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FileSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "read_bytes_lines": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "skip_bytes_lines": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConvParametersWav": {
+        "type": "object",
+        "description": "Coefficients loaded from a specific channel of a WAV file.",
+        "required": [
+          "filename"
+        ],
+        "properties": {
+          "channel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "filename": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoreAudioSampleFormat": {
+        "type": "string",
+        "enum": [
+          "S16",
+          "S24",
+          "S32",
+          "F32"
+        ]
+      },
+      "DelayParameters": {
+        "type": "object",
+        "description": "Parameters for a time-delay filter.",
+        "required": [
+          "delay",
+          "delay_unit"
+        ],
+        "properties": {
+          "delay": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "delay_unit": {
+            "$ref": "#/components/schemas/DelayUnit"
+          },
+          "subsample": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DelayUnit": {
+        "type": "string",
+        "description": "Unit for a time or distance value used by delays (Delay filter, RACE processor).",
+        "enum": [
+          "us",
+          "ms",
+          "s",
+          "mm",
+          "samples"
+        ]
+      },
+      "DeviceCapabilitySet": {
+        "type": "object",
+        "description": "A set of device capabilities associated with a single access mode (e.g. exclusive vs. shared).",
+        "required": [
+          "mode",
+          "capabilities"
+        ],
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelCapability"
+            },
+            "description": "Per-channel-count capability entries."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/CapabilityMode",
+            "description": "The access mode these capabilities were probed under."
+          }
+        }
+      },
+      "DeviceTypeLists": {
+        "type": "object",
+        "description": "The device types a CamillaDSP build supports.",
+        "required": [
+          "playback",
+          "capture"
+        ],
+        "properties": {
+          "capture": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playback": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Devices": {
+        "type": "object",
+        "description": "Top-level device and pipeline timing configuration.",
+        "required": [
+          "samplerate",
+          "chunksize",
+          "capture",
+          "playback"
+        ],
+        "properties": {
+          "adjust_interval_s": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capture": {
+            "$ref": "#/components/schemas/CaptureDevice"
+          },
+          "capture_samplerate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "chunksize": {
+            "type": "integer",
+            "description": "Number of frames per processing chunk.",
+            "minimum": 1
+          },
+          "enable_rate_adjust": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "multithreaded": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackDevice"
+          },
+          "queuelimit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "rate_measure_interval_s": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resampler": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Resampler"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "Output sample rate in Hz.",
+            "minimum": 1
+          },
+          "silence_threshold": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "silence_timeout_s": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stop_on_rate_change": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "target_level": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "volume_limit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "volume_ramp_time_ms": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "worker_threads": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "DevicesFragment": {
+        "type": "object",
+        "description": "Any of the device settings, since an import may have only some of them.\nThe fields of camilladsp-schema's `Devices`, every one optional and left\nout when the import does not have it.",
+        "properties": {
+          "adjust_interval_s": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "capture": {
+            "$ref": "#/components/schemas/CaptureDevice"
+          },
+          "capture_samplerate": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunksize": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "enable_rate_adjust": {
+            "type": "boolean"
+          },
+          "multithreaded": {
+            "type": "boolean"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackDevice"
+          },
+          "queuelimit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rate_measure_interval_s": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "resampler": {
+            "$ref": "#/components/schemas/Resampler"
+          },
+          "samplerate": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "silence_threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "silence_timeout_s": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "stop_on_rate_change": {
+            "type": "boolean"
+          },
+          "target_level": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "volume_limit": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "volume_ramp_time_ms": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "worker_threads": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiffEqParameters": {
+        "type": "object",
+        "description": "Parameters for the difference-equation (IIR) filter: `a` (feedback) and `b` (feedforward) coefficients.",
+        "properties": {
+          "a": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FiniteF64"
+            }
+          },
+          "b": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/FiniteF64"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Direction": {
+        "type": "string",
+        "description": "Which side of CamillaDSP a device is on.",
+        "enum": [
+          "capture",
+          "playback"
+        ]
+      },
+      "DitherParameters": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "None"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "amplitude",
+              "type"
+            ],
+            "properties": {
+              "amplitude": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Flat"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Highpass"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Fweighted441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FweightedLong441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FweightedShort441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Gesemann441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Gesemann48"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Lipshitz441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LipshitzLong441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Shibata441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataHigh441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataLow441"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Shibata48"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataHigh48"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataLow48"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Shibata882"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataLow882"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Shibata96"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataLow96"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Shibata192"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "bits",
+              "type"
+            ],
+            "properties": {
+              "bits": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "ShibataLow192"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Dithering algorithm and bit depth for the dither filter."
+      },
+      "EqApoImport": {
+        "type": "object",
+        "required": [
+          "text",
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The number of channels, which decides what the channel names map to."
+          },
+          "text": {
+            "type": "string",
+            "description": "The text of the Equalizer APO config."
+          }
+        }
+      },
+      "ErrorBody": {
+        "type": "object",
+        "description": "The body of every error response.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "What went wrong, to show to the user."
+          },
+          "result": {
+            "type": "string",
+            "description": "When CamillaDSP refused a command, the name of its error, for example\n`ProcessingNotRunningError`."
+          }
+        }
+      },
+      "Fader": {
+        "type": "object",
+        "description": "Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`].",
+        "required": [
+          "volume",
+          "mute"
+        ],
+        "properties": {
+          "mute": {
+            "type": "boolean",
+            "description": "Whether the fader is muted."
+          },
+          "volume": {
+            "type": "number",
+            "format": "float",
+            "description": "Current volume in dB."
+          }
+        }
+      },
+      "FileInfo": {
+        "type": "object",
+        "description": "A file in a listing. What is known about it beyond its name, size and time\ndepends on the folder: configs have their title, version and validity, wav\nfiles their format, and coefficient files their format and length, for wav\nand text files. What is not known is left out.",
+        "required": [
+          "name",
+          "last_modified",
+          "size"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "description": "For a wav file.",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "description": "For a config, its description."
+          },
+          "duration": {
+            "type": "number",
+            "format": "double",
+            "description": "For a wav file, in seconds."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "description": "For a config, its errors and warnings. For a text coefficient file,\nwhy CamillaDSP cannot read it."
+          },
+          "last_modified": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The time of the last change, in seconds since the epoch.",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "format": "int64",
+            "description": "For a coefficient file, the number of values per channel.",
+            "minimum": 0
+          },
+          "loadable": {
+            "type": "boolean",
+            "description": "For a config, whether the GUI can load it, migrating it first if it is\nfor an older version. It may still have errors to fix in the GUI."
+          },
+          "name": {
+            "type": "string"
+          },
+          "outdated": {
+            "type": "boolean",
+            "description": "For a config, whether it is for an older CamillaDSP, and is migrated\nwhen loaded."
+          },
+          "sampleformat": {
+            "type": "string",
+            "description": "For a wav file, the CamillaDSP name of its sample format. For a text\ncoefficient file, `TEXT`."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "For a wav file, in Hz.",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "In bytes.",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "description": "For a config, its title."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "For a config, whether it has no errors. For a wav file, and a wav or\ntext coefficient file, whether CamillaDSP can read it."
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "For a config, the CamillaDSP version it is for.",
+            "minimum": 0
+          }
+        }
+      },
+      "FileKind": {
+        "type": "string",
+        "description": "One of the folders the GUI keeps files in.",
+        "enum": [
+          "config",
+          "coeff",
+          "audiofile"
+        ]
+      },
+      "FileNames": {
+        "type": "object",
+        "required": [
+          "names"
+        ],
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "File names, in the folder."
+          }
+        }
+      },
+      "FileSampleFormat": {
+        "type": "string",
+        "description": "Sample format used for coefficient files; extends [`BinarySampleFormat`] with a plain-text variant.",
+        "enum": [
+          "TEXT",
+          "S16_LE",
+          "S24_4_RJ_LE",
+          "S24_4_LJ_LE",
+          "S24_3_LE",
+          "S32_LE",
+          "F32_LE",
+          "F64_LE"
+        ]
+      },
+      "Filter": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/ConvParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Conv"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/BiquadParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Biquad"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/BiquadComboParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "BiquadCombo"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/DelayParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Delay"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/GainParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Gain"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/VolumeParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Volume"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/LoudnessParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Loudness"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/DitherParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Dither"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/DiffEqParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "DiffEq"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/ClipperParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Clipper"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/LookaheadLimiterParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LookaheadLimiter"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Filter type selector; each variant carries its own parameter struct."
+      },
+      "FilterOption": {
+        "type": "object",
+        "description": "A variant of a coefficient file that exists, with the samplerate and\nchannels its name gives for the `$samplerate$` and `$channels$` tokens.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "samplerate": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "FiniteF32": {
+        "type": "number",
+        "format": "float"
+      },
+      "FiniteF64": {
+        "type": "number",
+        "format": "double"
+      },
+      "FolderFingerprints": {
+        "type": "object",
+        "description": "A fingerprint of each folder, as an opaque string that changes whenever a\nfile in the folder is added, removed, renamed or rewritten.",
+        "required": [
+          "config",
+          "coeff"
+        ],
+        "properties": {
+          "audiofile": {
+            "type": "string",
+            "description": "Left out when no audiofiles_dir is set."
+          },
+          "coeff": {
+            "type": "string"
+          },
+          "config": {
+            "type": "string"
+          }
+        }
+      },
+      "GainParameters": {
+        "type": "object",
+        "description": "Parameters for the static gain filter.",
+        "required": [
+          "gain"
+        ],
+        "properties": {
+          "gain": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "inverted": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "mute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "scale": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GainScale"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "GainScale": {
+        "type": "string",
+        "description": "Whether a gain value is interpreted as a linear factor or in decibels.",
+        "enum": [
+          "linear",
+          "dB"
+        ]
+      },
+      "GeneralNotchParams": {
+        "type": "object",
+        "description": "Parameters for the general (asymmetric pole/zero) notch biquad.",
+        "required": [
+          "freq_p",
+          "freq_z",
+          "q_p"
+        ],
+        "properties": {
+          "freq_p": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "freq_z": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "normalize_at_dc": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "q_p": {
+            "$ref": "#/components/schemas/FiniteF64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GraphicEqualizerParameters": {
+        "type": "object",
+        "description": "Parameters for the graphic equalizer biquad combo filter.",
+        "required": [
+          "gains"
+        ],
+        "properties": {
+          "freq_max": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freq_min": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FiniteF32"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "GuiConfig": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/GuiConfigFile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "coeff_dir",
+              "supported_capture_types",
+              "supported_playback_types",
+              "can_update_active_config",
+              "audiofiles_supported",
+              "allow_absolute_paths"
+            ],
+            "properties": {
+              "allow_absolute_paths": {
+                "type": "boolean"
+              },
+              "audiofiles_supported": {
+                "type": "boolean",
+                "description": "Whether an audiofiles_dir is set."
+              },
+              "can_update_active_config": {
+                "type": "boolean",
+                "description": "Whether the backend can store which config file is the active one."
+              },
+              "coeff_dir": {
+                "type": "string",
+                "description": "coeff_dir, relative to config_dir and ending with a separator, from\n`camillagui.yml` like the rest below."
+              },
+              "supported_capture_types": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "supported_playback_types": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "description": "The GUI settings: `gui-config.yml`, and the few settings from\n`camillagui.yml` that the frontend needs."
+      },
+      "GuiConfigFile": {
+        "type": "object",
+        "description": "`gui-config.yml`. What it leaves out gets the default, and keys it does\nnot know are ignored.",
+        "properties": {
+          "apply_config_automatically": {
+            "type": "boolean",
+            "default": false
+          },
+          "custom_shortcuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShortcutSection"
+            },
+            "description": "`custom_shortcuts:` with nothing after it is null, and means none.",
+            "default": []
+          },
+          "hide_capture_device": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_capture_samplerate": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_multithreading": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_playback_device": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_rate_monitoring": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_silence": {
+            "type": "boolean",
+            "default": false
+          },
+          "page_title": {
+            "type": "string",
+            "description": "The title of the browser tab.",
+            "default": "CamillaDSP"
+          },
+          "save_config_automatically": {
+            "type": "boolean",
+            "default": false
+          },
+          "spectrum_max_db": {
+            "type": "number",
+            "format": "double",
+            "default": 0.0
+          },
+          "spectrum_max_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "In Hz.",
+            "default": 20000.0
+          },
+          "spectrum_max_rate": {
+            "type": "number",
+            "format": "float",
+            "description": "The most spectrum updates per second.",
+            "default": 30.0
+          },
+          "spectrum_min_db": {
+            "type": "number",
+            "format": "double",
+            "default": -100.0
+          },
+          "spectrum_min_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "In Hz.",
+            "default": 20.0
+          },
+          "spectrum_n_bins": {
+            "type": "integer",
+            "default": 100,
+            "minimum": 0
+          },
+          "status_update_interval": {
+            "type": "integer",
+            "format": "int32",
+            "description": "In milliseconds.",
+            "default": 500,
+            "minimum": 0
+          },
+          "volume_max": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The top of the volume sliders, in dB.",
+            "default": 0
+          },
+          "volume_range": {
+            "type": "number",
+            "format": "double",
+            "description": "The range of the volume sliders, in dB.",
+            "default": 50.0
+          }
+        }
+      },
+      "ImportText": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text of the file to import from."
+          }
+        }
+      },
+      "LookaheadLimiterParameters": {
+        "type": "object",
+        "required": [
+          "attack",
+          "attack_unit",
+          "release",
+          "release_unit"
+        ],
+        "properties": {
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "limit": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "release": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "release_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LookaheadLimiterProcessorParameters": {
+        "type": "object",
+        "description": "Parameters for the multichannel lookahead limiter processor.",
+        "required": [
+          "channels",
+          "attack",
+          "attack_unit",
+          "release",
+          "release_unit"
+        ],
+        "properties": {
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delay_processed_only": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "monitor_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "process_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "release": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "release_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoudnessFader": {
+        "type": "string",
+        "description": "Which fader drives the loudness filter's compensation level.",
+        "enum": [
+          "Main",
+          "Aux1",
+          "Aux2",
+          "Aux3",
+          "Aux4"
+        ]
+      },
+      "LoudnessParameters": {
+        "type": "object",
+        "description": "Parameters for the loudness (Fletcher-Munson) compensation filter.",
+        "required": [
+          "reference_level"
+        ],
+        "properties": {
+          "attenuate_mid": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "fader": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoudnessFader"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "high_boost": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "high_freq": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "high_q": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_boost": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_freq": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_q": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_level": {
+            "$ref": "#/components/schemas/FiniteF32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Mixer": {
+        "type": "object",
+        "description": "Configuration for a named mixer: channel counts, routing rules, and optional labels.",
+        "required": [
+          "channels",
+          "mapping"
+        ],
+        "properties": {
+          "channels": {
+            "$ref": "#/components/schemas/MixerChannels"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "mapping": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MixerMapping"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MixerChannels": {
+        "type": "object",
+        "description": "Input and output channel counts for a mixer.",
+        "required": [
+          "in",
+          "out"
+        ],
+        "properties": {
+          "in": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "out": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "MixerMapping": {
+        "type": "object",
+        "description": "Routing rule: which sources feed a given destination channel in a mixer.",
+        "required": [
+          "dest",
+          "sources"
+        ],
+        "properties": {
+          "dest": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MixerSource"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MixerSource": {
+        "type": "object",
+        "description": "One input source contributing to a mixer output channel.",
+        "required": [
+          "channel"
+        ],
+        "properties": {
+          "channel": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "gain": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inverted": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "mute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "scale": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GainScale"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "NoiseGateParameters": {
+        "type": "object",
+        "description": "Parameters for the noise gate processor.",
+        "required": [
+          "channels",
+          "attack",
+          "attack_unit",
+          "release",
+          "release_unit",
+          "threshold",
+          "attenuation"
+        ],
+        "properties": {
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "attenuation": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monitor_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "process_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "release": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "release_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NotchWidth": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "q"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "bandwidth"
+            ],
+            "properties": {
+              "bandwidth": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          }
+        ],
+        "description": "Notch / allpass / bandpass width specified either as a Q factor or a bandwidth in octaves."
+      },
+      "PathElement": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          }
+        ],
+        "description": "One step on the way to the value an issue is about: a map key or a list index.\n\nSerialized untagged, so a path comes out as a plain list such as\n`[\"pipeline\", 2, \"names\", 0]`."
+      },
+      "PeakingWidth": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "q",
+              "gain"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "bandwidth",
+              "gain"
+            ],
+            "properties": {
+              "bandwidth": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          }
+        ],
+        "description": "Peaking filter width specified either as a Q factor or a bandwidth in octaves."
+      },
+      "PeqBand": {
+        "type": "object",
+        "description": "One band of an NPointPeq parametric equalizer.\n\nThe role of a band follows its position in the list: the first one is a low shelf,\nthe last one a high shelf, and the ones in between are peaking filters.",
+        "required": [
+          "freq",
+          "q",
+          "gain"
+        ],
+        "properties": {
+          "freq": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "gain": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "q": {
+            "$ref": "#/components/schemas/FiniteF64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PipelineStep": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineStepMixer"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Mixer"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineStepFilter"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Filter"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PipelineStepProcessor"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Processor"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "description": "One step in the processing pipeline: a mixer, filter chain, or processor."
+      },
+      "PipelineStepFilter": {
+        "type": "object",
+        "description": "Configuration for a filter pipeline step.",
+        "required": [
+          "names"
+        ],
+        "properties": {
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PipelineStepMixer": {
+        "type": "object",
+        "description": "Configuration for a mixer pipeline step.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PipelineStepProcessor": {
+        "type": "object",
+        "description": "Configuration for a processor pipeline step.",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaybackDevice": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "device",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "device": {
+                "type": "string"
+              },
+              "format": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AlsaSampleFormat"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Alsa"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "type"
+            ],
+            "properties": {
+              "autoconnect_to": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "node_description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "node_group_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "node_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PipeWire"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "filename",
+              "format",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "filename": {
+                "type": "string"
+              },
+              "format": {
+                "$ref": "#/components/schemas/BinarySampleFormat"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "File"
+                ]
+              },
+              "use_rf64": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Write an RF64 header so the file can grow past the 4 GB limit of plain\nwav. Only applies when `wav_header` is true; ignored otherwise."
+              },
+              "wav_header": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "channels",
+              "format",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "format": {
+                "$ref": "#/components/schemas/BinarySampleFormat"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Stdout"
+                ]
+              },
+              "wav_header": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaybackDeviceCA"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "CoreAudio"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaybackDeviceWasapi"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Wasapi"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlaybackDeviceAsio"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "Asio"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "description": "Test-only paced playback device, see `src/dummy_backend`.",
+            "required": [
+              "channels",
+              "type"
+            ],
+            "properties": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "control_port": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32",
+                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
+                "minimum": 0
+              },
+              "format": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/BinarySampleFormat",
+                    "description": "Sample format to convert each chunk to before discarding it.\n\nWithout one the audio is dropped as it arrives, which is cheaper. With one the\ndevice converts the way a real one does on its way to the hardware, which is\nwhere clipping happens and where `clipped_samples` comes from."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Dummy"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "PlaybackDeviceAsio": {
+        "type": "object",
+        "required": [
+          "channels",
+          "device"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": "string"
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AsioSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaybackDeviceCA": {
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CoreAudioSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaybackDeviceWasapi": {
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "device": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "format": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WasapiSampleFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "polling": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProcessingState": {
+        "type": "string",
+        "description": "The state of the processing, as reported by [`WsCommand::GetState`].",
+        "enum": [
+          "Running",
+          "Paused",
+          "Inactive",
+          "Starting",
+          "Stalled"
+        ]
+      },
+      "Processor": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/CompressorParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Compressor"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/NoiseGateParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "NoiseGate"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/LookaheadLimiterProcessorParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "LookaheadLimiter"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "parameters",
+              "type"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parameters": {
+                "$ref": "#/components/schemas/RACEParameters"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "RACE"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Processor type selector; each variant carries its own parameter struct."
+      },
+      "RACEParameters": {
+        "type": "object",
+        "description": "Parameters for the RACE (Recursive Ambiophonic Crosstalk Elimination) processor.",
+        "required": [
+          "channels",
+          "channel_a",
+          "channel_b",
+          "delay",
+          "delay_unit",
+          "attenuation"
+        ],
+        "properties": {
+          "attenuation": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "channel_a": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "channel_b": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delay": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "delay_unit": {
+            "$ref": "#/components/schemas/DelayUnit"
+          },
+          "subsample_delay": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RenameBody": {
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The file name, in the folder."
+          },
+          "target": {
+            "type": "string",
+            "description": "The new file name, in the same folder."
+          }
+        }
+      },
+      "Resampler": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Async polynomial resampler (low CPU, moderate quality).",
+            "required": [
+              "interpolation",
+              "type"
+            ],
+            "properties": {
+              "interpolation": {
+                "$ref": "#/components/schemas/AsyncPolyInterpolation"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "AsyncPoly"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AsyncSincParameters",
+                "description": "Async sinc resampler (higher quality, configurable)."
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "AsyncSinc"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "Async sinc resampler (higher quality, configurable)."
+          },
+          {
+            "type": "object",
+            "description": "Synchronous FFT resampler for fixed integer ratios.",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Synchronous"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Slip resampler for compensating small clock drift at equal nominal rates.\n\nVery low CPU, rate-adjustable, and adds no delay or high-frequency roll-off.\nIt only handles ratios close to 1.0, so it cannot convert between different\ncapture and playback sample rates.",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Slip"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Resampler algorithm selection."
+      },
+      "SampleWidth": {
+        "type": "string",
+        "description": "The width of the samples in a coefficient frame.",
+        "enum": [
+          "float32",
+          "float64"
+        ]
+      },
+      "SamplerateCapability": {
+        "type": "object",
+        "description": "The sample formats supported by a device at a specific sample rate.",
+        "required": [
+          "samplerate",
+          "formats"
+        ],
+        "properties": {
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Names of the supported sample formats at this rate."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "Sample rate in Hz.",
+            "minimum": 0
+          }
+        }
+      },
+      "SaveConfigBody": {
+        "type": "object",
+        "required": [
+          "config",
+          "filename"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/Configuration",
+            "description": "With the file paths as the GUI has them, relative to the configured folders."
+          },
+          "filename": {
+            "type": "string",
+            "description": "The file name, in config_dir."
+          }
+        }
+      },
+      "ShelfSteepness": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "q",
+              "gain"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "q": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "freq",
+              "slope",
+              "gain"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "gain": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "slope": {
+                "$ref": "#/components/schemas/FiniteF64"
+              }
+            }
+          }
+        ],
+        "description": "Shelf steepness specified either as a Q factor or a slope in dB/octave."
+      },
+      "Shortcut": {
+        "type": "object",
+        "description": "A control for one or more values in the config.",
+        "required": [
+          "name",
+          "config_elements"
+        ],
+        "properties": {
+          "config_elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigElement"
+            },
+            "description": "The values it controls. The control shows the first one, the others\nfollow it."
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "range_from": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "range_to": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "step": {
+            "type": "number",
+            "format": "double",
+            "description": "Needed for a number."
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShortcutType",
+            "description": "A slider when not given."
+          }
+        }
+      },
+      "ShortcutSection": {
+        "type": "object",
+        "description": "A group of shortcuts, with a heading.",
+        "required": [
+          "section",
+          "shortcuts"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "shortcuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shortcut"
+            }
+          }
+        }
+      },
+      "ShortcutType": {
+        "type": "string",
+        "enum": [
+          "boolean",
+          "number"
+        ]
+      },
+      "Signal": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Sine wave at `freq` Hz and `level` dBFS.",
+            "required": [
+              "freq",
+              "level",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "level": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Sine"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Square wave at `freq` Hz and `level` dBFS.",
+            "required": [
+              "freq",
+              "level",
+              "type"
+            ],
+            "properties": {
+              "freq": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "level": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Square"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "White noise at `level` dBFS.",
+            "required": [
+              "level",
+              "type"
+            ],
+            "properties": {
+              "level": {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "WhiteNoise"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Signal type generated by the `SignalGenerator` capture device."
+      },
+      "SpectrumData": {
+        "type": "object",
+        "description": "Log-spaced spectrum, as returned by [`WsCommand::GetSpectrum`].",
+        "required": [
+          "frequencies",
+          "magnitudes"
+        ],
+        "properties": {
+          "frequencies": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Center frequency of each output bin in Hz."
+          },
+          "magnitudes": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Per-bin peak magnitude in dBFS (0 dBFS = full-scale sine wave)."
+          }
+        }
+      },
+      "StartConfig": {
+        "type": "object",
+        "required": [
+          "config",
+          "source",
+          "config_file_name"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/Configuration"
+          },
+          "config_file_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The file the config came from, null if it is not known."
+          },
+          "source": {
+            "$ref": "#/components/schemas/ConfigSource"
+          }
+        }
+      },
+      "StateUpdate": {
+        "type": "object",
+        "description": "Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`].",
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/ProcessingState"
+          },
+          "stop_reason": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StopReason",
+                "description": "Present only when `state` is `Inactive`."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "description": "What `GET /api/status` answers. The processing state is not here, it comes\nfrom `/api/state` as it changes. A value CamillaDSP declines to give, for\nexample with no config loaded, is null, and so is every value while it is\noffline.",
+        "required": [
+          "cdsp_online",
+          "cdsp_version",
+          "backend_version",
+          "capturerate",
+          "rateadjust",
+          "bufferlevel",
+          "clippedsamples",
+          "processingload",
+          "resamplerload",
+          "labels",
+          "title",
+          "description"
+        ],
+        "properties": {
+          "backend_version": {
+            "type": "string",
+            "description": "The version of this backend."
+          },
+          "bufferlevel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "capturerate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The capture rate in Hz, rounded to the nearest standard rate. Null when\nit is not within 4% of one.",
+            "minimum": 0
+          },
+          "cdsp_online": {
+            "type": "boolean",
+            "description": "Whether CamillaDSP answered the last time it was asked."
+          },
+          "cdsp_version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CamillaDSP's version, null while it is offline."
+          },
+          "clippedsamples": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "labels": {
+            "$ref": "#/components/schemas/ChannelLabels"
+          },
+          "processingload": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float",
+            "description": "In percent."
+          },
+          "rateadjust": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "resamplerload": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float",
+            "description": "In percent."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StopReason": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Processing is still running; not yet stopped.",
+            "enum": [
+              "None"
+            ]
+          },
+          {
+            "type": "string",
+            "description": "Processing completed normally (e.g. end of file input).",
+            "enum": [
+              "Done"
+            ]
+          },
+          {
+            "type": "object",
+            "description": "Capture device reported an error.",
+            "required": [
+              "CaptureError"
+            ],
+            "properties": {
+              "CaptureError": {
+                "type": "string",
+                "description": "Capture device reported an error."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Playback device reported an error.",
+            "required": [
+              "PlaybackError"
+            ],
+            "properties": {
+              "PlaybackError": {
+                "type": "string",
+                "description": "Playback device reported an error."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "An unexpected internal error occurred.",
+            "required": [
+              "UnknownError"
+            ],
+            "properties": {
+              "UnknownError": {
+                "type": "string",
+                "description": "An unexpected internal error occurred."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Capture device sample rate changed to the given value.",
+            "required": [
+              "CaptureFormatChange"
+            ],
+            "properties": {
+              "CaptureFormatChange": {
+                "type": "integer",
+                "description": "Capture device sample rate changed to the given value.",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Playback device sample rate changed to the given value.",
+            "required": [
+              "PlaybackFormatChange"
+            ],
+            "properties": {
+              "PlaybackFormatChange": {
+                "type": "integer",
+                "description": "Playback device sample rate changed to the given value.",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "Reason a processing run ended."
+      },
+      "TimeUnit": {
+        "type": "string",
+        "description": "Unit for a time value (attack, release, envelope times).",
+        "enum": [
+          "us",
+          "ms",
+          "s",
+          "samples"
+        ]
+      },
+      "UploadForm": {
+        "type": "object",
+        "description": "Files to upload, as `multipart/form-data`.",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "description": "The files, each with its file name. A file of the same name is\nreplaced."
+          }
+        }
+      },
+      "ValidationIssue": {
+        "type": "object",
+        "description": "A problem with a config, one that CamillaDSP would refuse it for.",
+        "required": [
+          "path",
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PathElement"
+            },
+            "description": "Where in the config, as keys and list indices from the top. Empty for\nthe config as a whole."
+          }
+        }
+      },
+      "VolumeFader": {
+        "type": "string",
+        "description": "Which aux fader a Volume filter is linked to (faders 1–4; the main fader is always 0).",
+        "enum": [
+          "Aux1",
+          "Aux2",
+          "Aux3",
+          "Aux4"
+        ]
+      },
+      "VolumeParameters": {
+        "type": "object",
+        "description": "Parameters for the volume-ramp filter linked to a specific fader.",
+        "required": [
+          "fader"
+        ],
+        "properties": {
+          "fader": {
+            "$ref": "#/components/schemas/VolumeFader"
+          },
+          "limit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ramp_time_ms": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "VuLevels": {
+        "type": "object",
+        "description": "Payload of a [`WsReply::VuLevelsEvent`] pushed by [`WsCommand::SubscribeVuLevels`].\n\nAll values are smoothed dB levels, per channel.",
+        "required": [
+          "playback_rms",
+          "playback_peak",
+          "capture_rms",
+          "capture_peak"
+        ],
+        "properties": {
+          "capture_peak": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "capture_rms": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "playback_peak": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "playback_rms": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        }
+      },
+      "WasapiSampleFormat": {
+        "type": "string",
+        "enum": [
+          "S16",
+          "S24",
+          "S32",
+          "F32"
+        ]
+      },
+      "WavInfo": {
+        "type": "object",
+        "description": "The header of a wav file.",
+        "required": [
+          "dataoffset",
+          "datalength",
+          "sampleformat",
+          "bitspersample",
+          "channels",
+          "byterate",
+          "samplerate",
+          "bytesperframe"
+        ],
+        "properties": {
+          "bitspersample": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "byterate": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "bytesperframe": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "datalength": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "dataoffset": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sampleformat": {
+            "type": "string"
+          },
+          "samplerate": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "name": "camillagui",
+  "version": "5.0.0-beta.1",
+  "private": true,
+  "homepage": ".",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@mdi/js": "^7.4.47",
+    "@mdi/react": "^1.6.1",
+    "@tanstack/react-table": "^8.21.3",
+    "d3": "^7.9.0",
+    "lodash.clonedeep": "^4.5.0",
+    "lodash.isequal": "^4.5.0",
+    "openapi-fetch": "^0.17.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-tabs": "^6.1.1",
+    "react-tooltip": "^5.30.0",
+    "reactjs-popup": "^2.0.6",
+    "rfc6902": "^5.2.0",
+    "yaml": "^2.8.3"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:demo": "vite --mode demo",
+    "check": "tsc --noEmit",
+    "build": "tsc && vite build",
+    "build:demo": "tsc && vite build --mode demo",
+    "serve": "vite preview",
+    "serve:demo": "vite preview --mode demo",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage --watch=false",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --cache",
+    "lint:fix": "eslint src/ --ext .js,.jsx,.ts,.tsx --fix",
+    "generate-api": "openapi-typescript ../api/openapi.json -o src/api/schema.ts && prettier --write src/api/schema.ts"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.0.4",
+    "@feedthrough/core": "^0.4.0",
+    "@feedthrough/vite": "^0.4.0",
+    "@mdi/js": "^7.4.47",
+    "@mdi/react": "^1.6.1",
+    "@tanstack/react-table": "^8.21.3",
+    "@types/d3": "^7.4.3",
+    "@types/lodash": "^4.17.24",
+    "@types/node": "^25.5.2",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "chart.js": "^4.5.1",
+    "chartjs-plugin-zoom": "^2.2.0",
+    "d3": "^7.9.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "immutable": "^5.1.5",
+    "jsdom": "^29.0.1",
+    "lodash": "^4.18.1",
+    "lodash.clonedeep": "^4.5.0",
+    "lodash.isequal": "^4.5.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.8.1",
+    "react": "^19.2.4",
+    "react-chartjs-2": "^5.3.1",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^19.2.4",
+    "react-tabs": "^6.1.1",
+    "react-tooltip": "^5.30.0",
+    "reactjs-popup": "^2.0.6",
+    "rfc6902": "^5.2.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.2",
+    "yaml": "^2.8.3"
+  }
+}
