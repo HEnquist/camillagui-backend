@@ -250,7 +250,9 @@ pub async fn get_events(
         .await
         .map_err(|err| match err {
             SubscribeError::ProcessingNotRunning => unavailable("Processing is not running"),
-            SubscribeError::Other(message) => unavailable(message),
+            SubscribeError::Refused(message) | SubscribeError::Other(message) => {
+                unavailable(message)
+            }
         })
 }
 

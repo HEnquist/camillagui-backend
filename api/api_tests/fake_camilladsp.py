@@ -184,7 +184,7 @@ class FakeCamillaDSP:
                 self.state["received"].append(command)
                 name = command.get("command")
                 if name in ("SubscribeVuLevels", "SubscribeSpectrum", "SubscribeState"):
-                    reply = self._subscribe(name)
+                    reply = self._subscribe(command)
                     await ws.send_str(json.dumps(reply))
                     if reply["result"] == "Ok":
                         self._subscribed[ws] = name
@@ -204,9 +204,17 @@ class FakeCamillaDSP:
             self._subscribed.pop(ws, None)
         return ws
 
-    def _subscribe(self, name):
-        if name == "SubscribeSpectrum" and self.state["state"] != "Running":
-            return {"reply": name, "result": "ProcessingNotRunningError"}
+    def _subscribe(self, command):
+        name = command["command"]
+        if name == "SubscribeSpectrum":
+            if command["value"]["n_bins"] < 2:
+                return {
+                    "reply": name,
+                    "result": "InvalidRequestError",
+                    "message": "n_bins must be at least 2",
+                }
+            if self.state["state"] != "Running":
+                return {"reply": name, "result": "ProcessingNotRunningError"}
         return {"reply": name, "result": "Ok"}
 
     async def _push_events(self, ws, name):

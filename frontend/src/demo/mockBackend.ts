@@ -1056,17 +1056,22 @@ function generateSpectrum(params: SpectrumSubscriptionParams): SpectrumEvent {
   return { frequencies, magnitudes }
 }
 
-/** The spectrum asked for in an `/api/events` query, null without a side. */
-function parseSpectrumParams(query: URLSearchParams): SpectrumSubscriptionParams | null {
+/**
+ * The spectrum asked for in an `/api/events` query, null without a side, and "incomplete" for a
+ * side without its range, which the backend refuses.
+ */
+function parseSpectrumParams(query: URLSearchParams): SpectrumSubscriptionParams | null | "incomplete" {
   if (!query.has("side")) return null
+  if (!query.has("min_freq") || !query.has("max_freq") || !query.has("n_bins")) return "incomplete"
   const channel = query.get("channel")
+  const maxRate = query.get("max_rate")
   return {
     side: query.get("side") === "capture" ? "capture" : "playback",
     channel: channel === null ? null : Number(channel),
     min_freq: Number(query.get("min_freq")),
     max_freq: Number(query.get("max_freq")),
     n_bins: Number(query.get("n_bins")),
-    max_rate: Number(query.get("max_rate")),
+    max_rate: maxRate === null ? null : Number(maxRate),
   }
 }
 
@@ -1103,12 +1108,13 @@ class DemoEventSource extends EventTarget {
     super()
     this.url = String(url)
     const parsed = new URL(this.url, "http://demo")
-    if (parsed.pathname !== "/api/events") {
+    const spectrumParams = parseSpectrumParams(parsed.searchParams)
+    // Like the backend, an unknown path or an incomplete spectrum is refused.
+    if (parsed.pathname !== "/api/events" || spectrumParams === "incomplete") {
       queueMicrotask(() => this.fail())
       return
     }
     const levels = parsed.searchParams.get("levels") === "true"
-    const spectrumParams = parseSpectrumParams(parsed.searchParams)
     if (spectrumParams) {
       spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
     }

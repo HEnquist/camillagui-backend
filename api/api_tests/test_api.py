@@ -325,6 +325,17 @@ def test_event_stream_levels_come_back_while_running(server):
         assert len(server.fake.commands("SubscribeVuLevels")) == 2
 
 
+def test_event_stream_spectrum_with_bad_parameters_is_asked_for_once(server):
+    query = urllib.parse.urlencode({"levels": "true", **SPECTRUM_PARAMS, "n_bins": 1})
+    url = f"http://127.0.0.1:{server.port}/api/events?{query}"
+    with urllib.request.urlopen(url, timeout=10) as stream:
+        # Refused while Running, which asking again a second later would not change.
+        names = event_names(stream, 2.5)
+        assert "levels" in names
+        assert "spectrum" not in names
+        assert len(server.fake.commands("SubscribeSpectrum")) == 1
+
+
 def test_event_stream_without_the_level_stream(make_backend):
     backend = make_backend({"enable_level_stream": False})
     with open_events(backend, levels=True, spectrum=True) as stream:

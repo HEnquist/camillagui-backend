@@ -41,6 +41,10 @@ const EVENTS_WAITING: usize = 16;
 pub enum SubscribeError {
     /// CamillaDSP refused, because processing is not running.
     ProcessingNotRunning,
+    /// CamillaDSP refused for another reason, such as invalid parameters,
+    /// which asking again does not change.
+    Refused(String),
+    /// CamillaDSP could not be reached, or the socket failed.
     Other(String),
 }
 
@@ -143,10 +147,12 @@ struct Part {
 
 impl Part {
     /// Subscribe, and pass the events on until CamillaDSP ends the
-    /// subscription. Then, or after a refusal, subscribe again: at once when
-    /// a `state` event says `Running`, a second later when processing was
-    /// running all along, since then nothing else would bring it back.
-    /// Returns when the browser has gone away.
+    /// subscription. Then, or after a refusal because processing is not
+    /// running, subscribe again: at once when a `state` event says `Running`,
+    /// a second later when processing was running all along, since then
+    /// nothing else would bring it back. Returns when the browser has gone
+    /// away, or when CamillaDSP refused the parameters, which would only be
+    /// refused again.
     async fn run(
         self,
         url: String,
@@ -168,6 +174,10 @@ impl Part {
                 }
                 Err(SubscribeError::ProcessingNotRunning) => {
                     log::debug!("{} refused, processing is not running", self.reply);
+                }
+                Err(SubscribeError::Refused(message)) => {
+                    log::warn!("{} refused, not asking again: {message}", self.reply);
+                    return;
                 }
                 Err(SubscribeError::Other(message)) => {
                     log::debug!("{} failed: {message}", self.reply);
@@ -280,7 +290,7 @@ async fn subscribe(
                 return Err(SubscribeError::ProcessingNotRunning);
             }
             result => {
-                return Err(SubscribeError::Other(
+                return Err(SubscribeError::Refused(
                     check(result)
                         .err()
                         .map(|e| e.to_string())
