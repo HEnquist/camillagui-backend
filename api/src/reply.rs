@@ -9,6 +9,7 @@ use crate::api::{
     ActiveConfigFile, ApiError, AvailableDevice, ConfigFragment, FolderFingerprints, StartConfig,
 };
 use crate::coeffs;
+use crate::events::EventPayloads;
 use crate::files::FileInfo;
 use crate::settings::GuiConfig;
 use crate::status::Status;
@@ -18,9 +19,7 @@ use axum::body::{Body, Bytes};
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use camilladsp_schema::config::Configuration;
-use camilladsp_schema::protocol::{
-    AudioDeviceDescriptor, Fader, SpectrumData, StateUpdate, VuLevels,
-};
+use camilladsp_schema::protocol::{AudioDeviceDescriptor, Fader};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io;
@@ -71,16 +70,14 @@ named_bodies!(
     ConfigFragment,
     Configuration,
     DeviceTypeLists,
+    EventPayloads,
     Fader,
     FileInfo,
     FolderFingerprints,
     GuiConfig,
-    SpectrumData,
     StartConfig,
-    StateUpdate,
     Status,
     ValidationIssue,
-    VuLevels,
     WavInfo,
 );
 

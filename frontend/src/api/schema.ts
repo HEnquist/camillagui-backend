@@ -142,6 +142,34 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/events": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The processing state, and the VU levels and the spectrum when asked for,
+     *     as one stream of server-sent events, so that a GUI tab holds one of the
+     *     browser's few connections to the backend.
+     * @description It starts with a `state` event with the current state, then has one for
+     *     each change, and ends when CamillaDSP goes away. The `levels` and
+     *     `spectrum` events come as CamillaDSP sends them, and a spectrum refused
+     *     while processing is stopped starts once it runs. A `heartbeat` event
+     *     comes every two seconds. The parameters come in the query string, since an
+     *     EventSource can only GET, and changing them means opening a new stream.
+     *     The data of each event is in `EventPayloads`, by event name.
+     */
+    get: operations["get_events"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/files/fingerprints": {
     parameters: {
       query?: never
@@ -376,28 +404,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  "/api/levels": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * The VU levels, as a stream of `levels` events, one for each update from
-     *     CamillaDSP.
-     * @description The stream has its own subscription, which ends when the browser closes
-     *     the stream. Smoothing and rate come from the settings.
-     */
-    get: operations["get_levels"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   "/api/logfile": {
     parameters: {
       query?: never
@@ -553,51 +559,6 @@ export interface paths {
     put?: never
     /** Apply a config. */
     post: operations["set_config"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/spectrum": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * The spectrum, as a stream of `spectrum` events, one for each update from
-     *     CamillaDSP.
-     * @description The stream has its own subscription, which ends when the browser closes
-     *     the stream. The parameters come in the query string, since an EventSource
-     *     can only GET.
-     */
-    get: operations["get_spectrum"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/state": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * The processing state, as a stream of `state` events.
-     * @description The stream has its own subscription, which ends when the browser closes
-     *     the stream. It starts with a `state` event with the current state, then
-     *     has one for each change.
-     */
-    get: operations["get_state"]
-    put?: never
-    post?: never
     delete?: never
     options?: never
     head?: never
@@ -1374,6 +1335,25 @@ export interface components {
        */
       result?: string
     }
+    /**
+     * @description The data of each event the stream sends, by event name. The values are
+     *     passed on as CamillaDSP sent them, unparsed, so these are the types
+     *     CamillaDSP's protocol says they are. Nothing of this type is ever made,
+     *     it only describes the stream in the spec.
+     */
+    EventPayloads: {
+      /** @description A `heartbeat` event, an empty object every two seconds. */
+      heartbeat: components["schemas"]["Heartbeat"]
+      /** @description A `levels` event, one for each update from CamillaDSP. */
+      levels: components["schemas"]["VuLevels"]
+      /** @description A `spectrum` event, one for each update from CamillaDSP. */
+      spectrum: components["schemas"]["SpectrumData"]
+      /**
+       * @description A `state` event: the processing state, first the current one, then one
+       *     for each change.
+       */
+      state: components["schemas"]["StateUpdate"]
+    }
     /** @description Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`]. */
     Fader: {
       /** @description Whether the fader is muted. */
@@ -1681,6 +1661,8 @@ export interface components {
        */
       volume_range: number
     }
+    /** @description The data of a `heartbeat` event. */
+    Heartbeat: Record<string, never>
     ImportText: {
       /** @description The text of the file to import from. */
       text: string
@@ -2067,6 +2049,41 @@ export interface components {
       /** @description Per-bin peak magnitude in dBFS (0 dBFS = full-scale sine wave). */
       magnitudes: number[]
     }
+    /**
+     * @description Side selector for spectrum analysis commands.
+     *
+     *     Serialised as a lowercase string: `"playback"` or `"capture"`.
+     * @enum {string}
+     */
+    SpectrumSide: "playback" | "capture"
+    /**
+     * @description Parameters for a streaming spectrum subscription ([`WsCommand::SubscribeSpectrum`]).
+     *
+     *     Same fields as [`SpectrumRequest`] plus an optional `max_rate` cap.
+     */
+    SpectrumSubscription: {
+      /** @description Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based). */
+      channel?: number | null
+      /**
+       * Format: double
+       * @description Upper edge of the frequency range in Hz. Must be > `min_freq`.
+       */
+      max_freq: number
+      /**
+       * Format: float
+       * @description Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop).
+       */
+      max_rate?: number | null
+      /**
+       * Format: double
+       * @description Lower edge of the frequency range in Hz. Must be > 0.
+       */
+      min_freq: number
+      /** @description Number of output bins. Must be ≥ 2. */
+      n_bins: number
+      /** @description Which side to analyze: `"capture"` or `"playback"`. */
+      side: components["schemas"]["SpectrumSide"]
+    }
     StartConfig: {
       config: components["schemas"]["Configuration"]
       /** @description The file the config came from, null if it is not known. */
@@ -2080,7 +2097,7 @@ export interface components {
     }
     /**
      * @description What `GET /api/status` answers. The processing state is not here, it comes
-     *     from `/api/state` as it changes. A value CamillaDSP declines to give, for
+     *     from `/api/events` as it changes. A value CamillaDSP declines to give, for
      *     example with no config loaded, is null, and so is every value while it is
      *     offline.
      */
@@ -2431,6 +2448,64 @@ export interface operations {
       }
       /** @description The body is not valid */
       default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_events: {
+    parameters: {
+      query?: {
+        /**
+         * @description Send the VU levels, as `levels` events. Smoothing and rate come from
+         *     the settings.
+         */
+        levels?: boolean
+        /**
+         * @description The side to send the spectrum of, as `spectrum` events. No spectrum
+         *     without it.
+         */
+        side?: "playback" | "capture"
+        /** @description The channel of the spectrum, all channels averaged without it. */
+        channel?: number
+        /** @description The lower edge of the spectrum in Hz, needed with a `side`. */
+        min_freq?: number
+        /** @description The upper edge of the spectrum in Hz, needed with a `side`. */
+        max_freq?: number
+        /** @description The number of spectrum bins, needed with a `side`. */
+        n_bins?: number
+        /** @description The most spectra a second, as fast as CamillaDSP makes them without it. */
+        max_rate?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "text/event-stream": components["schemas"]["EventPayloads"]
+        }
+      }
+      /** @description A spectrum is missing a parameter */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      503: {
         headers: {
           [name: string]: unknown
         }
@@ -2844,34 +2919,6 @@ export interface operations {
       }
     }
   }
-  get_levels: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "text/event-stream": components["schemas"]["VuLevels"]
-        }
-      }
-      /** @description CamillaDSP cannot be reached, or the level stream is disabled in the settings */
-      503: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/json": components["schemas"]["ErrorBody"]
-        }
-      }
-    }
-  }
   get_log_file: {
     parameters: {
       query?: never
@@ -3236,75 +3283,6 @@ export interface operations {
       }
       /** @description CamillaDSP cannot be reached */
       default: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/json": components["schemas"]["ErrorBody"]
-        }
-      }
-    }
-  }
-  get_spectrum: {
-    parameters: {
-      query: {
-        /** @description Which side to analyze: `"capture"` or `"playback"`. */
-        side: "playback" | "capture"
-        /** @description Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based). */
-        channel?: number | null
-        /** @description Lower edge of the frequency range in Hz. Must be > 0. */
-        min_freq: number
-        /** @description Upper edge of the frequency range in Hz. Must be > `min_freq`. */
-        max_freq: number
-        /** @description Number of output bins. Must be ≥ 2. */
-        n_bins: number
-        /** @description Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop). */
-        max_rate?: number | null
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "text/event-stream": components["schemas"]["SpectrumData"]
-        }
-      }
-      /** @description Processing is not running (with the result `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is disabled in the settings */
-      503: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/json": components["schemas"]["ErrorBody"]
-        }
-      }
-    }
-  }
-  get_state: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "text/event-stream": components["schemas"]["StateUpdate"]
-        }
-      }
-      /** @description CamillaDSP cannot be reached */
-      503: {
         headers: {
           [name: string]: unknown
         }

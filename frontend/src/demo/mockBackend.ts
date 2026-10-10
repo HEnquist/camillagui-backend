@@ -1056,19 +1056,22 @@ function generateSpectrum(params: SpectrumSubscriptionParams): SpectrumEvent {
   return { frequencies, magnitudes }
 }
 
-/** The parameters of a `/api/spectrum` stream, or null for any other URL. */
-function parseSpectrumParams(url: string): SpectrumSubscriptionParams | null {
-  const parsed = new URL(url, "http://demo")
-  if (parsed.pathname !== "/api/spectrum") return null
-  const query = parsed.searchParams
+/**
+ * The spectrum asked for in an `/api/events` query, null without a side, and "incomplete" for a
+ * side without its range, which the backend refuses.
+ */
+function parseSpectrumParams(query: URLSearchParams): SpectrumSubscriptionParams | null | "incomplete" {
+  if (!query.has("side")) return null
+  if (!query.has("min_freq") || !query.has("max_freq") || !query.has("n_bins")) return "incomplete"
   const channel = query.get("channel")
+  const maxRate = query.get("max_rate")
   return {
     side: query.get("side") === "capture" ? "capture" : "playback",
     channel: channel === null ? null : Number(channel),
     min_freq: Number(query.get("min_freq")),
     max_freq: Number(query.get("max_freq")),
     n_bins: Number(query.get("n_bins")),
-    max_rate: Number(query.get("max_rate")),
+    max_rate: maxRate === null ? null : Number(maxRate),
   }
 }
 
@@ -1079,7 +1082,7 @@ function adjustedPlaybackLevel(level: number, gainDb: number) {
   return Number(Math.max(-120, Math.min(0, level + gainDb)).toFixed(1))
 }
 
-/** A `/api/state` event, CamillaDSP's StateUpdate. */
+/** A `state` event, CamillaDSP's StateUpdate. */
 function currentStateEvent(): StateEvent {
   return state.processingStopped ? { state: "Inactive", stop_reason: "None" } : { state: "Running" }
 }
@@ -1100,43 +1103,49 @@ class DemoEventSource extends EventTarget {
   onopen: ((this: EventSource, ev: Event) => unknown) | null = null
   private timerId?: ReturnType<typeof setInterval>
 
+  /** Answers `/api/events` like the backend: the state, then the levels and spectrum asked for. */
   constructor(url: string | URL) {
     super()
     this.url = String(url)
-    const spectrumParams = parseSpectrumParams(this.url)
+    const parsed = new URL(this.url, "http://demo")
+    const spectrumParams = parseSpectrumParams(parsed.searchParams)
+    // Like the backend, an unknown path or an incomplete spectrum is refused.
+    if (parsed.pathname !== "/api/events" || spectrumParams === "incomplete") {
+      queueMicrotask(() => this.fail())
+      return
+    }
+    const levels = parsed.searchParams.get("levels") === "true"
     if (spectrumParams) {
       spectrumShape = { offset: -20 - Math.random() * 40, slope: -1 - Math.random() * 5 }
     }
-    const isStateStream = new URL(this.url, "http://demo").pathname === "/api/state"
     let lastState = JSON.stringify(currentStateEvent())
+    let lastHeartbeat = Date.now()
     queueMicrotask(() => {
       if (this.readyState !== DemoEventSource.CONNECTING) return
-      // Like the backend, a spectrum stream is refused or ended while processing is stopped.
-      if (spectrumParams && state.processingStopped) {
-        this.fail()
-        return
-      }
       this.readyState = DemoEventSource.OPEN
       const openEvent = new Event("open")
       this.dispatchEvent(openEvent)
       this.onopen?.call(this as unknown as EventSource, openEvent)
-      // Like the backend, a state stream starts with the current state.
-      if (isStateStream) this.dispatchEvent(new MessageEvent("state", { data: lastState }))
+      // Like the backend, the stream starts with the current state.
+      this.dispatchEvent(new MessageEvent("state", { data: lastState }))
     })
     this.timerId = setInterval(() => {
       if (this.readyState !== DemoEventSource.OPEN) return
-      if (isStateStream) {
-        const current = JSON.stringify(currentStateEvent())
-        if (current !== lastState) {
-          lastState = current
-          this.dispatchEvent(new MessageEvent("state", { data: current }))
-        }
-      } else if (!spectrumParams) {
+      const current = JSON.stringify(currentStateEvent())
+      if (current !== lastState) {
+        lastState = current
+        this.dispatchEvent(new MessageEvent("state", { data: current }))
+      }
+      if (levels) {
         this.dispatchEvent(new MessageEvent("levels", { data: JSON.stringify(generateLevels()) }))
-      } else if (state.processingStopped) {
-        this.fail()
-      } else {
+      }
+      // Like the backend, there is no spectrum while processing is stopped.
+      if (spectrumParams && !state.processingStopped) {
         this.dispatchEvent(new MessageEvent("spectrum", { data: JSON.stringify(generateSpectrum(spectrumParams)) }))
+      }
+      if (Date.now() - lastHeartbeat >= 2000) {
+        lastHeartbeat = Date.now()
+        this.dispatchEvent(new MessageEvent("heartbeat", { data: "{}" }))
       }
     }, LEVEL_INTERVAL_MS)
   }

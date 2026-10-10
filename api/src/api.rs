@@ -2,7 +2,7 @@
 
 use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::coeffs::CoeffDefaults;
-use crate::events::{self, SubscribeError};
+use crate::events::{self, EventPayloads, SubscribeError};
 use crate::extract::{Form, Json, Multipart, Path as UrlPath, Query};
 use crate::files::{self, CoeffDetailsCache, ConfigContext, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
@@ -21,8 +21,7 @@ use camilladsp_schema::config::{
     PipelineStep, PlaybackDevice, Processor, Resampler,
 };
 use camilladsp_schema::protocol::{
-    AudioDeviceDescriptor, Fader, SpectrumData, SpectrumSubscription, StateUpdate, VuLevels,
-    VuSubscription,
+    AudioDeviceDescriptor, Fader, SpectrumSide, SpectrumSubscription, VuSubscription,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -152,86 +151,109 @@ pub async fn get_status(State(app): Shared) -> Reply<Status> {
     Reply(app.status.refresh(&app.camilla).await)
 }
 
-/// The processing state, as a stream of `state` events.
+/// What an event stream carries besides the state. The spectrum takes the
+/// fields of CamillaDSP's SpectrumSubscription, and is left out without a
+/// `side`.
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct EventsQuery {
+    /// Send the VU levels, as `levels` events. Smoothing and rate come from
+    /// the settings.
+    #[param(nullable = false)]
+    levels: Option<bool>,
+    /// The side to send the spectrum of, as `spectrum` events. No spectrum
+    /// without it.
+    #[param(inline, nullable = false)]
+    side: Option<SpectrumSide>,
+    /// The channel of the spectrum, all channels averaged without it.
+    #[param(nullable = false)]
+    channel: Option<usize>,
+    /// The lower edge of the spectrum in Hz, needed with a `side`.
+    #[param(nullable = false)]
+    min_freq: Option<f64>,
+    /// The upper edge of the spectrum in Hz, needed with a `side`.
+    #[param(nullable = false)]
+    max_freq: Option<f64>,
+    /// The number of spectrum bins, needed with a `side`.
+    #[param(nullable = false)]
+    n_bins: Option<usize>,
+    /// The most spectra a second, as fast as CamillaDSP makes them without it.
+    #[param(nullable = false)]
+    max_rate: Option<f32>,
+}
+
+impl EventsQuery {
+    /// The parts to send. The levels and the spectrum are left out when the
+    /// level stream is disabled in the settings, after the query is checked.
+    fn parts(self, settings: &Settings) -> Result<events::Parts, ApiError> {
+        let spectrum = match self.side {
+            None => None,
+            Some(side) => {
+                let (Some(min_freq), Some(max_freq), Some(n_bins)) =
+                    (self.min_freq, self.max_freq, self.n_bins)
+                else {
+                    return Err(bad_request(
+                        "A spectrum needs `min_freq`, `max_freq` and `n_bins`",
+                    ));
+                };
+                Some(SpectrumSubscription {
+                    side,
+                    channel: self.channel,
+                    min_freq,
+                    max_freq,
+                    n_bins,
+                    max_rate: self.max_rate,
+                })
+            }
+        };
+        if !settings.enable_level_stream {
+            return Ok(events::Parts::default());
+        }
+        let levels = self.levels.unwrap_or(false).then(|| {
+            let smoothing_ms = settings.level_smoothing_ms.max(0.0) as f32;
+            VuSubscription {
+                max_rate: settings.level_max_update_hz.max(0.0) as f32,
+                attack: 0.1 * smoothing_ms,
+                release: smoothing_ms,
+            }
+        });
+        Ok(events::Parts { levels, spectrum })
+    }
+}
+
+/// The processing state, and the VU levels and the spectrum when asked for,
+/// as one stream of server-sent events, so that a GUI tab holds one of the
+/// browser's few connections to the backend.
 ///
-/// The stream has its own subscription, which ends when the browser closes
-/// the stream. It starts with a `state` event with the current state, then
-/// has one for each change.
+/// It starts with a `state` event with the current state, then has one for
+/// each change, and ends when CamillaDSP goes away. The `levels` and
+/// `spectrum` events come as CamillaDSP sends them, and a spectrum refused
+/// while processing is stopped starts once it runs. A `heartbeat` event
+/// comes every two seconds. The parameters come in the query string, since an
+/// EventSource can only GET, and changing them means opening a new stream.
+/// The data of each event is in `EventPayloads`, by event name.
 #[utoipa::path(
     get,
-    path = "/state",
+    path = "/events",
+    params(EventsQuery),
     responses(
+        (status = 400, description = "A spectrum is missing a parameter", body = ErrorBody),
         (status = 503, description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
-pub async fn get_state(State(app): Shared) -> ApiResult<EventStream<StateUpdate>> {
-    events::state_stream(&app.camilla)
-        .await
-        .map_err(subscribe_error)
-}
-
-/// The VU levels, as a stream of `levels` events, one for each update from
-/// CamillaDSP.
-///
-/// The stream has its own subscription, which ends when the browser closes
-/// the stream. Smoothing and rate come from the settings.
-#[utoipa::path(
-    get,
-    path = "/levels",
-    responses(
-        (status = 503, description = "CamillaDSP cannot be reached, or the level stream is \
-            disabled in the settings", body = ErrorBody),
-    )
-)]
-pub async fn get_levels(State(app): Shared) -> ApiResult<EventStream<VuLevels>> {
-    if !app.settings.enable_level_stream {
-        return Err(unavailable("Level stream is disabled"));
-    }
-    let smoothing_ms = app.settings.level_smoothing_ms.max(0.0) as f32;
-    let subscription = VuSubscription {
-        max_rate: app.settings.level_max_update_hz.max(0.0) as f32,
-        attack: 0.1 * smoothing_ms,
-        release: smoothing_ms,
-    };
-    events::level_stream(app.camilla.url(), subscription)
-        .await
-        .map_err(subscribe_error)
-}
-
-/// The spectrum, as a stream of `spectrum` events, one for each update from
-/// CamillaDSP.
-///
-/// The stream has its own subscription, which ends when the browser closes
-/// the stream. The parameters come in the query string, since an EventSource
-/// can only GET.
-#[utoipa::path(
-    get,
-    path = "/spectrum",
-    params(SpectrumSubscription),
-    responses(
-        (status = 503, description = "Processing is not running (with the result \
-            `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is \
-            disabled in the settings", body = ErrorBody),
-    )
-)]
-pub async fn get_spectrum(
+pub async fn get_events(
     State(app): Shared,
-    Query(params): Query<SpectrumSubscription>,
-) -> ApiResult<EventStream<SpectrumData>> {
-    if !app.settings.enable_level_stream {
-        return Err(unavailable("Spectrum stream is disabled"));
-    }
-    events::spectrum_stream(app.camilla.url(), params)
+    Query(query): Query<EventsQuery>,
+) -> ApiResult<EventStream<EventPayloads>> {
+    let parts = query.parts(&app.settings)?;
+    events::events(&app.camilla, parts)
         .await
-        .map_err(subscribe_error)
-}
-
-fn subscribe_error(err: SubscribeError) -> ApiError {
-    match err {
-        SubscribeError::ProcessingNotRunning => unavailable("Processing is not running")
-            .with_result("ProcessingNotRunningError".to_string()),
-        SubscribeError::Other(message) => unavailable(message),
-    }
+        .map_err(|err| match err {
+            SubscribeError::ProcessingNotRunning => unavailable("Processing is not running"),
+            SubscribeError::Refused(message) | SubscribeError::Other(message) => {
+                unavailable(message)
+            }
+        })
 }
 
 // ── Volume and faders ──────────────────────────────────────────────────────
@@ -1798,6 +1820,76 @@ mod tests {
     use super::*;
     use camilladsp_schema::config::Devices;
     use serde_json::json;
+
+    fn event_parts(query: &str, enable_level_stream: bool) -> Result<events::Parts, ApiError> {
+        let uri = format!("/api/events?{query}").parse().unwrap();
+        let axum::extract::Query(query) =
+            axum::extract::Query::<EventsQuery>::try_from_uri(&uri).expect("the query parses");
+        let settings: Settings = serde_json::from_value(json!({
+            "config_dir": "configs",
+            "coeff_dir": "coeffs",
+            "enable_level_stream": enable_level_stream,
+            "level_smoothing_ms": 100.0,
+            "level_max_update_hz": 30.0,
+        }))
+        .unwrap();
+        query.parts(&settings)
+    }
+
+    #[test]
+    fn events_query_without_parameters_is_only_the_state() {
+        let parts = event_parts("", true).unwrap();
+        assert!(parts.levels.is_none());
+        assert!(parts.spectrum.is_none());
+        let parts = event_parts("levels=false", true).unwrap();
+        assert!(parts.levels.is_none());
+    }
+
+    #[test]
+    fn events_query_asks_for_the_levels_with_the_settings() {
+        let levels = event_parts("levels=true", true).unwrap().levels.unwrap();
+        assert_eq!(levels.max_rate, 30.0);
+        assert_eq!(levels.attack, 10.0);
+        assert_eq!(levels.release, 100.0);
+    }
+
+    #[test]
+    fn events_query_asks_for_the_spectrum() {
+        let query = "levels=true&side=capture&channel=1&min_freq=20&max_freq=20000&n_bins=100";
+        let parts = event_parts(query, true).unwrap();
+        assert!(parts.levels.is_some());
+        let spectrum = parts.spectrum.unwrap();
+        assert_eq!(spectrum.side, SpectrumSide::Capture);
+        assert_eq!(spectrum.channel, Some(1));
+        assert_eq!((spectrum.min_freq, spectrum.max_freq), (20.0, 20000.0));
+        assert_eq!(spectrum.n_bins, 100);
+        assert_eq!(spectrum.max_rate, None);
+        // No channel averages them all.
+        let query = "side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10";
+        let spectrum = event_parts(query, true).unwrap().spectrum.unwrap();
+        assert_eq!(spectrum.channel, None);
+        assert_eq!(spectrum.max_rate, Some(10.0));
+    }
+
+    #[test]
+    fn events_query_spectrum_needs_its_range() {
+        let err = event_parts("side=playback&min_freq=20&max_freq=20000", true).unwrap_err();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
+        // The parameters mean nothing without a side.
+        let parts = event_parts("min_freq=20&max_freq=20000&n_bins=100", true).unwrap();
+        assert!(parts.spectrum.is_none());
+    }
+
+    #[test]
+    fn events_query_has_no_levels_or_spectrum_when_disabled() {
+        let query = "levels=true&side=playback&min_freq=20&max_freq=20000&n_bins=100";
+        let parts = event_parts(query, false).unwrap();
+        assert!(parts.levels.is_none());
+        assert!(parts.spectrum.is_none());
+        // The query is still checked.
+        let err = event_parts("side=playback", false).unwrap_err();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
+    }
 
     /// Every field of `Devices`, destructured without `..`, so that a field
     /// added in camilladsp-schema fails to compile here until the fragment
