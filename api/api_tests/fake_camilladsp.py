@@ -211,6 +211,11 @@ class FakeCamillaDSP:
                         "capture_peak": [-2.0, -3.0],
                     },
                 }
+            elif self.state["state"] == "Inactive":
+                # Like CamillaDSP, the spectrum subscription ends when processing stops.
+                event = {"reply": "SpectrumEvent", "result": "ProcessingStopped", "value": None}
+                await ws.send_str(json.dumps(event))
+                return
             else:
                 event = {
                     "reply": "SpectrumEvent",

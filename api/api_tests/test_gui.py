@@ -16,7 +16,7 @@ import yaml
 pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
 from playwright.sync_api import expect  # noqa: E402
 
-# The state only comes by the /api/state stream, which should show a change
+# The state only comes by the /api/events stream, which should show a change
 # well within one 500 ms status poll.
 STREAMED = 400
 
@@ -75,6 +75,23 @@ def test_files_tab_in_a_second_gui_tab(page, server):
     second.goto(page.url)
     second.get_by_role("tab", name="Files").click()
     expect(second.get_by_text("config2.yml", exact=True).first).to_be_visible()
+
+
+def test_five_gui_tabs_leave_room_for_requests(page, server):
+    """Each GUI tab holds one connection with its event stream, whatever it
+    shows. Four tabs with the spectrum, the levels and the state on the
+    dashboard leave room for a fifth to list its files."""
+    url = f"http://127.0.0.1:{server.port}/gui/index.html"
+    for index in range(4):
+        tab = page if index == 0 else page.context.new_page()
+        tab.goto(f"{url}?dashboardview")
+        tab.locator('[data-tooltip-html="Show spectrum"]').click()
+        expect(tab.locator('[data-tooltip-html="Hide spectrum"]')).to_be_visible()
+    wait_for(lambda: len(server.fake.commands("SubscribeSpectrum")) >= 4)
+    fifth = page.context.new_page()
+    fifth.goto(url)
+    fifth.get_by_role("tab", name="Files").click()
+    expect(fifth.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
 def test_config_with_errors_loads_into_the_gui(page, server):

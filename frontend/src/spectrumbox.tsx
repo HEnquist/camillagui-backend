@@ -2,11 +2,13 @@ import React, { useState } from "react"
 import "./index.css"
 import { mdiChevronDown } from "@mdi/js"
 import { getLabelForChannel } from "./camilladsp/config"
-import { Labels, SpectrumSubscriptionParams } from "./camilladsp/status"
+import { Labels, SpectrumEvent, SpectrumSubscriptionParams } from "./camilladsp/status"
 import { useSpectrumData, useVuMeterLevels } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
 import { SpectrumDisplay } from "./spectrum"
 import { Box, MdiButton } from "./utilities/ui-components"
+
+const NO_SPECTRUM: SpectrumEvent = { frequencies: [], magnitudes: [] }
 
 export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width?: number; isRunning?: boolean }) {
   const { guiConfig, labels, width, isRunning = true } = props
@@ -28,7 +30,8 @@ export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width
     max_rate: guiConfig.spectrum_max_rate,
   }
 
-  const spectrumData = useSpectrumData(enabled && isRunning, params)
+  // Subscribed while processing is stopped too, so that starting it does not open the stream again.
+  const spectrumData = useSpectrumData(enabled, params)
 
   return (
     <Box
@@ -72,7 +75,7 @@ export function SpectrumBox(props: { guiConfig: GuiConfig; labels: Labels; width
     >
       {enabled && (
         <SpectrumDisplay
-          data={spectrumData}
+          data={isRunning ? spectrumData : NO_SPECTRUM}
           minDb={guiConfig.spectrum_min_db}
           maxDb={guiConfig.spectrum_max_db}
           minFreq={guiConfig.spectrum_min_freq}

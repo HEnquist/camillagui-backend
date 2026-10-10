@@ -132,11 +132,15 @@ Key endpoints used by the frontend:
 - `POST /api/validateconfig`: the config's issues, `{path, message}`, none if valid
 - `GET` and `POST /api/param/volume` and `/api/param/mute`, `GET /api/param/faders`,
   `POST /api/param/faders/{index}/volume` and `.../mute`: the volume and the faders
-- `GET /api/levels`: SSE stream of VU levels, CamillaDSP's VuLevels as they came
-- `GET /api/spectrum?side=...&n_bins=...`: SSE stream of spectra, CamillaDSP's SpectrumData
-- `GET /api/state`: SSE stream of the processing state, CamillaDSP's StateUpdate, starting with
-  the current one. `StatusPoller` merges it into the polled `/api/status` as `cdsp_status`
-- Each open stream is its own CamillaDSP subscription, which ends when the stream is closed
+- `GET /api/events?levels=true&side=...&n_bins=...`: the one SSE stream of a browser tab, since
+  a browser has six connections to the backend for all its tabs and each open stream holds one.
+  It always has `state` events, CamillaDSP's StateUpdate, starting with the current one and
+  ending when CamillaDSP goes away. `levels` (VuLevels) and `spectrum` (SpectrumData) come when
+  the query asks, and a `heartbeat` every 2 s. The backend starts a refused or ended spectrum
+  again when the state goes to Running. `EventStreamManager` in `camilladsp/status.ts` owns the
+  stream: consumers register what they want (`StatusPoller`, `useVuMeterLevels`,
+  `useSpectrumData`), and it opens the stream again with a new query when that changes.
+  `StatusPoller` merges the state into the polled `/api/status` as `cdsp_status`
 - `POST /api/convcoeffs`: coefficients of a Conv filter that reads a file
 - `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip`: the
   config, coeff and audiofile folders, helpers in `utilities/files.tsx`

@@ -70,7 +70,7 @@ def test_read_status(server):
     assert resp.status == 200
     status = resp.json()
     assert status["cdsp_online"] is True
-    # The state comes from /api/state, so the status does not ask for it.
+    # The state comes from /api/events, so the status does not ask for it.
     assert "cdsp_status" not in status
     assert not server.fake.commands("GetState")
     assert status["resamplerload"] == 0.2
@@ -154,26 +154,84 @@ def test_status_does_not_wait_on_a_hung_camilladsp(server):
     assert fast >= 5
 
 
+def next_event(stream):
+    """The name and parsed data of the next event, None when the stream has ended."""
+    event = None
+    while True:
+        raw = stream.readline()
+        if not raw:
+            return None
+        line = raw.decode().strip()
+        if line.startswith("event:"):
+            event = line.split(":", 1)[1].strip()
+        if line.startswith("data:"):
+            return event, json.loads(line.split(":", 1)[1])
+
+
 def read_events(stream, name, count, timeout=5):
     """The data of the next `count` events called `name`, parsed."""
     deadline = time.time() + timeout
-    event = None
     found = []
     while time.time() < deadline and len(found) < count:
-        line = stream.readline().decode().strip()
-        if line.startswith("event:"):
-            event = line.split(":", 1)[1].strip()
-        if line.startswith("data:") and event == name:
-            found.append(json.loads(line.split(":", 1)[1]))
+        event = next_event(stream)
+        if event is None:
+            break
+        if event[0] == name:
+            found.append(event[1])
     return found
 
 
-def test_state_stream(server):
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10) as stream:
+def event_names(stream, seconds):
+    """The names of the events that come within `seconds`."""
+    deadline = time.time() + seconds
+    names = []
+    while time.time() < deadline:
+        event = next_event(stream)
+        if event is None:
+            break
+        names.append(event[0])
+    return names
+
+
+SPECTRUM_PARAMS = {
+    "side": "playback",
+    "min_freq": 20.0,
+    "max_freq": 20000.0,
+    "n_bins": 10,
+    "max_rate": 10.0,
+}
+
+LEVELS = {
+    "playback_rms": [-7.0, -8.0],
+    "playback_peak": [-3.0, -4.0],
+    "capture_rms": [-5.0, -6.0],
+    "capture_peak": [-2.0, -3.0],
+}
+
+SPECTRUM = {"frequencies": [100.0, 1000.0], "magnitudes": [-20.0, -30.0]}
+
+
+def events_url(server, levels=False, spectrum=False):
+    params = {}
+    if levels:
+        params["levels"] = "true"
+    if spectrum:
+        # No channel means all channels, so it is left out like the frontend does.
+        params.update(SPECTRUM_PARAMS)
+    return f"http://127.0.0.1:{server.port}/api/events?{urllib.parse.urlencode(params)}"
+
+
+def open_events(server, **kwargs):
+    return urllib.request.urlopen(events_url(server, **kwargs), timeout=10)
+
+
+def test_event_stream_starts_with_the_state(server):
+    with open_events(server) as stream:
         assert stream.headers["Content-Type"].startswith("text/event-stream")
+        # So that nginx passes the events on as they come.
         assert stream.headers["X-Accel-Buffering"] == "no"
         # CamillaDSP sends nothing until the state changes, so the backend starts with the current one.
-        assert read_events(stream, "state", 1) == [{"state": "Running"}]
+        assert next_event(stream) == ("state", {"state": "Running"})
         server.fake.state["stop_reason"] = "Done"
         server.fake.state["state"] = "Inactive"
         assert read_events(stream, "state", 1) == [{"state": "Inactive", "stop_reason": "Done"}]
@@ -181,20 +239,89 @@ def test_state_stream(server):
         assert read_events(stream, "state", 1) == [{"state": "Paused"}]
 
 
-def test_state_stream_starts_with_the_stop_reason(server):
+def test_event_stream_starts_with_the_stop_reason(server):
     server.fake.state["state"] = "Inactive"
     server.fake.state["stop_reason"] = {"CaptureError": "device gone"}
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10) as stream:
-        assert read_events(stream, "state", 1) == [
-            {"state": "Inactive", "stop_reason": {"CaptureError": "device gone"}}
-        ]
+    with open_events(server) as stream:
+        assert next_event(stream) == (
+            "state",
+            {"state": "Inactive", "stop_reason": {"CaptureError": "device gone"}},
+        )
 
 
-def test_state_stream_offline(server):
+def test_event_stream_offline(server):
     server.fake.go_offline()
     with pytest.raises(urllib.error.HTTPError) as error:
-        urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/state", timeout=10)
+        open_events(server, levels=True)
     assert error.value.code == 503
+
+
+def test_event_stream_ends_when_camilladsp_goes_away(server):
+    with open_events(server, levels=True, spectrum=True) as stream:
+        assert read_events(stream, "spectrum", 1) == [SPECTRUM]
+        server.fake.go_offline()
+        deadline = time.time() + 5
+        while next_event(stream) is not None:
+            assert time.time() < deadline
+
+
+def test_event_stream_has_only_the_state_and_heartbeats_unless_asked(server):
+    with open_events(server) as stream:
+        names = event_names(stream, 2.5)
+    assert names[0] == "state"
+    assert set(names) == {"state", "heartbeat"}
+
+
+def test_event_stream_with_levels(server):
+    with open_events(server, levels=True) as stream:
+        # CamillaDSP's VuLevels, passed on as it came.
+        assert read_events(stream, "levels", 1) == [LEVELS]
+        assert not server.fake.commands("SubscribeSpectrum")
+
+
+def test_event_stream_with_spectrum(server):
+    with open_events(server, spectrum=True) as stream:
+        assert read_events(stream, "spectrum", 1) == [SPECTRUM]
+        subscribed = server.fake.commands("SubscribeSpectrum")[-1]["value"]
+        assert subscribed["n_bins"] == 10
+        assert subscribed["channel"] is None
+        assert not server.fake.commands("SubscribeVuLevels")
+
+
+def test_event_stream_spectrum_needs_its_range(server):
+    query = urllib.parse.urlencode({"side": "playback", "n_bins": 10})
+    resp = server.get(f"/api/events?{query}")
+    assert resp.status == 400
+    assert resp.json()["message"]
+
+
+def test_event_stream_spectrum_starts_when_processing_runs(server):
+    server.fake.state["state"] = "Inactive"
+    with open_events(server, levels=True, spectrum=True) as stream:
+        assert next_event(stream)[1]["state"] == "Inactive"
+        # Refused while stopped, without ending the stream.
+        assert set(event_names(stream, 1)) == {"levels"}
+        assert server.fake.commands("SubscribeSpectrum")
+        server.fake.state["state"] = "Running"
+        assert read_events(stream, "spectrum", 1) == [SPECTRUM]
+        # Processing stops, which ends the subscription, and starts again.
+        server.fake.state["state"] = "Inactive"
+        assert read_events(stream, "state", 1)[0]["state"] == "Inactive"
+        # A spectrum sent just before the subscription ended may still be on its way.
+        event_names(stream, 0.5)
+        subscriptions = len(server.fake.commands("SubscribeSpectrum"))
+        server.fake.state["state"] = "Running"
+        assert read_events(stream, "spectrum", 1) == [SPECTRUM]
+        assert len(server.fake.commands("SubscribeSpectrum")) == subscriptions + 1
+
+
+def test_event_stream_without_the_level_stream(make_backend):
+    backend = make_backend({"enable_level_stream": False})
+    with open_events(backend, levels=True, spectrum=True) as stream:
+        names = event_names(stream, 2.5)
+    assert set(names) == {"state", "heartbeat"}
+    assert not backend.fake.commands("SubscribeVuLevels")
+    assert not backend.fake.commands("SubscribeSpectrum")
 
 
 def wait_for_sockets(server, count):
@@ -204,35 +331,14 @@ def wait_for_sockets(server, count):
     assert len(server.fake._sockets) == count
 
 
-def test_level_stream_ends_with_the_browser(server):
+def test_event_stream_ends_with_the_browser(server):
+    # The status keeps a socket of its own, opened by now since the backend is up.
     before = len(server.fake._sockets)
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/levels", timeout=10):
-        wait_for_sockets(server, before + 1)
+    with open_events(server, levels=True, spectrum=True) as stream:
+        assert read_events(stream, "spectrum", 1)
+        # One socket for each part: the state, the levels and the spectrum.
+        wait_for_sockets(server, before + 3)
     wait_for_sockets(server, before)
-
-
-def test_level_stream(server):
-    with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/levels", timeout=10) as stream:
-        assert stream.headers["Content-Type"].startswith("text/event-stream")
-        # So that nginx passes the events on as they come.
-        assert stream.headers["X-Accel-Buffering"] == "no"
-        deadline = time.time() + 5
-        event = None
-        while time.time() < deadline:
-            line = stream.readline().decode().strip()
-            if line.startswith("event:"):
-                event = line.split(":", 1)[1].strip()
-            if line.startswith("data:") and event == "levels":
-                levels = json.loads(line.split(":", 1)[1])
-                # CamillaDSP's VuLevels, passed on as it came.
-                assert levels == {
-                    "playback_rms": [-7.0, -8.0],
-                    "playback_peak": [-3.0, -4.0],
-                    "capture_rms": [-5.0, -6.0],
-                    "capture_peak": [-2.0, -3.0],
-                }
-                return
-    pytest.fail("No levels event")
 
 
 def test_folder_fingerprints(split_server):
@@ -259,50 +365,6 @@ def test_folder_fingerprints(split_server):
 
 def test_folder_fingerprints_without_an_audio_folder(server):
     assert set(server.get("/api/files/fingerprints").json()) == {"config", "coeff"}
-
-
-SPECTRUM_PARAMS = {
-    "side": "playback",
-    "channel": None,
-    "min_freq": 20.0,
-    "max_freq": 20000.0,
-    "n_bins": 10,
-    "max_rate": 10.0,
-}
-
-
-def spectrum_url(server):
-    # No channel means all channels, so it is left out like the frontend does.
-    query = urllib.parse.urlencode({k: v for k, v in SPECTRUM_PARAMS.items() if v is not None})
-    return f"http://127.0.0.1:{server.port}/api/spectrum?{query}"
-
-
-def test_spectrum_stream(server):
-    with urllib.request.urlopen(spectrum_url(server), timeout=10) as stream:
-        assert stream.headers["Content-Type"].startswith("text/event-stream")
-        assert stream.headers["X-Accel-Buffering"] == "no"
-        subscribed = server.fake.commands("SubscribeSpectrum")[-1]["value"]
-        assert subscribed["n_bins"] == 10
-        assert subscribed["channel"] is None
-        deadline = time.time() + 5
-        event = None
-        while time.time() < deadline:
-            line = stream.readline().decode().strip()
-            if line.startswith("event:"):
-                event = line.split(":", 1)[1].strip()
-            if line.startswith("data:") and event == "spectrum":
-                spectrum = json.loads(line.split(":", 1)[1])
-                assert spectrum == {"frequencies": [100.0, 1000.0], "magnitudes": [-20.0, -30.0]}
-                return
-    pytest.fail("No spectrum event")
-
-
-def test_spectrum_needs_processing(server):
-    server.fake.state["state"] = "Inactive"
-    with pytest.raises(urllib.error.HTTPError) as error:
-        urllib.request.urlopen(spectrum_url(server), timeout=10)
-    assert error.value.code == 503
-    assert json.loads(error.value.read())["result"] == "ProcessingNotRunningError"
 
 
 def test_stop_processing(server):

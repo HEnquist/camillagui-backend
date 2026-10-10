@@ -177,28 +177,33 @@ On failure `data` is undefined and `error` is an `ErrorBody` with a `message`.
 
 ### Event streams
 
-A few endpoints are server-sent event streams, which OpenAPI cannot describe beyond their content
-type. Their payloads are in the schema: `VuLevels`, `SpectrumData` and `StateUpdate`. Each open
-stream is a subscription in CamillaDSP, so close it when the page no longer shows it.
+The processing state, the VU levels and the spectrum come on one server-sent event stream per
+browser tab, `/api/events`. A browser has only six connections to the backend for all its tabs,
+and an open stream holds one, so do not open an `EventSource` of your own. Use the hooks, which
+share the tab's stream:
 
 ```ts
-import type { Schemas } from "../api/client"
+import { useSpectrumData, useVuMeterLevels } from "../camilladsp/usevumeterstatus"
 
-const evtSource = new EventSource("/api/levels")
-evtSource.addEventListener("levels", (e) => {
-  const levels: Schemas["VuLevels"] = JSON.parse(e.data)
-  // levels.playback_rms, levels.playback_peak: dBFS per channel, and the same for capture
+// dBFS per channel: levels.playbacksignalrms, levels.playbacksignalpeak, and the same for capture
+const levels = useVuMeterLevels()
+
+// Leave out channel to average all channels. It starts once processing runs.
+const spectrum = useSpectrumData(true, {
+  side: "playback",
+  channel: 0,
+  min_freq: 20,
+  max_freq: 20000,
+  n_bins: 100,
+  max_rate: 10,
 })
-// Remember to call evtSource.close() in useEffect cleanup
+// spectrum.frequencies, spectrum.magnitudes
 ```
 
-`GET /api/spectrum?side=playback&min_freq=20&max_freq=20000&n_bins=100&max_rate=10` is the same
-for the spectrum, as `spectrum` events. Add `channel=0` for a single channel, leave it out to
-average them all. It answers 503 while processing is stopped.
-
-`GET /api/state` is the same for the processing state, as `state` events. The first event is the
-current state, the next ones come when it changes. It answers 503, or ends, while CamillaDSP
-cannot be reached.
+For anything else, `eventStream` in `../camilladsp/status` has `subscribeState`,
+`subscribeLevels` and `subscribeSpectrum`, each returning a function that drops the subscription.
+Call it in the `useEffect` cleanup. The tab's stream carries the spectrum of the last one
+registered, so two spectra at once in one tab do not work.
 
 ## Evaluating a filter
 
@@ -470,8 +475,8 @@ export default FilterPlot
   or intermediate form values.
 - **Derived data from the DSP:** Call `evalFilter` inside `useEffect` with `config` as a
   dependency. Re-evaluates automatically when the user edits filters elsewhere.
-- **Real-time values:** Use `EventSource("/api/levels")` for live level meters. Close the source
-  in the `useEffect` cleanup to avoid leaks.
+- **Real-time values:** Use `useVuMeterLevels()` for live level meters, which shares the tab's
+  event stream rather than opening another.
 - **Narrowing instead of casts:** Check `filter.type`, and `filter.parameters.type` for a filter
   with subtypes, and tsc knows which parameters the filter has. A cast hides it from tsc when a
   new version of CamillaDSP changes them.

@@ -103,10 +103,8 @@ const MAX_UPLOAD_SIZE: usize = 1024 * 1024 * 1024;
 /// the spec as well, all but the spec itself.
 fn api_routes() -> OpenApiRouter<Arc<AppState>> {
     OpenApiRouter::new()
-        .routes(routes!(api::get_levels))
         .routes(routes!(api::get_status))
-        .routes(routes!(api::get_state))
-        .routes(routes!(api::get_spectrum))
+        .routes(routes!(api::get_events))
         .routes(routes!(api::get_volume, api::set_volume))
         .routes(routes!(api::get_mute, api::set_mute))
         .routes(routes!(api::get_faders))

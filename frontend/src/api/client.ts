@@ -8,13 +8,6 @@ import type { components, paths } from "./schema"
 
 export type Schemas = components["schemas"]
 
-/** The query parameters of a GET endpoint, for the event streams that build their own URL. */
-export type QueryOf<Path extends keyof paths> = paths[Path] extends {
-  get: { parameters: { query: infer Query } }
-}
-  ? Query
-  : never
-
 /**
  * The message of a failed call. The backend sends every error as an `ErrorBody`, so the status
  * is only a fallback, for an error that did not come from the backend.

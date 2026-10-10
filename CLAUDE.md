@@ -42,7 +42,8 @@ reply.rs       what handlers answer (Reply, NoContent, Text, Binary, EventStream
 openapi.rs     the spec of the typed routes, served at /api/openapi.json, and its check tests
 camilla.rs     typed client for CamillaDSP's websocket, on camilladsp_schema::protocol
 status.rs      the /api/status cache; device and backend lists, read on reconnect
-events.rs      SSE out: VU levels, spectrum and state, one CamillaDSP subscription per open stream
+events.rs      /api/events, one SSE stream per GUI tab: state, VU levels and spectrum, each on
+               its own CamillaDSP subscription
 validate.rs    validation with camilladsp-schema, plus the GUI's device type rules
 settings.rs    camillagui.yml, and gui-config.yml as the GuiConfig the frontend gets
 paths.rs       resolving, relativizing and policing coefficient and audio paths

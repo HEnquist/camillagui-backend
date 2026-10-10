@@ -3,9 +3,8 @@ import {
   defaultStatus,
   defaultVuMeterStatus,
   emptyVuMeterStatus,
-  LevelsEventStream,
+  eventStream,
   SpectrumEvent,
-  SpectrumEventStream,
   SpectrumSubscriptionParams,
   Status,
   StatusPoller,
@@ -29,29 +28,28 @@ export function useCdspStatus(guiConfig: GuiConfig) {
   return status
 }
 
+/** The VU levels, from the tab's event stream, which every caller shares. */
 export function useVuMeterLevels(active = true) {
   const [levels, setLevels] = React.useState<VuMeterStatus>(defaultVuMeterStatus())
 
-  React.useEffect(() => {
-    const levelsEventStream = new LevelsEventStream(setLevels)
-
-    return () => {
-      levelsEventStream.stop()
-    }
-  }, [])
+  React.useEffect(() => eventStream.subscribeLevels(setLevels), [])
 
   return active ? levels : emptyVuMeterStatus()
 }
 
+/**
+ * The spectrum, from the tab's event stream. The backend starts it once processing runs, so it
+ * can stay enabled while processing is stopped.
+ */
 export function useSpectrumData(enabled: boolean, params: SpectrumSubscriptionParams): SpectrumEvent {
   const [data, setData] = React.useState<SpectrumEvent>({ frequencies: [], magnitudes: [] })
   const { side, channel, min_freq, max_freq, n_bins, max_rate } = params
 
   React.useEffect(() => {
     if (!enabled) return
-    const stream = new SpectrumEventStream({ side, channel, min_freq, max_freq, n_bins, max_rate }, setData)
+    const drop = eventStream.subscribeSpectrum({ side, channel, min_freq, max_freq, n_bins, max_rate }, setData)
     return () => {
-      stream.stop()
+      drop()
       setData({ frequencies: [], magnitudes: [] })
     }
   }, [enabled, side, channel, min_freq, max_freq, n_bins, max_rate])
