@@ -309,6 +309,119 @@
         }
       }
     },
+    "/api/events": {
+      "get": {
+        "summary": "The processing state, and the VU levels and the spectrum when asked for,\nas one stream of server-sent events, so that a GUI tab holds one of the\nbrowser's few connections to the backend.",
+        "description": "It starts with a `state` event with the current state, then has one for\neach change, and ends when CamillaDSP goes away. The `levels` and\n`spectrum` events come as CamillaDSP sends them, and a spectrum refused\nwhile processing is stopped starts once it runs. A `heartbeat` event\ncomes every two seconds. The parameters come in the query string, since an\nEventSource can only GET, and changing them means opening a new stream.\nThe data of each event is in `EventPayloads`, by event name.",
+        "operationId": "get_events",
+        "parameters": [
+          {
+            "name": "levels",
+            "in": "query",
+            "description": "Send the VU levels, as `levels` events. Smoothing and rate come from\nthe settings.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "description": "The side to send the spectrum of, as `spectrum` events. No spectrum\nwithout it.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Side selector for spectrum analysis commands.\n\nSerialised as a lowercase string: `\"playback\"` or `\"capture\"`.",
+              "enum": [
+                "playback",
+                "capture"
+              ]
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "The channel of the spectrum, all channels averaged without it.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "min_freq",
+            "in": "query",
+            "description": "The lower edge of the spectrum in Hz, needed with a `side`.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "max_freq",
+            "in": "query",
+            "description": "The upper edge of the spectrum in Hz, needed with a `side`.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "n_bins",
+            "in": "query",
+            "description": "The number of spectrum bins, needed with a `side`.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "max_rate",
+            "in": "query",
+            "description": "The most spectra a second, as fast as CamillaDSP makes them without it.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPayloads"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A spectrum is missing a parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CamillaDSP cannot be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/files/fingerprints": {
       "get": {
         "summary": "The fingerprints of the folders, for noticing changes made behind the GUI's\nback. Polling these is cheap, since only the file names, sizes and times\nare read, so a folder is listed again only when it changed.",
@@ -774,34 +887,6 @@
         }
       }
     },
-    "/api/levels": {
-      "get": {
-        "summary": "The VU levels, as a stream of `levels` events, one for each update from\nCamillaDSP.",
-        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. Smoothing and rate come from the settings.",
-        "operationId": "get_levels",
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/VuLevels"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "CamillaDSP cannot be reached, or the level stream is disabled in the settings",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/logfile": {
       "get": {
         "summary": "CamillaDSP's log file, `log_file` in the settings.",
@@ -1177,134 +1262,6 @@
             }
           },
           "default": {
-            "description": "CamillaDSP cannot be reached",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/spectrum": {
-      "get": {
-        "summary": "The spectrum, as a stream of `spectrum` events, one for each update from\nCamillaDSP.",
-        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. The parameters come in the query string, since an EventSource\ncan only GET.",
-        "operationId": "get_spectrum",
-        "parameters": [
-          {
-            "name": "side",
-            "in": "query",
-            "description": "Which side to analyze: `\"capture\"` or `\"playback\"`.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "Side selector for spectrum analysis commands.\n\nSerialised as a lowercase string: `\"playback\"` or `\"capture\"`.",
-              "enum": [
-                "playback",
-                "capture"
-              ]
-            }
-          },
-          {
-            "name": "channel",
-            "in": "query",
-            "description": "Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based).",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "minimum": 0
-            }
-          },
-          {
-            "name": "min_freq",
-            "in": "query",
-            "description": "Lower edge of the frequency range in Hz. Must be > 0.",
-            "required": true,
-            "schema": {
-              "type": "number",
-              "format": "double"
-            }
-          },
-          {
-            "name": "max_freq",
-            "in": "query",
-            "description": "Upper edge of the frequency range in Hz. Must be > `min_freq`.",
-            "required": true,
-            "schema": {
-              "type": "number",
-              "format": "double"
-            }
-          },
-          {
-            "name": "n_bins",
-            "in": "query",
-            "description": "Number of output bins. Must be ≥ 2.",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "max_rate",
-            "in": "query",
-            "description": "Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop).",
-            "required": false,
-            "schema": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "format": "float"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpectrumData"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Processing is not running (with the result `ProcessingNotRunningError`), CamillaDSP cannot be reached, or the level stream is disabled in the settings",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/state": {
-      "get": {
-        "summary": "The processing state, as a stream of `state` events.",
-        "description": "The stream has its own subscription, which ends when the browser closes\nthe stream. It starts with a `state` event with the current state, then\nhas one for each change.",
-        "operationId": "get_state",
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/StateUpdate"
-                }
-              }
-            }
-          },
-          "503": {
             "description": "CamillaDSP cannot be reached",
             "content": {
               "application/json": {
@@ -4148,6 +4105,34 @@
           }
         }
       },
+      "EventPayloads": {
+        "type": "object",
+        "description": "The data of each event the stream sends, by event name. The values are\npassed on as CamillaDSP sent them, unparsed, so these are the types\nCamillaDSP's protocol says they are. Nothing of this type is ever made,\nit only describes the stream in the spec.",
+        "required": [
+          "state",
+          "levels",
+          "spectrum",
+          "heartbeat"
+        ],
+        "properties": {
+          "heartbeat": {
+            "$ref": "#/components/schemas/Heartbeat",
+            "description": "A `heartbeat` event, an empty object every two seconds."
+          },
+          "levels": {
+            "$ref": "#/components/schemas/VuLevels",
+            "description": "A `levels` event, one for each update from CamillaDSP."
+          },
+          "spectrum": {
+            "$ref": "#/components/schemas/SpectrumData",
+            "description": "A `spectrum` event, one for each update from CamillaDSP."
+          },
+          "state": {
+            "$ref": "#/components/schemas/StateUpdate",
+            "description": "A `state` event: the processing state, first the current one, then one\nfor each change."
+          }
+        }
+      },
       "Fader": {
         "type": "object",
         "description": "Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`].",
@@ -4870,6 +4855,10 @@
             "default": 50.0
           }
         }
+      },
+      "Heartbeat": {
+        "type": "object",
+        "description": "The data of a `heartbeat` event."
       },
       "ImportText": {
         "type": "object",
@@ -6384,6 +6373,61 @@
           }
         }
       },
+      "SpectrumSide": {
+        "type": "string",
+        "description": "Side selector for spectrum analysis commands.\n\nSerialised as a lowercase string: `\"playback\"` or `\"capture\"`.",
+        "enum": [
+          "playback",
+          "capture"
+        ]
+      },
+      "SpectrumSubscription": {
+        "type": "object",
+        "description": "Parameters for a streaming spectrum subscription ([`WsCommand::SubscribeSpectrum`]).\n\nSame fields as [`SpectrumRequest`] plus an optional `max_rate` cap.",
+        "required": [
+          "side",
+          "min_freq",
+          "max_freq",
+          "n_bins"
+        ],
+        "properties": {
+          "channel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based).",
+            "minimum": 0
+          },
+          "max_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "Upper edge of the frequency range in Hz. Must be > `min_freq`."
+          },
+          "max_rate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float",
+            "description": "Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop)."
+          },
+          "min_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "Lower edge of the frequency range in Hz. Must be > 0."
+          },
+          "n_bins": {
+            "type": "integer",
+            "description": "Number of output bins. Must be ≥ 2.",
+            "minimum": 0
+          },
+          "side": {
+            "$ref": "#/components/schemas/SpectrumSide",
+            "description": "Which side to analyze: `\"capture\"` or `\"playback\"`."
+          }
+        }
+      },
       "StartConfig": {
         "type": "object",
         "required": [
@@ -6432,7 +6476,7 @@
       },
       "Status": {
         "type": "object",
-        "description": "What `GET /api/status` answers. The processing state is not here, it comes\nfrom `/api/state` as it changes. A value CamillaDSP declines to give, for\nexample with no config loaded, is null, and so is every value while it is\noffline.",
+        "description": "What `GET /api/status` answers. The processing state is not here, it comes\nfrom `/api/events` as it changes. A value CamillaDSP declines to give, for\nexample with no config loaded, is null, and so is every value while it is\noffline.",
         "required": [
           "cdsp_online",
           "cdsp_version",

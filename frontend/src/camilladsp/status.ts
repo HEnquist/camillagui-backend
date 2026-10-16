@@ -1,4 +1,4 @@
-import { api, QueryOf, Schemas } from "../api/client"
+import { api, Schemas } from "../api/client"
 
 export interface VuMeterStatus {
   capturesignalrms: number[]
@@ -14,7 +14,7 @@ type PolledStatus = Schemas["Status"]
 
 /**
  * The status the GUI shows: what `/api/status` answers, with the processing
- * state from `/api/state` in place of `cdsp_online`.
+ * state from `/api/events` in place of `cdsp_online`.
  */
 export type Status = Omit<PolledStatus, "cdsp_online"> & {
   /** CamillaDSP's processing state, like "Running", or one of the OFFLINE_STATES. */
@@ -35,7 +35,8 @@ export type LevelsEvent = Schemas["VuLevels"]
 /** A `spectrum` event, CamillaDSP's SpectrumData passed on unchanged by the backend. */
 export type SpectrumEvent = Schemas["SpectrumData"]
 
-export type SpectrumSubscriptionParams = QueryOf<"/api/spectrum">
+/** The spectrum part of an `/api/events` query, CamillaDSP's SpectrumSubscription. */
+export type SpectrumSubscriptionParams = Schemas["SpectrumSubscription"]
 
 const CACHE_MAX_AGE_MS = 5000
 const VISIBILITY_RESUME_DELAY_MS = 100
@@ -124,8 +125,8 @@ export function isCdspRunning(status: Status): boolean {
 
 /**
  * Polls `/api/status` for the values that are not worth a stream of their own,
- * and takes the processing state from a `/api/state` stream, so that a change
- * shows at once. The state counts as offline while the stream is down.
+ * and takes the processing state from the tab's `/api/events` stream, so that a
+ * change shows at once. The state counts as offline while the stream is down.
  */
 export class StatusPoller {
   private timerId: ReturnType<typeof setTimeout> | undefined
@@ -135,7 +136,7 @@ export class StatusPoller {
   /** The last answer from `/api/status`, null if the last request failed. */
   private polled: PolledStatus | null = null
   private state: StateEvent | null = null
-  private readonly stateStream: StateEventStream
+  private readonly dropState: () => void
   private readonly handleVisibilityChange = () => {
     if (this.stopped) {
       return
@@ -150,7 +151,7 @@ export class StatusPoller {
   constructor(onUpdate: (status: Status) => void, update_interval: number) {
     this.onUpdate = onUpdate
     this.update_interval = update_interval
-    this.stateStream = new StateEventStream((state) => {
+    this.dropState = eventStream.subscribeState((state) => {
       this.state = state
       this.publish()
     })
@@ -208,7 +209,7 @@ export class StatusPoller {
   stop() {
     this.stopped = true
     this.clearTimer()
-    this.stateStream.stop()
+    this.dropState()
     document.removeEventListener("visibilitychange", this.handleVisibilityChange)
   }
 
@@ -221,10 +222,9 @@ export class StatusPoller {
 }
 
 /**
- * One of the backend's event streams. Each open stream is its own CamillaDSP
- * subscription, which closing it ends. It is closed while the page is hidden,
- * and opened again a second after an error, which is also how a subscription
- * the backend refused or ended is retried.
+ * An open `/api/events` stream with a fixed query. It is closed while the page
+ * is hidden, and opened again a second after an error, or when nothing, not
+ * even a heartbeat, has come for a while.
  */
 class EventStream {
   private static readonly reconnectDelayMs = 1000
@@ -232,10 +232,9 @@ class EventStream {
   private reconnectTimer?: ReturnType<typeof setTimeout>
   private stopped = false
   private readonly url: string
-  private readonly eventName: string
-  private readonly onData: (data: unknown) => boolean
-  private readonly staleEventThresholdMs?: number
-  private readonly onClose?: () => void
+  private readonly handlers: Record<string, (data: unknown) => void>
+  private readonly staleEventThresholdMs: number
+  private readonly onClose: () => void
   private readonly handleVisibilityChange = () => {
     if (this.stopped) return
     if (document.hidden) {
@@ -247,22 +246,21 @@ class EventStream {
   }
 
   /**
-   * `onData` gets the parsed data of each event called `eventName`, and says
-   * whether it was usable. A stream with `staleEventThresholdMs` is reopened
-   * when no usable event has come for that long. `onClose` is called when the
-   * stream fails or is closed, until which the events seen are current.
+   * `handlers` get the parsed data of the events with their name. The stream is
+   * reopened when no event has come for `staleEventThresholdMs`. `onClose` is
+   * called when the stream fails or is closed, until which the events seen are
+   * current, but not when it is stopped.
    */
   constructor(
     url: string,
-    eventName: string,
-    onData: (data: unknown) => boolean,
-    options: { staleEventThresholdMs?: number; onClose?: () => void } = {},
+    handlers: Record<string, (data: unknown) => void>,
+    staleEventThresholdMs: number,
+    onClose: () => void,
   ) {
     this.url = url
-    this.eventName = eventName
-    this.onData = onData
-    this.staleEventThresholdMs = options.staleEventThresholdMs
-    this.onClose = options.onClose
+    this.handlers = handlers
+    this.staleEventThresholdMs = staleEventThresholdMs
+    this.onClose = onClose
     document.addEventListener("visibilitychange", this.handleVisibilityChange)
     if (!document.hidden) this.connect()
   }
@@ -278,7 +276,7 @@ class EventStream {
     if (!this.source) return
     this.source.close()
     this.source = undefined
-    this.onClose?.()
+    this.onClose()
   }
 
   private scheduleReconnect(source: EventSource, delayMs: number) {
@@ -291,28 +289,26 @@ class EventStream {
     }, delayMs)
   }
 
-  private markActivity(source: EventSource) {
-    if (this.staleEventThresholdMs !== undefined) {
-      this.scheduleReconnect(source, this.staleEventThresholdMs)
-    }
-  }
-
   private connect() {
     if (this.stopped || document.hidden) return
     const source = new EventSource(this.url)
     this.source = source
-    this.markActivity(source)
-    source.addEventListener(this.eventName, (rawEvent: Event) => {
-      if (this.source !== source) return
-      let data: unknown
-      try {
-        data = JSON.parse((rawEvent as MessageEvent).data)
-      } catch {
-        // Ignore malformed events and wait for the next one.
-        return
-      }
-      if (this.onData(data)) this.markActivity(source)
-    })
+    this.scheduleReconnect(source, this.staleEventThresholdMs)
+    // The heartbeat has no handler, it only shows that the stream is alive.
+    for (const name of [...Object.keys(this.handlers), "heartbeat"]) {
+      source.addEventListener(name, (rawEvent: Event) => {
+        if (this.source !== source) return
+        this.scheduleReconnect(source, this.staleEventThresholdMs)
+        let data: unknown
+        try {
+          data = JSON.parse((rawEvent as MessageEvent).data)
+        } catch {
+          // Ignore malformed events and wait for the next one.
+          return
+        }
+        this.handlers[name]?.(data)
+      })
+    }
     source.onerror = () => {
       if (this.source !== source) return
       if (this.stopped) {
@@ -323,7 +319,7 @@ class EventStream {
       }
       // The browser would reconnect by itself, but the events seen so far are
       // no longer current until it has.
-      this.onClose?.()
+      this.onClose()
       this.scheduleReconnect(source, EventStream.reconnectDelayMs)
     }
   }
@@ -337,97 +333,171 @@ class EventStream {
   }
 }
 
+/** The backend sends a heartbeat every 2 s, so this is a few missed in a row. */
 const STALE_EVENT_THRESHOLD_MS = 5000
 
-export class LevelsEventStream {
-  private readonly stream: EventStream
+/** The order of the spectrum parameters in the query, so that equal wants give equal URLs. */
+const SPECTRUM_KEYS = ["side", "channel", "min_freq", "max_freq", "n_bins", "max_rate"] as const
 
-  constructor(onUpdate: (levels: VuMeterStatus) => void) {
-    this.stream = new EventStream(
-      "/api/levels",
-      "levels",
-      (data) => {
-        const parsed = data as LevelsEvent
-        if (
-          !Array.isArray(parsed?.capture_rms) ||
-          !Array.isArray(parsed.capture_peak) ||
-          !Array.isArray(parsed.playback_rms) ||
-          !Array.isArray(parsed.playback_peak)
-        ) {
-          return false
-        }
-        const levels: VuMeterStatus = {
-          capturesignalrms: parsed.capture_rms,
-          capturesignalpeak: parsed.capture_peak,
-          playbacksignalrms: parsed.playback_rms,
-          playbacksignalpeak: parsed.playback_peak,
-        }
-        cacheLevels(levels)
-        onUpdate(levels)
-        return true
-      },
-      { staleEventThresholdMs: STALE_EVENT_THRESHOLD_MS },
-    )
-  }
-
-  stop() {
-    this.stream.stop()
-  }
-}
-
-export class SpectrumEventStream {
-  private readonly stream: EventStream
-
-  // While processing is stopped the backend refuses the subscription, and it is retried.
-  constructor(params: SpectrumSubscriptionParams, onUpdate: (event: SpectrumEvent) => void) {
-    const query = new URLSearchParams()
-    for (const [key, value] of Object.entries(params)) {
+/** The query of an `/api/events` stream with these levels and spectrum. */
+function eventsUrl(levels: boolean, spectrum: SpectrumSubscriptionParams | undefined) {
+  const query = new URLSearchParams()
+  if (levels) query.set("levels", "true")
+  if (spectrum) {
+    for (const key of SPECTRUM_KEYS) {
+      const value = spectrum[key]
       // A missing channel means all channels.
       // Omitted (undefined) optional parameters are dropped too, not sent as "undefined".
       if (value != null) query.set(key, String(value))
     }
-    this.stream = new EventStream(
-      `/api/spectrum?${query}`,
-      "spectrum",
-      (data) => {
-        const parsed = data as SpectrumEvent
-        if (!Array.isArray(parsed?.frequencies) || !Array.isArray(parsed.magnitudes)) return false
-        onUpdate(parsed)
-        return true
-      },
-      { staleEventThresholdMs: STALE_EVENT_THRESHOLD_MS },
-    )
   }
+  const text = query.toString()
+  return text ? `/api/events?${text}` : "/api/events"
+}
 
-  stop() {
-    this.stream.stop()
+function parseState(data: unknown): StateEvent | null {
+  const parsed = data as StateEvent
+  return typeof parsed?.state === "string" ? parsed : null
+}
+
+function parseLevels(data: unknown): VuMeterStatus | null {
+  const parsed = data as LevelsEvent
+  if (
+    !Array.isArray(parsed?.capture_rms) ||
+    !Array.isArray(parsed.capture_peak) ||
+    !Array.isArray(parsed.playback_rms) ||
+    !Array.isArray(parsed.playback_peak)
+  ) {
+    return null
+  }
+  return {
+    capturesignalrms: parsed.capture_rms,
+    capturesignalpeak: parsed.capture_peak,
+    playbacksignalrms: parsed.playback_rms,
+    playbacksignalpeak: parsed.playback_peak,
   }
 }
+
+function parseSpectrum(data: unknown): SpectrumEvent | null {
+  const parsed = data as SpectrumEvent
+  return Array.isArray(parsed?.frequencies) && Array.isArray(parsed.magnitudes) ? parsed : null
+}
+
+type SpectrumWant = { params: SpectrumSubscriptionParams; onUpdate: (event: SpectrumEvent) => void }
 
 /**
- * The processing state, from CamillaDSP's StateUpdate events. The first event
- * is the current state, the next ones come when it changes, so there is no
- * stale threshold. `onUpdate` gets null when the stream fails, since the state
- * is then unknown until it is open again.
+ * The one `/api/events` stream of this browser tab. A browser has only six
+ * connections to the backend for all its tabs, and an open stream holds one,
+ * so everything the tab shows live comes on this one.
+ *
+ * Consumers register what they want and get back a function that drops it.
+ * The stream carries the state for as long as anything is registered, the
+ * levels while anyone wants them, and the spectrum of the last spectrum
+ * registered. A change in what is wanted opens the stream again with the new
+ * query, once the current task is done, so that dropping and adding back the
+ * same want, as a re-render does, leaves it open.
  */
-export class StateEventStream {
-  private readonly stream: EventStream
+export class EventStreamManager {
+  private stream?: EventStream
+  private url?: string
+  private updateQueued = false
+  /** The last state, null while the stream is down. */
+  private state: StateEvent | null = null
+  private readonly stateListeners = new Set<(state: StateEvent | null) => void>()
+  private readonly levelListeners = new Set<(levels: VuMeterStatus) => void>()
+  private readonly spectrumWants: SpectrumWant[] = []
 
-  constructor(onUpdate: (state: StateEvent | null) => void) {
+  /**
+   * The state, and null while the stream is down, since it is not known then. A stream that is
+   * already open does not send the state again, so a new listener gets the last one at once.
+   */
+  subscribeState(onUpdate: (state: StateEvent | null) => void): () => void {
+    const drop = this.add(this.stateListeners, onUpdate)
+    if (this.state) onUpdate(this.state)
+    return drop
+  }
+
+  private setState(state: StateEvent | null) {
+    this.state = state
+    this.stateListeners.forEach((listener) => listener(state))
+  }
+
+  subscribeLevels(onUpdate: (levels: VuMeterStatus) => void): () => void {
+    return this.add(this.levelListeners, onUpdate)
+  }
+
+  /** The backend starts the spectrum once processing runs, and again after it was stopped. */
+  subscribeSpectrum(params: SpectrumSubscriptionParams, onUpdate: (event: SpectrumEvent) => void): () => void {
+    const want = { params: { ...params }, onUpdate }
+    this.spectrumWants.push(want)
+    this.queueUpdate()
+    return () => {
+      const index = this.spectrumWants.indexOf(want)
+      if (index >= 0) this.spectrumWants.splice(index, 1)
+      this.queueUpdate()
+    }
+  }
+
+  private add<T>(listeners: Set<T>, listener: T): () => void {
+    listeners.add(listener)
+    this.queueUpdate()
+    return () => {
+      listeners.delete(listener)
+      this.queueUpdate()
+    }
+  }
+
+  private queueUpdate() {
+    if (this.updateQueued) return
+    this.updateQueued = true
+    queueMicrotask(() => {
+      this.updateQueued = false
+      this.update()
+    })
+  }
+
+  /** The URL for what is wanted now, undefined when nothing is. */
+  private wantedUrl(): string | undefined {
+    const spectrum = this.spectrumWants.at(-1)?.params
+    const wanted = this.stateListeners.size > 0 || this.levelListeners.size > 0 || spectrum !== undefined
+    return wanted ? eventsUrl(this.levelListeners.size > 0, spectrum) : undefined
+  }
+
+  private update() {
+    const url = this.wantedUrl()
+    if (url === this.url) return
+    // A stream stopped for a new query does not say the state went away, the new one starts
+    // with the current state.
+    this.stream?.stop()
+    this.stream = undefined
+    this.url = url
+    if (url === undefined) {
+      this.state = null
+      return
+    }
     this.stream = new EventStream(
-      "/api/state",
-      "state",
-      (data) => {
-        const parsed = data as StateEvent
-        if (typeof parsed?.state !== "string") return false
-        onUpdate(parsed)
-        return true
+      url,
+      {
+        state: (data) => {
+          const state = parseState(data)
+          if (state) this.setState(state)
+        },
+        levels: (data) => {
+          const levels = parseLevels(data)
+          if (!levels) return
+          cacheLevels(levels)
+          this.levelListeners.forEach((listener) => listener(levels))
+        },
+        spectrum: (data) => {
+          const spectrum = parseSpectrum(data)
+          if (spectrum) this.spectrumWants.at(-1)?.onUpdate(spectrum)
+        },
       },
-      { onClose: () => onUpdate(null) },
+      STALE_EVENT_THRESHOLD_MS,
+      () => this.setState(null),
     )
   }
-
-  stop() {
-    this.stream.stop()
-  }
 }
+
+/** The event stream of this browser tab. */
+export const eventStream = new EventStreamManager()

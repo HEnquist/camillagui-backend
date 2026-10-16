@@ -8,13 +8,15 @@ use crate::coeffs::CoeffsHeader;
 use axum::http::header;
 use axum::response::{IntoResponse, Response};
 use camilladsp_schema::config::Configuration;
+use camilladsp_schema::protocol::SpectrumSubscription;
 use std::sync::LazyLock;
 use utoipa::OpenApi;
 
 /// The config is listed on its own, since the frontend uses its type
 /// everywhere, not only where an endpoint sends or takes one. So are the path
-/// parameters, which are not added by the routes that use them, and the
-/// header inside the binary `/api/convcoeffs` reply.
+/// parameters, which are not added by the routes that use them, the header
+/// inside the binary `/api/convcoeffs` reply, and the spectrum parameters the
+/// frontend builds an `/api/events` query from.
 #[derive(OpenApi)]
 #[openapi(
     info(
@@ -23,7 +25,7 @@ use utoipa::OpenApi;
         description = "The API between the CamillaGUI backend and its frontend. It is internal \
             to the GUI and changes with it, so it has no version of its own."
     ),
-    components(schemas(Configuration, FileKind, Direction, CoeffsHeader))
+    components(schemas(Configuration, FileKind, Direction, CoeffsHeader, SpectrumSubscription))
 )]
 pub struct ApiDoc;
 

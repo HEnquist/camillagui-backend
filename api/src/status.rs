@@ -36,7 +36,7 @@ fn nearest_standard_rate(rate: usize) -> Option<usize> {
 }
 
 /// What `GET /api/status` answers. The processing state is not here, it comes
-/// from `/api/state` as it changes. A value CamillaDSP declines to give, for
+/// from `/api/events` as it changes. A value CamillaDSP declines to give, for
 /// example with no config loaded, is null, and so is every value while it is
 /// offline.
 #[derive(Clone, Debug, Serialize, ToSchema)]
