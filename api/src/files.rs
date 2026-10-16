@@ -34,13 +34,11 @@ pub fn require_directory(folder: &Path) -> Result<(), String> {
 /// time.
 #[derive(Clone, Copy, Default)]
 pub struct Details {
-    /// Title, description and validity, for config files.
-    pub config: bool,
     /// Format and length, for wav files.
     pub wav: bool,
 }
 
-/// Where a listing finds the files config files refer to.
+/// Where config details find the files config files refer to.
 pub struct ConfigContext<'a> {
     pub config_dir: &'a Path,
     pub coeff_dir: &'a Path,
@@ -52,7 +50,7 @@ pub struct ConfigContext<'a> {
 /// depends on the folder: configs have their title, version and validity, wav
 /// files their format, and coefficient files their format and length, for wav
 /// and text files. What is not known is left out.
-#[derive(Debug, Default, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Serialize, ToSchema)]
 pub struct FileInfo {
     pub name: String,
     /// The time of the last change, in seconds since the epoch.
@@ -147,11 +145,7 @@ pub fn fingerprint(folder: &Path) -> u64 {
 }
 
 /// The visible files of a folder, sorted by name.
-pub fn list_files(
-    folder: &Path,
-    details: Details,
-    context: Option<&ConfigContext>,
-) -> Vec<FileInfo> {
+pub fn list_files(folder: &Path, details: Details) -> Vec<FileInfo> {
     let mut files: Vec<FileInfo> = visible_files(folder)
         .map(|(name, path)| {
             let mut info = FileInfo::default();
@@ -162,11 +156,6 @@ pub fn list_files(
                     .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                     .map_or(0, |d| d.as_secs());
                 info.size = meta.len();
-            }
-            if details.config
-                && let Some(context) = context
-            {
-                config_file_details(&path, &mut info, context);
             }
             if details.wav && name.to_lowercase().ends_with(".wav") {
                 wav_details(&path, &mut info);
@@ -180,7 +169,7 @@ pub fn list_files(
 }
 
 pub fn list_file_names(folder: &Path) -> Vec<String> {
-    list_files(folder, Details::default(), None)
+    list_files(folder, Details::default())
         .into_iter()
         .map(|file| file.name)
         .collect()
@@ -396,6 +385,92 @@ impl CoeffDetailsCache {
     }
 }
 
+/// What validating a config depends on besides the config itself: the
+/// coefficient and audio files it refers to, and the device types allowed.
+#[derive(PartialEq)]
+struct ConfigSurroundings {
+    coeff_files: u64,
+    audio_files: Option<u64>,
+    device_types: String,
+}
+
+struct CachedConfig {
+    size: u64,
+    modified: Option<SystemTime>,
+    info: FileInfo,
+}
+
+/// The details of the config files, by name, kept for as long as a file keeps
+/// its size and time and nothing it depends on changes. Reading a config
+/// means parsing, migrating and validating it, which also reads the
+/// coefficient files it refers to, so only new and changed configs are
+/// checked. A change to the coefficient or audio folders, or to the device
+/// types, checks them all again.
+#[derive(Default)]
+pub struct ConfigDetailsCache {
+    state: Mutex<(Option<ConfigSurroundings>, HashMap<String, CachedConfig>)>,
+}
+
+impl ConfigDetailsCache {
+    /// Fill in the details of the files in a listing of the config folder,
+    /// checking those not known yet. Files no longer in the listing are
+    /// forgotten.
+    pub fn fill(&self, context: &ConfigContext, files: &mut [FileInfo]) {
+        if files.is_empty() {
+            self.state
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .1
+                .clear();
+            return;
+        }
+        let surroundings = ConfigSurroundings {
+            coeff_files: fingerprint(context.coeff_dir),
+            audio_files: context.audiofiles_dir.map(fingerprint),
+            device_types: format!("{:?}", context.device_types),
+        };
+        // Held while checking, so a second listing at the same time waits for
+        // the configs this one checks rather than checking them too.
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let (known, entries) = &mut *state;
+        if known.as_ref() != Some(&surroundings) {
+            entries.clear();
+            *known = Some(surroundings);
+        }
+        let mut kept = HashMap::with_capacity(files.len());
+        for info in files.iter_mut() {
+            let path = context.config_dir.join(&info.name);
+            let meta = std::fs::metadata(&path).ok();
+            let size = meta.as_ref().map_or(0, |meta| meta.len());
+            let modified = meta.and_then(|meta| meta.modified().ok());
+            let checked = match entries.remove(&info.name) {
+                Some(cached) if cached.size == size && cached.modified == modified => cached.info,
+                _ => {
+                    let mut checked = FileInfo::default();
+                    config_file_details(&path, &mut checked, context);
+                    checked
+                }
+            };
+            info.title = checked.title.clone();
+            info.description = checked.description.clone();
+            info.version = checked.version;
+            info.outdated = checked.outdated;
+            info.valid = checked.valid;
+            info.loadable = checked.loadable;
+            info.errors = checked.errors.clone();
+            kept.insert(
+                info.name.clone(),
+                CachedConfig {
+                    size,
+                    modified,
+                    info: checked,
+                },
+            );
+        }
+        *entries = kept;
+    }
+}
+
 pub fn delete_files(folder: &Path, files: &[String]) -> Result<(), String> {
     for file in files {
         let path = file_in_folder(folder, file)?;
@@ -579,11 +654,11 @@ mod tests {
         std::fs::write(dir.path().join("A.txt"), "xy").unwrap();
         std::fs::write(dir.path().join(".hidden"), "x").unwrap();
         std::fs::create_dir(dir.path().join("sub")).unwrap();
-        let files = list_files(dir.path(), Details::default(), None);
+        let files = list_files(dir.path(), Details::default());
         let names: Vec<_> = files.iter().map(|f| f.name.as_str()).collect();
         assert_eq!(names, ["A.txt", "b.txt"]);
         assert_eq!(files[0].size, 2);
-        assert!(list_files(&dir.path().join("missing"), Details::default(), None).is_empty());
+        assert!(list_files(&dir.path().join("missing"), Details::default()).is_empty());
     }
 
     #[test]
@@ -626,7 +701,7 @@ mod tests {
     }
 
     fn coeff_listing(cache: &CoeffDetailsCache, folder: &Path) -> HashMap<String, FileInfo> {
-        let mut files = list_files(folder, Details::default(), None);
+        let mut files = list_files(folder, Details::default());
         cache.fill(folder, &mut files);
         files
             .into_iter()
@@ -709,6 +784,72 @@ mod tests {
     }
 
     #[test]
+    fn config_details_are_checked_again_only_when_something_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let configs = dir.path().join("configs");
+        let coeffs = dir.path().join("coeffs");
+        std::fs::create_dir_all(&configs).unwrap();
+        std::fs::create_dir_all(&coeffs).unwrap();
+        let config = "devices: {samplerate: 44100, chunksize: 1024, capture: {type: Stdin, channels: 2, format: S16_LE}, playback: {type: Stdout, channels: 2, format: S16_LE}}\n\
+            filters: {f: {type: Conv, parameters: {type: Raw, filename: ir.txt}}}\n\
+            pipeline: [{type: Filter, channels: [0], names: [f]}]\n";
+        std::fs::write(configs.join("a.yml"), config).unwrap();
+        let types = DeviceTypes::default();
+        let context = ConfigContext {
+            config_dir: &configs,
+            coeff_dir: &coeffs,
+            audiofiles_dir: None,
+            device_types: &types,
+        };
+        let cache = ConfigDetailsCache::default();
+        let listing = |context: &ConfigContext| {
+            let mut files = list_files(&configs, Details::default());
+            cache.fill(context, &mut files);
+            files.remove(0)
+        };
+        // The coefficient file is missing.
+        assert_eq!(listing(&context).valid, Some(false));
+
+        // Nothing changed: the details are the cached ones, even if the
+        // config's entry is replaced by a marker to tell.
+        cache
+            .state
+            .lock()
+            .unwrap()
+            .1
+            .get_mut("a.yml")
+            .unwrap()
+            .info
+            .title = Some("cached".to_string());
+        assert_eq!(listing(&context).title.as_deref(), Some("cached"));
+
+        // The coefficient file appears.
+        std::fs::write(coeffs.join("ir.txt"), "1.0\n0.0\n").unwrap();
+        let after_coeff = listing(&context);
+        assert_eq!(after_coeff.title, None);
+        assert_eq!(after_coeff.valid, Some(true), "{after_coeff:?}");
+
+        // The device types change.
+        let narrowed = DeviceTypes {
+            settings_capture: Some(vec!["Alsa".to_string()]),
+            ..Default::default()
+        };
+        let narrowed_context = ConfigContext {
+            device_types: &narrowed,
+            ..context
+        };
+        assert_eq!(listing(&narrowed_context).valid, Some(false));
+
+        // The config is rewritten, and a deleted one is forgotten.
+        std::fs::write(configs.join("a.yml"), format!("title: New\n{config}")).unwrap();
+        assert_eq!(listing(&context).title.as_deref(), Some("New"));
+        std::fs::remove_file(configs.join("a.yml")).unwrap();
+        let mut files = list_files(&configs, Details::default());
+        cache.fill(&context, &mut files);
+        assert!(cache.state.lock().unwrap().1.is_empty());
+    }
+
+    #[test]
     fn config_details() {
         let dir = tempfile::tempdir().unwrap();
         let write = |name: &str, text: &str| std::fs::write(dir.path().join(name), text).unwrap();
@@ -741,11 +882,8 @@ mod tests {
             audiofiles_dir: None,
             device_types: &types,
         };
-        let details = Details {
-            config: true,
-            ..Default::default()
-        };
-        let files = list_files(dir.path(), details, Some(&context));
+        let mut files = list_files(dir.path(), Details::default());
+        ConfigDetailsCache::default().fill(&context, &mut files);
         let get = |name: &str| files.iter().find(|f| f.name == name).unwrap();
         let first_error = |name: &str| get(name).errors.as_ref().unwrap()[0].message.clone();
         let eqapo = get("eqapo.yml");

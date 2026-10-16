@@ -9,10 +9,16 @@ export type FileInfo = Schemas["FileInfo"] & { formattedDate: string }
 
 export type StoredFileType = Schemas["FileKind"]
 
-/** The files in a folder, none if they cannot be listed. */
-export async function loadFiles(type: StoredFileType): Promise<FileInfo[]> {
+/**
+ * The files in a folder, none if they cannot be listed. The backend reads the files for their
+ * details, which takes a while for many configs, so `details: false` is for when only the names
+ * are used.
+ */
+export async function loadFiles(type: StoredFileType, details = true): Promise<FileInfo[]> {
   try {
-    const { data, error, response } = await api.GET("/api/files/{kind}", { params: { path: { kind: type } } })
+    const { data, error, response } = await api.GET("/api/files/{kind}", {
+      params: { path: { kind: type }, query: { details } },
+    })
     if (data)
       return data.map((file) => ({ ...file, formattedDate: new Date(1000 * file.last_modified).toDateString() }))
     console.log("Failed to get file list", errorMessage(error, response))
@@ -97,7 +103,7 @@ export function subscribeFileChanges(onChange: (kind: StoredFileType) => void): 
 }
 
 export function loadFilenames(type: StoredFileType): Promise<string[]> {
-  return loadFiles(type).then(
+  return loadFiles(type, false).then(
     (files) => fileNamesOf(files),
     () => [],
   )

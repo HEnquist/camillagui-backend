@@ -4,7 +4,7 @@ use crate::camilla::{CamillaClient, DspError, to_json};
 use crate::coeffs::CoeffDefaults;
 use crate::events::{self, EventPayloads, SubscribeError};
 use crate::extract::{Form, Json, Multipart, Path as UrlPath, Query};
-use crate::files::{self, CoeffDetailsCache, ConfigContext, Details, FileInfo};
+use crate::files::{self, CoeffDetailsCache, ConfigContext, ConfigDetailsCache, Details, FileInfo};
 use crate::paths::{self, file_in_folder};
 use crate::reply::{Binary, BodyWriter, EventStream, NO_STORE, NoContent, Reply, Text};
 use crate::settings::{self, GuiConfig, Settings};
@@ -38,6 +38,7 @@ pub struct AppState {
     pub camilla: Arc<CamillaClient>,
     pub status: Arc<StatusCache>,
     pub coeff_details: CoeffDetailsCache,
+    pub config_details: ConfigDetailsCache,
 }
 
 impl AppState {
@@ -1377,11 +1378,25 @@ impl FileKind {
     }
 }
 
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct FilesQuery {
+    /// Whether to find out what each file contains, which means reading
+    /// them. Left out, the details are included. With `false`, only the
+    /// name, size and time of each file are listed.
+    #[serde(default = "details_by_default")]
+    details: bool,
+}
+
+fn details_by_default() -> bool {
+    true
+}
+
 /// The files in a folder, sorted by name.
 #[utoipa::path(
     get,
     path = "/files/{kind}",
-    params(("kind" = FileKind, Path)),
+    params(("kind" = FileKind, Path), FilesQuery),
     responses(
         (status = 404, description = "No audiofiles_dir is set", body = ErrorBody),
     )
@@ -1389,10 +1404,14 @@ impl FileKind {
 pub async fn get_files(
     State(app): Shared,
     UrlPath(kind): UrlPath<FileKind>,
+    Query(query): Query<FilesQuery>,
 ) -> ApiResult<Reply<Vec<FileInfo>>> {
     let folder = kind.folder(&app)?;
     let types = app.device_types();
     blocking(move || {
+        if !query.details {
+            return Ok(Reply(files::list_files(&folder, Details::default())));
+        }
         let files = match kind {
             FileKind::Config => {
                 let settings = &app.settings;
@@ -1402,23 +1421,18 @@ pub async fn get_files(
                     audiofiles_dir: app.audiofiles_dir(),
                     device_types: &types,
                 };
-                let details = Details {
-                    config: true,
-                    ..Default::default()
-                };
-                files::list_files(&folder, details, Some(&context))
+                let mut files = files::list_files(&folder, Details::default());
+                app.config_details.fill(&context, &mut files);
+                files
             }
             FileKind::Coeff => {
-                let mut files = files::list_files(&folder, Details::default(), None);
+                let mut files = files::list_files(&folder, Details::default());
                 app.coeff_details.fill(&folder, &mut files);
                 files
             }
             FileKind::Audiofile => {
-                let details = Details {
-                    wav: true,
-                    ..Default::default()
-                };
-                files::list_files(&folder, details, None)
+                let details = Details { wav: true };
+                files::list_files(&folder, details)
             }
         };
         Ok(Reply(files))
