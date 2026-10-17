@@ -1,0 +1,44 @@
+[package]
+name = "camillagui"
+version = "5.0.0-beta.1"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.8.9", features = ["multipart"] }
+# From git rather than crates.io, so a GUI build never waits for a publish: a branch while
+# developing, a camilladsp tag for a release. To build against a local checkout instead, put
+# this in api/.cargo/config.toml:
+# [patch."https://github.com/HEnquist/camilladsp"]
+# camilladsp-schema = { path = "/path/to/camilladsp/camilladsp-schema" }
+camilladsp-schema = { version = "5.0.0-beta.1", git = "https://github.com/HEnquist/camilladsp", tag = "v5.0.0-beta.1", features = ["pipewire-backend", "utoipa"] }
+clap = { version = "4.6.7", features = ["derive"] }
+flexi_logger = "0.30.2"
+futures-util = "0.3.34"
+log = "0.4.34"
+regex = "1.13.1"
+rust-embed = { version = "8.12.0", features = ["mime-guess"] }
+serde = { version = "1.0.229", features = ["derive", "rc"] }
+serde_json = { version = "1.0.151", features = ["raw_value"] }
+serde_html_form = { version = "0.4.1", default-features = false, features = ["de", "std"] }
+serde_path_to_error = "0.1.20"
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal", "fs", "process"] }
+tokio-tungstenite = "0.30.0"
+tower-http = { version = "0.7", features = ["fs"] }
+utoipa = { version = "6.0.0", features = ["axum_extras", "auto_into_responses"] }
+utoipa-axum = "0.3.0"
+waveadapter = "0.3.1"
+yaml_serde = "0.10.3"
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[features]
+# Accept configs for camilladsp's test-only dummy devices.
+dummy-backend = ["camilladsp-schema/dummy-backend"]
