@@ -232,6 +232,7 @@ async fn main() {
         camilla,
         status,
         coeff_details: Default::default(),
+        config_details: Default::default(),
     });
     let router = build_router(app);
 

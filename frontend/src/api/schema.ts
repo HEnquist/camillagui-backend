@@ -2536,7 +2536,14 @@ export interface operations {
   }
   get_files: {
     parameters: {
-      query?: never
+      query?: {
+        /**
+         * @description Whether to find out what each file contains, which means reading
+         *     them. Left out, the details are included. With `false`, only the
+         *     name, size and time of each file are listed.
+         */
+        details?: boolean
+      }
       header?: never
       path: {
         kind: components["schemas"]["FileKind"]

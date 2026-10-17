@@ -143,7 +143,9 @@ Key endpoints used by the frontend:
   `StatusPoller` merges the state into the polled `/api/status` as `cdsp_status`
 - `POST /api/convcoeffs`: coefficients of a Conv filter that reads a file
 - `GET /api/files/{kind}`, and `POST .../upload`, `.../delete`, `.../rename` and `.../zip`: the
-  config, coeff and audiofile folders, helpers in `utilities/files.tsx`
+  config, coeff and audiofile folders, helpers in `utilities/files.tsx`. The listing reads the
+  files for their details (a config is validated), cached by the backend until a file changes;
+  `?details=false` lists only names, sizes and times, for callers that need just the names
 - `GET /api/files/fingerprints`: a hash per folder that changes when a file in it is added,
   removed, renamed or rewritten, by anyone. `subscribeFileChanges` polls it every 2 s for all
   the file tables, which list a folder again only when its hash changed. A poll rather than an

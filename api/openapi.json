@@ -452,6 +452,15 @@
             "schema": {
               "$ref": "#/components/schemas/FileKind"
             }
+          },
+          {
+            "name": "details",
+            "in": "query",
+            "description": "Whether to find out what each file contains, which means reading\nthem. Left out, the details are included. With `false`, only the\nname, size and time of each file are listed.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {

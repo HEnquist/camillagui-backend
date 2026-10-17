@@ -422,6 +422,14 @@ def test_all_get_endpoints_ok(server, endpoint, parameters):
     assert resp.status == 200, resp.text
 
 
+def test_config_listing_without_details_has_only_names_sizes_and_times(server):
+    detailed = server.get("/api/files/config").json()
+    plain = server.get("/api/files/config", params={"details": "false"}).json()
+    assert [f["name"] for f in plain] == [f["name"] for f in detailed]
+    assert any("valid" in f for f in detailed)
+    assert all(set(f) == {"name", "last_modified", "size"} for f in plain)
+
+
 def test_openapi_spec_is_served_as_committed(server):
     resp = server.get("/api/openapi.json")
     assert resp.status == 200
