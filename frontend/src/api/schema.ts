@@ -697,11 +697,11 @@ export interface components {
           profile: components["schemas"]["AsyncSincProfile"]
         }
       | {
-          f_cutoff?: components["schemas"]["FiniteF32"] | null
-          interpolation: components["schemas"]["AsyncSincInterpolation"]
-          oversampling_factor: number
           sinc_len: number
+          interpolation: components["schemas"]["AsyncSincInterpolation"]
           window: components["schemas"]["AsyncSincWindow"]
+          f_cutoff?: components["schemas"]["FiniteF32"] | null
+          oversampling_factor: number
         }
     /**
      * @description Preset quality profile for the async sinc resampler.
@@ -715,19 +715,19 @@ export interface components {
     AsyncSincWindow: "Hann" | "Hann2" | "Blackman" | "Blackman2" | "BlackmanHarris" | "BlackmanHarris2"
     /** @description Full capability descriptor for a named audio device. */
     AudioDeviceDescriptor: {
-      /** @description Capability sets, one per access mode supported by the backend. */
-      capability_sets: components["schemas"]["DeviceCapabilitySet"][]
-      /** @description Human-readable device name. */
-      description: string
       /** @description Backend-specific device identifier (e.g. `"hw:0,0"` for ALSA). */
       name: string
+      /** @description Human-readable device name. */
+      description: string
+      /** @description Capability sets, one per access mode supported by the backend. */
+      capability_sets: components["schemas"]["DeviceCapabilitySet"][]
     }
     /** @description A device CamillaDSP can use. */
     AvailableDevice: {
-      /** @description A readable name. */
-      description: string
       /** @description What a config calls it. */
       name: string
+      /** @description A readable name. */
+      description: string
     }
     /** @enum {string} */
     BinarySampleFormat: "S16_LE" | "S24_4_RJ_LE" | "S24_4_LJ_LE" | "S24_3_LE" | "S32_LE" | "F32_LE" | "F64_LE"
@@ -851,34 +851,41 @@ export interface components {
         })
       | {
           freq_act: components["schemas"]["FiniteF64"]
-          freq_target: components["schemas"]["FiniteF64"]
           q_act: components["schemas"]["FiniteF64"]
+          freq_target: components["schemas"]["FiniteF64"]
           q_target: components["schemas"]["FiniteF64"]
           /** @enum {string} */
           type: "LinkwitzTransform"
         }
-    /** @enum {string} */
+    /**
+     * @description The access mode a [`DeviceCapabilitySet`] was probed under.
+     *
+     *     - `Unified`: the device uses a unified capability model (ALSA, CoreAudio, ASIO).
+     *     - `Shared`: WASAPI shared-mode capabilities, derived from the mix format.
+     *     - `Exclusive`: WASAPI exclusive-mode capabilities, probed independently.
+     * @enum {string}
+     */
     CapabilityMode: "Unified" | "Shared" | "Exclusive"
     CaptureDevice:
       | {
           channels: number
           device: string
           format?: components["schemas"]["AlsaSampleFormat"] | null
-          labels?: (string | null)[] | null
-          link_mute_control?: string | null
-          link_volume_control?: string | null
           stop_on_inactive?: boolean | null
+          link_volume_control?: string | null
+          link_mute_control?: string | null
+          labels?: (string | null)[] | null
           /** @enum {string} */
           type: "Alsa"
         }
       | {
-          autoconnect_to?: string | null
           channels: number
-          labels?: (string | null)[] | null
-          loopback?: boolean | null
+          node_name?: string | null
           node_description?: string | null
           node_group_name?: string | null
-          node_name?: string | null
+          labels?: (string | null)[] | null
+          autoconnect_to?: string | null
+          loopback?: boolean | null
           /** @enum {string} */
           type: "PipeWire"
         }
@@ -894,7 +901,7 @@ export interface components {
           /** @enum {string} */
           type: "Stdin"
         })
-      | (components["schemas"]["CaptureDeviceCA"] & {
+      | (components["schemas"]["CaptureDeviceCoreAudio"] & {
           /** @enum {string} */
           type: "CoreAudio"
         })
@@ -908,20 +915,20 @@ export interface components {
         })
       | {
           channels: number
-          labels?: (string | null)[] | null
           signal: components["schemas"]["Signal"]
+          labels?: (string | null)[] | null
           /** @enum {string} */
           type: "SignalGenerator"
         }
       | {
           channels: number
+          signal: components["schemas"]["Signal"]
+          labels?: (string | null)[] | null
           /**
            * Format: int32
            * @description Port of the test control socket, see `src/dummy_backend/control.rs`.
            */
           control_port?: number | null
-          labels?: (string | null)[] | null
-          signal: components["schemas"]["Signal"]
           /** @enum {string} */
           type: "Dummy"
         }
@@ -931,7 +938,7 @@ export interface components {
       format?: components["schemas"]["AsioSampleFormat"] | null
       labels?: (string | null)[] | null
     }
-    CaptureDeviceCA: {
+    CaptureDeviceCoreAudio: {
       channels: number
       device?: string | null
       format?: components["schemas"]["CoreAudioSampleFormat"] | null
@@ -939,33 +946,33 @@ export interface components {
     }
     CaptureDeviceRawFile: {
       channels: number
-      extra_samples?: number | null
       filename: string
       format: components["schemas"]["BinarySampleFormat"]
-      labels?: (string | null)[] | null
-      read_bytes?: number | null
+      extra_samples?: number | null
       skip_bytes?: number | null
+      read_bytes?: number | null
+      labels?: (string | null)[] | null
     }
     CaptureDeviceStdin: {
       channels: number
-      extra_samples?: number | null
       format: components["schemas"]["BinarySampleFormat"]
-      labels?: (string | null)[] | null
-      read_bytes?: number | null
+      extra_samples?: number | null
       skip_bytes?: number | null
+      read_bytes?: number | null
+      labels?: (string | null)[] | null
     }
     CaptureDeviceWasapi: {
       channels: number
       device?: string | null
-      exclusive?: boolean | null
       format?: components["schemas"]["WasapiSampleFormat"] | null
-      labels?: (string | null)[] | null
+      exclusive?: boolean | null
       loopback?: boolean | null
       polling?: boolean | null
+      labels?: (string | null)[] | null
     }
     CaptureDeviceWavFile: {
-      extra_samples?: number | null
       filename: string
+      extra_samples?: number | null
       labels?: (string | null)[] | null
     }
     /** @description The sample rates (and their formats) supported by a device at a specific channel count. */
@@ -977,38 +984,36 @@ export interface components {
     }
     /** @description Channel display labels returned by [`WsCommand::GetChannelLabels`]. */
     ChannelLabels: {
-      /** @description Labels for capture channels. Same structure as `playback`. */
-      capture: (string | null)[] | null
       /**
        * @description Labels for playback channels. `null` if no labels are configured. Each entry is a label
        *     string, or `null` if that specific channel has no label.
        */
       playback: (string | null)[] | null
+      /** @description Labels for capture channels. Same structure as `playback`. */
+      capture: (string | null)[] | null
     }
     /** @description Parameters for the hard/soft-clipping filter. */
     ClipperParameters: {
-      clip_limit?: components["schemas"]["FiniteF64"]
       soft_clip?: boolean | null
+      clip_limit?: components["schemas"]["FiniteF64"]
     }
     /**
      * @description Sensible parameters for a Conv filter reading a coefficient file, from the
      *     file's extension. Empty when the extension says nothing.
      */
     CoeffDefaults: {
-      format?: components["schemas"]["FileSampleFormat"]
-      read_bytes_lines?: number
-      skip_bytes_lines?: number
       type?: components["schemas"]["ConvFileType"]
+      format?: components["schemas"]["FileSampleFormat"]
+      skip_bytes_lines?: number
+      read_bytes_lines?: number
     }
     /** @description The JSON header of a coefficient frame, see `frame_coefficients`. */
     CoeffsHeader: {
-      format: components["schemas"]["SampleWidth"]
       /** @description The variants of the file for other samplerates and channel counts. */
       options: components["schemas"]["FilterOption"][]
+      format: components["schemas"]["SampleWidth"]
     }
     CoeffsRequest: {
-      /** @description For the `$channels$` token in the file name. */
-      channels: number
       /**
        * @description The parameters of a Raw or Wav Conv filter, with the file path as the
        *     GUI has it.
@@ -1016,21 +1021,23 @@ export interface components {
       parameters: components["schemas"]["ConvParameters"]
       /** @description For the `$samplerate$` token in the file name. */
       samplerate: number
+      /** @description For the `$channels$` token in the file name. */
+      channels: number
     }
     /** @description Parameters for the dynamic range compressor processor. */
     CompressorParameters: {
-      attack: components["schemas"]["FiniteF64"]
-      attack_unit: components["schemas"]["TimeUnit"]
       channels: number
-      clip_limit?: components["schemas"]["FiniteF64"] | null
-      factor: components["schemas"]["FiniteF64"]
-      makeup_gain?: components["schemas"]["FiniteF64"] | null
       monitor_channels?: number[] | null
       process_channels?: number[] | null
+      attack: components["schemas"]["FiniteF64"]
+      attack_unit: components["schemas"]["TimeUnit"]
       release: components["schemas"]["FiniteF64"]
       release_unit: components["schemas"]["TimeUnit"]
-      soft_clip?: boolean | null
       threshold: components["schemas"]["FiniteF64"]
+      factor: components["schemas"]["FiniteF64"]
+      makeup_gain?: components["schemas"]["FiniteF64"] | null
+      soft_clip?: boolean | null
+      clip_limit?: components["schemas"]["FiniteF64"] | null
     }
     ConfigBody: {
       /** @description With the file paths as the GUI has them, relative to the configured folders. */
@@ -1048,19 +1055,19 @@ export interface components {
      *     the device settings.
      */
     ConfigFragment: {
+      title?: string
       description?: string
       devices?: components["schemas"]["DevicesFragment"]
-      filters?: {
-        [key: string]: components["schemas"]["Filter"]
-      }
       mixers?: {
         [key: string]: components["schemas"]["Mixer"]
       }
-      pipeline?: components["schemas"]["PipelineStep"][]
+      filters?: {
+        [key: string]: components["schemas"]["Filter"]
+      }
       processors?: {
         [key: string]: components["schemas"]["Processor"]
       }
-      title?: string
+      pipeline?: components["schemas"]["PipelineStep"][]
     }
     /**
      * @description Where the config the GUI starts with came from.
@@ -1069,19 +1076,19 @@ export interface components {
     ConfigSource: "dsp" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
+      title?: string | null
       description?: string | null
       devices: components["schemas"]["Devices"]
-      filters?: {
-        [key: string]: components["schemas"]["Filter"]
-      } | null
       mixers?: {
         [key: string]: components["schemas"]["Mixer"]
       } | null
-      pipeline?: components["schemas"]["PipelineStep"][] | null
+      filters?: {
+        [key: string]: components["schemas"]["Filter"]
+      } | null
       processors?: {
         [key: string]: components["schemas"]["Processor"]
       } | null
-      title?: string | null
+      pipeline?: components["schemas"]["PipelineStep"][] | null
     }
     /**
      * @description The Conv filter subtypes that read a file.
@@ -1099,9 +1106,9 @@ export interface components {
           type: "Wav"
         })
       | {
+          values: components["schemas"]["FiniteF64"][]
           /** @enum {string} */
           type: "Values"
-          values: components["schemas"]["FiniteF64"][]
         }
       | {
           length: number
@@ -1112,13 +1119,13 @@ export interface components {
     ConvParametersRaw: {
       filename: string
       format?: components["schemas"]["FileSampleFormat"] | null
-      read_bytes_lines?: number | null
       skip_bytes_lines?: number | null
+      read_bytes_lines?: number | null
     }
     /** @description Coefficients loaded from a specific channel of a WAV file. */
     ConvParametersWav: {
-      channel?: number | null
       filename: string
+      channel?: number | null
     }
     /** @enum {string} */
     CoreAudioSampleFormat: "S16" | "S24" | "S32" | "F32"
@@ -1135,37 +1142,37 @@ export interface components {
     DelayUnit: "us" | "ms" | "s" | "mm" | "samples"
     /** @description A set of device capabilities associated with a single access mode (e.g. exclusive vs. shared). */
     DeviceCapabilitySet: {
-      /** @description Per-channel-count capability entries. */
-      capabilities: components["schemas"]["ChannelCapability"][]
       /** @description The access mode these capabilities were probed under. */
       mode: components["schemas"]["CapabilityMode"]
+      /** @description Per-channel-count capability entries. */
+      capabilities: components["schemas"]["ChannelCapability"][]
     }
     /** @description The device types a CamillaDSP build supports. */
     DeviceTypeLists: {
-      capture: string[]
       playback: string[]
+      capture: string[]
     }
     /** @description Top-level device and pipeline timing configuration. */
     Devices: {
-      adjust_interval_s?: components["schemas"]["FiniteF32"] | null
-      capture: components["schemas"]["CaptureDevice"]
-      capture_samplerate?: number | null
-      /** @description Number of frames per processing chunk. */
-      chunksize: number
-      enable_rate_adjust?: boolean | null
-      multithreaded?: boolean | null
-      playback: components["schemas"]["PlaybackDevice"]
-      queuelimit?: number | null
-      rate_measure_interval_s?: components["schemas"]["FiniteF32"] | null
-      resampler?: components["schemas"]["Resampler"] | null
       /** @description Output sample rate in Hz. */
       samplerate: number
+      /** @description Number of frames per processing chunk. */
+      chunksize: number
+      queuelimit?: number | null
       silence_threshold?: components["schemas"]["FiniteF64"] | null
       silence_timeout_s?: components["schemas"]["FiniteF64"] | null
-      stop_on_rate_change?: boolean | null
+      capture: components["schemas"]["CaptureDevice"]
+      playback: components["schemas"]["PlaybackDevice"]
+      enable_rate_adjust?: boolean | null
       target_level?: number | null
-      volume_limit?: components["schemas"]["FiniteF32"] | null
+      adjust_interval_s?: components["schemas"]["FiniteF32"] | null
+      resampler?: components["schemas"]["Resampler"] | null
+      capture_samplerate?: number | null
+      stop_on_rate_change?: boolean | null
+      rate_measure_interval_s?: components["schemas"]["FiniteF32"] | null
       volume_ramp_time_ms?: components["schemas"]["FiniteF32"] | null
+      volume_limit?: components["schemas"]["FiniteF32"] | null
+      multithreaded?: boolean | null
       worker_threads?: number | null
     }
     /**
@@ -1174,23 +1181,23 @@ export interface components {
      *     out when the import does not have it.
      */
     DevicesFragment: {
-      adjust_interval_s?: components["schemas"]["FiniteF32"]
-      capture?: components["schemas"]["CaptureDevice"]
-      capture_samplerate?: number
-      chunksize?: number
-      enable_rate_adjust?: boolean
-      multithreaded?: boolean
-      playback?: components["schemas"]["PlaybackDevice"]
-      queuelimit?: number
-      rate_measure_interval_s?: components["schemas"]["FiniteF32"]
-      resampler?: components["schemas"]["Resampler"]
       samplerate?: number
+      chunksize?: number
+      queuelimit?: number
       silence_threshold?: components["schemas"]["FiniteF64"]
       silence_timeout_s?: components["schemas"]["FiniteF64"]
-      stop_on_rate_change?: boolean
+      capture?: components["schemas"]["CaptureDevice"]
+      playback?: components["schemas"]["PlaybackDevice"]
+      enable_rate_adjust?: boolean
       target_level?: number
-      volume_limit?: components["schemas"]["FiniteF32"]
+      adjust_interval_s?: components["schemas"]["FiniteF32"]
+      resampler?: components["schemas"]["Resampler"]
+      capture_samplerate?: number
+      stop_on_rate_change?: boolean
+      rate_measure_interval_s?: components["schemas"]["FiniteF32"]
       volume_ramp_time_ms?: components["schemas"]["FiniteF32"]
+      volume_limit?: components["schemas"]["FiniteF32"]
+      multithreaded?: boolean
       worker_threads?: number
     }
     /** @description Parameters for the difference-equation (IIR) filter: `a` (feedback) and `b` (feedforward) coefficients. */
@@ -1211,8 +1218,8 @@ export interface components {
           type: "None"
         }
       | {
-          amplitude: components["schemas"]["FiniteF64"]
           bits: number
+          amplitude: components["schemas"]["FiniteF64"]
           /** @enum {string} */
           type: "Flat"
         }
@@ -1317,13 +1324,13 @@ export interface components {
           type: "ShibataLow192"
         }
     EqApoImport: {
+      /** @description The text of the Equalizer APO config. */
+      text: string
       /**
        * Format: int64
        * @description The number of channels, which decides what the channel names map to.
        */
       channels: number
-      /** @description The text of the Equalizer APO config. */
-      text: string
     }
     /** @description The body of every error response. */
     ErrorBody: {
@@ -1342,27 +1349,27 @@ export interface components {
      *     it only describes the stream in the spec.
      */
     EventPayloads: {
-      /** @description A `heartbeat` event, an empty object every two seconds. */
-      heartbeat: components["schemas"]["Heartbeat"]
-      /** @description A `levels` event, one for each update from CamillaDSP. */
-      levels: components["schemas"]["VuLevels"]
-      /** @description A `spectrum` event, one for each update from CamillaDSP. */
-      spectrum: components["schemas"]["SpectrumData"]
       /**
        * @description A `state` event: the processing state, first the current one, then one
        *     for each change.
        */
       state: components["schemas"]["StateUpdate"]
+      /** @description A `levels` event, one for each update from CamillaDSP. */
+      levels: components["schemas"]["VuLevels"]
+      /** @description A `spectrum` event, one for each update from CamillaDSP. */
+      spectrum: components["schemas"]["SpectrumData"]
+      /** @description A `heartbeat` event, an empty object every two seconds. */
+      heartbeat: components["schemas"]["Heartbeat"]
     }
     /** @description Volume and mute state for one fader, as returned by [`WsCommand::GetFaders`]. */
     Fader: {
-      /** @description Whether the fader is muted. */
-      mute: boolean
       /**
        * Format: float
        * @description Current volume in dB.
        */
       volume: number
+      /** @description Whether the fader is muted. */
+      mute: boolean
     }
     /**
      * @description A file in a listing. What is known about it beyond its name, size and time
@@ -1371,20 +1378,7 @@ export interface components {
      *     and text files. What is not known is left out.
      */
     FileInfo: {
-      /** @description For a wav file. */
-      channels?: number
-      /** @description For a config, its description. */
-      description?: string
-      /**
-       * Format: double
-       * @description For a wav file, in seconds.
-       */
-      duration?: number
-      /**
-       * @description For a config, its errors and warnings. For a text coefficient file,
-       *     why CamillaDSP cannot read it.
-       */
-      errors?: components["schemas"]["ValidationIssue"][]
+      name: string
       /**
        * Format: int64
        * @description The time of the last change, in seconds since the epoch.
@@ -1392,44 +1386,57 @@ export interface components {
       last_modified: number
       /**
        * Format: int64
-       * @description For a coefficient file, the number of values per channel.
+       * @description In bytes.
        */
-      length?: number
+      size: number
+      /** @description For a config, its title. */
+      title?: string
+      /** @description For a config, its description. */
+      description?: string
       /**
-       * @description For a config, whether the GUI can load it, migrating it first if it is
-       *     for an older version. It may still have errors to fix in the GUI.
+       * Format: int32
+       * @description For a config, the CamillaDSP version it is for.
        */
-      loadable?: boolean
-      name: string
+      version?: number
       /**
        * @description For a config, whether it is for an older CamillaDSP, and is migrated
        *     when loaded.
        */
       outdated?: boolean
       /**
-       * @description For a wav file, the CamillaDSP name of its sample format. For a text
-       *     coefficient file, `TEXT`.
-       */
-      sampleformat?: string
-      /** @description For a wav file, in Hz. */
-      samplerate?: number
-      /**
-       * Format: int64
-       * @description In bytes.
-       */
-      size: number
-      /** @description For a config, its title. */
-      title?: string
-      /**
        * @description For a config, whether it has no errors. For a wav file, and a wav or
        *     text coefficient file, whether CamillaDSP can read it.
        */
       valid?: boolean
       /**
-       * Format: int32
-       * @description For a config, the CamillaDSP version it is for.
+       * @description For a config, whether the GUI can load it, migrating it first if it is
+       *     for an older version. It may still have errors to fix in the GUI.
        */
-      version?: number
+      loadable?: boolean
+      /**
+       * @description For a config, its errors and warnings. For a text coefficient file,
+       *     why CamillaDSP cannot read it.
+       */
+      errors?: components["schemas"]["ValidationIssue"][]
+      /** @description For a wav file, in Hz. */
+      samplerate?: number
+      /** @description For a wav file. */
+      channels?: number
+      /**
+       * @description For a wav file, the CamillaDSP name of its sample format. For a text
+       *     coefficient file, `TEXT`.
+       */
+      sampleformat?: string
+      /**
+       * Format: double
+       * @description For a wav file, in seconds.
+       */
+      duration?: number
+      /**
+       * Format: int64
+       * @description For a coefficient file, the number of values per channel.
+       */
+      length?: number
     }
     /**
      * @description One of the folders the GUI keeps files in.
@@ -1518,11 +1525,11 @@ export interface components {
      *     channels its name gives for the `$samplerate$` and `$channels$` tokens.
      */
     FilterOption: {
-      /** Format: int64 */
-      channels?: number
       name: string
       /** Format: int64 */
       samplerate?: number
+      /** Format: int64 */
+      channels?: number
     }
     /** Format: float */
     FiniteF32: number
@@ -1533,10 +1540,10 @@ export interface components {
      *     file in the folder is added, removed, renamed or rewritten.
      */
     FolderFingerprints: {
+      config: string
+      coeff: string
       /** @description Left out when no audiofiles_dir is set. */
       audiofile?: string
-      coeff: string
-      config: string
     }
     /** @description Parameters for the static gain filter. */
     GainParameters: {
@@ -1554,13 +1561,13 @@ export interface components {
     GeneralNotchParams: {
       freq_p: components["schemas"]["FiniteF64"]
       freq_z: components["schemas"]["FiniteF64"]
-      normalize_at_dc?: boolean | null
       q_p: components["schemas"]["FiniteF64"]
+      normalize_at_dc?: boolean | null
     }
     /** @description Parameters for the graphic equalizer biquad combo filter. */
     GraphicEqualizerParameters: {
-      freq_max?: components["schemas"]["FiniteF32"] | null
       freq_min?: components["schemas"]["FiniteF32"] | null
+      freq_max?: components["schemas"]["FiniteF32"] | null
       gains: components["schemas"]["FiniteF32"][]
     }
     /**
@@ -1568,11 +1575,6 @@ export interface components {
      *     `camillagui.yml` that the frontend needs.
      */
     GuiConfig: components["schemas"]["GuiConfigFile"] & {
-      allow_absolute_paths: boolean
-      /** @description Whether an audiofiles_dir is set. */
-      audiofiles_supported: boolean
-      /** @description Whether the backend can store which config file is the active one. */
-      can_update_active_config: boolean
       /**
        * @description coeff_dir, relative to config_dir and ending with a separator, from
        *     `camillagui.yml` like the rest below.
@@ -1580,74 +1582,50 @@ export interface components {
       coeff_dir: string
       supported_capture_types: string[] | null
       supported_playback_types: string[] | null
+      /** @description Whether the backend can store which config file is the active one. */
+      can_update_active_config: boolean
+      /** @description Whether an audiofiles_dir is set. */
+      audiofiles_supported: boolean
+      allow_absolute_paths: boolean
     }
     /**
      * @description `gui-config.yml`. What it leaves out gets the default, and keys it does
      *     not know are ignored.
      */
     GuiConfigFile: {
-      /** @default false */
-      apply_config_automatically: boolean
-      /**
-       * @description `custom_shortcuts:` with nothing after it is null, and means none.
-       * @default []
-       */
-      custom_shortcuts: components["schemas"]["ShortcutSection"][]
-      /** @default false */
-      hide_capture_device: boolean
-      /** @default false */
-      hide_capture_samplerate: boolean
-      /** @default false */
-      hide_multithreading: boolean
-      /** @default false */
-      hide_playback_device: boolean
-      /** @default false */
-      hide_rate_monitoring: boolean
-      /** @default false */
-      hide_silence: boolean
       /**
        * @description The title of the browser tab.
        * @default CamillaDSP
        */
       page_title: string
       /** @default false */
+      hide_capture_samplerate: boolean
+      /** @default false */
+      hide_silence: boolean
+      /** @default false */
+      hide_capture_device: boolean
+      /** @default false */
+      hide_playback_device: boolean
+      /** @default false */
+      hide_rate_monitoring: boolean
+      /** @default false */
+      hide_multithreading: boolean
+      /** @default false */
+      apply_config_automatically: boolean
+      /** @default false */
       save_config_automatically: boolean
-      /**
-       * Format: double
-       * @default 0
-       */
-      spectrum_max_db: number
-      /**
-       * Format: double
-       * @description In Hz.
-       * @default 20000
-       */
-      spectrum_max_freq: number
-      /**
-       * Format: float
-       * @description The most spectrum updates per second.
-       * @default 30
-       */
-      spectrum_max_rate: number
-      /**
-       * Format: double
-       * @default -100
-       */
-      spectrum_min_db: number
-      /**
-       * Format: double
-       * @description In Hz.
-       * @default 20
-       */
-      spectrum_min_freq: number
-      /** @default 100 */
-      spectrum_n_bins: number
       /**
        * Format: int32
        * @description In milliseconds.
        * @default 500
        */
       status_update_interval: number
+      /**
+       * Format: double
+       * @description The range of the volume sliders, in dB.
+       * @default 50
+       */
+      volume_range: number
       /**
        * Format: int32
        * @description The top of the volume sliders, in dB.
@@ -1656,10 +1634,39 @@ export interface components {
       volume_max: number
       /**
        * Format: double
-       * @description The range of the volume sliders, in dB.
-       * @default 50
+       * @description In Hz.
+       * @default 20
        */
-      volume_range: number
+      spectrum_min_freq: number
+      /**
+       * Format: double
+       * @description In Hz.
+       * @default 20000
+       */
+      spectrum_max_freq: number
+      /** @default 100 */
+      spectrum_n_bins: number
+      /**
+       * Format: double
+       * @default -100
+       */
+      spectrum_min_db: number
+      /**
+       * Format: double
+       * @default 0
+       */
+      spectrum_max_db: number
+      /**
+       * Format: float
+       * @description The most spectrum updates per second.
+       * @default 30
+       */
+      spectrum_max_rate: number
+      /**
+       * @description `custom_shortcuts:` with nothing after it is null, and means none.
+       * @default []
+       */
+      custom_shortcuts: components["schemas"]["ShortcutSection"][]
     }
     /** @description The data of a `heartbeat` event. */
     Heartbeat: Record<string, never>
@@ -1668,23 +1675,23 @@ export interface components {
       text: string
     }
     LookaheadLimiterParameters: {
+      limit?: components["schemas"]["FiniteF64"]
       attack: components["schemas"]["FiniteF64"]
       attack_unit: components["schemas"]["TimeUnit"]
-      limit?: components["schemas"]["FiniteF64"]
       release: components["schemas"]["FiniteF64"]
       release_unit: components["schemas"]["TimeUnit"]
     }
     /** @description Parameters for the multichannel lookahead limiter processor. */
     LookaheadLimiterProcessorParameters: {
-      attack: components["schemas"]["FiniteF64"]
-      attack_unit: components["schemas"]["TimeUnit"]
       channels: number
-      delay_processed_only?: boolean | null
-      limit?: components["schemas"]["FiniteF64"]
       monitor_channels?: number[] | null
       process_channels?: number[] | null
+      limit?: components["schemas"]["FiniteF64"]
+      attack: components["schemas"]["FiniteF64"]
+      attack_unit: components["schemas"]["TimeUnit"]
       release: components["schemas"]["FiniteF64"]
       release_unit: components["schemas"]["TimeUnit"]
+      delay_processed_only?: boolean | null
     }
     /**
      * @description Which fader drives the loudness filter's compensation level.
@@ -1693,22 +1700,22 @@ export interface components {
     LoudnessFader: "Main" | "Aux1" | "Aux2" | "Aux3" | "Aux4"
     /** @description Parameters for the loudness (Fletcher-Munson) compensation filter. */
     LoudnessParameters: {
-      attenuate_mid?: boolean | null
-      fader?: components["schemas"]["LoudnessFader"] | null
-      high_boost?: components["schemas"]["FiniteF32"] | null
-      high_freq?: components["schemas"]["FiniteF64"] | null
-      high_q?: components["schemas"]["FiniteF64"] | null
-      low_boost?: components["schemas"]["FiniteF32"] | null
-      low_freq?: components["schemas"]["FiniteF64"] | null
-      low_q?: components["schemas"]["FiniteF64"] | null
       reference_level: components["schemas"]["FiniteF32"]
+      high_boost?: components["schemas"]["FiniteF32"] | null
+      low_boost?: components["schemas"]["FiniteF32"] | null
+      high_freq?: components["schemas"]["FiniteF64"] | null
+      low_freq?: components["schemas"]["FiniteF64"] | null
+      high_q?: components["schemas"]["FiniteF64"] | null
+      low_q?: components["schemas"]["FiniteF64"] | null
+      fader?: components["schemas"]["LoudnessFader"] | null
+      attenuate_mid?: boolean | null
     }
     /** @description Configuration for a named mixer: channel counts, routing rules, and optional labels. */
     Mixer: {
-      channels: components["schemas"]["MixerChannels"]
       description?: string | null
-      labels?: (string | null)[] | null
+      channels: components["schemas"]["MixerChannels"]
       mapping: components["schemas"]["MixerMapping"][]
+      labels?: (string | null)[] | null
     }
     /** @description Input and output channel counts for a mixer. */
     MixerChannels: {
@@ -1718,8 +1725,8 @@ export interface components {
     /** @description Routing rule: which sources feed a given destination channel in a mixer. */
     MixerMapping: {
       dest: number
-      mute?: boolean | null
       sources: components["schemas"]["MixerSource"][]
+      mute?: boolean | null
     }
     /** @description One input source contributing to a mixer output channel. */
     MixerSource: {
@@ -1731,15 +1738,15 @@ export interface components {
     }
     /** @description Parameters for the noise gate processor. */
     NoiseGateParameters: {
-      attack: components["schemas"]["FiniteF64"]
-      attack_unit: components["schemas"]["TimeUnit"]
-      attenuation: components["schemas"]["FiniteF64"]
       channels: number
       monitor_channels?: number[] | null
       process_channels?: number[] | null
+      attack: components["schemas"]["FiniteF64"]
+      attack_unit: components["schemas"]["TimeUnit"]
       release: components["schemas"]["FiniteF64"]
       release_unit: components["schemas"]["TimeUnit"]
       threshold: components["schemas"]["FiniteF64"]
+      attenuation: components["schemas"]["FiniteF64"]
     }
     /** @description Notch / allpass / bandpass width specified either as a Q factor or a bandwidth in octaves. */
     NotchWidth:
@@ -1748,8 +1755,8 @@ export interface components {
           q: components["schemas"]["FiniteF64"]
         }
       | {
-          bandwidth: components["schemas"]["FiniteF64"]
           freq: components["schemas"]["FiniteF64"]
+          bandwidth: components["schemas"]["FiniteF64"]
         }
     /**
      * @description One step on the way to the value an issue is about: a map key or a list index.
@@ -1762,12 +1769,12 @@ export interface components {
     PeakingWidth:
       | {
           freq: components["schemas"]["FiniteF64"]
-          gain: components["schemas"]["FiniteF64"]
           q: components["schemas"]["FiniteF64"]
+          gain: components["schemas"]["FiniteF64"]
         }
       | {
-          bandwidth: components["schemas"]["FiniteF64"]
           freq: components["schemas"]["FiniteF64"]
+          bandwidth: components["schemas"]["FiniteF64"]
           gain: components["schemas"]["FiniteF64"]
         }
     /**
@@ -1778,8 +1785,8 @@ export interface components {
      */
     PeqBand: {
       freq: components["schemas"]["FiniteF64"]
-      gain: components["schemas"]["FiniteF64"]
       q: components["schemas"]["FiniteF64"]
+      gain: components["schemas"]["FiniteF64"]
     }
     /** @description One step in the processing pipeline: a mixer, filter chain, or processor. */
     PipelineStep:
@@ -1797,22 +1804,22 @@ export interface components {
         })
     /** @description Configuration for a filter pipeline step. */
     PipelineStepFilter: {
-      bypassed?: boolean | null
       channels?: number[] | null
-      description?: string | null
       names: string[]
+      description?: string | null
+      bypassed?: boolean | null
     }
     /** @description Configuration for a mixer pipeline step. */
     PipelineStepMixer: {
-      bypassed?: boolean | null
-      description?: string | null
       name: string
+      description?: string | null
+      bypassed?: boolean | null
     }
     /** @description Configuration for a processor pipeline step. */
     PipelineStepProcessor: {
-      bypassed?: boolean | null
-      description?: string | null
       name: string
+      description?: string | null
+      bypassed?: boolean | null
     }
     PlaybackDevice:
       | {
@@ -1823,11 +1830,11 @@ export interface components {
           type: "Alsa"
         }
       | {
-          autoconnect_to?: string | null
           channels: number
+          node_name?: string | null
           node_description?: string | null
           node_group_name?: string | null
-          node_name?: string | null
+          autoconnect_to?: string | null
           /** @enum {string} */
           type: "PipeWire"
         }
@@ -1835,23 +1842,23 @@ export interface components {
           channels: number
           filename: string
           format: components["schemas"]["BinarySampleFormat"]
-          /** @enum {string} */
-          type: "File"
+          wav_header?: boolean | null
           /**
            * @description Write an RF64 header so the file can grow past the 4 GB limit of plain
            *     wav. Only applies when `wav_header` is true; ignored otherwise.
            */
           use_rf64?: boolean | null
-          wav_header?: boolean | null
+          /** @enum {string} */
+          type: "File"
         }
       | {
           channels: number
           format: components["schemas"]["BinarySampleFormat"]
+          wav_header?: boolean | null
           /** @enum {string} */
           type: "Stdout"
-          wav_header?: boolean | null
         }
-      | (components["schemas"]["PlaybackDeviceCA"] & {
+      | (components["schemas"]["PlaybackDeviceCoreAudio"] & {
           /** @enum {string} */
           type: "CoreAudio"
         })
@@ -1865,12 +1872,12 @@ export interface components {
         })
       | {
           channels: number
+          format?: components["schemas"]["BinarySampleFormat"] | null
           /**
            * Format: int32
            * @description Port of the test control socket, see `src/dummy_backend/control.rs`.
            */
           control_port?: number | null
-          format?: components["schemas"]["BinarySampleFormat"] | null
           /** @enum {string} */
           type: "Dummy"
         }
@@ -1879,21 +1886,27 @@ export interface components {
       device: string
       format?: components["schemas"]["AsioSampleFormat"] | null
     }
-    PlaybackDeviceCA: {
+    PlaybackDeviceCoreAudio: {
       channels: number
       device?: string | null
-      exclusive?: boolean | null
       format?: components["schemas"]["CoreAudioSampleFormat"] | null
+      exclusive?: boolean | null
     }
     PlaybackDeviceWasapi: {
       channels: number
       device?: string | null
-      exclusive?: boolean | null
       format?: components["schemas"]["WasapiSampleFormat"] | null
+      exclusive?: boolean | null
       polling?: boolean | null
     }
     /**
      * @description The state of the processing, as reported by [`WsCommand::GetState`].
+     *
+     *     - `Running`: processing is running normally.
+     *     - `Paused`: processing is paused because the input signal is silent.
+     *     - `Inactive`: processing is off and devices are closed, waiting for a new configuration.
+     *     - `Starting`: opening devices and starting up processing with a new configuration.
+     *     - `Stalled`: the capture device is not providing data, so processing is stalled.
      * @enum {string}
      */
     ProcessingState: "Running" | "Paused" | "Inactive" | "Starting" | "Stalled"
@@ -1925,13 +1938,13 @@ export interface components {
         }
     /** @description Parameters for the RACE (Recursive Ambiophonic Crosstalk Elimination) processor. */
     RACEParameters: {
-      attenuation: components["schemas"]["FiniteF64"]
+      channels: number
       channel_a: number
       channel_b: number
-      channels: number
       delay: components["schemas"]["FiniteF64"]
-      delay_unit: components["schemas"]["DelayUnit"]
       subsample_delay?: boolean | null
+      delay_unit: components["schemas"]["DelayUnit"]
+      attenuation: components["schemas"]["FiniteF64"]
     }
     RenameBody: {
       /** @description The file name, in the folder. */
@@ -1965,10 +1978,10 @@ export interface components {
     SampleWidth: "float32" | "float64"
     /** @description The sample formats supported by a device at a specific sample rate. */
     SamplerateCapability: {
-      /** @description Names of the supported sample formats at this rate. */
-      formats: string[]
       /** @description Sample rate in Hz. */
       samplerate: number
+      /** @description Names of the supported sample formats at this rate. */
+      formats: string[]
     }
     SaveConfigBody: {
       /** @description With the file paths as the GUI has them, relative to the configured folders. */
@@ -1980,23 +1993,23 @@ export interface components {
     ShelfSteepness:
       | {
           freq: components["schemas"]["FiniteF64"]
-          gain: components["schemas"]["FiniteF64"]
           q: components["schemas"]["FiniteF64"]
+          gain: components["schemas"]["FiniteF64"]
         }
       | {
           freq: components["schemas"]["FiniteF64"]
-          gain: components["schemas"]["FiniteF64"]
           slope: components["schemas"]["FiniteF64"]
+          gain: components["schemas"]["FiniteF64"]
         }
     /** @description A control for one or more values in the config. */
     Shortcut: {
+      name: string
+      description?: string
       /**
        * @description The values it controls. The control shows the first one, the others
        *     follow it.
        */
       config_elements: components["schemas"]["ConfigElement"][]
-      description?: string
-      name: string
       /**
        * Format: double
        * @description Needed for a number.
@@ -2017,8 +2030,8 @@ export interface components {
     }
     /** @description A group of shortcuts, with a heading. */
     ShortcutSection: {
-      description?: string
       section: string
+      description?: string
       shortcuts: components["schemas"]["Shortcut"][]
     }
     /** @enum {string} */
@@ -2062,36 +2075,38 @@ export interface components {
      *     Same fields as [`SpectrumRequest`] plus an optional `max_rate` cap.
      */
     SpectrumSubscription: {
+      /** @description Which side to analyze: `"capture"` or `"playback"`. */
+      side: components["schemas"]["SpectrumSide"]
       /** @description Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based). */
       channel?: number | null
-      /**
-       * Format: double
-       * @description Upper edge of the frequency range in Hz. Must be > `min_freq`.
-       */
-      max_freq: number
-      /**
-       * Format: float
-       * @description Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop).
-       */
-      max_rate?: number | null
       /**
        * Format: double
        * @description Lower edge of the frequency range in Hz. Must be > 0.
        */
       min_freq: number
+      /**
+       * Format: double
+       * @description Upper edge of the frequency range in Hz. Must be > `min_freq`.
+       */
+      max_freq: number
       /** @description Number of output bins. Must be ≥ 2. */
       n_bins: number
-      /** @description Which side to analyze: `"capture"` or `"playback"`. */
-      side: components["schemas"]["SpectrumSide"]
+      /**
+       * Format: float
+       * @description Maximum push rate in Hz. Leave out or set `null` for the natural rate (one push per 50 %
+       *     overlap hop).
+       */
+      max_rate?: number | null
     }
     StartConfig: {
       config: components["schemas"]["Configuration"]
+      source: components["schemas"]["ConfigSource"]
       /** @description The file the config came from, null if it is not known. */
       config_file_name: string | null
-      source: components["schemas"]["ConfigSource"]
     }
     /** @description Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`]. */
     StateUpdate: {
+      /** @description The new processing state. */
       state: components["schemas"]["ProcessingState"]
       stop_reason?: components["schemas"]["StopReason"] | null
     }
@@ -2102,34 +2117,34 @@ export interface components {
      *     offline.
      */
     Status: {
+      /** @description Whether CamillaDSP answered the last time it was asked. */
+      cdsp_online: boolean
+      /** @description CamillaDSP's version, null while it is offline. */
+      cdsp_version: string | null
       /** @description The version of this backend. */
       backend_version: string
-      bufferlevel: number | null
       /**
        * @description The capture rate in Hz, rounded to the nearest standard rate. Null when
        *     it is not within 4% of one.
        */
       capturerate: number | null
-      /** @description Whether CamillaDSP answered the last time it was asked. */
-      cdsp_online: boolean
-      /** @description CamillaDSP's version, null while it is offline. */
-      cdsp_version: string | null
+      /** Format: float */
+      rateadjust: number | null
+      bufferlevel: number | null
       clippedsamples: number | null
-      description: string | null
-      labels: components["schemas"]["ChannelLabels"]
       /**
        * Format: float
        * @description In percent.
        */
       processingload: number | null
-      /** Format: float */
-      rateadjust: number | null
       /**
        * Format: float
        * @description In percent.
        */
       resamplerload: number | null
+      labels: components["schemas"]["ChannelLabels"]
       title: string | null
+      description: string | null
     }
     /** @description Reason a processing run ended. */
     StopReason:
@@ -2170,12 +2185,12 @@ export interface components {
     }
     /** @description A problem with a config, one that CamillaDSP would refuse it for. */
     ValidationIssue: {
-      message: string
       /**
        * @description Where in the config, as keys and list indices from the top. Empty for
        *     the config as a whole.
        */
       path: components["schemas"]["PathElement"][]
+      message: string
     }
     /**
      * @description Which aux fader a Volume filter is linked to (faders 1–4; the main fader is always 0).
@@ -2184,9 +2199,9 @@ export interface components {
     VolumeFader: "Aux1" | "Aux2" | "Aux3" | "Aux4"
     /** @description Parameters for the volume-ramp filter linked to a specific fader. */
     VolumeParameters: {
+      ramp_time_ms?: components["schemas"]["FiniteF32"] | null
       fader: components["schemas"]["VolumeFader"]
       limit?: components["schemas"]["FiniteF32"] | null
-      ramp_time_ms?: components["schemas"]["FiniteF32"] | null
     }
     /**
      * @description Payload of a [`WsReply::VuLevelsEvent`] pushed by [`WsCommand::SubscribeVuLevels`].
@@ -2194,28 +2209,32 @@ export interface components {
      *     All values are smoothed dB levels, per channel.
      */
     VuLevels: {
-      capture_peak: number[]
-      capture_rms: number[]
-      playback_peak: number[]
+      /** @description Smoothed RMS level per playback channel in dB. */
       playback_rms: number[]
+      /** @description Smoothed peak level per playback channel in dB. */
+      playback_peak: number[]
+      /** @description Smoothed RMS level per capture channel in dB. */
+      capture_rms: number[]
+      /** @description Smoothed peak level per capture channel in dB. */
+      capture_peak: number[]
     }
     /** @enum {string} */
     WasapiSampleFormat: "S16" | "S24" | "S32" | "F32"
     /** @description The header of a wav file. */
     WavInfo: {
-      /** Format: int32 */
-      bitspersample: number
-      /** Format: int32 */
-      byterate: number
-      /** Format: int32 */
-      bytesperframe: number
-      channels: number
-      /** Format: int64 */
-      datalength: number
       /** Format: int64 */
       dataoffset: number
+      /** Format: int64 */
+      datalength: number
       sampleformat: string
+      /** Format: int32 */
+      bitspersample: number
+      channels: number
+      /** Format: int32 */
+      byterate: number
       samplerate: number
+      /** Format: int32 */
+      bytesperframe: number
     }
   }
   responses: never
