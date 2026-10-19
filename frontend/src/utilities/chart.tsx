@@ -1,0 +1,540 @@
+import React, { useCallback, useMemo, useRef, useState } from "react"
+import { mdiEye, mdiEyeOff, mdiHome, mdiImage, mdiTable } from "@mdi/js"
+import {
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  LineElement,
+  LogarithmicScale,
+  PointElement,
+  Tooltip,
+  ChartData,
+  Scale,
+  Tick,
+} from "chart.js"
+import zoomPlugin from "chartjs-plugin-zoom"
+import { Scatter } from "react-chartjs-2"
+import { Tooltip as ReactTooltip } from "react-tooltip"
+import ReactjsPopup from "reactjs-popup"
+import { CloseButton, cssStyles, MdiButton } from "./ui-components"
+import type { Schemas } from "../api/client"
+
+ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
+
+export function ChartPopup(props: {
+  open: boolean
+  data: ChartContent
+  onChange: (item: string) => void
+  onClose: () => void
+  /** Volume to evaluate at. Pass both to show a slider, for plots containing a Loudness filter. */
+  volume?: number
+  onVolumeChange?: (volume: number) => void
+}) {
+  const { volume, onVolumeChange } = props
+  return (
+    <ReactjsPopup open={props.open} onClose={props.onClose}>
+      <CloseButton onClick={props.onClose} />
+      <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
+      <Chart onChange={props.onChange} data={props.data} />
+      {volume !== undefined && onVolumeChange !== undefined && (
+        <PlotVolumeSlider volume={volume} onChange={onVolumeChange} />
+      )}
+    </ReactjsPopup>
+  )
+}
+
+/** Slider for the volume a Loudness filter is evaluated at, from -50 to +20 dB in 0.1 dB steps. */
+export function PlotVolumeSlider(props: { volume: number; onChange: (volume: number) => void }) {
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
+      <input
+        type="range"
+        min={-500}
+        max={200}
+        value={props.volume * 10.0}
+        onBlur={(e) => props.onChange(e.target.valueAsNumber / 10.0)}
+        onChange={(e) => props.onChange(e.target.valueAsNumber / 10.0)}
+        data-tooltip-html="Volume setting to evaluate filter at"
+        data-tooltip-id="main-tooltip"
+      />
+      <div>{props.volume} dB</div>
+    </div>
+  )
+}
+
+export interface ChartContent {
+  name: string
+  samplerate?: number
+  channels?: number
+  options: FilterOption[]
+  f: number[]
+  magnitude?: number[]
+  phase?: number[]
+  // the impulse response arrives from the backend as raw float64 and is kept
+  // as a view over those bytes, so these are typed arrays rather than lists
+  impulse?: ArrayLike<number>
+  time: ArrayLike<number>
+  /**
+   * The level, in dB, below which the phase is aliasing rather than phase. Set
+   * for a convolution filter, absent for anything evaluated in closed form.
+   */
+  phaseFloor?: number
+  /** Group delay in ms, one value per frequency in `f_groupdelay`. */
+  groupdelay?: number[]
+  f_groupdelay?: number[]
+}
+
+/** A variant of a coefficient file, for another samplerate or channel count. */
+export type FilterOption = Schemas["FilterOption"]
+
+export function Chart(props: { data: ChartContent; onChange: (item: string) => void }) {
+  const chartRef = useRef<ChartJS<"scatter"> & { resetZoom: () => void }>(null)
+  const [hideUnreadablePhase, setHideUnreadablePhase] = useState(true)
+  const downloadPlot = useCallback(() => {
+    const link = document.createElement("a")
+    link.download = props.data.name.replace(/\s/g, "_") + ".png"
+
+    if (chartRef.current !== null) {
+      const current = chartRef.current
+      link.href = current.toBase64Image()
+      link.click()
+    }
+  }, [props.data.name])
+
+  const resetView = useCallback(() => {
+    if (chartRef.current !== null) {
+      chartRef.current.resetZoom()
+    }
+  }, [])
+
+  const data: ChartData<"scatter"> = { labels: [props.data.name], datasets: [] }
+
+  function make_pointlist(xvect: ArrayLike<number>, yvect: ArrayLike<number>, scaling_x: number, scaling_y: number) {
+    // Array.from, not map: xvect may be a Float64Array, whose own map would
+    // coerce these points back to numbers
+    return Array.from(xvect, (x, idx) => ({
+      x: scaling_x * x,
+      y: scaling_y * yvect[idx],
+    }))
+  }
+
+  const downloadData = useCallback(() => {
+    const magdat = props.data.magnitude
+    const phasedat = props.data.phase
+    const delaydat = props.data.groupdelay
+
+    // a blanked point, deep below a convolution filter's passband where the
+    // phase is not readable, is an empty field rather than the text NaN
+    const value = (values: number[] | undefined, i: number) => {
+      const v = values === undefined ? undefined : values[i]
+      return v === undefined || !Number.isFinite(v) ? null : v
+    }
+    const table = props.data.f.map((f, i) => [f, value(magdat, i), value(phasedat, i), value(delaydat, i)])
+    const csvContent =
+      "data:text/csv;charset=utf-8,frequency,magnitude,phase,groupdelay\n" +
+      table.map((row) => row.join(",")).join("\n")
+    const link = document.createElement("a")
+    link.download = props.data.name.replace(/\s/g, "_") + ".csv"
+    link.href = encodeURI(csvContent)
+    link.click()
+  }, [props.data.f, props.data.magnitude, props.data.name, props.data.phase, props.data.groupdelay])
+
+  const phaseFloor = props.data.phaseFloor
+  const magnitude = props.data.magnitude
+  // only worth offering when there is something to hide
+  const hasUnreadablePhase =
+    phaseFloor !== undefined && magnitude !== undefined && magnitude.some((value) => value < phaseFloor)
+
+  const styles = cssStyles()
+  const gainColor = styles.getPropertyValue("--gain-color")
+  const phaseColor = styles.getPropertyValue("--phase-color")
+  const impulseColor = styles.getPropertyValue("--impulse-color")
+  const groupdelayColor = styles.getPropertyValue("--groupdelay-color")
+  if (magnitude) {
+    const gainpoints = make_pointlist(props.data.f, magnitude, 1.0, 1.0)
+    data.datasets.push({
+      label: "Gain",
+      fill: false,
+      borderColor: gainColor,
+      backgroundColor: gainColor,
+      pointBackgroundColor: gainColor,
+      pointRadius: 0,
+      showLine: true,
+      data: gainpoints,
+      yAxisID: "gain",
+      xAxisID: "freq",
+    })
+  }
+  const phase = props.data.phase
+  if (phase) {
+    // Below the floor the phase turns a full circle between neighbouring nulls
+    // and the grid samples it far too sparsely to show that, so what would be
+    // drawn is the aliasing. The values are right, so it is offered as a
+    // choice rather than simply dropped. Group delay is not offered: it is
+    // read from a blanked phase whatever this is set to, since a prediction
+    // carried through the aliased region moves the readable part of the curve.
+    const hidden =
+      hideUnreadablePhase && phaseFloor !== undefined && magnitude !== undefined
+        ? phase.map((value, n) => (magnitude[n] < phaseFloor ? NaN : value))
+        : phase
+    const phasepoints = make_pointlist(props.data.f, hidden, 1.0, 1.0)
+    data.datasets.push({
+      label: "Phase",
+      fill: false,
+      borderColor: phaseColor,
+      backgroundColor: phaseColor,
+      pointRadius: 0,
+      showLine: true,
+      data: phasepoints,
+      yAxisID: "phase",
+      xAxisID: "freq",
+    })
+  }
+  const impulse = props.data.impulse
+  if (impulse) {
+    const impulsepoints = make_pointlist(props.data.time, impulse, 1000.0, 1.0)
+    data.datasets.push({
+      label: "Impulse",
+      fill: false,
+      borderColor: impulseColor,
+      backgroundColor: impulseColor,
+      pointRadius: 0,
+      showLine: true,
+      data: impulsepoints,
+      yAxisID: "ampl",
+      xAxisID: "time",
+    })
+  }
+  const groupdelay = props.data.groupdelay
+  const f_groupdelay = props.data.f_groupdelay
+  if (groupdelay && f_groupdelay) {
+    const groupdelaypoints = make_pointlist(f_groupdelay, groupdelay, 1.0, 1.0)
+    data.datasets.push({
+      label: "Group delay",
+      fill: false,
+      borderColor: groupdelayColor,
+      backgroundColor: groupdelayColor,
+      pointRadius: 0,
+      showLine: true,
+      data: groupdelaypoints,
+      yAxisID: "delay",
+      xAxisID: "freq",
+    })
+  }
+
+  // Workaround to prevent the chart from resetting the zoom on every update.
+  const options = useMemo(() => {
+    const styles = cssStyles()
+    const axesColor = styles.getPropertyValue("--axes-color")
+    const textColor = styles.getPropertyValue("--text-color")
+    const gainColor = styles.getPropertyValue("--gain-color")
+    const phaseColor = styles.getPropertyValue("--phase-color")
+    const impulseColor = styles.getPropertyValue("--impulse-color")
+    const groupdelayColor = styles.getPropertyValue("--groupdelay-color")
+
+    const zoomOptions = {
+      zoom: {
+        wheel: {
+          enabled: true,
+        },
+        pinch: {
+          enabled: true,
+        },
+        drag: {
+          enabled: false,
+        },
+        mode: "xy",
+        overScaleMode: "xy",
+      },
+      pan: {
+        enabled: true,
+        mode: "xy",
+        threshold: 3,
+        overScaleMode: "xy",
+      },
+    }
+
+    const scales = {
+      freq: {
+        type: "logarithmic",
+        position: "bottom",
+        min: 10,
+        max: 20000,
+        title: {
+          display: true,
+          text: "Frequency, Hz",
+          color: textColor,
+        },
+        grid: {
+          zeroLineColor: axesColor,
+          color: axesColor,
+        },
+        ticks: {
+          min: 0,
+          max: 30000,
+          maxRotation: 0,
+          minRotation: 0,
+          color: textColor,
+          callback(tickValue: number, index: number, values: Tick[]) {
+            if (tickValue === 0) {
+              return "0"
+            }
+            let value = -1
+            const range = values[values.length - 1].value / values[0].value
+            const rounded = Math.pow(10, Math.floor(Math.log10(tickValue)))
+            const first_digit = tickValue / rounded
+            const rest = tickValue % rounded
+            if (range > 10) {
+              if (first_digit === 1 || first_digit === 2 || first_digit === 5) {
+                value = tickValue
+              }
+            } else if (rest === 0) {
+              value = tickValue
+            }
+            if (value >= 1000000) {
+              return (value / 1000000).toString() + "M"
+            } else if (value >= 1000) {
+              return (value / 1000).toString() + "k"
+            } else if (value > 0) {
+              return value.toString()
+            }
+            return ""
+          },
+        },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.xAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+      },
+      time: {
+        type: "linear",
+        position: "top",
+        title: {
+          display: true,
+          text: "Time, ms",
+          color: textColor,
+        },
+        ticks: {
+          color: textColor,
+        },
+        grid: { display: false },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.xAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+      },
+      gain: {
+        type: "linear",
+        position: "left",
+        ticks: {
+          color: gainColor,
+        },
+        title: {
+          display: true,
+          text: "Gain, dB",
+          color: gainColor,
+        },
+        grid: {
+          zeroLineColor: axesColor,
+          color: axesColor,
+          borderDash: [7, 3],
+        },
+        suggestedMin: -1,
+        suggestedMax: 1,
+        afterBuildTicks: function (scale: Scale) {
+          let step = 1
+          const range = scale.max - scale.min
+          if (range > 150) {
+            step = 50
+          } else if (range > 60) {
+            step = 20
+          } else if (range > 30) {
+            step = 10
+          } else if (range > 20) {
+            step = 5
+          } else if (range > 10) {
+            step = 2
+          }
+          let tick = Math.ceil(scale.min / step) * step
+          const ticks = []
+          while (tick <= scale.max) {
+            ticks.push({ value: tick })
+            tick += step
+          }
+          return ticks
+        },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+      },
+      phase: {
+        type: "linear",
+        position: "right",
+        min: -180,
+        max: 180,
+        afterBuildTicks: function (scale: Scale) {
+          let step = 1
+          const range = scale.max - scale.min
+          if (range > 180) {
+            step = 45
+          } else if (range > 45) {
+            step = 15
+          } else if (range > 15) {
+            step = 5
+          }
+          let tick = Math.ceil(scale.min / step) * step
+          const ticks = []
+          while (tick <= scale.max) {
+            ticks.push({ value: tick })
+            tick += step
+          }
+          return ticks
+        },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+        ticks: {
+          color: phaseColor,
+        },
+        title: {
+          display: true,
+          text: "Phase, deg",
+          color: phaseColor,
+        },
+        grid: {
+          display: true,
+          zeroLineColor: axesColor,
+          color: axesColor,
+          borderDash: [3, 7],
+        },
+      },
+      ampl: {
+        type: "linear",
+        position: "right",
+        ticks: {
+          color: impulseColor,
+        },
+        title: {
+          display: true,
+          text: "Amplitude",
+          color: impulseColor,
+        },
+        grid: { display: false },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+      },
+      delay: {
+        type: "linear",
+        position: "right",
+        suggestedMin: -0.1,
+        suggestedMax: 0.1,
+        ticks: {
+          color: groupdelayColor,
+        },
+        title: {
+          display: true,
+          text: "Group delay, ms",
+          color: groupdelayColor,
+        },
+        grid: {
+          display: true,
+          zeroLineColor: axesColor,
+          color: axesColor,
+          borderDash: [1, 4],
+        },
+        beforeUpdate: function (scale: Scale) {
+          scale.options.display = scale.chart.data.datasets.some((_, i: number) => {
+            const meta = scale.chart.getDatasetMeta(i)
+            return meta.yAxisID === scale.id && !meta.hidden
+          })
+          return
+        },
+      },
+    }
+    const options: { [key: string]: unknown } = {
+      scales: scales,
+      plugins: {
+        zoom: zoomOptions,
+        legend: {
+          labels: {
+            color: textColor,
+          },
+        },
+      },
+      animation: {
+        duration: 500,
+      },
+    }
+    return options
+  }, [])
+
+  function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
+    if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
+      return a.samplerate - b.samplerate
+    if (a.channels !== b.channels && a.channels !== undefined && b.channels !== undefined)
+      return a.channels - b.channels
+    return 0
+  }
+
+  const sampleRateOptions = props.data.options
+    .sort(sortBySamplerateAndChannels)
+    .map((option) => <option key={option.name}>{option.name}</option>)
+  const selected = props.data.options.find(
+    (option) =>
+      (option.samplerate === undefined || option.samplerate === props.data.samplerate) &&
+      (option.channels === undefined || option.channels === props.data.channels),
+  )?.name
+  return (
+    <>
+      <div style={{ textAlign: "center" }}>
+        {props.data.options.length > 0 && (
+          <select
+            value={selected}
+            data-tooltip-html="Select filter file"
+            data-tooltip-id="main-tooltip"
+            onChange={(e) => props.onChange(e.target.value)}
+          >
+            {sampleRateOptions}
+          </select>
+        )}
+      </div>
+      <Scatter data={data} options={options} ref={chartRef} />
+      <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadPlot} />
+      <MdiButton icon={mdiTable} tooltip="Save plot data as csv" onClick={downloadData} />
+      {hasUnreadablePhase && (
+        <MdiButton
+          icon={hideUnreadablePhase ? mdiEyeOff : mdiEye}
+          tooltip={hideUnreadablePhase ? "Show unreliable phase" : "Hide unreliable phase"}
+          onClick={() => setHideUnreadablePhase(!hideUnreadablePhase)}
+        />
+      )}
+      <MdiButton icon={mdiHome} tooltip="Reset zoom and pan" onClick={resetView} />
+      <ReactTooltip />
+    </>
+  )
+}
