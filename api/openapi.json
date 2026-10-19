@@ -1550,6 +1550,16 @@
               "oversampling_factor"
             ],
             "properties": {
+              "sinc_len": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "interpolation": {
+                "$ref": "#/components/schemas/AsyncSincInterpolation"
+              },
+              "window": {
+                "$ref": "#/components/schemas/AsyncSincWindow"
+              },
               "f_cutoff": {
                 "oneOf": [
                   {
@@ -1560,19 +1570,9 @@
                   }
                 ]
               },
-              "interpolation": {
-                "$ref": "#/components/schemas/AsyncSincInterpolation"
-              },
               "oversampling_factor": {
                 "type": "integer",
                 "minimum": 0
-              },
-              "sinc_len": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "window": {
-                "$ref": "#/components/schemas/AsyncSincWindow"
               }
             }
           }
@@ -1610,20 +1610,20 @@
           "capability_sets"
         ],
         "properties": {
+          "name": {
+            "type": "string",
+            "description": "Backend-specific device identifier (e.g. `\"hw:0,0\"` for ALSA)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable device name."
+          },
           "capability_sets": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DeviceCapabilitySet"
             },
             "description": "Capability sets, one per access mode supported by the backend."
-          },
-          "description": {
-            "type": "string",
-            "description": "Human-readable device name."
-          },
-          "name": {
-            "type": "string",
-            "description": "Backend-specific device identifier (e.g. `\"hw:0,0\"` for ALSA)."
           }
         }
       },
@@ -1635,13 +1635,13 @@
           "description"
         ],
         "properties": {
-          "description": {
-            "type": "string",
-            "description": "A readable name."
-          },
           "name": {
             "type": "string",
             "description": "What a config calls it."
+          },
+          "description": {
+            "type": "string",
+            "description": "A readable name."
           }
         }
       },
@@ -2152,10 +2152,10 @@
               "freq_act": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "freq_target": {
+              "q_act": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "q_act": {
+              "freq_target": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
               "q_target": {
@@ -2174,6 +2174,7 @@
       },
       "CapabilityMode": {
         "type": "string",
+        "description": "The access mode a [`DeviceCapabilitySet`] was probed under.\n\n- `Unified`: the device uses a unified capability model (ALSA, CoreAudio, ASIO).\n- `Shared`: WASAPI shared-mode capabilities, derived from the mix format.\n- `Exclusive`: WASAPI exclusive-mode capabilities, probed independently.",
         "enum": [
           "Unified",
           "Shared",
@@ -2207,6 +2208,24 @@
                   }
                 ]
               },
+              "stop_on_inactive": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "link_volume_control": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "link_mute_control": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "labels": {
                 "type": [
                   "array",
@@ -2218,24 +2237,6 @@
                     "null"
                   ]
                 }
-              },
-              "link_mute_control": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "link_volume_control": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "stop_on_inactive": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
               },
               "type": {
                 "type": "string",
@@ -2252,31 +2253,13 @@
               "type"
             ],
             "properties": {
-              "autoconnect_to": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
               "channels": {
                 "type": "integer",
                 "minimum": 1
               },
-              "labels": {
+              "node_name": {
                 "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "loopback": {
-                "type": [
-                  "boolean",
+                  "string",
                   "null"
                 ]
               },
@@ -2292,9 +2275,27 @@
                   "null"
                 ]
               },
-              "node_name": {
+              "labels": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "autoconnect_to": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "loopback": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               },
@@ -2372,7 +2373,7 @@
           {
             "allOf": [
               {
-                "$ref": "#/components/schemas/CaptureDeviceCA"
+                "$ref": "#/components/schemas/CaptureDeviceCoreAudio"
               },
               {
                 "type": "object",
@@ -2444,6 +2445,9 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "signal": {
+                "$ref": "#/components/schemas/Signal"
+              },
               "labels": {
                 "type": [
                   "array",
@@ -2455,9 +2459,6 @@
                     "null"
                   ]
                 }
-              },
-              "signal": {
-                "$ref": "#/components/schemas/Signal"
               },
               "type": {
                 "type": "string",
@@ -2480,14 +2481,8 @@
                 "type": "integer",
                 "minimum": 1
               },
-              "control_port": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "int32",
-                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
-                "minimum": 0
+              "signal": {
+                "$ref": "#/components/schemas/Signal"
               },
               "labels": {
                 "type": [
@@ -2501,8 +2496,14 @@
                   ]
                 }
               },
-              "signal": {
-                "$ref": "#/components/schemas/Signal"
+              "control_port": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32",
+                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
+                "minimum": 0
               },
               "type": {
                 "type": "string",
@@ -2553,7 +2554,7 @@
         },
         "additionalProperties": false
       },
-      "CaptureDeviceCA": {
+      "CaptureDeviceCoreAudio": {
         "type": "object",
         "required": [
           "channels"
@@ -2606,32 +2607,13 @@
             "type": "integer",
             "minimum": 1
           },
-          "extra_samples": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
           "filename": {
             "type": "string"
           },
           "format": {
             "$ref": "#/components/schemas/BinarySampleFormat"
           },
-          "labels": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          },
-          "read_bytes": {
+          "extra_samples": {
             "type": [
               "integer",
               "null"
@@ -2644,6 +2626,25 @@
               "null"
             ],
             "minimum": 0
+          },
+          "read_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
         "additionalProperties": false
@@ -2659,29 +2660,10 @@
             "type": "integer",
             "minimum": 1
           },
-          "extra_samples": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
           "format": {
             "$ref": "#/components/schemas/BinarySampleFormat"
           },
-          "labels": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          },
-          "read_bytes": {
+          "extra_samples": {
             "type": [
               "integer",
               "null"
@@ -2694,6 +2676,25 @@
               "null"
             ],
             "minimum": 0
+          },
+          "read_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "labels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
         "additionalProperties": false
@@ -2714,12 +2715,6 @@
               "null"
             ]
           },
-          "exclusive": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "format": {
             "oneOf": [
               {
@@ -2728,6 +2723,24 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "loopback": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "polling": {
+            "type": [
+              "boolean",
+              "null"
             ]
           },
           "labels": {
@@ -2741,18 +2754,6 @@
                 "null"
               ]
             }
-          },
-          "loopback": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "polling": {
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         },
         "additionalProperties": false
@@ -2763,15 +2764,15 @@
           "filename"
         ],
         "properties": {
+          "filename": {
+            "type": "string"
+          },
           "extra_samples": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 0
-          },
-          "filename": {
-            "type": "string"
           },
           "labels": {
             "type": [
@@ -2818,19 +2819,6 @@
           "capture"
         ],
         "properties": {
-          "capture": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "description": "Labels for capture channels. Same structure as `playback`."
-          },
           "playback": {
             "type": [
               "array",
@@ -2843,6 +2831,19 @@
               ]
             },
             "description": "Labels for playback channels. `null` if no labels are configured. Each entry is a label\nstring, or `null` if that specific channel has no label."
+          },
+          "capture": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": "Labels for capture channels. Same structure as `playback`."
           }
         }
       },
@@ -2850,14 +2851,14 @@
         "type": "object",
         "description": "Parameters for the hard/soft-clipping filter.",
         "properties": {
-          "clip_limit": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
           "soft_clip": {
             "type": [
               "boolean",
               "null"
             ]
+          },
+          "clip_limit": {
+            "$ref": "#/components/schemas/FiniteF64"
           }
         },
         "additionalProperties": false
@@ -2866,19 +2867,19 @@
         "type": "object",
         "description": "Sensible parameters for a Conv filter reading a coefficient file, from the\nfile's extension. Empty when the extension says nothing.",
         "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ConvFileType"
+          },
           "format": {
             "$ref": "#/components/schemas/FileSampleFormat"
-          },
-          "read_bytes_lines": {
-            "type": "integer",
-            "minimum": 0
           },
           "skip_bytes_lines": {
             "type": "integer",
             "minimum": 0
           },
-          "type": {
-            "$ref": "#/components/schemas/ConvFileType"
+          "read_bytes_lines": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -2890,15 +2891,15 @@
           "format"
         ],
         "properties": {
-          "format": {
-            "$ref": "#/components/schemas/SampleWidth"
-          },
           "options": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FilterOption"
             },
             "description": "The variants of the file for other samplerates and channel counts."
+          },
+          "format": {
+            "$ref": "#/components/schemas/SampleWidth"
           }
         }
       },
@@ -2910,11 +2911,6 @@
           "channels"
         ],
         "properties": {
-          "channels": {
-            "type": "integer",
-            "description": "For the `$channels$` token in the file name.",
-            "minimum": 0
-          },
           "parameters": {
             "$ref": "#/components/schemas/ConvParameters",
             "description": "The parameters of a Raw or Wav Conv filter, with the file path as the\nGUI has it."
@@ -2922,6 +2918,11 @@
           "samplerate": {
             "type": "integer",
             "description": "For the `$samplerate$` token in the file name.",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "description": "For the `$channels$` token in the file name.",
             "minimum": 0
           }
         }
@@ -2939,38 +2940,9 @@
           "factor"
         ],
         "properties": {
-          "attack": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
-          "attack_unit": {
-            "$ref": "#/components/schemas/TimeUnit"
-          },
           "channels": {
             "type": "integer",
             "minimum": 0
-          },
-          "clip_limit": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FiniteF64"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "factor": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
-          "makeup_gain": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FiniteF64"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "monitor_channels": {
             "type": [
@@ -2992,11 +2964,33 @@
               "minimum": 0
             }
           },
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
           "release": {
             "$ref": "#/components/schemas/FiniteF64"
           },
           "release_unit": {
             "$ref": "#/components/schemas/TimeUnit"
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "factor": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "makeup_gain": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "soft_clip": {
             "type": [
@@ -3004,8 +2998,15 @@
               "null"
             ]
           },
-          "threshold": {
-            "$ref": "#/components/schemas/FiniteF64"
+          "clip_limit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -3046,20 +3047,14 @@
         "type": "object",
         "description": "Part of a config, as an import gives it: any of the sections, with any of\nthe device settings.",
         "properties": {
+          "title": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
           "devices": {
             "$ref": "#/components/schemas/DevicesFragment"
-          },
-          "filters": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Filter"
-            },
-            "propertyNames": {
-              "type": "string"
-            }
           },
           "mixers": {
             "type": "object",
@@ -3070,10 +3065,13 @@
               "type": "string"
             }
           },
-          "pipeline": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PipelineStep"
+          "filters": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Filter"
+            },
+            "propertyNames": {
+              "type": "string"
             }
           },
           "processors": {
@@ -3085,8 +3083,11 @@
               "type": "string"
             }
           },
-          "title": {
-            "type": "string"
+          "pipeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PipelineStep"
+            }
           }
         }
       },
@@ -3106,6 +3107,12 @@
           "devices"
         ],
         "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
             "type": [
               "string",
@@ -3114,18 +3121,6 @@
           },
           "devices": {
             "$ref": "#/components/schemas/Devices"
-          },
-          "filters": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Filter"
-            },
-            "propertyNames": {
-              "type": "string"
-            }
           },
           "mixers": {
             "type": [
@@ -3139,13 +3134,16 @@
               "type": "string"
             }
           },
-          "pipeline": {
+          "filters": {
             "type": [
-              "array",
+              "object",
               "null"
             ],
-            "items": {
-              "$ref": "#/components/schemas/PipelineStep"
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Filter"
+            },
+            "propertyNames": {
+              "type": "string"
             }
           },
           "processors": {
@@ -3160,11 +3158,14 @@
               "type": "string"
             }
           },
-          "title": {
+          "pipeline": {
             "type": [
-              "string",
+              "array",
               "null"
-            ]
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PipelineStep"
+            }
           }
         },
         "additionalProperties": false
@@ -3228,17 +3229,17 @@
               "type"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "Values"
-                ]
-              },
               "values": {
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/FiniteF64"
                 }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Values"
+                ]
               }
             }
           },
@@ -3284,14 +3285,14 @@
               }
             ]
           },
-          "read_bytes_lines": {
+          "skip_bytes_lines": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 0
           },
-          "skip_bytes_lines": {
+          "read_bytes_lines": {
             "type": [
               "integer",
               "null"
@@ -3308,15 +3309,15 @@
           "filename"
         ],
         "properties": {
+          "filename": {
+            "type": "string"
+          },
           "channel": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 0
-          },
-          "filename": {
-            "type": "string"
           }
         },
         "additionalProperties": false
@@ -3372,16 +3373,16 @@
           "capabilities"
         ],
         "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CapabilityMode",
+            "description": "The access mode these capabilities were probed under."
+          },
           "capabilities": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ChannelCapability"
             },
             "description": "Per-channel-count capability entries."
-          },
-          "mode": {
-            "$ref": "#/components/schemas/CapabilityMode",
-            "description": "The access mode these capabilities were probed under."
           }
         }
       },
@@ -3393,13 +3394,13 @@
           "capture"
         ],
         "properties": {
-          "capture": {
+          "playback": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "playback": {
+          "capture": {
             "type": "array",
             "items": {
               "type": "string"
@@ -3417,10 +3418,37 @@
           "playback"
         ],
         "properties": {
-          "adjust_interval_s": {
+          "samplerate": {
+            "type": "integer",
+            "description": "Output sample rate in Hz.",
+            "minimum": 1
+          },
+          "chunksize": {
+            "type": "integer",
+            "description": "Number of frames per processing chunk.",
+            "minimum": 1
+          },
+          "queuelimit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "silence_threshold": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/FiniteF32"
+                "$ref": "#/components/schemas/FiniteF64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "silence_timeout_s": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF64"
               },
               {
                 "type": "null"
@@ -3430,17 +3458,8 @@
           "capture": {
             "$ref": "#/components/schemas/CaptureDevice"
           },
-          "capture_samplerate": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1
-          },
-          "chunksize": {
-            "type": "integer",
-            "description": "Number of frames per processing chunk.",
-            "minimum": 1
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackDevice"
           },
           "enable_rate_adjust": {
             "type": [
@@ -3448,23 +3467,14 @@
               "null"
             ]
           },
-          "multithreaded": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "playback": {
-            "$ref": "#/components/schemas/PlaybackDevice"
-          },
-          "queuelimit": {
+          "target_level": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 0
           },
-          "rate_measure_interval_s": {
+          "adjust_interval_s": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -3484,30 +3494,12 @@
               }
             ]
           },
-          "samplerate": {
-            "type": "integer",
-            "description": "Output sample rate in Hz.",
+          "capture_samplerate": {
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 1
-          },
-          "silence_threshold": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FiniteF64"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "silence_timeout_s": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FiniteF64"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "stop_on_rate_change": {
             "type": [
@@ -3515,14 +3507,7 @@
               "null"
             ]
           },
-          "target_level": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "volume_limit": {
+          "rate_measure_interval_s": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -3540,6 +3525,22 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "volume_limit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FiniteF32"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "multithreaded": {
+            "type": [
+              "boolean",
+              "null"
             ]
           },
           "worker_threads": {
@@ -3556,13 +3557,7 @@
         "type": "object",
         "description": "Any of the device settings, since an import may have only some of them.\nThe fields of camilladsp-schema's `Devices`, every one optional and left\nout when the import does not have it.",
         "properties": {
-          "adjust_interval_s": {
-            "$ref": "#/components/schemas/FiniteF32"
-          },
-          "capture": {
-            "$ref": "#/components/schemas/CaptureDevice"
-          },
-          "capture_samplerate": {
+          "samplerate": {
             "type": "integer",
             "minimum": 1
           },
@@ -3570,28 +3565,9 @@
             "type": "integer",
             "minimum": 1
           },
-          "enable_rate_adjust": {
-            "type": "boolean"
-          },
-          "multithreaded": {
-            "type": "boolean"
-          },
-          "playback": {
-            "$ref": "#/components/schemas/PlaybackDevice"
-          },
           "queuelimit": {
             "type": "integer",
             "minimum": 0
-          },
-          "rate_measure_interval_s": {
-            "$ref": "#/components/schemas/FiniteF32"
-          },
-          "resampler": {
-            "$ref": "#/components/schemas/Resampler"
-          },
-          "samplerate": {
-            "type": "integer",
-            "minimum": 1
           },
           "silence_threshold": {
             "$ref": "#/components/schemas/FiniteF64"
@@ -3599,18 +3575,43 @@
           "silence_timeout_s": {
             "$ref": "#/components/schemas/FiniteF64"
           },
-          "stop_on_rate_change": {
+          "capture": {
+            "$ref": "#/components/schemas/CaptureDevice"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackDevice"
+          },
+          "enable_rate_adjust": {
             "type": "boolean"
           },
           "target_level": {
             "type": "integer",
             "minimum": 0
           },
-          "volume_limit": {
+          "adjust_interval_s": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "resampler": {
+            "$ref": "#/components/schemas/Resampler"
+          },
+          "capture_samplerate": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "stop_on_rate_change": {
+            "type": "boolean"
+          },
+          "rate_measure_interval_s": {
             "$ref": "#/components/schemas/FiniteF32"
           },
           "volume_ramp_time_ms": {
             "$ref": "#/components/schemas/FiniteF32"
+          },
+          "volume_limit": {
+            "$ref": "#/components/schemas/FiniteF32"
+          },
+          "multithreaded": {
+            "type": "boolean"
           },
           "worker_threads": {
             "type": "integer",
@@ -3681,12 +3682,12 @@
               "type"
             ],
             "properties": {
-              "amplitude": {
-                "$ref": "#/components/schemas/FiniteF64"
-              },
               "bits": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "amplitude": {
+                "$ref": "#/components/schemas/FiniteF64"
               },
               "type": {
                 "type": "string",
@@ -4086,14 +4087,14 @@
           "channels"
         ],
         "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text of the Equalizer APO config."
+          },
           "channels": {
             "type": "integer",
             "format": "int64",
             "description": "The number of channels, which decides what the channel names map to."
-          },
-          "text": {
-            "type": "string",
-            "description": "The text of the Equalizer APO config."
           }
         }
       },
@@ -4124,9 +4125,9 @@
           "heartbeat"
         ],
         "properties": {
-          "heartbeat": {
-            "$ref": "#/components/schemas/Heartbeat",
-            "description": "A `heartbeat` event, an empty object every two seconds."
+          "state": {
+            "$ref": "#/components/schemas/StateUpdate",
+            "description": "A `state` event: the processing state, first the current one, then one\nfor each change."
           },
           "levels": {
             "$ref": "#/components/schemas/VuLevels",
@@ -4136,9 +4137,9 @@
             "$ref": "#/components/schemas/SpectrumData",
             "description": "A `spectrum` event, one for each update from CamillaDSP."
           },
-          "state": {
-            "$ref": "#/components/schemas/StateUpdate",
-            "description": "A `state` event: the processing state, first the current one, then one\nfor each change."
+          "heartbeat": {
+            "$ref": "#/components/schemas/Heartbeat",
+            "description": "A `heartbeat` event, an empty object every two seconds."
           }
         }
       },
@@ -4150,14 +4151,14 @@
           "mute"
         ],
         "properties": {
-          "mute": {
-            "type": "boolean",
-            "description": "Whether the fader is muted."
-          },
           "volume": {
             "type": "number",
             "format": "float",
             "description": "Current volume in dB."
+          },
+          "mute": {
+            "type": "boolean",
+            "description": "Whether the fader is muted."
           }
         }
       },
@@ -4170,57 +4171,13 @@
           "size"
         ],
         "properties": {
-          "channels": {
-            "type": "integer",
-            "description": "For a wav file.",
-            "minimum": 0
-          },
-          "description": {
-            "type": "string",
-            "description": "For a config, its description."
-          },
-          "duration": {
-            "type": "number",
-            "format": "double",
-            "description": "For a wav file, in seconds."
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ValidationIssue"
-            },
-            "description": "For a config, its errors and warnings. For a text coefficient file,\nwhy CamillaDSP cannot read it."
+          "name": {
+            "type": "string"
           },
           "last_modified": {
             "type": "integer",
             "format": "int64",
             "description": "The time of the last change, in seconds since the epoch.",
-            "minimum": 0
-          },
-          "length": {
-            "type": "integer",
-            "format": "int64",
-            "description": "For a coefficient file, the number of values per channel.",
-            "minimum": 0
-          },
-          "loadable": {
-            "type": "boolean",
-            "description": "For a config, whether the GUI can load it, migrating it first if it is\nfor an older version. It may still have errors to fix in the GUI."
-          },
-          "name": {
-            "type": "string"
-          },
-          "outdated": {
-            "type": "boolean",
-            "description": "For a config, whether it is for an older CamillaDSP, and is migrated\nwhen loaded."
-          },
-          "sampleformat": {
-            "type": "string",
-            "description": "For a wav file, the CamillaDSP name of its sample format. For a text\ncoefficient file, `TEXT`."
-          },
-          "samplerate": {
-            "type": "integer",
-            "description": "For a wav file, in Hz.",
             "minimum": 0
           },
           "size": {
@@ -4233,14 +4190,58 @@
             "type": "string",
             "description": "For a config, its title."
           },
-          "valid": {
-            "type": "boolean",
-            "description": "For a config, whether it has no errors. For a wav file, and a wav or\ntext coefficient file, whether CamillaDSP can read it."
+          "description": {
+            "type": "string",
+            "description": "For a config, its description."
           },
           "version": {
             "type": "integer",
             "format": "int32",
             "description": "For a config, the CamillaDSP version it is for.",
+            "minimum": 0
+          },
+          "outdated": {
+            "type": "boolean",
+            "description": "For a config, whether it is for an older CamillaDSP, and is migrated\nwhen loaded."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "For a config, whether it has no errors. For a wav file, and a wav or\ntext coefficient file, whether CamillaDSP can read it."
+          },
+          "loadable": {
+            "type": "boolean",
+            "description": "For a config, whether the GUI can load it, migrating it first if it is\nfor an older version. It may still have errors to fix in the GUI."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "description": "For a config, its errors and warnings. For a text coefficient file,\nwhy CamillaDSP cannot read it."
+          },
+          "samplerate": {
+            "type": "integer",
+            "description": "For a wav file, in Hz.",
+            "minimum": 0
+          },
+          "channels": {
+            "type": "integer",
+            "description": "For a wav file.",
+            "minimum": 0
+          },
+          "sampleformat": {
+            "type": "string",
+            "description": "For a wav file, the CamillaDSP name of its sample format. For a text\ncoefficient file, `TEXT`."
+          },
+          "duration": {
+            "type": "number",
+            "format": "double",
+            "description": "For a wav file, in seconds."
+          },
+          "length": {
+            "type": "integer",
+            "format": "int64",
+            "description": "For a coefficient file, the number of values per channel.",
             "minimum": 0
           }
         }
@@ -4559,15 +4560,15 @@
           "name"
         ],
         "properties": {
-          "channels": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
           "name": {
             "type": "string"
           },
           "samplerate": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "channels": {
             "type": "integer",
             "format": "int64",
             "minimum": 0
@@ -4590,15 +4591,15 @@
           "coeff"
         ],
         "properties": {
-          "audiofile": {
-            "type": "string",
-            "description": "Left out when no audiofiles_dir is set."
+          "config": {
+            "type": "string"
           },
           "coeff": {
             "type": "string"
           },
-          "config": {
-            "type": "string"
+          "audiofile": {
+            "type": "string",
+            "description": "Left out when no audiofiles_dir is set."
           }
         }
       },
@@ -4660,14 +4661,14 @@
           "freq_z": {
             "$ref": "#/components/schemas/FiniteF64"
           },
+          "q_p": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
           "normalize_at_dc": {
             "type": [
               "boolean",
               "null"
             ]
-          },
-          "q_p": {
-            "$ref": "#/components/schemas/FiniteF64"
           }
         },
         "additionalProperties": false
@@ -4679,7 +4680,7 @@
           "gains"
         ],
         "properties": {
-          "freq_max": {
+          "freq_min": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -4689,7 +4690,7 @@
               }
             ]
           },
-          "freq_min": {
+          "freq_max": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -4724,17 +4725,6 @@
               "allow_absolute_paths"
             ],
             "properties": {
-              "allow_absolute_paths": {
-                "type": "boolean"
-              },
-              "audiofiles_supported": {
-                "type": "boolean",
-                "description": "Whether an audiofiles_dir is set."
-              },
-              "can_update_active_config": {
-                "type": "boolean",
-                "description": "Whether the backend can store which config file is the active one."
-              },
               "coeff_dir": {
                 "type": "string",
                 "description": "coeff_dir, relative to config_dir and ending with a separator, from\n`camillagui.yml` like the rest below."
@@ -4756,6 +4746,17 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "can_update_active_config": {
+                "type": "boolean",
+                "description": "Whether the backend can store which config file is the active one."
+              },
+              "audiofiles_supported": {
+                "type": "boolean",
+                "description": "Whether an audiofiles_dir is set."
+              },
+              "allow_absolute_paths": {
+                "type": "boolean"
               }
             }
           }
@@ -4766,27 +4767,20 @@
         "type": "object",
         "description": "`gui-config.yml`. What it leaves out gets the default, and keys it does\nnot know are ignored.",
         "properties": {
-          "apply_config_automatically": {
-            "type": "boolean",
-            "default": false
-          },
-          "custom_shortcuts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ShortcutSection"
-            },
-            "description": "`custom_shortcuts:` with nothing after it is null, and means none.",
-            "default": []
-          },
-          "hide_capture_device": {
-            "type": "boolean",
-            "default": false
+          "page_title": {
+            "type": "string",
+            "description": "The title of the browser tab.",
+            "default": "CamillaDSP"
           },
           "hide_capture_samplerate": {
             "type": "boolean",
             "default": false
           },
-          "hide_multithreading": {
+          "hide_silence": {
+            "type": "boolean",
+            "default": false
+          },
+          "hide_capture_device": {
             "type": "boolean",
             "default": false
           },
@@ -4798,51 +4792,17 @@
             "type": "boolean",
             "default": false
           },
-          "hide_silence": {
+          "hide_multithreading": {
             "type": "boolean",
             "default": false
           },
-          "page_title": {
-            "type": "string",
-            "description": "The title of the browser tab.",
-            "default": "CamillaDSP"
+          "apply_config_automatically": {
+            "type": "boolean",
+            "default": false
           },
           "save_config_automatically": {
             "type": "boolean",
             "default": false
-          },
-          "spectrum_max_db": {
-            "type": "number",
-            "format": "double",
-            "default": 0.0
-          },
-          "spectrum_max_freq": {
-            "type": "number",
-            "format": "double",
-            "description": "In Hz.",
-            "default": 20000.0
-          },
-          "spectrum_max_rate": {
-            "type": "number",
-            "format": "float",
-            "description": "The most spectrum updates per second.",
-            "default": 30.0
-          },
-          "spectrum_min_db": {
-            "type": "number",
-            "format": "double",
-            "default": -100.0
-          },
-          "spectrum_min_freq": {
-            "type": "number",
-            "format": "double",
-            "description": "In Hz.",
-            "default": 20.0
-          },
-          "spectrum_n_bins": {
-            "type": "integer",
-            "default": 100,
-            "minimum": 0
           },
           "status_update_interval": {
             "type": "integer",
@@ -4851,17 +4811,58 @@
             "default": 500,
             "minimum": 0
           },
+          "volume_range": {
+            "type": "number",
+            "format": "double",
+            "description": "The range of the volume sliders, in dB.",
+            "default": 50.0
+          },
           "volume_max": {
             "type": "integer",
             "format": "int32",
             "description": "The top of the volume sliders, in dB.",
             "default": 0
           },
-          "volume_range": {
+          "spectrum_min_freq": {
             "type": "number",
             "format": "double",
-            "description": "The range of the volume sliders, in dB.",
-            "default": 50.0
+            "description": "In Hz.",
+            "default": 20.0
+          },
+          "spectrum_max_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "In Hz.",
+            "default": 20000.0
+          },
+          "spectrum_n_bins": {
+            "type": "integer",
+            "default": 100,
+            "minimum": 0
+          },
+          "spectrum_min_db": {
+            "type": "number",
+            "format": "double",
+            "default": -100.0
+          },
+          "spectrum_max_db": {
+            "type": "number",
+            "format": "double",
+            "default": 0.0
+          },
+          "spectrum_max_rate": {
+            "type": "number",
+            "format": "float",
+            "description": "The most spectrum updates per second.",
+            "default": 30.0
+          },
+          "custom_shortcuts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShortcutSection"
+            },
+            "description": "`custom_shortcuts:` with nothing after it is null, and means none.",
+            "default": []
           }
         }
       },
@@ -4890,14 +4891,14 @@
           "release_unit"
         ],
         "properties": {
+          "limit": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
           "attack": {
             "$ref": "#/components/schemas/FiniteF64"
           },
           "attack_unit": {
             "$ref": "#/components/schemas/TimeUnit"
-          },
-          "limit": {
-            "$ref": "#/components/schemas/FiniteF64"
           },
           "release": {
             "$ref": "#/components/schemas/FiniteF64"
@@ -4919,24 +4920,9 @@
           "release_unit"
         ],
         "properties": {
-          "attack": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
-          "attack_unit": {
-            "$ref": "#/components/schemas/TimeUnit"
-          },
           "channels": {
             "type": "integer",
             "minimum": 0
-          },
-          "delay_processed_only": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "limit": {
-            "$ref": "#/components/schemas/FiniteF64"
           },
           "monitor_channels": {
             "type": [
@@ -4958,11 +4944,26 @@
               "minimum": 0
             }
           },
+          "limit": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
           "release": {
             "$ref": "#/components/schemas/FiniteF64"
           },
           "release_unit": {
             "$ref": "#/components/schemas/TimeUnit"
+          },
+          "delay_processed_only": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -4985,23 +4986,20 @@
           "reference_level"
         ],
         "properties": {
-          "attenuate_mid": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "reference_level": {
+            "$ref": "#/components/schemas/FiniteF32"
           },
-          "fader": {
+          "high_boost": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/LoudnessFader"
+                "$ref": "#/components/schemas/FiniteF32"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "high_boost": {
+          "low_boost": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -5021,7 +5019,7 @@
               }
             ]
           },
-          "high_q": {
+          "low_freq": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF64"
@@ -5031,17 +5029,7 @@
               }
             ]
           },
-          "low_boost": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/FiniteF32"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "low_freq": {
+          "high_q": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF64"
@@ -5061,8 +5049,21 @@
               }
             ]
           },
-          "reference_level": {
-            "$ref": "#/components/schemas/FiniteF32"
+          "fader": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoudnessFader"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attenuate_mid": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -5075,14 +5076,20 @@
           "mapping"
         ],
         "properties": {
-          "channels": {
-            "$ref": "#/components/schemas/MixerChannels"
-          },
           "description": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "channels": {
+            "$ref": "#/components/schemas/MixerChannels"
+          },
+          "mapping": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MixerMapping"
+            }
           },
           "labels": {
             "type": [
@@ -5094,12 +5101,6 @@
                 "string",
                 "null"
               ]
-            }
-          },
-          "mapping": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MixerMapping"
             }
           }
         },
@@ -5136,17 +5137,17 @@
             "type": "integer",
             "minimum": 0
           },
-          "mute": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "sources": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MixerSource"
             }
+          },
+          "mute": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -5210,15 +5211,6 @@
           "attenuation"
         ],
         "properties": {
-          "attack": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
-          "attack_unit": {
-            "$ref": "#/components/schemas/TimeUnit"
-          },
-          "attenuation": {
-            "$ref": "#/components/schemas/FiniteF64"
-          },
           "channels": {
             "type": "integer",
             "minimum": 0
@@ -5243,6 +5235,12 @@
               "minimum": 0
             }
           },
+          "attack": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attack_unit": {
+            "$ref": "#/components/schemas/TimeUnit"
+          },
           "release": {
             "$ref": "#/components/schemas/FiniteF64"
           },
@@ -5250,6 +5248,9 @@
             "$ref": "#/components/schemas/TimeUnit"
           },
           "threshold": {
+            "$ref": "#/components/schemas/FiniteF64"
+          },
+          "attenuation": {
             "$ref": "#/components/schemas/FiniteF64"
           }
         },
@@ -5279,10 +5280,10 @@
               "bandwidth"
             ],
             "properties": {
-              "bandwidth": {
+              "freq": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "freq": {
+              "bandwidth": {
                 "$ref": "#/components/schemas/FiniteF64"
               }
             }
@@ -5315,10 +5316,10 @@
               "freq": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "gain": {
+              "q": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "q": {
+              "gain": {
                 "$ref": "#/components/schemas/FiniteF64"
               }
             }
@@ -5331,10 +5332,10 @@
               "gain"
             ],
             "properties": {
-              "bandwidth": {
+              "freq": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "freq": {
+              "bandwidth": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
               "gain": {
@@ -5357,10 +5358,10 @@
           "freq": {
             "$ref": "#/components/schemas/FiniteF64"
           },
-          "gain": {
+          "q": {
             "$ref": "#/components/schemas/FiniteF64"
           },
-          "q": {
+          "gain": {
             "$ref": "#/components/schemas/FiniteF64"
           }
         },
@@ -5441,12 +5442,6 @@
           "names"
         ],
         "properties": {
-          "bypassed": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "channels": {
             "type": [
               "array",
@@ -5457,17 +5452,23 @@
               "minimum": 0
             }
           },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "description": {
             "type": [
               "string",
               "null"
             ]
           },
-          "names": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -5479,11 +5480,8 @@
           "name"
         ],
         "properties": {
-          "bypassed": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "name": {
+            "type": "string"
           },
           "description": {
             "type": [
@@ -5491,8 +5489,11 @@
               "null"
             ]
           },
-          "name": {
-            "type": "string"
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -5504,11 +5505,8 @@
           "name"
         ],
         "properties": {
-          "bypassed": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+          "name": {
+            "type": "string"
           },
           "description": {
             "type": [
@@ -5516,8 +5514,11 @@
               "null"
             ]
           },
-          "name": {
-            "type": "string"
+          "bypassed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
@@ -5564,15 +5565,15 @@
               "type"
             ],
             "properties": {
-              "autoconnect_to": {
+              "channels": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "node_name": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "channels": {
-                "type": "integer",
-                "minimum": 1
               },
               "node_description": {
                 "type": [
@@ -5586,7 +5587,7 @@
                   "null"
                 ]
               },
-              "node_name": {
+              "autoconnect_to": {
                 "type": [
                   "string",
                   "null"
@@ -5619,10 +5620,10 @@
               "format": {
                 "$ref": "#/components/schemas/BinarySampleFormat"
               },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "File"
+              "wav_header": {
+                "type": [
+                  "boolean",
+                  "null"
                 ]
               },
               "use_rf64": {
@@ -5632,10 +5633,10 @@
                 ],
                 "description": "Write an RF64 header so the file can grow past the 4 GB limit of plain\nwav. Only applies when `wav_header` is true; ignored otherwise."
               },
-              "wav_header": {
-                "type": [
-                  "boolean",
-                  "null"
+              "type": {
+                "type": "string",
+                "enum": [
+                  "File"
                 ]
               }
             }
@@ -5655,16 +5656,16 @@
               "format": {
                 "$ref": "#/components/schemas/BinarySampleFormat"
               },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "Stdout"
-                ]
-              },
               "wav_header": {
                 "type": [
                   "boolean",
                   "null"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Stdout"
                 ]
               }
             }
@@ -5672,7 +5673,7 @@
           {
             "allOf": [
               {
-                "$ref": "#/components/schemas/PlaybackDeviceCA"
+                "$ref": "#/components/schemas/PlaybackDeviceCoreAudio"
               },
               {
                 "type": "object",
@@ -5744,15 +5745,6 @@
                 "type": "integer",
                 "minimum": 1
               },
-              "control_port": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "int32",
-                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
-                "minimum": 0
-              },
               "format": {
                 "oneOf": [
                   {
@@ -5763,6 +5755,15 @@
                     "type": "null"
                   }
                 ]
+              },
+              "control_port": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int32",
+                "description": "Port of the test control socket, see `src/dummy_backend/control.rs`.",
+                "minimum": 0
               },
               "type": {
                 "type": "string",
@@ -5801,7 +5802,7 @@
         },
         "additionalProperties": false
       },
-      "PlaybackDeviceCA": {
+      "PlaybackDeviceCoreAudio": {
         "type": "object",
         "required": [
           "channels"
@@ -5817,12 +5818,6 @@
               "null"
             ]
           },
-          "exclusive": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "format": {
             "oneOf": [
               {
@@ -5831,6 +5826,12 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
             ]
           }
         },
@@ -5852,12 +5853,6 @@
               "null"
             ]
           },
-          "exclusive": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
           "format": {
             "oneOf": [
               {
@@ -5866,6 +5861,12 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "exclusive": {
+            "type": [
+              "boolean",
+              "null"
             ]
           },
           "polling": {
@@ -5879,7 +5880,7 @@
       },
       "ProcessingState": {
         "type": "string",
-        "description": "The state of the processing, as reported by [`WsCommand::GetState`].",
+        "description": "The state of the processing, as reported by [`WsCommand::GetState`].\n\n- `Running`: processing is running normally.\n- `Paused`: processing is paused because the input signal is silent.\n- `Inactive`: processing is off and devices are closed, waiting for a new configuration.\n- `Starting`: opening devices and starting up processing with a new configuration.\n- `Stalled`: the capture device is not providing data, so processing is stalled.",
         "enum": [
           "Running",
           "Paused",
@@ -6001,8 +6002,9 @@
           "attenuation"
         ],
         "properties": {
-          "attenuation": {
-            "$ref": "#/components/schemas/FiniteF64"
+          "channels": {
+            "type": "integer",
+            "minimum": 0
           },
           "channel_a": {
             "type": "integer",
@@ -6012,21 +6014,20 @@
             "type": "integer",
             "minimum": 0
           },
-          "channels": {
-            "type": "integer",
-            "minimum": 0
-          },
           "delay": {
             "$ref": "#/components/schemas/FiniteF64"
-          },
-          "delay_unit": {
-            "$ref": "#/components/schemas/DelayUnit"
           },
           "subsample_delay": {
             "type": [
               "boolean",
               "null"
             ]
+          },
+          "delay_unit": {
+            "$ref": "#/components/schemas/DelayUnit"
+          },
+          "attenuation": {
+            "$ref": "#/components/schemas/FiniteF64"
           }
         },
         "additionalProperties": false
@@ -6141,17 +6142,17 @@
           "formats"
         ],
         "properties": {
+          "samplerate": {
+            "type": "integer",
+            "description": "Sample rate in Hz.",
+            "minimum": 0
+          },
           "formats": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "description": "Names of the supported sample formats at this rate."
-          },
-          "samplerate": {
-            "type": "integer",
-            "description": "Sample rate in Hz.",
-            "minimum": 0
           }
         }
       },
@@ -6185,10 +6186,10 @@
               "freq": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "gain": {
+              "q": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "q": {
+              "gain": {
                 "$ref": "#/components/schemas/FiniteF64"
               }
             }
@@ -6204,10 +6205,10 @@
               "freq": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "gain": {
+              "slope": {
                 "$ref": "#/components/schemas/FiniteF64"
               },
-              "slope": {
+              "gain": {
                 "$ref": "#/components/schemas/FiniteF64"
               }
             }
@@ -6223,18 +6224,18 @@
           "config_elements"
         ],
         "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
           "config_elements": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConfigElement"
             },
             "description": "The values it controls. The control shows the first one, the others\nfollow it."
-          },
-          "description": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
           },
           "range_from": {
             "type": "number",
@@ -6265,10 +6266,10 @@
           "shortcuts"
         ],
         "properties": {
-          "description": {
+          "section": {
             "type": "string"
           },
-          "section": {
+          "description": {
             "type": "string"
           },
           "shortcuts": {
@@ -6400,6 +6401,10 @@
           "n_bins"
         ],
         "properties": {
+          "side": {
+            "$ref": "#/components/schemas/SpectrumSide",
+            "description": "Which side to analyze: `\"capture\"` or `\"playback\"`."
+          },
           "channel": {
             "type": [
               "integer",
@@ -6408,10 +6413,20 @@
             "description": "Channel to analyze. `null` averages all channels; an integer selects a single channel (zero-based).",
             "minimum": 0
           },
+          "min_freq": {
+            "type": "number",
+            "format": "double",
+            "description": "Lower edge of the frequency range in Hz. Must be > 0."
+          },
           "max_freq": {
             "type": "number",
             "format": "double",
             "description": "Upper edge of the frequency range in Hz. Must be > `min_freq`."
+          },
+          "n_bins": {
+            "type": "integer",
+            "description": "Number of output bins. Must be ≥ 2.",
+            "minimum": 0
           },
           "max_rate": {
             "type": [
@@ -6419,21 +6434,7 @@
               "null"
             ],
             "format": "float",
-            "description": "Maximum push rate in Hz. `None` = natural rate (one push per 50 % overlap hop)."
-          },
-          "min_freq": {
-            "type": "number",
-            "format": "double",
-            "description": "Lower edge of the frequency range in Hz. Must be > 0."
-          },
-          "n_bins": {
-            "type": "integer",
-            "description": "Number of output bins. Must be ≥ 2.",
-            "minimum": 0
-          },
-          "side": {
-            "$ref": "#/components/schemas/SpectrumSide",
-            "description": "Which side to analyze: `\"capture\"` or `\"playback\"`."
+            "description": "Maximum push rate in Hz. Leave out or set `null` for the natural rate (one push per 50 %\noverlap hop)."
           }
         }
       },
@@ -6448,15 +6449,15 @@
           "config": {
             "$ref": "#/components/schemas/Configuration"
           },
+          "source": {
+            "$ref": "#/components/schemas/ConfigSource"
+          },
           "config_file_name": {
             "type": [
               "string",
               "null"
             ],
             "description": "The file the config came from, null if it is not known."
-          },
-          "source": {
-            "$ref": "#/components/schemas/ConfigSource"
           }
         }
       },
@@ -6468,7 +6469,8 @@
         ],
         "properties": {
           "state": {
-            "$ref": "#/components/schemas/ProcessingState"
+            "$ref": "#/components/schemas/ProcessingState",
+            "description": "The new processing state."
           },
           "stop_reason": {
             "oneOf": [
@@ -6501,25 +6503,6 @@
           "description"
         ],
         "properties": {
-          "backend_version": {
-            "type": "string",
-            "description": "The version of this backend."
-          },
-          "bufferlevel": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0
-          },
-          "capturerate": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "description": "The capture rate in Hz, rounded to the nearest standard rate. Null when\nit is not within 4% of one.",
-            "minimum": 0
-          },
           "cdsp_online": {
             "type": "boolean",
             "description": "Whether CamillaDSP answered the last time it was asked."
@@ -6531,21 +6514,38 @@
             ],
             "description": "CamillaDSP's version, null while it is offline."
           },
-          "clippedsamples": {
+          "backend_version": {
+            "type": "string",
+            "description": "The version of this backend."
+          },
+          "capturerate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The capture rate in Hz, rounded to the nearest standard rate. Null when\nit is not within 4% of one.",
+            "minimum": 0
+          },
+          "rateadjust": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "bufferlevel": {
             "type": [
               "integer",
               "null"
             ],
             "minimum": 0
           },
-          "description": {
+          "clippedsamples": {
             "type": [
-              "string",
+              "integer",
               "null"
-            ]
-          },
-          "labels": {
-            "$ref": "#/components/schemas/ChannelLabels"
+            ],
+            "minimum": 0
           },
           "processingload": {
             "type": [
@@ -6555,13 +6555,6 @@
             "format": "float",
             "description": "In percent."
           },
-          "rateadjust": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "float"
-          },
           "resamplerload": {
             "type": [
               "number",
@@ -6570,7 +6563,16 @@
             "format": "float",
             "description": "In percent."
           },
+          "labels": {
+            "$ref": "#/components/schemas/ChannelLabels"
+          },
           "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
             "type": [
               "string",
               "null"
@@ -6699,15 +6701,15 @@
           "message"
         ],
         "properties": {
-          "message": {
-            "type": "string"
-          },
           "path": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PathElement"
             },
             "description": "Where in the config, as keys and list indices from the top. Empty for\nthe config as a whole."
+          },
+          "message": {
+            "type": "string"
           }
         }
       },
@@ -6728,10 +6730,7 @@
           "fader"
         ],
         "properties": {
-          "fader": {
-            "$ref": "#/components/schemas/VolumeFader"
-          },
-          "limit": {
+          "ramp_time_ms": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -6741,7 +6740,10 @@
               }
             ]
           },
-          "ramp_time_ms": {
+          "fader": {
+            "$ref": "#/components/schemas/VolumeFader"
+          },
+          "limit": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FiniteF32"
@@ -6764,33 +6766,37 @@
           "capture_peak"
         ],
         "properties": {
-          "capture_peak": {
+          "playback_rms": {
             "type": "array",
             "items": {
               "type": "number",
               "format": "float"
-            }
-          },
-          "capture_rms": {
-            "type": "array",
-            "items": {
-              "type": "number",
-              "format": "float"
-            }
+            },
+            "description": "Smoothed RMS level per playback channel in dB."
           },
           "playback_peak": {
             "type": "array",
             "items": {
               "type": "number",
               "format": "float"
-            }
+            },
+            "description": "Smoothed peak level per playback channel in dB."
           },
-          "playback_rms": {
+          "capture_rms": {
             "type": "array",
             "items": {
               "type": "number",
               "format": "float"
-            }
+            },
+            "description": "Smoothed RMS level per capture channel in dB."
+          },
+          "capture_peak": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Smoothed peak level per capture channel in dB."
           }
         }
       },
@@ -6817,17 +6823,20 @@
           "bytesperframe"
         ],
         "properties": {
+          "dataoffset": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "datalength": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sampleformat": {
+            "type": "string"
+          },
           "bitspersample": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "byterate": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "bytesperframe": {
             "type": "integer",
             "format": "int32",
             "minimum": 0
@@ -6836,21 +6845,18 @@
             "type": "integer",
             "minimum": 0
           },
-          "datalength": {
+          "byterate": {
             "type": "integer",
-            "format": "int64",
+            "format": "int32",
             "minimum": 0
-          },
-          "dataoffset": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
-          "sampleformat": {
-            "type": "string"
           },
           "samplerate": {
             "type": "integer",
+            "minimum": 0
+          },
+          "bytesperframe": {
+            "type": "integer",
+            "format": "int32",
             "minimum": 0
           }
         }

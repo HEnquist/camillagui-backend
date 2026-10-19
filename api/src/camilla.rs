@@ -14,9 +14,52 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
-pub type Ws = WebSocketStream<MaybeTlsStream<TcpStream>>;
+type Stream = WebSocketStream<MaybeTlsStream<TcpStream>>;
+
+/// A websocket to CamillaDSP that closes with a handshake when it is dropped.
+/// Dropping the stream alone resets the connection, which CamillaDSP logs as a
+/// lost connection. Sockets are dropped all the time: every subscription when a
+/// GUI tab goes away, and the shared socket when a request is dropped halfway.
+pub struct Ws(Option<Stream>);
+
+impl std::ops::Deref for Ws {
+    type Target = Stream;
+
+    fn deref(&self) -> &Stream {
+        self.0.as_ref().expect("only taken when dropped")
+    }
+}
+
+impl std::ops::DerefMut for Ws {
+    fn deref_mut(&mut self) -> &mut Stream {
+        self.0.as_mut().expect("only taken when dropped")
+    }
+}
+
+impl Drop for Ws {
+    /// Send a Close and wait for CamillaDSP's Close in answer, on a task of its
+    /// own, so that whatever dropped the socket does not wait. Leaving before
+    /// the answer would reset the connection while CamillaDSP is sending it.
+    fn drop(&mut self) {
+        let (Some(mut ws), Ok(runtime)) = (self.0.take(), tokio::runtime::Handle::try_current())
+        else {
+            return;
+        };
+        runtime.spawn(async move {
+            let _ = tokio::time::timeout(CLOSE_TIMEOUT, async {
+                if ws.close(None).await.is_ok() {
+                    while let Some(Ok(_)) = ws.next().await {}
+                }
+            })
+            .await;
+        });
+    }
+}
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
+/// How long a dropped socket waits for CamillaDSP to answer its Close, which
+/// it normally does within milliseconds, subscribed or not.
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 const REPLY_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long requests fail at once after a failed connect, before the next
 /// one tries again.
@@ -91,7 +134,7 @@ pub fn check(result: WsResult) -> Result<(), DspError> {
 
 pub async fn connect(url: &str) -> Result<Ws, DspError> {
     match tokio::time::timeout(CONNECT_TIMEOUT, tokio_tungstenite::connect_async(url)).await {
-        Ok(Ok((ws, _))) => Ok(ws),
+        Ok(Ok((ws, _))) => Ok(Ws(Some(ws))),
         Ok(Err(err)) => Err(io_error(err)),
         Err(_) => Err(DspError::Io(
             "Timed out connecting to CamillaDSP".to_string(),
