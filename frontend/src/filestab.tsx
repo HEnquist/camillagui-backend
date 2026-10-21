@@ -475,7 +475,7 @@ class FileTable extends Component<
         accessorFn: (row) => row.length ?? null,
         cell: ({ row }) => row.original.length ?? "",
         sortingFn: sortByRows((a, b) => (a.length ?? -1) - (b.length ?? -1)),
-        meta: { width: "80px", compact: true, right: true },
+        meta: { width: "80px", compact: true, right: true, optional: true },
       })
     } else if (this.type === "config") {
       columns.push({
@@ -582,6 +582,7 @@ class FileTable extends Component<
         meta: {
           maxWidth: "150px",
           compact: true,
+          optional: true,
         },
       })
       columns.push({
@@ -606,6 +607,7 @@ class FileTable extends Component<
         meta: {
           width: "60px",
           compact: true,
+          optional: true,
         },
       })
     }
@@ -617,6 +619,7 @@ class FileTable extends Component<
       meta: {
         width: "110px",
         compact: true,
+        optional: true,
       },
     })
     columns.push({
@@ -627,6 +630,7 @@ class FileTable extends Component<
         width: "60px",
         compact: true,
         right: true,
+        optional: true,
       },
     })
     return (

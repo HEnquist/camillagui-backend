@@ -505,7 +505,7 @@ function FilterStepFilter(props: {
   )
   return (
     <DndSortable isDragging={isDragging} canDrop={canDrop} drag={drag} preview={preview} drop={drop}>
-      <div className={`horizontally-spaced-content`}>
+      <div className="horizontally-spaced-content" style={{ flex: 1, minWidth: 0 }}>
         <DragHandle drag={drag} tooltip="Drag filter to change order" />
         <EnumInput
           value={name}

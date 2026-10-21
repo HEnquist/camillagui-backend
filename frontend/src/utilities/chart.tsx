@@ -16,7 +16,7 @@ import zoomPlugin from "chartjs-plugin-zoom"
 import { Scatter } from "react-chartjs-2"
 import { Tooltip as ReactTooltip } from "react-tooltip"
 import ReactjsPopup from "reactjs-popup"
-import { CloseButton, cssStyles, MdiButton } from "./ui-components"
+import { CloseButton, cssStyles, MdiButton, mediaMatches, useMediaQuery } from "./ui-components"
 import type { Schemas } from "../api/client"
 
 ChartJS.register(LinearScale, LogarithmicScale, PointElement, LineElement, Tooltip, Legend, zoomPlugin)
@@ -31,6 +31,28 @@ export function ChartPopup(props: {
   onVolumeChange?: (volume: number) => void
 }) {
   const { volume, onVolumeChange } = props
+  // A phone, either way up, gets the whole screen and a chart as tall as fits
+  const fullScreen = useMediaQuery("(max-width: 600px), (max-height: 500px)")
+  const slider = volume !== undefined && onVolumeChange !== undefined && (
+    <PlotVolumeSlider volume={volume} onChange={onVolumeChange} />
+  )
+  if (fullScreen)
+    return (
+      <ReactjsPopup
+        open={props.open}
+        onClose={props.onClose}
+        contentStyle={{ width: "100vw", height: "calc(100dvh - 16px)" }}
+      >
+        <div className="chart-popup-full">
+          <div className="chart-popup-header">
+            <span>{props.data.name}</span>
+            <CloseButton onClick={props.onClose} />
+          </div>
+          <Chart onChange={props.onChange} data={props.data} fill={true} touchZoom={true} />
+          {slider}
+        </div>
+      </ReactjsPopup>
+    )
   return (
     // As wide as the chart can be while its height, half its width, fits with the title and buttons
     <ReactjsPopup
@@ -40,10 +62,8 @@ export function ChartPopup(props: {
     >
       <CloseButton onClick={props.onClose} />
       <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
-      <Chart onChange={props.onChange} data={props.data} />
-      {volume !== undefined && onVolumeChange !== undefined && (
-        <PlotVolumeSlider volume={volume} onChange={onVolumeChange} />
-      )}
+      <Chart onChange={props.onChange} data={props.data} touchZoom={true} />
+      {slider}
     </ReactjsPopup>
   )
 }
@@ -98,7 +118,22 @@ export interface ChartContent {
 /** A variant of a coefficient file, for another samplerate or channel count. */
 export type FilterOption = Schemas["FilterOption"]
 
-export function Chart(props: { data: ChartContent; onChange: (item: string) => void }) {
+/**
+ * A plot of a filter's response.
+ *
+ * `fill` makes it take the height of its parent, a flex column, rather than half its width.
+ * `touchZoom` lets a finger pan and pinch it, for a plot in a popup. Elsewhere that only works
+ * where there is also a mouse or a trackpad, since a plot that took touch drags would stop the
+ * page from scrolling under it.
+ */
+export function Chart(props: {
+  data: ChartContent
+  onChange: (item: string) => void
+  fill?: boolean
+  touchZoom?: boolean
+}) {
+  const { fill } = props
+  const touchZoom = props.touchZoom === true || mediaMatches("(any-pointer: fine)")
   const chartRef = useRef<ChartJS<"scatter"> & { resetZoom: () => void }>(null)
   const [hideUnreadablePhase, setHideUnreadablePhase] = useState(true)
   const downloadPlot = useCallback(() => {
@@ -249,7 +284,7 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
           enabled: true,
         },
         pinch: {
-          enabled: true,
+          enabled: touchZoom,
         },
         drag: {
           enabled: false,
@@ -258,7 +293,7 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
         overScaleMode: "xy",
       },
       pan: {
-        enabled: true,
+        enabled: touchZoom,
         mode: "xy",
         threshold: 3,
         overScaleMode: "xy",
@@ -483,6 +518,7 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
     }
     const options: { [key: string]: unknown } = {
       scales: scales,
+      maintainAspectRatio: !fill,
       plugins: {
         zoom: zoomOptions,
         legend: {
@@ -496,7 +532,7 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
       },
     }
     return options
-  }, [])
+  }, [fill, touchZoom])
 
   function sortBySamplerateAndChannels(a: FilterOption, b: FilterOption) {
     if (a.samplerate !== b.samplerate && a.samplerate !== undefined && b.samplerate !== undefined)
@@ -528,17 +564,25 @@ export function Chart(props: { data: ChartContent; onChange: (item: string) => v
           </select>
         )}
       </div>
-      <Scatter data={data} options={options} ref={chartRef} />
-      <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadPlot} />
-      <MdiButton icon={mdiTable} tooltip="Save plot data as csv" onClick={downloadData} />
-      {hasUnreadablePhase && (
-        <MdiButton
-          icon={hideUnreadablePhase ? mdiEyeOff : mdiEye}
-          tooltip={hideUnreadablePhase ? "Show unreliable phase" : "Hide unreliable phase"}
-          onClick={() => setHideUnreadablePhase(!hideUnreadablePhase)}
-        />
+      {fill ? (
+        <div className="chart-fill">
+          <Scatter data={data} options={options} ref={chartRef} />
+        </div>
+      ) : (
+        <Scatter data={data} options={options} ref={chartRef} />
       )}
-      <MdiButton icon={mdiHome} tooltip="Reset zoom and pan" onClick={resetView} />
+      <div>
+        <MdiButton icon={mdiImage} tooltip="Save plot as image" onClick={downloadPlot} />
+        <MdiButton icon={mdiTable} tooltip="Save plot data as csv" onClick={downloadData} />
+        {hasUnreadablePhase && (
+          <MdiButton
+            icon={hideUnreadablePhase ? mdiEyeOff : mdiEye}
+            tooltip={hideUnreadablePhase ? "Show unreliable phase" : "Hide unreliable phase"}
+            onClick={() => setHideUnreadablePhase(!hideUnreadablePhase)}
+          />
+        )}
+        <MdiButton icon={mdiHome} tooltip="Reset zoom and pan" onClick={resetView} />
+      </div>
       <ReactTooltip />
     </>
   )

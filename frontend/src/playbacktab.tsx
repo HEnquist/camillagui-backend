@@ -330,13 +330,13 @@ class WavFileTable extends Component<
         accessorFn: (row) => row.samplerate ?? null,
         cell: ({ row }) => row.original.samplerate ?? "",
         sortingFn: sortByRows((a, b) => (a.samplerate ?? -1) - (b.samplerate ?? -1)),
-        meta: { width: "80px", compact: true, right: true },
+        meta: { width: "80px", compact: true, right: true, optional: true },
       },
       {
         id: "sampleformat",
         header: "Format",
         accessorFn: (row) => row.sampleformat ?? "",
-        meta: { width: "80px", compact: true },
+        meta: { width: "80px", compact: true, optional: true },
       },
       {
         id: "channels",
@@ -351,7 +351,7 @@ class WavFileTable extends Component<
         header: "Date",
         accessorFn: (row) => row.formattedDate,
         sortingFn: sortByRows(fileDateSort),
-        meta: { width: "110px", compact: true },
+        meta: { width: "110px", compact: true, optional: true },
       },
     ]
 

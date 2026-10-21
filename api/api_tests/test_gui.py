@@ -162,9 +162,17 @@ STICKING_OUT = """() => {
 }"""
 
 
-def test_no_tab_is_wider_than_the_window(page, server):
+@pytest.mark.parametrize("touch", [False, True], ids=["mouse", "touch"])
+def test_no_tab_is_wider_than_the_window(browser, server, touch):
     """At any window width, down to a phone's. Catches a fixed width that
-    sneaks back in, which the tests at a desktop size would not notice."""
+    sneaks back in, which the tests at a desktop size would not notice. With a
+    touch screen too, where buttons and inputs are larger."""
+    context = browser.new_context(is_mobile=touch, has_touch=touch)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(error))
+    # A phone opens in the compact view, the tabs are in the normal one
+    page.goto(f"http://127.0.0.1:{server.port}/gui/index.html?normalview")
     config = yaml.safe_load((server.config_dir / "config2.yml").read_text())
     config["devices"]["capture"]["channels"] = 8
     config["filters"] = {
@@ -218,6 +226,8 @@ def test_no_tab_is_wider_than_the_window(page, server):
                 assert sticking_out == [], f"{name} at {width} px"
     finally:
         (server.config_dir / "wide_tmp.yml").unlink()
+        context.close()
+    assert errors == []
 
 
 def test_config_and_volume_reach_camilladsp(page, server):

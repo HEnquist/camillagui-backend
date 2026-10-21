@@ -135,7 +135,8 @@ textarea.logfileviewer {
     left: 0;
     z-index: 30;
     max-width: 100%;
-    padding: 10px;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
     background-color: var(--background-color);
     border-right: var(--box-border);
     transform: translateX(-100%);
@@ -165,7 +166,8 @@ textarea.logfileviewer {
   width: 100vw;
   min-width: 0;
   height: 100vh;
-  padding: 10px;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   background-color: var(--background-color);
 }
 
@@ -204,10 +206,12 @@ textarea.logfileviewer {
 
 .sidepanel-expanded .sidepanel-header-main {
   align-items: stretch;
+  flex-wrap: wrap;
 }
 
+/* Goes under the logo when the two do not fit side by side */
 .dashboard-header-info {
-  min-width: 0;
+  min-width: min(260px, 100%);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -341,8 +345,15 @@ textarea.logfileviewer {
 }
 
 .data-table-shell {
+  container-type: inline-size;
   width: 100%;
   overflow-x: auto;
+}
+
+@container (max-width: 700px) {
+  .data-table-optional {
+    display: none;
+  }
 }
 
 .data-table-toolbar {
@@ -431,11 +442,14 @@ textarea.logfileviewer {
   margin: 5px 0;
 }
 
+/* The paddings keep clear of a notch and rounded corners, which index.html lets the page extend
+   under with viewport-fit=cover */
 .configapp {
   box-sizing: border-box;
   height: 100vh;
   height: 100dvh;
-  padding: 5px;
+  padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right))
+    max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
   display: flex;
   flex-direction: row;
   gap: 10px;
@@ -1195,4 +1209,85 @@ div .popup-content {
   margin-right: 4px;
   margin-left: 2px;
   vertical-align: middle;
+}
+
+/* The chart popup on a phone: a header, then the chart taking the rest of the height */
+.chart-popup-full {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+/* Chart.js sizes a chart that keeps no aspect ratio to its parent, which has to be positioned */
+.chart-fill {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* A touch screen as the main input: targets a finger can hit, and text inputs at 16px, below
+   which iOS zooms in on the page when one gets the focus. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  input:not([type='checkbox']):not([type='range']),
+  select {
+    height: 40px;
+  }
+
+  input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+  }
+
+  input[type='range'] {
+    min-height: 32px;
+  }
+
+  .setting {
+    min-height: 40px;
+  }
+
+  .button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .react-tabs__tab {
+    padding: 10px 12px;
+  }
+}
+
+/* Dragging needs a mouse or a trackpad. Without one, the up and down buttons do the job. */
+@media not all and (any-pointer: fine) {
+  .drag-handle {
+    display: none;
+  }
+}
+
+/* A narrow window gets the tabs in one row that scrolls sideways, rather than several rows */
+@media (max-width: 760px) {
+  .react-tabs__tab-list {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .react-tabs__tab {
+    flex: none;
+    white-space: nowrap;
+  }
 }

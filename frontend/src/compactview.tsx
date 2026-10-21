@@ -7,29 +7,34 @@ import { GuiConfig } from "./guiconfig"
 import { QuickConfigSwitch, ShortcutSections } from "./shortcuts"
 import { VolumeBox } from "./sidepanel/volumebox"
 import { Update } from "./utilities/common"
-import { ErrorBoundary, MdiButton } from "./utilities/ui-components"
+import { ErrorBoundary, MdiButton, mediaMatches } from "./utilities/ui-components"
 
 export type ViewMode = "normal" | "compact" | "dashboard"
+
+const VIEW_PARAMS: Record<ViewMode, string> = {
+  normal: "normalview",
+  compact: "compactview",
+  dashboard: "dashboardview",
+}
+
+/** On a phone the GUI is mostly a remote control, so it opens in the compact view there */
+function defaultViewMode(): ViewMode {
+  return mediaMatches("(max-width: 600px)") ? "compact" : "normal"
+}
 
 export function getViewMode(): ViewMode {
   const params = new URLSearchParams(window.location.search)
   if (params.has("dashboardview")) return "dashboard"
   if (params.has("compactview")) return "compact"
-  return "normal"
+  if (params.has("normalview")) return "normal"
+  return defaultViewMode()
 }
 
+/** Puts the view in the url, so a reload keeps it. The default view leaves the url as it is. */
 export function setViewMode(mode: ViewMode) {
   const url = new URL(window.location.href)
-  if (mode === "compact") {
-    url.searchParams.set("compactview", "")
-    url.searchParams.delete("dashboardview")
-  } else if (mode === "dashboard") {
-    url.searchParams.set("dashboardview", "")
-    url.searchParams.delete("compactview")
-  } else {
-    url.searchParams.delete("compactview")
-    url.searchParams.delete("dashboardview")
-  }
+  for (const param of Object.values(VIEW_PARAMS)) url.searchParams.delete(param)
+  if (mode !== defaultViewMode()) url.searchParams.set(VIEW_PARAMS[mode], "")
   window.history.pushState(undefined, "CamillaDSP", url.href)
 }
 
