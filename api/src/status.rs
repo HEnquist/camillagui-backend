@@ -3,7 +3,7 @@
 
 use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
-use camilladsp_schema::protocol::{AudioDeviceDescriptor, ChannelLabels};
+use camilladsp_schema::protocol::{AudioDeviceDescriptor, ChannelLabels, ControllerStatusReport};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -69,6 +69,11 @@ pub struct Status {
     pub title: Option<String>,
     #[schema(required)]
     pub description: Option<String>,
+    /// The state of the built-in controller, null while offline or when
+    /// CamillaDSP has none. Its config files are given as names in config_dir,
+    /// when they are in it.
+    #[schema(required)]
+    pub controller: Option<ControllerStatusReport>,
 }
 
 impl Status {
@@ -86,6 +91,7 @@ impl Status {
             labels: ChannelLabels::default(),
             title: None,
             description: None,
+            controller: None,
         }
     }
 }
@@ -221,6 +227,7 @@ impl StatusCache {
         let labels = value(camilla.channel_labels().await)?.unwrap_or_default();
         let title = value(camilla.config_title().await)?;
         let description = value(camilla.config_description().await)?;
+        let controller = value(camilla.controller_status().await)?;
         // Stored only once on_reconnect is through, so that a poll dropped
         // halfway, by a page reload, leaves it for the next one. Two polls may
         // both run it, which only reads the same values twice.
@@ -240,6 +247,7 @@ impl StatusCache {
         status.labels = labels;
         status.title = title;
         status.description = description;
+        status.controller = controller;
         Ok(())
     }
 
@@ -344,11 +352,11 @@ mod tests {
                         };
                         let alsa = || vec![("hw:0".to_string(), "Card".to_string())];
                         let reply = match serde_json::from_str(&text).unwrap() {
-                            WsCommand::GetVersion {} =>WsReply::GetVersion {
+                            WsCommand::GetVersion {} => WsReply::GetVersion {
                                 result: WsResult::Ok,
                                 value: "5.0.0".to_string(),
                             },
-                            WsCommand::GetSupportedDeviceTypes {} =>{
+                            WsCommand::GetSupportedDeviceTypes {} => {
                                 WsReply::GetSupportedDeviceTypes {
                                     result: WsResult::Ok,
                                     value: (
@@ -371,52 +379,56 @@ mod tests {
                                     value: if jack { vec![] } else { alsa() },
                                 }
                             }
-                            WsCommand::GetCaptureRate {} =>WsReply::GetCaptureRate {
+                            WsCommand::GetCaptureRate {} => WsReply::GetCaptureRate {
                                 result: WsResult::Ok,
                                 value: 44100,
                             },
-                            WsCommand::GetRateAdjust {} =>WsReply::GetRateAdjust {
+                            WsCommand::GetRateAdjust {} => WsReply::GetRateAdjust {
                                 result: WsResult::Ok,
                                 value: 1.0,
                             },
-                            WsCommand::GetBufferLevel {} =>WsReply::GetBufferLevel {
+                            WsCommand::GetBufferLevel {} => WsReply::GetBufferLevel {
                                 result: WsResult::Ok,
                                 value: 0,
                             },
-                            WsCommand::GetClippedSamples {} =>WsReply::GetClippedSamples {
+                            WsCommand::GetClippedSamples {} => WsReply::GetClippedSamples {
                                 result: WsResult::Ok,
                                 value: 0,
                             },
-                            WsCommand::GetProcessingLoad {} =>WsReply::GetProcessingLoad {
+                            WsCommand::GetProcessingLoad {} => WsReply::GetProcessingLoad {
                                 result: WsResult::Ok,
                                 value: 0.0,
                             },
-                            WsCommand::GetResamplerLoad {} =>WsReply::GetResamplerLoad {
+                            WsCommand::GetResamplerLoad {} => WsReply::GetResamplerLoad {
                                 result: WsResult::Ok,
                                 value: 0.0,
                             },
-                            WsCommand::GetChannelLabels {} =>WsReply::GetChannelLabels {
+                            WsCommand::GetChannelLabels {} => WsReply::GetChannelLabels {
                                 result: WsResult::Ok,
                                 value: ChannelLabels::default(),
                             },
-                            WsCommand::GetConfigTitle {} =>WsReply::GetConfigTitle {
+                            WsCommand::GetConfigTitle {} => WsReply::GetConfigTitle {
                                 result: WsResult::Ok,
                                 value: "Title".to_string(),
                             },
-                            WsCommand::GetConfigDescription {} =>{
+                            WsCommand::GetConfigDescription {} => {
                                 tokio::time::sleep(Duration::from_millis(100)).await;
                                 WsReply::GetConfigDescription {
                                     result: WsResult::Ok,
                                     value: "Description".to_string(),
                                 }
                             }
-                            WsCommand::GetState {} =>{
+                            WsCommand::GetState {} => {
                                 tokio::time::sleep(Duration::from_millis(200)).await;
                                 WsReply::GetState {
                                     result: WsResult::Ok,
                                     value: ProcessingState::Running,
                                 }
                             }
+                            // Like a CamillaDSP without the built-in controller.
+                            WsCommand::GetControllerStatus {} => WsReply::Invalid {
+                                error: "Unknown command".to_string(),
+                            },
                             command => panic!("unexpected command {command:?}"),
                         };
                         let text = serde_json::to_string(&reply).unwrap();
@@ -465,5 +477,7 @@ mod tests {
         let status = cache.refresh(&camilla).await;
         assert!(status.cdsp_online);
         assert_eq!(status.cdsp_version.as_deref(), Some("5.0.0"));
+        // Refused, so it has no built-in controller, but is still online.
+        assert!(status.controller.is_none());
     }
 }

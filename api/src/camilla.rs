@@ -3,8 +3,8 @@
 
 use camilladsp_schema::config::{self, Configuration};
 use camilladsp_schema::protocol::{
-    AudioDeviceDescriptor, ChannelLabels, Fader, ProcessingState, StopReason, WsCommand, WsReply,
-    WsResult,
+    AudioDeviceDescriptor, ChannelLabels, ControllerFileChecks, ControllerSettings,
+    ControllerStatusReport, Fader, ProcessingState, StopReason, WsCommand, WsReply, WsResult,
 };
 use futures_util::{SinkExt, StreamExt};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -333,7 +333,9 @@ impl CamillaClient {
             | WsCommand::SetConfigJson { .. }
             | WsCommand::SetConfigFilePath { .. }
             | WsCommand::ValidateConfig { .. }
-            | WsCommand::ValidateConfigJson { .. } => CONFIG_REPLY_TIMEOUT,
+            | WsCommand::ValidateConfigJson { .. }
+            | WsCommand::Reload { .. }
+            | WsCommand::CheckControllerFiles { .. } => CONFIG_REPLY_TIMEOUT,
             _ => REPLY_TIMEOUT,
         };
         self.check_offline()?;
@@ -373,7 +375,10 @@ impl CamillaClient {
     }
 
     pub async fn stop_reason(&self) -> Result<StopReason, DspError> {
-        value_of!(self.request(WsCommand::GetStopReason {}).await?, GetStopReason)
+        value_of!(
+            self.request(WsCommand::GetStopReason {}).await?,
+            GetStopReason
+        )
     }
 
     pub async fn capture_rate(&self) -> Result<usize, DspError> {
@@ -384,7 +389,10 @@ impl CamillaClient {
     }
 
     pub async fn rate_adjust(&self) -> Result<f32, DspError> {
-        value_of!(self.request(WsCommand::GetRateAdjust {}).await?, GetRateAdjust)
+        value_of!(
+            self.request(WsCommand::GetRateAdjust {}).await?,
+            GetRateAdjust
+        )
     }
 
     pub async fn buffer_level(&self) -> Result<usize, DspError> {
@@ -498,7 +506,10 @@ impl CamillaClient {
 
     /// The active config, `None` if there is none.
     pub async fn config(&self) -> Result<Option<Configuration>, DspError> {
-        let json = value_of!(self.request(WsCommand::GetConfigJson {}).await?, GetConfigJson)?;
+        let json = value_of!(
+            self.request(WsCommand::GetConfigJson {}).await?,
+            GetConfigJson
+        )?;
         if json.trim() == "null" {
             return Ok(None);
         }
@@ -572,6 +583,44 @@ impl CamillaClient {
         };
         value_of!(self.request(command).await?, GetPlaybackDeviceCapabilities)
     }
+
+    /// The `controller` section of the statefile, `None` if there is none.
+    pub async fn controller_settings(&self) -> Result<Option<ControllerSettings>, DspError> {
+        value_of!(
+            self.request(WsCommand::GetControllerSettings {}).await?,
+            GetControllerSettings
+        )
+    }
+
+    pub async fn set_controller_settings(
+        &self,
+        value: Option<ControllerSettings>,
+    ) -> Result<(), DspError> {
+        result_of!(
+            self.request(WsCommand::SetControllerSettings { value })
+                .await?,
+            SetControllerSettings
+        )
+    }
+
+    pub async fn controller_status(&self) -> Result<ControllerStatusReport, DspError> {
+        value_of!(
+            self.request(WsCommand::GetControllerStatus {}).await?,
+            GetControllerStatus
+        )
+    }
+
+    pub async fn check_controller_files(&self) -> Result<ControllerFileChecks, DspError> {
+        value_of!(
+            self.request(WsCommand::CheckControllerFiles {}).await?,
+            CheckControllerFiles
+        )
+    }
+
+    /// Load the config file again, which starts following from it again.
+    pub async fn reload(&self) -> Result<(), DspError> {
+        result_of!(self.request(WsCommand::Reload {}).await?, Reload)
+    }
 }
 
 #[cfg(test)]
@@ -598,18 +647,18 @@ mod tests {
                     let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
                     while let Some(Ok(Message::Text(text))) = ws.next().await {
                         let reply = match serde_json::from_str(&text).unwrap() {
-                            WsCommand::GetVersion {} =>WsReply::GetVersion {
+                            WsCommand::GetVersion {} => WsReply::GetVersion {
                                 result: WsResult::Ok,
                                 value: "5.0.0".to_string(),
                             },
-                            WsCommand::GetState {} =>{
+                            WsCommand::GetState {} => {
                                 tokio::time::sleep(Duration::from_millis(200)).await;
                                 WsReply::GetState {
                                     result: WsResult::Ok,
                                     value: ProcessingState::Running,
                                 }
                             }
-                            WsCommand::GetMute {} =>{
+                            WsCommand::GetMute {} => {
                                 let stray = WsReply::GetVolume {
                                     result: WsResult::Ok,
                                     value: -10.0,

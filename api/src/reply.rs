@@ -19,7 +19,9 @@ use axum::body::{Body, Bytes};
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use camilladsp_schema::config::Configuration;
-use camilladsp_schema::protocol::{AudioDeviceDescriptor, Fader};
+use camilladsp_schema::protocol::{
+    AudioDeviceDescriptor, ControllerFileChecks, ControllerSettings, Fader,
+};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io;
@@ -69,6 +71,8 @@ named_bodies!(
     coeffs::CoeffDefaults,
     ConfigFragment,
     Configuration,
+    ControllerFileChecks,
+    ControllerSettings,
     DeviceTypeLists,
     EventPayloads,
     Fader,
