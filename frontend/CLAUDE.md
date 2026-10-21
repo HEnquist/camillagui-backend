@@ -55,7 +55,7 @@ mixerstab.tsx
 processorstab.tsx
 shortcuts.tsx
 filestab.tsx
-controllertab.tsx           # CamillaDSP's built-in controller: following and error recovery
+dsptab.tsx                  # What CamillaDSP runs: the active config, following and recovery
 playbacktab.tsx             # Playing an audio file through the pipeline
 
 custom-pages/               # Extra tabs: a .tsx here is a tab, see its README.md
@@ -157,9 +157,24 @@ Key endpoints used by the frontend:
 - `GET` and `POST /api/controller/settings`, `GET /api/controller/checkfiles`: the built-in
   controller of CamillaDSP 6.0, which follows the capture source format and recovers from device
   errors. Its status comes with `/api/status` as `controller`, null without one. The
-  `SidePanel` passes it up when it changes, for the Files and Controller tabs. While following,
-  the active config (the star) is where CamillaDSP starts, and the config that runs can be
-  another file or the active one adapted to the source rate, see `getstartconfig`
+  `SidePanel` passes it up when it changes, for the Files and CamillaDSP tabs. While following,
+  the active config is where CamillaDSP starts, and the config that runs can be another file or
+  the active one adapted to the source rate, see `getstartconfig`
+
+## Editor and CamillaDSP
+
+The GUI keeps the config editor apart from what CamillaDSP runs, in the tabs and in the side
+panel alike:
+
+- The editor is the Title to Pipeline tabs and Files, and the side panel's Editor box: one
+  config, the file it belongs to, Save, Revert and auto-save. The Files table only marks the
+  active config (★) and the file following runs (▶), it does not change them.
+- CamillaDSP is the CamillaDSP tab and the side panel's CamillaDSP box. The tab picks the active
+  config file and runs it (`setactiveconfigfile`, which reloads a running CamillaDSP), and holds
+  the controller settings. The box shows what runs.
+- The two meet in three places only: "Try editor config" (`setconfig`, not saved to any file,
+  and auto-applied with "Try automatically"), "Load into editor" (`getstartconfig`, the same
+  as at startup, so an adapted config is never loaded), and "Open in editor" on a file name
 
 ## Filter evaluation
 

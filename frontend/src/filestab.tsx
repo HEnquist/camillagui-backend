@@ -8,7 +8,6 @@ import {
   mdiPlayCircleOutline,
   mdiScaleUnbalanced,
   mdiStar,
-  mdiStarOutline,
   mdiUpdate,
 } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
@@ -94,8 +93,7 @@ export function Files(props: {
             setCurrentConfig={props.setCurrentConfig}
             setCurrentConfigFileName={props.setCurrentConfigFileName}
             saveNotify={props.saveNotify}
-            canUpdateActiveConfig={props.guiConfig.can_update_active_config}
-            following={controller?.following === true}
+            activeConfigFile={controller?.entry_config_file}
             runningConfigFile={controller?.following ? controller.active_config_file : null}
           />
           <FileTable title="Filters" type="coeff" />
@@ -113,9 +111,11 @@ interface FileTableProps {
   type: FileType
   currentConfigFile?: string
   config?: Config
-  canUpdateActiveConfig?: boolean
-  /** Whether CamillaDSP follows the capture source, starting from the active config. */
-  following?: boolean
+  /**
+   * The active config file, from the controller status, which follows changes made elsewhere.
+   * Without it, the name read when the table is shown.
+   */
+  activeConfigFile?: string | null
   /** The config file following picked, which CamillaDSP runs instead of the active one. */
   runningConfigFile?: string | null
   setCurrentConfig?: (filename: string, config: Config) => void
@@ -152,7 +152,6 @@ class FileTable extends Component<
     super(props)
     this.update = this.update.bind(this)
     this.loadActiveConfigName = this.loadActiveConfigName.bind(this)
-    this.setActiveConfig = this.setActiveConfig.bind(this)
     this.upload = this.upload.bind(this)
     this.delete = this.delete.bind(this)
     this.downloadAsZip = this.downloadAsZip.bind(this)
@@ -351,11 +350,6 @@ class FileTable extends Component<
     }
   }
 
-  private setActiveConfig(name: string) {
-    api.POST("/api/setactiveconfigfile", { body: { name } }).then(() => this.loadConfig(name))
-    this.setState({ activeConfigFileName: name })
-  }
-
   private overwriteConfig(name: string) {
     const del = window.confirm("Overwrite?\n" + name)
     if (!del) return
@@ -416,6 +410,7 @@ class FileTable extends Component<
       showPipelinePlot,
       configToPlot,
     } = this.state
+    const activeConfigFile = this.props.activeConfigFile ?? activeConfigFileName
     const columns: ColumnDef<FileInfo, unknown>[] = []
     if (this.type === "coeff") {
       columns.push({
@@ -495,13 +490,6 @@ class FileTable extends Component<
         header: "",
         cell: ({ row }) => (
           <div style={{ display: "flex", flexDirection: "row" }}>
-            <SetActiveButton
-              active={row.original.name === activeConfigFileName}
-              onClick={() => this.setActiveConfig(row.original.name)}
-              canUpdate={this.props.canUpdateActiveConfig}
-              following={this.props.following === true}
-              file={row.original}
-            />
             <SaveButton filename={row.original.name} fileStatus={fileStatus} saveConfig={this.overwriteConfig} />
             <LoadButton
               filename={row.original.name}
@@ -555,7 +543,7 @@ class FileTable extends Component<
         enableSorting: false,
         meta: {
           compact: true,
-          width: "160px",
+          width: "120px",
         },
       })
       columns.push({
@@ -569,6 +557,13 @@ class FileTable extends Component<
               filename={row.original.name}
               isCurrentConfig={row.original.name === this.props.currentConfigFile}
             />
+            {row.original.name === activeConfigFile && (
+              <MdiIcon
+                icon={mdiStar}
+                tooltip="The active config, which CamillaDSP starts from.<br>Pick another one in the CamillaDSP tab."
+                style={{ marginLeft: "5px" }}
+              />
+            )}
             {row.original.name === this.props.runningConfigFile && (
               <MdiIcon
                 icon={mdiPlayCircleOutline}
@@ -758,51 +753,6 @@ class FileTable extends Component<
       </Box>
     )
   }
-}
-
-function SetActiveButton(props: {
-  active: boolean
-  onClick: () => void
-  canUpdate?: boolean
-  following: boolean
-  file: FileInfo
-}) {
-  const { active, onClick, canUpdate, following, file } = props
-  let disabledReason = ""
-  if (canUpdate === false) {
-    disabledReason =
-      "Disabled since the backend is not able to store the active config file.<br>Check the backend configuration."
-  } else if (file.loadable !== true) {
-    disabledReason = "Disabled since this config file cannot be loaded."
-  } else if (file.outdated === true) {
-    disabledReason =
-      "Disabled since this config file is made for an older version of CamillaDSP.<br>Load it and save it to migrate it first."
-  }
-  const enabled = !disabledReason
-  let tooltip
-  if (!enabled) {
-    tooltip = `Mark this config file as active.<br>${disabledReason}`
-  } else {
-    if (active) {
-      tooltip = "This config file is marked as active."
-    } else {
-      tooltip = "Mark this config file as active, and load it into the GUI."
-    }
-  }
-  if (following) {
-    tooltip +=
-      "<br>CamillaDSP starts from the active config,<br>and following adapts it or picks another file for the source format."
-  }
-
-  return (
-    <MdiButton
-      enabled={enabled}
-      icon={active ? mdiStar : mdiStarOutline}
-      tooltip={tooltip}
-      highlighted={active}
-      onClick={onClick}
-    />
-  )
 }
 
 function SaveButton(props: {

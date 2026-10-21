@@ -1315,7 +1315,7 @@
     },
     "/api/setactiveconfigfile": {
       "post": {
-        "summary": "Make a config file the active one, the one CamillaDSP loads when it\nstarts.",
+        "summary": "Make a config file the active one, the one CamillaDSP loads when it\nstarts. A running CamillaDSP loads it at once. One that is offline gets it\nin its statefile, for when it starts.",
         "operationId": "set_active_config_name",
         "requestBody": {
           "content": {

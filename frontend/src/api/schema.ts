@@ -588,7 +588,8 @@ export interface paths {
     put?: never
     /**
      * Make a config file the active one, the one CamillaDSP loads when it
-     *     starts.
+     *     starts. A running CamillaDSP loads it at once. One that is offline gets it
+     *     in its statefile, for when it starts.
      */
     post: operations["set_active_config_name"]
     delete?: never

@@ -5,7 +5,8 @@ import { LogFileViewerPopup } from "./logfileviewer"
 import { isBackendOnline, isCdspOnline, isCdspRunning, Status } from "../camilladsp/status"
 import { Button, Box } from "../utilities/ui-components"
 
-export function CdspStateBox(props: { status: Status; message: string }) {
+/** The state of CamillaDSP, with a message row when given one, and the children below. */
+export function CdspStateBox(props: { status: Status; message?: string; children?: React.ReactNode }) {
   const { status, message } = props
   const running = isCdspRunning(status)
   const [logFileViewerOpen, setLogFileViewerOpen] = React.useState(false)
@@ -31,9 +32,14 @@ export function CdspStateBox(props: { status: Status; message: string }) {
         <div>{running && status.processingload ? status.processingload.toFixed(1) + "%" : ""} </div>
         <div className="alignRight">Resampler load:</div>
         <div>{running && status.resamplerload ? status.resamplerload.toFixed(1) + "%" : ""} </div>
-        <div className="alignRight">Message:</div>
-        <div>{message}</div>
+        {message !== undefined && (
+          <>
+            <div className="alignRight">Message:</div>
+            <div>{message}</div>
+          </>
+        )}
       </div>
+      {props.children}
       <Button
         text="Show log file"
         onClick={() => setLogFileViewerOpen(true)}

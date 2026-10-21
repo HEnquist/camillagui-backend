@@ -149,7 +149,7 @@ def test_config_and_volume_reach_camilladsp(page, server):
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
     expect(sidepanel.locator(".config-status")).to_have_text("OK")
-    sidepanel.get_by_text("Apply to DSP", exact=True).click()
+    sidepanel.get_by_text("Try editor config", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     # The volume box only sends a change once it has read the volume.
     wait_for(lambda: server.fake.commands("GetMute"))

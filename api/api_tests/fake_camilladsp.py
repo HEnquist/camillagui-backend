@@ -361,6 +361,6 @@ class FakeCamillaDSP:
                 return ok(controller["status"])
             if name == "CheckControllerFiles":
                 return ok(controller["checks"])
-            if name == "Reload":
-                return ok(has_value=False)
+        if name == "Reload":
+            return ok(has_value=False)
         return {"reply": "Invalid", "error": f"Unknown command {name}"}

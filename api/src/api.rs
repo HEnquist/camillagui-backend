@@ -1181,13 +1181,15 @@ async fn set_active_config_path(app: &AppState, path: &str) -> Result<(), ApiErr
                 "The backend config has no state file and is unable to persistently store config file path"
             ),
         }
-    } else if matches!(app.camilla.state_file_path().await, Ok(Some(_))) {
-        log::debug!("Send set config file path command with '{path}'");
-        app.camilla.set_config_file_path(path.to_string()).await?;
     } else {
-        log::error!(
-            "CamillaDSP runs without state file and is unable to persistently store config file path"
-        );
+        if !matches!(app.camilla.state_file_path().await, Ok(Some(_))) {
+            log::warn!(
+                "CamillaDSP runs without state file, the config file path lasts until it exits"
+            );
+        }
+        log::debug!("Send set config file path command with '{path}', and reload");
+        app.camilla.set_config_file_path(path.to_string()).await?;
+        app.camilla.reload().await?;
     }
     if let Some(on_set) = &settings.on_set_active_config
         && let Err(err) = run_on_set_active_config(on_set, path).await
@@ -1219,7 +1221,8 @@ pub struct ActiveConfigBody {
 }
 
 /// Make a config file the active one, the one CamillaDSP loads when it
-/// starts.
+/// starts. A running CamillaDSP loads it at once. One that is offline gets it
+/// in its statefile, for when it starts.
 #[utoipa::path(
     post,
     path = "/setactiveconfigfile",

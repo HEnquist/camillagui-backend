@@ -775,6 +775,14 @@ def test_set_active_config_file_offline_updates_the_statefile(server):
     assert server.get("/api/getactiveconfigfilename").json() == {"config_file_name": "config.yml"}
 
 
+def test_set_active_config_file_online_runs_it(server):
+    resp = server.post("/api/setactiveconfigfile", json_body={"name": "config2.yml"})
+    assert resp.status == 204
+    assert server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml")
+    names = [cmd["command"] for cmd in server.fake.state["received"]]
+    assert names.index("SetConfigFilePath") < names.index("Reload")
+
+
 def test_active_config_file_online_without_dsp_statefile(server):
     assert server.get("/api/getactiveconfigfilename").json() == {"config_file_name": None}
     server.fake.state["state_file_path"] = "/somewhere/state.yml"

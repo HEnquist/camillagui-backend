@@ -1,6 +1,5 @@
 import React from "react"
 import "../index.css"
-import { mdiScaleUnbalanced } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
@@ -22,7 +21,7 @@ import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
 import { Errors } from "../utilities/errors"
-import { Box, delayedExecutor, SuccessFailureButton, MdiButton } from "../utilities/ui-components"
+import { Box, delayedExecutor, SuccessFailureButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   config: Config
@@ -30,7 +29,7 @@ interface SidePanelProps {
   applyConfig: () => Promise<void>
   fetchConfig: () => Promise<void>
   saveConfig: () => Promise<void>
-  saveAndApplyConfig: () => Promise<void>
+  revertConfig: () => Promise<void>
   setErrors: (errors: Errors) => void
   /** Called when the controller status changes, null when there is none. */
   onControllerStatus: (status: ControllerStatus | null) => void
@@ -40,6 +39,10 @@ interface SidePanelProps {
   unappliedChanges: boolean
 }
 
+/**
+ * The volume, then CamillaDSP and what it runs, then the config editor and its file. The editor
+ * reaches CamillaDSP only by trying its config there, which is not saved anywhere.
+ */
 export class SidePanel extends React.Component<
   SidePanelProps,
   {
@@ -100,7 +103,6 @@ export class SidePanel extends React.Component<
       this.saveTimer(() => {
         this.props.saveConfig().catch(() => {})
       })
-    // TODO save
   }
 
   render() {
@@ -123,53 +125,113 @@ export class SidePanel extends React.Component<
             />
           )}
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
-          <CdspStateBox status={this.state.cdspStatus} message={this.props.message} />
-          {this.configBox()}
+          <CdspStateBox status={this.state.cdspStatus}>{this.dspControls()}</CdspStateBox>
+          {this.editorBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
         <DiffPopup
           open={this.state.showDiffPopup}
           onClose={() => this.setState({ showDiffPopup: false })}
           left_config={this.state.diffConfigDSP}
-          left_name="DSP"
+          left_name="CamillaDSP"
           right_config={this.state.diffConfigGUI}
-          right_name="GUI"
+          right_name="Editor"
         />
       </section>
     )
   }
 
-  private configBox() {
+  /** What CamillaDSP runs, and moving configs between it and the editor. */
+  private dspControls() {
     const status = this.state.cdspStatus
-    const cdsp_online = isCdspOnline(status)
-    const activeConfigFile = this.props.currentConfigFile
-    const activeConfigSelected = Boolean(activeConfigFile)
-    const unsaved = this.props.unsavedChanges
+    const online = isCdspOnline(status)
+    const controller = status.controller
     const unapplied = this.props.unappliedChanges
-
-    const fetchEnabled = cdsp_online
-    const applyEnabled = cdsp_online && !this.state.applyConfigAutomatically
-    const saveEnabled = isBackendOnline(status) && activeConfigSelected && !this.state.saveConfigAutomatically
-    const applyAndSaveEnabled =
-      cdsp_online && !this.state.applyConfigAutomatically && !this.state.saveConfigAutomatically && activeConfigSelected
-    //let applyButtonText = 'Apply to DSP'
-    let saveButtonTooltip = "No active file selected"
-    if (activeConfigFile) saveButtonTooltip = `Save to active config file: ${activeConfigFile}`
+    const variant = controller?.following ? controller.active_config_file : null
     return (
-      <Box
-        title={
-          <>
-            Config
-            <MdiButton
-              icon={mdiScaleUnbalanced}
-              tooltip={`Compare configs in DSP and GUI`}
-              enabled={true}
-              onClick={() => this.compareConfig()}
-              buttonSize="small"
+      <>
+        {controller && (
+          <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto", marginTop: "5px" }}>
+            <div className="alignRight">Active config:</div>
+            <div
+              style={{ overflowWrap: "anywhere" }}
+              data-tooltip-html="The config file CamillaDSP starts from, set in the CamillaDSP tab"
+              data-tooltip-id="main-tooltip"
+            >
+              {controller.entry_config_file ?? "none"}
+            </div>
+            {variant && (
+              <>
+                <div className="alignRight">Running:</div>
+                <div
+                  style={{ overflowWrap: "anywhere" }}
+                  data-tooltip-html="Picked by following the capture source"
+                  data-tooltip-id="main-tooltip"
+                >
+                  {variant}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        <div className="two-column-grid" style={{ marginTop: "5px" }}>
+          <SuccessFailureButton
+            enabled={online && !this.state.applyConfigAutomatically}
+            text="Try editor config"
+            tooltip="Run the editor's config in CamillaDSP, without saving it to a file.<br>It runs until another config is loaded, or CamillaDSP restarts.<br>While following, CamillaDSP adapts it to the source in place of the active config."
+            onClick={this.props.applyConfig}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Load into editor"
+            tooltip="Load the config CamillaDSP runs into the editor, under the name of its file.<br>While it runs the active config adapted to the source, the file itself is loaded."
+            onClick={this.props.fetchConfig}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Compare"
+            tooltip="Compare the config CamillaDSP runs with the editor's"
+            onClick={() => this.compareConfig()}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Stop processing"
+            tooltip="Stop the DSP processing"
+            onClick={() => this.stopProcessing()}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
+          <label
+            data-tooltip-html="Try the editor's config in CamillaDSP<br>after each change"
+            data-tooltip-id="main-tooltip"
+          >
+            <input
+              type="checkbox"
+              checked={this.state.applyConfigAutomatically}
+              onChange={(e) => this.setState({ applyConfigAutomatically: e.target.checked })}
             />
-          </>
-        }
-      >
+            Try automatically
+          </label>
+          <span
+            data-tooltip-html={
+              unapplied ? "The editor has changes CamillaDSP does not run" : "CamillaDSP runs the editor's config"
+            }
+            data-tooltip-id="main-tooltip"
+          >
+            {unapplied ? "Runs the editor's config: ⚠️" : "Runs the editor's config: ✔️"}
+          </span>
+        </div>
+      </>
+    )
+  }
+
+  /** The editor's config, the file it belongs to, and saving it. */
+  private editorBox() {
+    const status = this.state.cdspStatus
+    const file = this.props.currentConfigFile
+    const unsaved = this.props.unsavedChanges
+    return (
+      <Box title="Editor">
         <div
           style={{
             width: "220px",
@@ -178,107 +240,40 @@ export class SidePanel extends React.Component<
             margin: "0 auto 5px",
           }}
         >
-          {activeConfigFile ? activeConfigFile : "(no config selected as active)"}
+          {file ? file : "(no file)"}
         </div>
-        <FollowingNote controller={status.controller} currentConfigFile={activeConfigFile} />
+        <EditorFileNote controller={status.controller} file={file} />
         <div className="two-column-grid">
           <SuccessFailureButton
-            enabled={fetchEnabled}
-            text="Fetch from DSP"
-            tooltip="Fetch active config from<br>the running CamillaDSP process"
-            onClick={this.props.fetchConfig}
-          />
-          <SuccessFailureButton
-            enabled={applyEnabled}
-            text="Apply to DSP"
-            tooltip="Apply config to the running<br>CamillaDSP process"
-            onClick={this.props.applyConfig}
-          />
-          <SuccessFailureButton
-            enabled={saveEnabled}
-            text="Save to file"
-            tooltip={saveButtonTooltip}
+            enabled={isBackendOnline(status) && Boolean(file) && !this.state.saveConfigAutomatically}
+            text="Save"
+            tooltip={file ? `Save the editor's config to ${file}` : "No file, use Save as in the Files tab"}
             onClick={this.props.saveConfig}
           />
           <SuccessFailureButton
-            enabled={applyAndSaveEnabled}
-            text="Apply and save"
-            tooltip="Apply to DSP and save to file"
-            onClick={this.props.saveAndApplyConfig}
-          />
-          <SuccessFailureButton
-            enabled={cdsp_online}
-            text="Stop processing"
-            tooltip="Stop the DSP processing"
-            onClick={() => this.stopProcessing()}
+            enabled={isBackendOnline(status) && Boolean(file) && unsaved}
+            text="Revert"
+            tooltip={file ? `Drop the changes, and load ${file} again` : "No file to revert to"}
+            onClick={this.props.revertConfig}
           />
         </div>
-        <div className="setting">
-          <div
-            data-tooltip-html="Apply config to DSP automatically<br>after each change"
-            data-tooltip-id="main-tooltip"
-            style={{
-              display: "table-row",
-              textAlign: "center",
-              marginTop: "5px",
-            }}
-          >
-            <div className="setting-label-wide">Apply automatically</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
+          <label data-tooltip-html="Save the config to its file<br>after each change" data-tooltip-id="main-tooltip">
             <input
-              className="setting-input"
-              type="checkbox"
-              checked={this.state.applyConfigAutomatically}
-              onChange={(e) =>
-                this.setState({
-                  applyConfigAutomatically: e.target.checked,
-                })
-              }
-            />
-          </div>
-          <div
-            data-tooltip-html="Save config to file automatically<br>after each change"
-            data-tooltip-id="main-tooltip"
-            style={{
-              display: "table-row",
-              textAlign: "center",
-              marginTop: "5px",
-            }}
-          >
-            <div className="setting-label-wide">Save automatically</div>
-            <input
-              className="setting-input"
               type="checkbox"
               checked={this.state.saveConfigAutomatically}
-              onChange={(e) =>
-                this.setState({
-                  saveConfigAutomatically: e.target.checked,
-                })
-              }
+              onChange={(e) => this.setState({ saveConfigAutomatically: e.target.checked })}
             />
-          </div>
-        </div>
-        <div className="two-column-grid">
-          <div
-            data-tooltip-html={
-              unsaved ? "GUI has changes that have<br>not been saved to file" : "All changes have been saved to file"
-            }
+            Save automatically
+          </label>
+          <span
+            data-tooltip-html={unsaved ? "The editor has changes not saved to the file" : "All changes are saved"}
             data-tooltip-id="main-tooltip"
-            style={{ textAlign: "center", marginTop: "5px" }}
           >
-            {unsaved ? "All saved: ⚠️" : "All saved: ✔️"}
-          </div>
-          <div
-            data-tooltip-html={
-              unapplied
-                ? "GUI has changes that have<br>not been applied to the DSP"
-                : "All changes have been applied to the DSP"
-            }
-            data-tooltip-id="main-tooltip"
-            style={{ textAlign: "center", marginTop: "5px" }}
-          >
-            {unapplied ? "All applied: ⚠️" : "All applied: ✔️"}
-          </div>
+            {unsaved ? "Saved: ⚠️" : "Saved: ✔️"}
+          </span>
         </div>
+        {this.props.message && <div style={{ marginTop: "5px" }}>{this.props.message}</div>}
         <Configcheckmessage config={this.props.config} setErrors={this.props.setErrors} />
       </Box>
     )
@@ -296,28 +291,23 @@ export class SidePanel extends React.Component<
   }
 
   private async compareConfig() {
-    try {
-      const dspConfig = await this.fetchDSPConfig()
-      const guiConfig = this.props.config
-      this.setState({
-        showDiffPopup: true,
-        diffConfigDSP: dspConfig as Config,
-        diffConfigGUI: guiConfig,
-      })
-    } catch (e) {
-      console.log(e)
-    }
+    const dspConfig = await this.fetchDSPConfig()
+    this.setState({
+      showDiffPopup: true,
+      diffConfigDSP: dspConfig as Config,
+      diffConfigGUI: this.props.config,
+    })
   }
 }
 
-/** Which file CamillaDSP runs, when following picked another one than the GUI has. */
-function FollowingNote(props: { controller: ControllerStatus | null; currentConfigFile?: string }) {
-  const { controller, currentConfigFile } = props
-  if (!controller?.following) return null
-  const running = controller.active_config_file
+/** How the editor's file relates to what CamillaDSP runs, when the controller says. */
+function EditorFileNote(props: { controller: ControllerStatus | null; file?: string }) {
+  const { controller, file } = props
+  if (!controller || !file) return null
   let note: string | null = null
-  if (running && running !== currentConfigFile) note = `CamillaDSP runs ${running}, picked by following the source.`
-  else if (controller.waiting_for_source) note = "Following is waiting for a source format it has a config for."
+  if (controller.following && controller.active_config_file === file)
+    note = "CamillaDSP runs this file, picked by following."
+  else if (controller.entry_config_file === file) note = "This is the active config."
   if (!note) return null
   return (
     <div

@@ -12,20 +12,14 @@ import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
-import {
-  completeConfig,
-  Config,
-  defaultConfig,
-  getCaptureDeviceChannelCount,
-  preferredSamplerate,
-} from "./camilladsp/config"
+import { Config, defaultConfig, getCaptureDeviceChannelCount, preferredSamplerate } from "./camilladsp/config"
 import { ControllerStatus } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
-import { ControllerTab } from "./controllertab"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
+import { DspTab } from "./dsptab"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
 import { defaultGuiConfig, GuiConfig } from "./guiconfig"
@@ -68,10 +62,10 @@ class CamillaConfig extends React.Component<
     this.applyConfig = this.applyConfig.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
     this.saveConfig = this.saveConfig.bind(this)
-    this.saveAndApplyConfig = this.saveAndApplyConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
     this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
     this.openConfigFile = this.openConfigFile.bind(this)
+    this.revertConfig = this.revertConfig.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.setViewMode = this.setViewMode.bind(this)
@@ -105,42 +99,45 @@ class CamillaConfig extends React.Component<
 
   private async loadConfigAtStart() {
     try {
-      const json = await loadStartupConfig()
-      this.setCurrentConfig(json.config_file_name ? json.config_file_name : undefined, json.config)
-      let message = ""
-      if (json.source === "dsp") {
-        message = "Loaded from DSP"
-      } else if (json.source === "variant") {
-        message = "Loaded the config file that following picked"
-      } else if (json.source === "adapted") {
-        message = `Loaded active, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
-      } else if (json.source === "active") {
-        message = "Loaded active"
-      } else if (json.source === "default") {
-        message = "Loaded default"
-      }
-
-      this.setState({ message: message })
+      await this.loadRunningConfig()
     } catch (err) {
       console.log("Failed getting active config:", err)
     }
   }
 
+  /**
+   * Load what CamillaDSP runs into the editor, under the name of the file it came from. While it
+   * runs the active config adapted to the source, that is the file, so that saving can't write the
+   * adapted rate into it. Without a running config, the active or default file.
+   */
+  private async loadRunningConfig() {
+    const json = await loadStartupConfig()
+    const name = json.config_file_name ?? undefined
+    let message = ""
+    if (json.source === "dsp") message = "Loaded the config CamillaDSP runs"
+    else if (json.source === "variant") message = `Loaded ${name}, which following picked`
+    else if (json.source === "adapted")
+      message = `Loaded ${name}, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
+    else if (json.source === "active") message = "Loaded the active config"
+    else if (json.source === "default") message = "Loaded the default config"
+    this.setState({
+      unsavedChanges: false,
+      // Only the config CamillaDSP runs as it is equals the editor's.
+      unappliedChanges: json.source !== "dsp" && json.source !== "variant",
+      currentConfigFile: name,
+      undoRedo: new UndoRedo(json.config),
+      message,
+    })
+  }
+
   private async fetchConfig() {
-    const { data: config, error, response } = await api.GET("/api/getconfig")
-    if (error) {
-      const message = errorMessage(error, response)
+    try {
+      await this.loadRunningConfig()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
       this.setState({ message })
-      throw new Error(message)
+      throw err
     }
-    if (config)
-      this.setState({
-        unsavedChanges: false,
-        unappliedChanges: false,
-        message: "OK",
-        undoRedo: new UndoRedo(completeConfig(config)),
-      })
-    else this.setState({ message: "No config received" })
   }
 
   private setViewMode(mode: ViewMode) {
@@ -206,11 +203,6 @@ class CamillaConfig extends React.Component<
     }
   }
 
-  private async saveAndApplyConfig() {
-    await this.applyConfig()
-    await this.saveConfig()
-  }
-
   private setCurrentConfig(filename: string | undefined, config: Config) {
     this.setState({
       unsavedChanges: false,
@@ -218,6 +210,15 @@ class CamillaConfig extends React.Component<
       currentConfigFile: filename,
       undoRedo: new UndoRedo(config),
     })
+  }
+
+  /** Load the editor's file again, dropping the changes. */
+  private async revertConfig() {
+    const name = this.state.currentConfigFile
+    if (!name) return
+    const config = await loadConfigJson(name, (reason) => this.setState({ message: reason }))
+    this.setCurrentConfig(name, config)
+    this.setState({ message: `Reverted to ${name}` })
   }
 
   /** Load a config file into the editor, and show its devices. */
@@ -293,7 +294,7 @@ class CamillaConfig extends React.Component<
           applyConfig={this.applyConfig}
           fetchConfig={this.fetchConfig}
           saveConfig={this.saveConfig}
-          saveAndApplyConfig={this.saveAndApplyConfig}
+          revertConfig={this.revertConfig}
           setErrors={this.setErrors}
           onControllerStatus={(controllerStatus) => this.setState({ controllerStatus })}
           message={this.state.message}
@@ -350,7 +351,7 @@ class CamillaConfig extends React.Component<
             <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
             <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
             <Tab>Files</Tab>
-            <Tab>Controller</Tab>
+            <Tab>CamillaDSP</Tab>
             {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
             <Tab>Shortcuts</Tab>
             {customPages.map((customPage) => (
@@ -402,7 +403,7 @@ class CamillaConfig extends React.Component<
             />
           </TabPanel>
           <TabPanel>
-            <ControllerTab
+            <DspTab
               status={this.state.controllerStatus}
               guiConfig={this.state.guiConfig}
               openConfigFile={this.openConfigFile}
