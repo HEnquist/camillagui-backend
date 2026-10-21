@@ -75,7 +75,7 @@ export function Files(props: {
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="wide-tabpanel" style={{ width: "900px" }}>
+        <div className="wide-tabpanel">
           <NewConfig
             currentConfig={props.config}
             setCurrentConfig={props.setCurrentConfig}
@@ -93,7 +93,6 @@ export function Files(props: {
           />
           <FileTable title="Filters" type="coeff" />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

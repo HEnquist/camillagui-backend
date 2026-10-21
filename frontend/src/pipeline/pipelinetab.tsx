@@ -130,7 +130,7 @@ export class PipelineTab extends React.Component<
       <ErrorBoundary errorMessage={errors.asText()}>
         <div className="tabcontainer">
           <DndContainer>
-            <div className="tabpanel" style={{ width: "700px" }}>
+            <div className="tabpanel">
               <ErrorMessage message={errors.rootMessage()} />
               <div className="pipeline-channel">Capture: {this.state.capture_channels} channels in</div>
               {pipeline?.map((step: PipelineStep, index: number) => {
@@ -240,7 +240,6 @@ export class PipelineTab extends React.Component<
               )}
             </div>
           </DndContainer>
-          <div className="tabspacer" />
         </div>
       </ErrorBoundary>
     )

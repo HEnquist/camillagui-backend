@@ -185,7 +185,6 @@ export function DevicesTab(props: {
             allowAbsolutePaths={guiConfig.allow_absolute_paths}
           />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )
@@ -239,9 +238,6 @@ function SamplerateOption(props: {
         options={defaultSampleRates.map((samplerate) => samplerate.toString()).concat([other])}
         desc={props.desc}
         tooltip={props.tooltip}
-        style={{
-          width: isNonDefaultSamplerate(samplerate) ? "40%" : "100%",
-        }}
         className="setting-input"
         onChange={(value) => {
           const parsed = parseInt(value)
@@ -254,7 +250,7 @@ function SamplerateOption(props: {
           value={samplerate}
           tooltip={props.tooltip}
           className="setting-input"
-          style={{ width: "60%" }}
+          style={{ flexGrow: 1.5 }}
           onChange={(samplerate) => props.onChange(samplerate)}
         />
       )}
@@ -299,9 +295,6 @@ function OptionalSamplerateOption(props: {
         options={options}
         desc={props.desc}
         tooltip={props.tooltip}
-        style={{
-          width: isNonDefaultSamplerate(samplerate) ? "40%" : "100%",
-        }}
         className="setting-input"
         onChange={(value: string) => {
           const parsed = default_to_null(value, "default") ? parseInt(value) : null
@@ -314,7 +307,7 @@ function OptionalSamplerateOption(props: {
           value={samplerate}
           tooltip={props.tooltip}
           className="setting-input"
-          style={{ width: "60%" }}
+          style={{ flexGrow: 1.5 }}
           onChange={(samplerate: number | null) => props.onChange(samplerate)}
         />
       )}

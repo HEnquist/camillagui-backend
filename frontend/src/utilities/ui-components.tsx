@@ -31,8 +31,30 @@ export function Box(props: {
           {props.title}
         </div>
       </legend>
-      {props.children}
+      <div className="box-content">{props.children}</div>
     </fieldset>
+  )
+}
+
+/** Scrolls its content sideways when the content is wider than the space it gets, and only then,
+ * since a box that scrolls also clips what sticks out below it, such as an open dropdown. */
+export function ScrollX(props: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  useEffect(() => {
+    const element = ref.current
+    const content = element?.firstElementChild
+    if (!element || !(content instanceof HTMLElement) || typeof ResizeObserver === "undefined") return
+    const check = () => setOverflows(content.offsetWidth > element.clientWidth)
+    const observer = new ResizeObserver(check)
+    observer.observe(element)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className={overflows ? "scroll-x" : undefined}>
+      {props.children}
+    </div>
   )
 }
 
@@ -270,15 +292,13 @@ export function OptionLine(props: {
   small?: boolean
   style?: CSSProperties
 }) {
-  const settingStyle = props.small ? { width: "min-content" } : {}
-  const combinedStyle = Object.assign(settingStyle, props.style)
   return (
     <label
       htmlFor={props.desc}
-      className="setting"
+      className={props.small ? "setting setting-small" : "setting"}
       data-tooltip-html={props.tooltip}
       data-tooltip-id="main-tooltip"
-      style={combinedStyle}
+      style={props.style}
     >
       <span className="setting-label">{props.desc}</span>
       {props.children}
@@ -747,13 +767,17 @@ export const PENDING_BACKGROUND_STYLE: CSSProperties = Object.freeze({
 
 export function ErrorMessage(props: { message?: string }) {
   return props.message ? (
-    <div style={{ color: "var(--error-text-color)", whiteSpace: "pre-wrap" }}>{props.message}</div>
+    <div className="message" style={{ color: "var(--error-text-color)", whiteSpace: "pre-wrap" }}>
+      {props.message}
+    </div>
   ) : null
 }
 
 export function WarningMessage(props: { message?: string }) {
   return props.message ? (
-    <div style={{ color: "var(--warning-text-color)", whiteSpace: "pre-wrap" }}>{props.message}</div>
+    <div className="message" style={{ color: "var(--warning-text-color)", whiteSpace: "pre-wrap" }}>
+      {props.message}
+    </div>
   ) : null
 }
 
@@ -1272,7 +1296,7 @@ export function FileSelectPopup(props: {
     },
   ]
   return (
-    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "900px" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1282,7 +1306,6 @@ export function FileSelectPopup(props: {
       <div
         style={{
           margin: "5px",
-          width: "60vw",
           height: "80vh",
           overflowY: "scroll",
         }}
@@ -1340,7 +1363,7 @@ export function KeyValueSelectPopup(props: {
     onClose()
   }
   return (
-    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "500px" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1350,7 +1373,6 @@ export function KeyValueSelectPopup(props: {
       <div
         style={{
           margin: "5px",
-          width: "30vw",
           height: "80vh",
           overflowY: "scroll",
         }}

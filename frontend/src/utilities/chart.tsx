@@ -32,7 +32,12 @@ export function ChartPopup(props: {
 }) {
   const { volume, onVolumeChange } = props
   return (
-    <ReactjsPopup open={props.open} onClose={props.onClose}>
+    // As wide as the chart can be while its height, half its width, fits with the title and buttons
+    <ReactjsPopup
+      open={props.open}
+      onClose={props.onClose}
+      contentStyle={{ width: "min(90vw, calc((100dvh - 180px) * 2))" }}
+    >
       <CloseButton onClick={props.onClose} />
       <h3 style={{ textAlign: "center" }}>{props.data.name}</h3>
       <Chart onChange={props.onChange} data={props.data} />

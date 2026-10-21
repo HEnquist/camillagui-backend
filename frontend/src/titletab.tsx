@@ -8,11 +8,10 @@ export function TitleTab(props: { config: Config; updateConfig: (update: Update<
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel" style={{ width: "700px" }}>
+        <div className="tabpanel">
           <Title config={props.config} onChange={props.updateConfig} />
           <Description config={props.config} onChange={props.updateConfig} />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

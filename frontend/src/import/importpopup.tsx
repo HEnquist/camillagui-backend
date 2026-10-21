@@ -131,7 +131,7 @@ function FileList(props: {
       })
   }
   return (
-    <div className="tabpanel">
+    <div className="import-file-selection">
       {importDoneFromFile ? (
         <div style={bottomMargin}>
           Import from {importDoneFromFile} was successful.

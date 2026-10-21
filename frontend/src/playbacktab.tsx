@@ -38,10 +38,9 @@ export function FilePlayback(props: { loadConfig?: (config: Config) => void }) {
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="wide-tabpanel" style={{ width: "900px" }}>
+        <div className="wide-tabpanel">
           <WavFileTable loadConfig={props.loadConfig} />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

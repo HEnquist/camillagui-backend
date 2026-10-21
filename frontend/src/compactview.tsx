@@ -55,7 +55,7 @@ export function CompactView(props: {
   const cdspStatus = useCdspStatus(guiConfig)
 
   return (
-    <div className="tabpanel" style={{ margin: "auto" }}>
+    <div className="compactview">
       <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
         <MdiButton icon={mdiHome} tooltip="Change to normal view" onClick={switchToNormalView} />
         <MdiButton icon={mdiPoll} tooltip="Change to dashboard view" onClick={switchToDashboardView} rotation={90} />
