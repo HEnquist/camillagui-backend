@@ -1,5 +1,5 @@
 import * as React from "react"
-import { mdiLifebuoy, mdiSync, mdiSyncAlert, mdiSyncOff } from "@mdi/js"
+import { mdiLifebuoy, mdiPauseCircleOutline, mdiSync, mdiSyncAlert, mdiSyncOff } from "@mdi/js"
 import { Icon } from "@mdi/react"
 import { LogFileViewerPopup } from "./logfileviewer"
 import { isBackendOnline, isCdspOnline, isCdspRunning, Status } from "../camilladsp/status"
@@ -74,15 +74,23 @@ function ControllerIndicator(props: { status: Status }) {
       </span>
     )
   }
-  let follow = { icon: mdiSyncOff, color: OFF_COLOR, tooltip: "Not following the capture source" }
-  if (controller.following && controller.waiting_for_source) {
+  let follow = { icon: mdiSyncOff, color: OFF_COLOR, tooltip: "Not following the capture source", text: "follow" }
+  if (controller.manual) {
+    follow = {
+      icon: mdiPauseCircleOutline,
+      color: WARNING_COLOR,
+      tooltip: "Paused while a config tried from the editor runs.<br>Resume, or run a file, to follow again.",
+      text: "paused",
+    }
+  } else if (controller.following && controller.waiting_for_source) {
     follow = {
       icon: mdiSyncAlert,
       color: WARNING_COLOR,
       tooltip: "Following the capture source, waiting for a format it has a config for",
+      text: "follow",
     }
   } else if (controller.following) {
-    follow = { icon: mdiSync, color: ON_COLOR, tooltip: "Following the capture source" }
+    follow = { icon: mdiSync, color: ON_COLOR, tooltip: "Following the capture source", text: "follow" }
   }
   let recovery = { color: OFF_COLOR, tooltip: "Error recovery is off", text: "recover" }
   if (controller.recovering) {
@@ -102,7 +110,7 @@ function ControllerIndicator(props: { status: Status }) {
         data-tooltip-id="main-tooltip"
       >
         <Icon path={follow.icon} size="16px" />
-        follow
+        {follow.text}
       </span>
       <span
         style={{ color: recovery.color, display: "inline-flex", alignItems: "center", gap: "2px" }}

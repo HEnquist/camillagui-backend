@@ -1349,6 +1349,24 @@ pub async fn set_controller_settings(
     Ok(NoContent)
 }
 
+/// Load the active config file again. It ends the built-in controller's
+/// manual mode, so following resumes if it is enabled.
+#[utoipa::path(
+    post,
+    path = "/reload",
+    responses(
+        (status = 400, description = "CamillaDSP refused", body = ErrorBody),
+        (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
+    )
+)]
+pub async fn reload_config(State(app): Shared) -> ApiResult<NoContent> {
+    match app.camilla.reload().await {
+        Ok(()) => Ok(NoContent),
+        Err(DspError::Command { result, message }) => Err(bad_request(message).with_result(result)),
+        Err(err) => Err(err.into()),
+    }
+}
+
 /// Check the configs the built-in controller can follow with: each file the
 /// Specific template matches, and the entry config Adapt starts from. Loads
 /// every file, so it is run on demand rather than polled. Files in config_dir
@@ -1392,6 +1410,9 @@ pub enum ConfigSource {
     Variant,
     /// The active config file, which CamillaDSP runs adapted to the source.
     Adapted,
+    /// A config CamillaDSP got over its websocket, which is not saved in
+    /// any file.
+    Manual,
     /// The active config file.
     Active,
     /// The default config file.
@@ -1416,13 +1437,23 @@ pub struct StartConfig {
 /// active config file. A Specific file runs under its own name, so that saving
 /// writes to it. An adapted config is replaced by the file it was adapted from,
 /// so that saving cannot write the adapted rate, and the resampler Adapt may
-/// have added, into it. `None` when the running config is the GUI's to start
-/// with, as without following.
+/// have added, into it. In manual mode, the running config was sent over the
+/// websocket, so it has no file, and saving it to the active one is left to
+/// the user. `None` when the running config is the GUI's to start with, as
+/// without following.
 async fn following_start_config(
     app: &Arc<AppState>,
     running: &Configuration,
 ) -> Option<StartConfig> {
     let status = app.camilla.controller_status().await.ok()?;
+    if status.manual {
+        return Some(StartConfig {
+            config: running.clone(),
+            source: ConfigSource::Manual,
+            config_file_name: None,
+            adapted_to_samplerate: None,
+        });
+    }
     if !status.following {
         return None;
     }

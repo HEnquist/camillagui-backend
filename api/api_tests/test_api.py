@@ -845,6 +845,7 @@ def controller_status(**fields):
         "attempts": 0,
         "next_retry_s": None,
         "waiting_for_source": None,
+        "manual": False,
         "following": False,
         "error_recovery": False,
         "stop_reason": "None",
@@ -943,6 +944,20 @@ def test_startup_config_is_the_variant_that_runs(server):
     assert content["config_file_name"] == "config2.yml"
     # The running config, which is the variant.
     assert content["config"]["devices"]["samplerate"] == 44100
+
+
+def test_startup_config_in_manual_mode_has_no_file(server):
+    # A config sent over the websocket runs, so it belongs to no file, not even the active one.
+    enable_controller(server, manual=True, entry_config_file=str(server.config_dir / "config.yml"))
+    content = server.get("/api/getstartconfig").json()
+    assert content["source"] == "manual"
+    assert content["config_file_name"] is None
+    assert content["config"]["devices"]["samplerate"] == 44100
+
+
+def test_reload_loads_the_active_config_again(server):
+    assert server.post("/api/reload").status == 204
+    assert len(server.fake.commands("Reload")) == 1
 
 
 def test_startup_config_is_the_active_file_when_it_runs_adapted(server):

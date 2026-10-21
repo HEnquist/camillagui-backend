@@ -557,6 +557,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/reload": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Load the active config file again. It ends the built-in controller's
+     *     manual mode, so following resumes if it is enabled.
+     */
+    post: operations["reload_config"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/saveconfigfile": {
     parameters: {
       query?: never
@@ -1153,7 +1173,7 @@ export interface components {
      * @description Where the config the GUI starts with came from.
      * @enum {string}
      */
-    ConfigSource: "dsp" | "variant" | "adapted" | "active" | "default"
+    ConfigSource: "dsp" | "variant" | "adapted" | "manual" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
       title?: string | null
@@ -1192,10 +1212,13 @@ export interface components {
     ControllerStatusReport: {
       /**
        * @description The Specific config file that runs, `null` when the entry config runs as is or
-       *     adapted.
+       *     adapted, and in manual mode.
        */
       active_config_file?: string | null
-      /** @description The entry config file, the one `GetConfigFilePath` gives. */
+      /**
+       * @description The entry config file, the one `GetConfigFilePath` gives, and the one `Reload`
+       *     loads.
+       */
       entry_config_file?: string | null
       /** @description Waiting to retry after a device error. */
       recovering: boolean
@@ -1207,7 +1230,13 @@ export interface components {
        */
       next_retry_s?: number | null
       waiting_for_source?: components["schemas"]["SourceFormat"] | null
-      /** @description Whether following is on, enabled and in wait mode. */
+      /**
+       * @description Manual mode: a config sent with `SetConfig` or `SetConfigJson` runs as sent, and the
+       *     controller leaves it alone until a config is loaded from a file, for example with
+       *     `Reload`.
+       */
+      manual: boolean
+      /** @description Whether following is on, enabled and in wait mode. `false` in manual mode. */
       following: boolean
       /** @description Whether error recovery is on, enabled and in wait mode. */
       error_recovery: boolean
@@ -3454,6 +3483,41 @@ export interface operations {
         content?: never
       }
       /** @description CamillaDSP cannot be reached, or refused */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  reload_config: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description CamillaDSP refused */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
       default: {
         headers: {
           [name: string]: unknown

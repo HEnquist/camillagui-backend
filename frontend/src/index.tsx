@@ -54,6 +54,8 @@ class CamillaConfig extends React.Component<
     unsavedChanges: boolean
     unappliedChanges: boolean
     controllerStatus: ControllerStatus | null
+    /** Whether processing is stopped, as the side panel saw it with the controller status. */
+    dspInactive: boolean
   }
 > {
   constructor(props: unknown) {
@@ -82,6 +84,7 @@ class CamillaConfig extends React.Component<
       unsavedChanges: false,
       unappliedChanges: true,
       controllerStatus: null,
+      dspInactive: false,
     }
     this.loadGuiConfig()
     this.loadConfigAtStart()
@@ -120,6 +123,7 @@ class CamillaConfig extends React.Component<
       message = `Loaded ${name}, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
     else if (json.source === "active") message = "Loaded the active config"
     else if (json.source === "default") message = "Loaded the default config"
+    else if (json.source === "manual") message = "Loaded the config tried in CamillaDSP, it is not saved to any file"
     this.setState({
       unsavedChanges: false,
       // Only the config CamillaDSP runs as it is equals the editor's.
@@ -296,7 +300,16 @@ class CamillaConfig extends React.Component<
           saveConfig={this.saveConfig}
           revertConfig={this.revertConfig}
           setErrors={this.setErrors}
-          onControllerStatus={(controllerStatus) => this.setState({ controllerStatus })}
+          onControllerStatus={(controllerStatus, dspInactive) =>
+            this.setState((prev) => ({
+              controllerStatus,
+              dspInactive,
+              // Manual mode ended, so CamillaDSP went back to a file and no longer runs the
+              // config tried from the editor.
+              unappliedChanges:
+                prev.unappliedChanges || (prev.controllerStatus?.manual === true && controllerStatus?.manual !== true),
+            }))
+          }
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
@@ -405,6 +418,7 @@ class CamillaConfig extends React.Component<
           <TabPanel>
             <DspTab
               status={this.state.controllerStatus}
+              inactive={this.state.dspInactive}
               guiConfig={this.state.guiConfig}
               openConfigFile={this.openConfigFile}
             />

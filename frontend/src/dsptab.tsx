@@ -2,13 +2,12 @@ import React, { useEffect, useState } from "react"
 import "./index.css"
 import { isEqual } from "lodash"
 import { api, errorMessage, Schemas } from "./api/client"
-import { ControllerStatus } from "./camilladsp/status"
+import { ControllerStatus, describeFormat, describeStopReason } from "./camilladsp/status"
 import { GuiConfig } from "./guiconfig"
+import { ManualNotice } from "./sidepanel/manualnotice"
 import { CONFIG_FILE_STATUS_ICONS, loadActiveConfigFilename, loadFiles } from "./utilities/files"
 import { BoolOption, Box, Button, EnumInput, ErrorBoundary, TextOption } from "./utilities/ui-components"
 
-type SourceFormat = Schemas["SourceFormat"]
-type StopReason = Schemas["StopReason"]
 type FileChecks = Schemas["ControllerFileChecks"]
 
 const TOKENS = ["$samplerate$", "$channels$", "$format$"]
@@ -70,6 +69,8 @@ async function fetchActiveCandidates(): Promise<string[]> {
  */
 export function DspTab(props: {
   status: ControllerStatus | null
+  /** Whether processing is stopped. */
+  inactive: boolean
   guiConfig: GuiConfig
   openConfigFile: (name: string) => Promise<void>
 }) {
@@ -83,7 +84,7 @@ export function DspTab(props: {
             openConfigFile={props.openConfigFile}
           />
           <ControllerBox />
-          <RunningBox status={props.status} openConfigFile={props.openConfigFile} />
+          <RunningBox status={props.status} inactive={props.inactive} openConfigFile={props.openConfigFile} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>
         <div className="tabspacer" />
@@ -280,7 +281,11 @@ function ControllerBox() {
   )
 }
 
-function RunningBox(props: { status: ControllerStatus | null; openConfigFile: (name: string) => Promise<void> }) {
+function RunningBox(props: {
+  status: ControllerStatus | null
+  inactive: boolean
+  openConfigFile: (name: string) => Promise<void>
+}) {
   const status = props.status
   const title = "Running now"
   if (!status) {
@@ -291,15 +296,19 @@ function RunningBox(props: { status: ControllerStatus | null; openConfigFile: (n
     )
   }
   const runningVariant = status.following ? status.active_config_file : null
-  const rows: [string, React.ReactNode][] = [["Following", status.following ? "on" : "off"]]
+  const rows: [string, React.ReactNode][] = [
+    ["Following", status.manual ? "paused while trying a config" : status.following ? "on" : "off"],
+  ]
   rows.push([
     "Config",
-    runningVariant ? (
+    status.manual ? (
+      "tried from the editor, not saved"
+    ) : runningVariant ? (
       <FileLink key="running" name={runningVariant} open={props.openConfigFile} />
     ) : status.following ? (
       "the active config, adapted to the source if needed"
     ) : (
-      "the active config, or one tried from the editor"
+      "the active config"
     ),
   ])
   if (status.waiting_for_source) rows.push(["Waiting", `no config for ${describeFormat(status.waiting_for_source)}`])
@@ -311,6 +320,7 @@ function RunningBox(props: { status: ControllerStatus | null; openConfigFile: (n
   rows.push(["Last stop", describeStopReason(status.stop_reason)])
   return (
     <Box title={title} tooltip="Following and error recovery are on only when enabled and CamillaDSP runs with --wait.">
+      <ManualNotice controller={status} inactive={props.inactive} />
       <div style={{ display: "grid", gridTemplateColumns: "max-content auto", columnGap: "15px", rowGap: "3px" }}>
         {rows.map(([label, value]) => (
           <React.Fragment key={label}>
@@ -453,24 +463,4 @@ function FileLink(props: { name?: string | null; open: (name: string) => Promise
       {name}
     </button>
   )
-}
-
-function describeFormat(format: SourceFormat): string {
-  const parts = [
-    format.samplerate != null ? `${format.samplerate} Hz` : null,
-    format.channels != null ? `${format.channels} channels` : null,
-    format.format,
-  ].filter((part) => part != null)
-  return parts.length > 0 ? parts.join(", ") : "an unknown format"
-}
-
-export function describeStopReason(reason: StopReason): string {
-  if (reason === "None") return "none"
-  if (reason === "Done") return "the capture ended"
-  if ("CaptureError" in reason) return `capture error: ${reason.CaptureError}`
-  if ("PlaybackError" in reason) return `playback error: ${reason.PlaybackError}`
-  if ("UnknownError" in reason) return `error: ${reason.UnknownError}`
-  if ("CaptureFormatChange" in reason)
-    return `the capture format changed to ${describeFormat(reason.CaptureFormatChange)}`
-  return `the playback format changed to ${describeFormat(reason.PlaybackFormatChange)}`
 }

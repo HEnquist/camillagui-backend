@@ -122,6 +122,7 @@ fn api_routes() -> OpenApiRouter<Arc<AppState>> {
             api::set_controller_settings
         ))
         .routes(routes!(api::check_controller_files))
+        .routes(routes!(api::reload_config))
         .routes(routes!(api::get_default_config_file))
         .routes(routes!(api::get_config_file))
         .routes(routes!(api::save_config_file))

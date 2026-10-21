@@ -175,6 +175,12 @@ panel alike:
 - The two meet in three places only: "Try editor config" (`setconfig`, not saved to any file,
   and auto-applied with "Try automatically"), "Load into editor" (`getstartconfig`, the same
   as at startup, so an adapted config is never loaded), and "Open in editor" on a file name
+- A tried config puts CamillaDSP's controller in *manual mode* (`manual` in the controller
+  status): it runs as sent, following pauses, and recovery keeps restarting it. `ManualNotice`
+  says so in the side panel and the CamillaDSP tab, with Resume (`/api/reload`). Anything that
+  loads a file ends it: Resume, Run, applying controller settings, or a restart. The GUI then
+  marks the editor's config as no longer running. In manual mode `getstartconfig` answers
+  `manual` with no file name, since the tried config belongs to no file
 
 ## Filter evaluation
 

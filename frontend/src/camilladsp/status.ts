@@ -15,6 +15,34 @@ export type Labels = Schemas["ChannelLabels"]
  */
 export type ControllerStatus = Schemas["ControllerStatusReport"]
 
+export function describeFormat(format: Schemas["SourceFormat"]): string {
+  const parts = [
+    format.samplerate != null ? `${format.samplerate} Hz` : null,
+    format.channels != null ? `${format.channels} channels` : null,
+    format.format,
+  ].filter((part) => part != null)
+  return parts.length > 0 ? parts.join(", ") : "an unknown format"
+}
+
+export function describeStopReason(reason: Schemas["StopReason"]): string {
+  if (reason === "None") return "none"
+  if (reason === "Done") return "the capture ended"
+  if ("CaptureError" in reason) return `capture error: ${reason.CaptureError}`
+  if ("PlaybackError" in reason) return `playback error: ${reason.PlaybackError}`
+  if ("UnknownError" in reason) return `error: ${reason.UnknownError}`
+  if ("CaptureFormatChange" in reason)
+    return `the capture format changed to ${describeFormat(reason.CaptureFormatChange)}`
+  return `the playback format changed to ${describeFormat(reason.PlaybackFormatChange)}`
+}
+
+/** The source format that stopped processing, if a format change did. */
+export function stoppingFormat(reason: Schemas["StopReason"]): Schemas["SourceFormat"] | null {
+  if (typeof reason !== "object") return null
+  if ("CaptureFormatChange" in reason) return reason.CaptureFormatChange
+  if ("PlaybackFormatChange" in reason) return reason.PlaybackFormatChange
+  return null
+}
+
 /** What `/api/status` answers. */
 type PolledStatus = Schemas["Status"]
 

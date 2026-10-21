@@ -5,6 +5,7 @@ import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
+import { ManualNotice } from "./manualnotice"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
@@ -31,8 +32,11 @@ interface SidePanelProps {
   saveConfig: () => Promise<void>
   revertConfig: () => Promise<void>
   setErrors: (errors: Errors) => void
-  /** Called when the controller status changes, null when there is none. */
-  onControllerStatus: (status: ControllerStatus | null) => void
+  /**
+   * Called when the controller status changes, null when there is none, or processing stops or
+   * starts.
+   */
+  onControllerStatus: (status: ControllerStatus | null, inactive: boolean) => void
   currentConfigFile?: string
   message: string
   unsavedChanges: boolean
@@ -57,8 +61,10 @@ export class SidePanel extends React.Component<
 > {
   private statusPoller = new StatusPoller((cdspStatus) => {
     // Passed on only when it changes, since it re-renders the whole GUI.
-    if (!isEqual(cdspStatus.controller, this.state.cdspStatus.controller))
-      this.props.onControllerStatus(cdspStatus.controller)
+    const previous = this.state.cdspStatus
+    const inactive = cdspStatus.cdsp_status === "Inactive"
+    if (!isEqual(cdspStatus.controller, previous.controller) || inactive !== (previous.cdsp_status === "Inactive"))
+      this.props.onControllerStatus(cdspStatus.controller, inactive)
     this.setState({ cdspStatus })
   }, this.props.guiConfig.status_update_interval)
 
@@ -174,11 +180,12 @@ export class SidePanel extends React.Component<
             )}
           </div>
         )}
+        <ManualNotice controller={controller} inactive={status.cdsp_status === "Inactive"} />
         <div className="two-column-grid" style={{ marginTop: "5px" }}>
           <SuccessFailureButton
             enabled={online && !this.state.applyConfigAutomatically}
             text="Try editor config"
-            tooltip="Run the editor's config in CamillaDSP, without saving it to a file.<br>It runs until another config is loaded, or CamillaDSP restarts.<br>While following, CamillaDSP adapts it to the source in place of the active config."
+            tooltip="Run the editor's config in CamillaDSP as it is, without saving it to a file.<br>Following pauses, and the tried config runs until Resume, until a file is run,<br>or until CamillaDSP restarts, which all go back to the active config."
             onClick={this.props.applyConfig}
           />
           <SuccessFailureButton
@@ -214,7 +221,9 @@ export class SidePanel extends React.Component<
           </label>
           <span
             data-tooltip-html={
-              unapplied ? "The editor has changes CamillaDSP does not run" : "CamillaDSP runs the editor's config"
+              unapplied
+                ? "CamillaDSP does not run the editor's config as it is now"
+                : "CamillaDSP runs the editor's config"
             }
             data-tooltip-id="main-tooltip"
           >

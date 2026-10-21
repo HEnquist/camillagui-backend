@@ -30,6 +30,8 @@ type DemoState = {
   processingStopped: boolean
   logLines: string[]
   controllerSettings: Schemas["ControllerSettings"] | null
+  /** A config was tried from the editor, and the controller leaves it alone until a reload. */
+  manual: boolean
 }
 
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
@@ -294,6 +296,7 @@ function defaultState(): DemoState {
     processingStopped: false,
     logLines: ["[demo] CamillaGUI mock backend initialized", "[demo] Static mode enabled for GitHub Pages deployment"],
     controllerSettings: null,
+    manual: false,
   }
 }
 
@@ -334,17 +337,26 @@ function demoTemplateMatches(template: string): Schemas["FileCheck"][] {
   })
 }
 
+/** Load the active config again, like CamillaDSP's Reload, which ends manual mode. */
+function demoReload() {
+  const active = state.activeConfigFileName
+  if (active && state.storedConfigs[active]) state.currentConfig = cloneConfig(state.storedConfigs[active])
+  state.manual = false
+  state.processingStopped = false
+}
+
 function demoControllerStatus(): Schemas["ControllerStatusReport"] {
   const follow = state.controllerSettings?.follow_capture
-  const following = follow?.adapt === true || follow?.specific != null
-  const running = follow?.specific
-    ? demoTemplateMatches(follow.specific).find(
-        (file) =>
-          !file.problem &&
-          (file.samplerate ?? DEMO_SOURCE.samplerate) === DEMO_SOURCE.samplerate &&
-          (file.channels ?? DEMO_SOURCE.channels) === DEMO_SOURCE.channels,
-      )
-    : undefined
+  const following = !state.manual && (follow?.adapt === true || follow?.specific != null)
+  const running =
+    following && follow?.specific
+      ? demoTemplateMatches(follow.specific).find(
+          (file) =>
+            !file.problem &&
+            (file.samplerate ?? DEMO_SOURCE.samplerate) === DEMO_SOURCE.samplerate &&
+            (file.channels ?? DEMO_SOURCE.channels) === DEMO_SOURCE.channels,
+        )
+      : undefined
   return {
     active_config_file: running?.file ?? null,
     entry_config_file: state.activeConfigFileName,
@@ -352,6 +364,7 @@ function demoControllerStatus(): Schemas["ControllerStatusReport"] {
     attempts: 0,
     next_retry_s: null,
     waiting_for_source: following && !running && !follow?.adapt ? DEMO_SOURCE : null,
+    manual: state.manual,
     following,
     error_recovery: state.controllerSettings?.error_recovery === true,
     stop_reason: "None",
@@ -760,11 +773,13 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const config = activeName && state.storedConfigs[activeName] ? state.storedConfigs[activeName] : state.currentConfig
     state.currentConfig = cloneConfig(config)
     persistState()
-    const startConfig: Schemas["StartConfig"] = {
-      config_file_name: activeName,
-      config: demoStripAudioPaths(cloneConfig(config)),
-      source: activeName ? "active" : "dsp",
-    }
+    const startConfig: Schemas["StartConfig"] = state.manual
+      ? { config_file_name: null, config: demoStripAudioPaths(cloneConfig(state.currentConfig)), source: "manual" }
+      : {
+          config_file_name: activeName,
+          config: demoStripAudioPaths(cloneConfig(config)),
+          source: activeName ? "active" : "dsp",
+        }
     return jsonResponse(startConfig)
   }
 
@@ -788,6 +803,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     }
     state.currentConfig = cloneConfig(completeConfig(config))
     state.processingStopped = false
+    state.manual = true
     appendLog("applied config")
     persistState()
     return noContent()
@@ -827,7 +843,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const { name } = await requestJson<Schemas["ActiveConfigBody"]>(input, init)
     if (!state.storedConfigs[name]) return errorResponse(`Config file '${name}' not found.`, 404)
     state.activeConfigFileName = name
-    state.currentConfig = cloneConfig(state.storedConfigs[name])
+    demoReload()
     appendLog(`activated config ${name}`)
     persistState()
     return noContent()
@@ -868,8 +884,15 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/controller/settings" && method === "POST") {
     const { settings } = await requestJson<Schemas["ControllerSettingsBody"]>(input, init)
     state.controllerSettings = settings
-    state.processingStopped = false
+    demoReload()
     appendLog(`controller settings ${JSON.stringify(settings)}, reloaded`)
+    persistState()
+    return noContent()
+  }
+
+  if (pathname === "/api/reload" && method === "POST") {
+    demoReload()
+    appendLog("reloaded the active config")
     persistState()
     return noContent()
   }
