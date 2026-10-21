@@ -1,6 +1,6 @@
 import React from "react"
 import "../index.css"
-import { mdiScaleUnbalanced } from "@mdi/js"
+import { mdiClose, mdiMenu, mdiScaleUnbalanced } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
@@ -40,6 +40,7 @@ export class SidePanel extends React.Component<
     diffConfigDSP: Config
     diffConfigGUI: Config
     showDiffPopup: boolean
+    drawerOpen: boolean
   }
 > {
   private statusPoller = new StatusPoller(
@@ -60,6 +61,7 @@ export class SidePanel extends React.Component<
       diffConfigDSP: {} as Config,
       diffConfigGUI: {} as Config,
       showDiffPopup: false,
+      drawerOpen: false,
     }
   }
 
@@ -92,12 +94,42 @@ export class SidePanel extends React.Component<
   }
 
   render() {
+    const { drawerOpen } = this.state
+    const closeDrawer = () => this.setState({ drawerOpen: false })
     return (
-      <section className="sidepanel">
+      <>
+        <div className="status-strip">
+          <MdiButton
+            icon={mdiMenu}
+            tooltip="Show the side panel"
+            buttonSize="small"
+            onClick={() => this.setState({ drawerOpen: true })}
+          />
+          <span>State: {this.state.cdspStatus.cdsp_status}</span>
+          <SaveApplyIndicators unsaved={this.props.unsavedChanges} unapplied={this.props.unappliedChanges} />
+        </div>
+        <div className={"drawer-backdrop" + (drawerOpen ? " drawer-backdrop-open" : "")} onClick={closeDrawer} />
+        <section className={"sidepanel" + (drawerOpen ? " sidepanel-open" : "")}>
+          {this.panelContent(closeDrawer)}
+        </section>
+      </>
+    )
+  }
+
+  private panelContent(closeDrawer: () => void) {
+    return (
+      <>
         <div className="sidepanel-header">
           <div className="sidepanel-header-main">
             <img className="sidepanel-logo" src={camillalogo} alt="graph" />
           </div>
+          <MdiButton
+            icon={mdiClose}
+            tooltip="Hide the side panel"
+            buttonSize="small"
+            className="drawer-close"
+            onClick={closeDrawer}
+          />
         </div>
         <div className="sidepanel-content">
           {isCdspOnline(this.state.cdspStatus) && (
@@ -123,7 +155,7 @@ export class SidePanel extends React.Component<
           right_config={this.state.diffConfigGUI}
           right_name="GUI"
         />
-      </section>
+      </>
     )
   }
 
@@ -200,71 +232,41 @@ export class SidePanel extends React.Component<
             onClick={() => this.stopProcessing()}
           />
         </div>
-        <div className="setting">
-          <div
-            data-tooltip-html="Apply config to DSP automatically<br>after each change"
-            data-tooltip-id="main-tooltip"
-            style={{
-              display: "table-row",
-              textAlign: "center",
-              marginTop: "5px",
-            }}
-          >
-            <div className="setting-label-wide">Apply automatically</div>
-            <input
-              className="setting-input"
-              type="checkbox"
-              checked={this.state.applyConfigAutomatically}
-              onChange={(e) =>
-                this.setState({
-                  applyConfigAutomatically: e.target.checked,
-                })
-              }
-            />
-          </div>
-          <div
-            data-tooltip-html="Save config to file automatically<br>after each change"
-            data-tooltip-id="main-tooltip"
-            style={{
-              display: "table-row",
-              textAlign: "center",
-              marginTop: "5px",
-            }}
-          >
-            <div className="setting-label-wide">Save automatically</div>
-            <input
-              className="setting-input"
-              type="checkbox"
-              checked={this.state.saveConfigAutomatically}
-              onChange={(e) =>
-                this.setState({
-                  saveConfigAutomatically: e.target.checked,
-                })
-              }
-            />
-          </div>
-        </div>
-        <div className="two-column-grid">
-          <div
-            data-tooltip-html={
-              unsaved ? "GUI has changes that have<br>not been saved to file" : "All changes have been saved to file"
+        <label
+          className="setting"
+          data-tooltip-html="Apply config to DSP automatically<br>after each change"
+          data-tooltip-id="main-tooltip"
+          style={{ marginTop: "5px" }}
+        >
+          <span className="setting-label-wide">Apply automatically</span>
+          <input
+            type="checkbox"
+            checked={this.state.applyConfigAutomatically}
+            onChange={(e) =>
+              this.setState({
+                applyConfigAutomatically: e.target.checked,
+              })
             }
-            data-tooltip-id="main-tooltip"
-            style={{ textAlign: "center", marginTop: "5px" }}
-          >
-            {unsaved ? "All saved: ⚠️" : "All saved: ✔️"}
-          </div>
-          <div
-            data-tooltip-html={
-              unapplied
-                ? "GUI has changes that have<br>not been applied to the DSP"
-                : "All changes have been applied to the DSP"
+          />
+        </label>
+        <label
+          className="setting"
+          data-tooltip-html="Save config to file automatically<br>after each change"
+          data-tooltip-id="main-tooltip"
+        >
+          <span className="setting-label-wide">Save automatically</span>
+          <input
+            type="checkbox"
+            checked={this.state.saveConfigAutomatically}
+            onChange={(e) =>
+              this.setState({
+                saveConfigAutomatically: e.target.checked,
+              })
             }
-            data-tooltip-id="main-tooltip"
-            style={{ textAlign: "center", marginTop: "5px" }}
-          >
-            {unapplied ? "All applied: ⚠️" : "All applied: ✔️"}
-          </div>
+          />
+        </label>
+        <div className="two-column-grid" style={{ textAlign: "center", marginTop: "5px" }}>
+          <SaveApplyIndicators unsaved={unsaved} unapplied={unapplied} />
         </div>
         <Configcheckmessage config={this.props.config} setErrors={this.props.setErrors} />
       </Box>
@@ -295,4 +297,30 @@ export class SidePanel extends React.Component<
       console.log(e)
     }
   }
+}
+
+function SaveApplyIndicators(props: { unsaved: boolean; unapplied: boolean }) {
+  const { unsaved, unapplied } = props
+  return (
+    <>
+      <span
+        data-tooltip-html={
+          unsaved ? "GUI has changes that have<br>not been saved to file" : "All changes have been saved to file"
+        }
+        data-tooltip-id="main-tooltip"
+      >
+        {unsaved ? "All saved: ⚠️" : "All saved: ✔️"}
+      </span>
+      <span
+        data-tooltip-html={
+          unapplied
+            ? "GUI has changes that have<br>not been applied to the DSP"
+            : "All changes have been applied to the DSP"
+        }
+        data-tooltip-id="main-tooltip"
+      >
+        {unapplied ? "All applied: ⚠️" : "All applied: ✔️"}
+      </span>
+    </>
+  )
 }

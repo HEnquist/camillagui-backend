@@ -145,6 +145,91 @@ def test_device_capabilities_show_the_supported_rates(page, server):
     expect(rates.first).to_contain_text("44100")
 
 
+# What sticks out past the right edge of the window: the page itself, or anything visible on the
+# selected tab outside of the boxes that scroll sideways on purpose.
+STICKING_OUT = """() => {
+  const out = []
+  if (document.documentElement.scrollWidth > window.innerWidth)
+    out.push("page: " + document.documentElement.scrollWidth)
+  const panel = document.querySelector(".react-tabs__tab-panel--selected")
+  for (const element of panel.querySelectorAll("*")) {
+    if (element.closest(".scroll-x, .data-table-shell")) continue
+    const rect = element.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0 && rect.right > window.innerWidth + 1)
+      out.push(element.outerHTML.slice(0, 80) + ": " + Math.round(rect.right))
+  }
+  return out
+}"""
+
+
+@pytest.mark.parametrize("touch", [False, True], ids=["mouse", "touch"])
+def test_no_tab_is_wider_than_the_window(browser, server, touch):
+    """At any window width, down to a phone's. Catches a fixed width that
+    sneaks back in, which the tests at a desktop size would not notice. With a
+    touch screen too, where buttons and inputs are larger."""
+    context = browser.new_context(is_mobile=touch, has_touch=touch)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(error))
+    # A phone opens in the compact view, the tabs are in the normal one
+    page.goto(f"http://127.0.0.1:{server.port}/gui/index.html?normalview")
+    config = yaml.safe_load((server.config_dir / "config2.yml").read_text())
+    config["devices"]["capture"]["channels"] = 8
+    config["filters"] = {
+        "lowpass": {"type": "Biquad", "parameters": {"type": "Lowpass", "freq": 1000, "q": 0.5}}
+    }
+    config["mixers"] = {
+        "downmix": {
+            "channels": {"in": 8, "out": 2},
+            "mapping": [
+                {"dest": dest, "sources": [{"channel": src, "gain": 0} for src in range(8)]}
+                for dest in range(2)
+            ],
+        }
+    }
+    config["processors"] = {
+        "comp": {
+            "type": "Compressor",
+            "parameters": {
+                "channels": 2,
+                "attack": 0.025,
+                "attack_unit": "s",
+                "release": 1.0,
+                "release_unit": "s",
+                "threshold": -25,
+                "factor": 5.0,
+            },
+        }
+    }
+    config["pipeline"] = [
+        {"type": "Mixer", "name": "downmix"},
+        {"type": "Filter", "channels": [0, 1], "names": ["lowpass"]},
+        {"type": "Processor", "name": "comp"},
+    ]
+    (server.config_dir / "wide_tmp.yml").write_text(yaml.dump(config))
+    try:
+        page.get_by_role("tab", name="Files").click()
+        page.locator("""[data-tooltip-html='Load "wide_tmp.yml" into the GUI.']""").click()
+        page.get_by_role("tab", name="Filters").click()
+        page.locator('[data-tooltip-html="Plot frequency response of this filter"]').first.click()
+        expect(page.locator("canvas").first).to_be_visible()
+        tabs = page.locator(".react-tabs__tab:not(.react-tabs__tab--disabled)")
+        names = [name.strip() for name in tabs.all_inner_texts()]
+        for width in (1600, 1280, 1024, 768, 390):
+            page.set_viewport_size({"width": width, "height": 900})
+            for name in names:
+                page.get_by_role("tab", name=name, exact=True).click()
+                # The mixer matrix starts to scroll once it has been measured
+                deadline = time.time() + 2
+                while (sticking_out := page.evaluate(STICKING_OUT)) and time.time() < deadline:
+                    time.sleep(0.05)
+                assert sticking_out == [], f"{name} at {width} px"
+    finally:
+        (server.config_dir / "wide_tmp.yml").unlink()
+        context.close()
+    assert errors == []
+
+
 def test_config_and_volume_reach_camilladsp(page, server):
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
