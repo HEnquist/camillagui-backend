@@ -25,6 +25,9 @@ import {
   ResamplerType,
   ResamplerTypeOptions,
   getFormatOptions,
+  otherNativeSamplerates,
+  preferredSamplerate,
+  setSamplerates,
   WasapiFormat,
   Signals,
 } from "./camilladsp/config"
@@ -50,6 +53,7 @@ import {
   MdiButton,
   null_to_default,
   OptionalBoolOption,
+  ParsedInput,
   FloatOption,
   OptionalFloatOption,
   OptionalIntInput,
@@ -64,11 +68,11 @@ function getEffectiveCaptureSamplerate(devices: Devices): number | null {
   if (devices.resampler !== null) {
     return devices.capture_samplerate
   }
-  return devices.samplerate
+  return preferredSamplerate(devices)
 }
 
 function getEffectivePlaybackSamplerate(devices: Devices): number {
-  return devices.samplerate
+  return preferredSamplerate(devices)
 }
 
 function getCaptureSamplerateDescription(devices: Devices): string {
@@ -78,11 +82,11 @@ function getCaptureSamplerateDescription(devices: Devices): string {
     }
     return "Currently selecting values from capture_samplerate."
   }
-  return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
+  return `Currently selecting values for ${preferredSamplerate(devices)} Hz from samplerate.`
 }
 
 function getPlaybackSamplerateDescription(devices: Devices): string {
-  return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
+  return `Currently selecting values for ${preferredSamplerate(devices)} Hz from samplerate.`
 }
 
 /** The devices of a device type, as name and description, none if they cannot be listed. */
@@ -198,20 +202,51 @@ function Samplerate(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_capture_samplerate && props.devices.resampler !== null) return null
+  const others = otherNativeSamplerates(props.devices)
   return (
-    <SamplerateOption
-      samplerate={props.devices.samplerate}
-      error={props.errors.messageFor("samplerate")}
-      desc="samplerate"
-      tooltip="Sample rate for processing and output"
-      onChange={(samplerate) =>
-        props.onChange((devices) => {
-          devices.samplerate = samplerate
-        })
-      }
-      extraPadding={true}
-    />
+    <>
+      <SamplerateOption
+        samplerate={preferredSamplerate(props.devices)}
+        error={props.errors.messageFor("samplerate")}
+        desc="samplerate"
+        tooltip="Sample rate for processing and output"
+        onChange={(samplerate) =>
+          props.onChange((devices) => {
+            setSamplerates(devices, samplerate, otherNativeSamplerates(devices))
+          })
+        }
+        extraPadding={true}
+      />
+      <div
+        className="setting"
+        data-tooltip-html="Other rates the hardware runs natively, separated by commas, used when following the capture source.<br>A listed rate runs natively, any other rate is resampled to samplerate.<br>Leave empty for a single rate."
+        style={{ padding: "0 12px" }}
+      >
+        <label className="setting-label">other native rates</label>
+        <ParsedInput
+          value={others}
+          immediate={false}
+          tooltip="Other rates the hardware runs natively, separated by commas"
+          placeholder="none"
+          className="setting-input"
+          asString={(rates: number[]) => rates.join(", ")}
+          parseValue={parseRateList}
+          onChange={(rates) =>
+            props.onChange((devices) => {
+              setSamplerates(devices, preferredSamplerate(devices), rates)
+            })
+          }
+        />
+      </div>
+    </>
   )
+}
+
+/** A comma or space separated list of positive integers, undefined if any entry isn't one. */
+function parseRateList(raw: string): number[] | undefined {
+  const parts = raw.split(/[\s,]+/).filter((part) => part !== "")
+  const rates = parts.map((part) => (/^\d+$/.test(part) ? parseInt(part) : NaN))
+  return rates.every((rate) => rate > 0) ? rates : undefined
 }
 
 function SamplerateOption(props: {
@@ -653,7 +688,6 @@ function CaptureOptions(props: {
       channels: 2,
       format: null,
       device: "hw:0",
-      stop_on_inactive: null,
       link_volume_control: null,
       link_mute_control: null,
       labels: null,
@@ -995,19 +1029,6 @@ function CaptureOptions(props: {
               onChange((devices) => {
                 if (devices.capture.type === "Alsa") {
                   devices.capture.link_mute_control = link_mute_control
-                }
-              })
-            }
-          />
-          <OptionalBoolOption
-            value={capture.stop_on_inactive}
-            error={errors.messageFor("stop_on_inactive")}
-            desc="stop_on_inactive"
-            tooltip="Stop if gadget or loopback capture device becomes inactive"
-            onChange={(stop_on_inactive) =>
-              onChange((devices) => {
-                if (devices.capture.type === "Alsa") {
-                  devices.capture.stop_on_inactive = stop_on_inactive
                 }
               })
             }

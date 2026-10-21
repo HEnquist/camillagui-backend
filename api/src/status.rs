@@ -344,11 +344,11 @@ mod tests {
                         };
                         let alsa = || vec![("hw:0".to_string(), "Card".to_string())];
                         let reply = match serde_json::from_str(&text).unwrap() {
-                            WsCommand::GetVersion => WsReply::GetVersion {
+                            WsCommand::GetVersion {} =>WsReply::GetVersion {
                                 result: WsResult::Ok,
                                 value: "5.0.0".to_string(),
                             },
-                            WsCommand::GetSupportedDeviceTypes => {
+                            WsCommand::GetSupportedDeviceTypes {} =>{
                                 WsReply::GetSupportedDeviceTypes {
                                     result: WsResult::Ok,
                                     value: (
@@ -371,46 +371,46 @@ mod tests {
                                     value: if jack { vec![] } else { alsa() },
                                 }
                             }
-                            WsCommand::GetCaptureRate => WsReply::GetCaptureRate {
+                            WsCommand::GetCaptureRate {} =>WsReply::GetCaptureRate {
                                 result: WsResult::Ok,
                                 value: 44100,
                             },
-                            WsCommand::GetRateAdjust => WsReply::GetRateAdjust {
+                            WsCommand::GetRateAdjust {} =>WsReply::GetRateAdjust {
                                 result: WsResult::Ok,
                                 value: 1.0,
                             },
-                            WsCommand::GetBufferLevel => WsReply::GetBufferLevel {
+                            WsCommand::GetBufferLevel {} =>WsReply::GetBufferLevel {
                                 result: WsResult::Ok,
                                 value: 0,
                             },
-                            WsCommand::GetClippedSamples => WsReply::GetClippedSamples {
+                            WsCommand::GetClippedSamples {} =>WsReply::GetClippedSamples {
                                 result: WsResult::Ok,
                                 value: 0,
                             },
-                            WsCommand::GetProcessingLoad => WsReply::GetProcessingLoad {
+                            WsCommand::GetProcessingLoad {} =>WsReply::GetProcessingLoad {
                                 result: WsResult::Ok,
                                 value: 0.0,
                             },
-                            WsCommand::GetResamplerLoad => WsReply::GetResamplerLoad {
+                            WsCommand::GetResamplerLoad {} =>WsReply::GetResamplerLoad {
                                 result: WsResult::Ok,
                                 value: 0.0,
                             },
-                            WsCommand::GetChannelLabels => WsReply::GetChannelLabels {
+                            WsCommand::GetChannelLabels {} =>WsReply::GetChannelLabels {
                                 result: WsResult::Ok,
                                 value: ChannelLabels::default(),
                             },
-                            WsCommand::GetConfigTitle => WsReply::GetConfigTitle {
+                            WsCommand::GetConfigTitle {} =>WsReply::GetConfigTitle {
                                 result: WsResult::Ok,
                                 value: "Title".to_string(),
                             },
-                            WsCommand::GetConfigDescription => {
+                            WsCommand::GetConfigDescription {} =>{
                                 tokio::time::sleep(Duration::from_millis(100)).await;
                                 WsReply::GetConfigDescription {
                                     result: WsResult::Ok,
                                     value: "Description".to_string(),
                                 }
                             }
-                            WsCommand::GetState => {
+                            WsCommand::GetState {} =>{
                                 tokio::time::sleep(Duration::from_millis(200)).await;
                                 WsReply::GetState {
                                     result: WsResult::Ok,

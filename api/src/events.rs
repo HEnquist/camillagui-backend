@@ -125,7 +125,7 @@ pub async fn events(
 async fn state_values(
     camilla: &CamillaClient,
 ) -> Result<impl Stream<Item = String> + Send + Unpin + use<>, SubscribeError> {
-    let changes = subscribe(camilla.url(), &WsCommand::SubscribeState, "StateEvent").await?;
+    let changes = subscribe(camilla.url(), &WsCommand::SubscribeState {}, "StateEvent").await?;
     let state = camilla.state().await?;
     let stop_reason = match state {
         ProcessingState::Inactive => Some(camilla.stop_reason().await?),

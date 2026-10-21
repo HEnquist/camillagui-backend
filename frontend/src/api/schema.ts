@@ -871,7 +871,6 @@ export interface components {
           channels: number
           device: string
           format?: components["schemas"]["AlsaSampleFormat"] | null
-          stop_on_inactive?: boolean | null
           link_volume_control?: string | null
           link_mute_control?: string | null
           labels?: (string | null)[] | null
@@ -929,6 +928,11 @@ export interface components {
            * @description Port of the test control socket, see `src/dummy_backend/control.rs`.
            */
           control_port?: number | null
+          /**
+           * Format: int32
+           * @description Port of the simulated source, see `src/dummy_backend/source.rs`.
+           */
+          source_port?: number | null
           /** @enum {string} */
           type: "Dummy"
         }
@@ -1154,8 +1158,8 @@ export interface components {
     }
     /** @description Top-level device and pipeline timing configuration. */
     Devices: {
-      /** @description Output sample rate in Hz. */
-      samplerate: number
+      /** @description Output sample rate in Hz, or a list of the rates Adapt runs natively. */
+      samplerate: components["schemas"]["SampleRates"]
       /** @description Number of frames per processing chunk. */
       chunksize: number
       queuelimit?: number | null
@@ -1181,7 +1185,7 @@ export interface components {
      *     out when the import does not have it.
      */
     DevicesFragment: {
-      samplerate?: number
+      samplerate?: components["schemas"]["SampleRates"]
       chunksize?: number
       queuelimit?: number
       silence_threshold?: components["schemas"]["FiniteF64"]
@@ -1971,6 +1975,7 @@ export interface components {
           /** @enum {string} */
           type: "Slip"
         }
+    SampleRates: number | number[]
     /**
      * @description The width of the samples in a coefficient frame.
      * @enum {string}
@@ -2055,6 +2060,23 @@ export interface components {
           /** @enum {string} */
           type: "WhiteNoise"
         }
+    /**
+     * @description The format a source reported. Each field is given where the backend knows it, and is
+     *     `None` otherwise. Most backends know at least the rate, WASAPI only knows that something
+     *     changed.
+     *
+     *     The sample format is the backend's own name for it, as its configs and its capability
+     *     probing write it ("S24_3_LE" for ALSA, "S24" for CoreAudio). Backends differ in which
+     *     formats they have, so a name is what stays general across them.
+     */
+    SourceFormat: {
+      /** @description Sample rate in Hz. */
+      samplerate?: number | null
+      /** @description Number of channels. */
+      channels?: number | null
+      /** @description Sample format, as the backend's configs name it. */
+      format?: string | null
+    }
     /** @description Log-spaced spectrum, as returned by [`WsCommand::GetSpectrum`]. */
     SpectrumData: {
       /** @description Center frequency of each output bin in Hz. */
@@ -2163,12 +2185,12 @@ export interface components {
           UnknownError: string
         }
       | {
-          /** @description Capture device sample rate changed to the given value. */
-          CaptureFormatChange: number
+          /** @description Capture device format changed: `samplerate`, `channels` and `format`, null if unknown. */
+          CaptureFormatChange: components["schemas"]["SourceFormat"]
         }
       | {
-          /** @description Playback device sample rate changed to the given value. */
-          PlaybackFormatChange: number
+          /** @description Playback device format changed, reported the same way as `CaptureFormatChange`. */
+          PlaybackFormatChange: components["schemas"]["SourceFormat"]
         }
     /**
      * @description Unit for a time value (attack, release, envelope times).

@@ -7,7 +7,7 @@
 
 use serde_json::{Map, Value, json};
 
-pub const CURRENT_VERSION: u32 = 5;
+pub const CURRENT_VERSION: u32 = 6;
 
 const V3_SAMPLE_FORMATS: [&str; 6] = [
     "S16LE",
@@ -457,6 +457,19 @@ fn modify_processor_time_units(config: &mut Value) {
     }
 }
 
+/// v5->v6 removes "stop_on_inactive" from the capture device, since following
+/// the source replaces it. The GUI writes every optional field, so many v5
+/// configs have it as null.
+fn remove_stop_on_inactive(config: &mut Value) {
+    if let Some(capture) = config
+        .get_mut("devices")
+        .and_then(|d| d.get_mut("capture"))
+        .and_then(Value::as_object_mut)
+    {
+        capture.remove("stop_on_inactive");
+    }
+}
+
 /// Bring an older config, or part of one, up to the current format, in place.
 pub fn migrate_legacy_config(config: &mut Value) {
     if !config.is_object() {
@@ -477,6 +490,7 @@ pub fn migrate_legacy_config(config: &mut Value) {
     modify_limiter_filters(config);
     modify_fivepointpeq_filters(config);
     modify_processor_time_units(config);
+    remove_stop_on_inactive(config);
 }
 
 /// Migrate a config, or part of one, only if it is written for an older
@@ -601,6 +615,12 @@ fn look_for_v4(config: &Value) -> bool {
     device_units || filters || processors || removed_backends
 }
 
+fn look_for_v5(config: &Value) -> bool {
+    device(config, "capture")
+        .and_then(Value::as_object)
+        .is_some_and(|dev| dev.contains_key("stop_on_inactive"))
+}
+
 /// The overall shape of a config: a mapping with a devices section, and the
 /// other sections of the right kind if present.
 fn passes_sections_schema(config: &Value) -> bool {
@@ -635,6 +655,8 @@ pub fn identify_version(config: &Value) -> Option<u32> {
         Some(3)
     } else if look_for_v4(config) {
         Some(4)
+    } else if look_for_v5(config) {
+        Some(5)
     } else if passes_sections_schema(config) {
         Some(CURRENT_VERSION)
     } else {
@@ -1150,6 +1172,24 @@ mod tests {
             "ms"
         );
         assert_eq!(identify_version(&config), Some(CURRENT_VERSION));
+    }
+
+    #[test]
+    fn v6_migration() {
+        for stop_on_inactive in [json!(null), json!(true)] {
+            let mut config = v5_config();
+            config["devices"]["capture"] = json!({
+                "type": "Alsa", "channels": 2, "device": "hw:Loopback,0",
+                "stop_on_inactive": stop_on_inactive,
+            });
+            assert_eq!(identify_version(&config), Some(5));
+            migrate_if_older(&mut config);
+            assert_eq!(
+                config["devices"]["capture"],
+                json!({"type": "Alsa", "channels": 2, "device": "hw:Loopback,0"})
+            );
+            assert_eq!(identify_version(&config), Some(CURRENT_VERSION));
+        }
     }
 
     #[test]

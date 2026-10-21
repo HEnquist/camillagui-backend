@@ -55,7 +55,6 @@ export function defaultConfig(): Config {
         channels: 2,
         format: null,
         device: "hw:0",
-        stop_on_inactive: null,
         link_volume_control: null,
         link_mute_control: null,
         labels: null,
@@ -76,7 +75,25 @@ export function defaultConfig(): Config {
   }
 }
 
-export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]
+/**
+ * The rate a config runs at, the first one when `samplerate` is a list of native rates. That one
+ * is used unless following picks another listed rate.
+ */
+export function preferredSamplerate(devices: Devices): number {
+  return Array.isArray(devices.samplerate) ? devices.samplerate[0] : devices.samplerate
+}
+
+/** The native rates after the preferred one, empty for a single `samplerate`. */
+export function otherNativeSamplerates(devices: Devices): number[] {
+  return Array.isArray(devices.samplerate) ? devices.samplerate.slice(1) : []
+}
+
+/** A single rate when there are no other native rates, otherwise the list, preferred first. */
+export function setSamplerates(devices: Devices, preferred: number, others: number[]) {
+  devices.samplerate = others.length > 0 ? [preferred, ...others] : preferred
+}
+
+export const FilterSortKeys =["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]
 
 export const ProcessorSortKeys = ["Name", "Type"]
 

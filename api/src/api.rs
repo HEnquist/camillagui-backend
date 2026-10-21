@@ -18,7 +18,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use camilladsp_schema::config::{
     CaptureDevice, Configuration, ConvParameters, Filter, FiniteF32, FiniteF64, Mixer, PathElement,
-    PipelineStep, PlaybackDevice, Processor, Resampler,
+    PipelineStep, PlaybackDevice, Processor, Resampler, SampleRates,
 };
 use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, Fader, SpectrumSide, SpectrumSubscription, VuSubscription,
@@ -892,8 +892,8 @@ pub struct ConfigFragment {
 #[serde(deny_unknown_fields)]
 pub struct DevicesFragment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
-    pub samplerate: Option<NonZeroUsize>,
+    #[schema(nullable = false)]
+    pub samplerate: Option<SampleRates>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
     pub chunksize: Option<NonZeroUsize>,

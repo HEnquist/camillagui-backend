@@ -17,7 +17,7 @@ function ConfigSummary({ config }: CustomPageProps) {
             <tbody>
               <tr>
                 <td>Samplerate</td>
-                <td>{config.devices.samplerate} Hz</td>
+                <td>{[config.devices.samplerate].flat().join(", ")} Hz</td>
               </tr>
               <tr>
                 <td>Capture</td>

@@ -12,7 +12,6 @@ function baseStereoAlsa() {
     channels: 2,
     format: null,
     device: "hw:0",
-    stop_on_inactive: null,
     link_volume_control: null,
     link_mute_control: null,
     labels: null,

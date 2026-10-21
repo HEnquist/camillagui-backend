@@ -12,7 +12,13 @@ import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
-import { completeConfig, Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
+import {
+  completeConfig,
+  Config,
+  defaultConfig,
+  getCaptureDeviceChannelCount,
+  preferredSamplerate,
+} from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
@@ -348,7 +354,7 @@ class CamillaConfig extends React.Component<
           <TabPanel>
             <FiltersTab
               config={config}
-              samplerate={config.devices.samplerate}
+              samplerate={preferredSamplerate(config.devices)}
               channels={getCaptureDeviceChannelCount(config.devices.capture)}
               coeffDir={this.state.guiConfig.coeff_dir}
               allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}

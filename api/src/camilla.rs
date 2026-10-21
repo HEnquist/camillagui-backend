@@ -312,7 +312,7 @@ impl CamillaClient {
         };
         let result: Result<Ws, DspError> = async {
             let mut ws = connect(&self.url).await?;
-            request_on(&mut ws, &WsCommand::GetVersion, REPLY_TIMEOUT).await?;
+            request_on(&mut ws, &WsCommand::GetVersion {}, REPLY_TIMEOUT).await?;
             Ok(ws)
         }
         .await;
@@ -365,79 +365,79 @@ impl CamillaClient {
     }
 
     pub async fn version(&self) -> Result<String, DspError> {
-        value_of!(self.request(WsCommand::GetVersion).await?, GetVersion)
+        value_of!(self.request(WsCommand::GetVersion {}).await?, GetVersion)
     }
 
     pub async fn state(&self) -> Result<ProcessingState, DspError> {
-        value_of!(self.request(WsCommand::GetState).await?, GetState)
+        value_of!(self.request(WsCommand::GetState {}).await?, GetState)
     }
 
     pub async fn stop_reason(&self) -> Result<StopReason, DspError> {
-        value_of!(self.request(WsCommand::GetStopReason).await?, GetStopReason)
+        value_of!(self.request(WsCommand::GetStopReason {}).await?, GetStopReason)
     }
 
     pub async fn capture_rate(&self) -> Result<usize, DspError> {
         value_of!(
-            self.request(WsCommand::GetCaptureRate).await?,
+            self.request(WsCommand::GetCaptureRate {}).await?,
             GetCaptureRate
         )
     }
 
     pub async fn rate_adjust(&self) -> Result<f32, DspError> {
-        value_of!(self.request(WsCommand::GetRateAdjust).await?, GetRateAdjust)
+        value_of!(self.request(WsCommand::GetRateAdjust {}).await?, GetRateAdjust)
     }
 
     pub async fn buffer_level(&self) -> Result<usize, DspError> {
         value_of!(
-            self.request(WsCommand::GetBufferLevel).await?,
+            self.request(WsCommand::GetBufferLevel {}).await?,
             GetBufferLevel
         )
     }
 
     pub async fn clipped_samples(&self) -> Result<usize, DspError> {
         value_of!(
-            self.request(WsCommand::GetClippedSamples).await?,
+            self.request(WsCommand::GetClippedSamples {}).await?,
             GetClippedSamples
         )
     }
 
     pub async fn processing_load(&self) -> Result<f32, DspError> {
         value_of!(
-            self.request(WsCommand::GetProcessingLoad).await?,
+            self.request(WsCommand::GetProcessingLoad {}).await?,
             GetProcessingLoad
         )
     }
 
     pub async fn resampler_load(&self) -> Result<f32, DspError> {
         value_of!(
-            self.request(WsCommand::GetResamplerLoad).await?,
+            self.request(WsCommand::GetResamplerLoad {}).await?,
             GetResamplerLoad
         )
     }
 
     pub async fn channel_labels(&self) -> Result<ChannelLabels, DspError> {
         value_of!(
-            self.request(WsCommand::GetChannelLabels).await?,
+            self.request(WsCommand::GetChannelLabels {}).await?,
             GetChannelLabels
         )
     }
 
     pub async fn config_title(&self) -> Result<String, DspError> {
         value_of!(
-            self.request(WsCommand::GetConfigTitle).await?,
+            self.request(WsCommand::GetConfigTitle {}).await?,
             GetConfigTitle
         )
     }
 
     pub async fn config_description(&self) -> Result<String, DspError> {
         value_of!(
-            self.request(WsCommand::GetConfigDescription).await?,
+            self.request(WsCommand::GetConfigDescription {}).await?,
             GetConfigDescription
         )
     }
 
     pub async fn volume(&self) -> Result<f32, DspError> {
-        value_of!(self.request(WsCommand::GetVolume).await?, GetVolume)
+        value_of!(self.request(WsCommand::GetVolume {}).await?, GetVolume)
     }
 
     pub async fn set_volume(&self, value: f32) -> Result<(), DspError> {
@@ -448,7 +448,7 @@ impl CamillaClient {
     }
 
     pub async fn mute(&self) -> Result<bool, DspError> {
-        value_of!(self.request(WsCommand::GetMute).await?, GetMute)
+        value_of!(self.request(WsCommand::GetMute {}).await?, GetMute)
     }
 
     pub async fn set_mute(&self, value: bool) -> Result<(), DspError> {
@@ -456,7 +456,7 @@ impl CamillaClient {
     }
 
     pub async fn faders(&self) -> Result<Vec<Fader>, DspError> {
-        value_of!(self.request(WsCommand::GetFaders).await?, GetFaders)
+        value_of!(self.request(WsCommand::GetFaders {}).await?, GetFaders)
     }
 
     pub async fn set_fader_volume(&self, fader: usize, value: f32) -> Result<(), DspError> {
@@ -477,7 +477,7 @@ impl CamillaClient {
 
     pub async fn config_file_path(&self) -> Result<Option<String>, DspError> {
         value_of!(
-            self.request(WsCommand::GetConfigFilePath).await?,
+            self.request(WsCommand::GetConfigFilePath {}).await?,
             GetConfigFilePath
         )
     }
@@ -491,14 +491,14 @@ impl CamillaClient {
 
     pub async fn state_file_path(&self) -> Result<Option<String>, DspError> {
         value_of!(
-            self.request(WsCommand::GetStateFilePath).await?,
+            self.request(WsCommand::GetStateFilePath {}).await?,
             GetStateFilePath
         )
     }
 
     /// The active config, `None` if there is none.
     pub async fn config(&self) -> Result<Option<Configuration>, DspError> {
-        let json = value_of!(self.request(WsCommand::GetConfigJson).await?, GetConfigJson)?;
+        let json = value_of!(self.request(WsCommand::GetConfigJson {}).await?, GetConfigJson)?;
         if json.trim() == "null" {
             return Ok(None);
         }
@@ -524,13 +524,13 @@ impl CamillaClient {
     }
 
     pub async fn stop(&self) -> Result<(), DspError> {
-        result_of!(self.request(WsCommand::Stop).await?, Stop)
+        result_of!(self.request(WsCommand::Stop {}).await?, Stop)
     }
 
     /// The device types CamillaDSP was built with, `(playback, capture)`.
     pub async fn supported_device_types(&self) -> Result<(Vec<String>, Vec<String>), DspError> {
         value_of!(
-            self.request(WsCommand::GetSupportedDeviceTypes).await?,
+            self.request(WsCommand::GetSupportedDeviceTypes {}).await?,
             GetSupportedDeviceTypes
         )
     }
@@ -598,18 +598,18 @@ mod tests {
                     let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
                     while let Some(Ok(Message::Text(text))) = ws.next().await {
                         let reply = match serde_json::from_str(&text).unwrap() {
-                            WsCommand::GetVersion => WsReply::GetVersion {
+                            WsCommand::GetVersion {} =>WsReply::GetVersion {
                                 result: WsResult::Ok,
                                 value: "5.0.0".to_string(),
                             },
-                            WsCommand::GetState => {
+                            WsCommand::GetState {} =>{
                                 tokio::time::sleep(Duration::from_millis(200)).await;
                                 WsReply::GetState {
                                     result: WsResult::Ok,
                                     value: ProcessingState::Running,
                                 }
                             }
-                            WsCommand::GetMute => {
+                            WsCommand::GetMute {} =>{
                                 let stray = WsReply::GetVolume {
                                     result: WsResult::Ok,
                                     value: -10.0,
