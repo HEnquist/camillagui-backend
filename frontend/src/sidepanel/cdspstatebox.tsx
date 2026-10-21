@@ -1,8 +1,6 @@
 import * as React from "react"
-import { mdiLifebuoy, mdiPauseCircleOutline, mdiSync, mdiSyncAlert, mdiSyncOff } from "@mdi/js"
-import { Icon } from "@mdi/react"
 import { LogFileViewerPopup } from "./logfileviewer"
-import { isBackendOnline, isCdspOnline, isCdspRunning, Status } from "../camilladsp/status"
+import { isBackendOnline, isCdspRunning, Status } from "../camilladsp/status"
 import { Button, Box } from "../utilities/ui-components"
 
 /** The state of CamillaDSP, with a message row when given one, and the children below. */
@@ -16,10 +14,6 @@ export function CdspStateBox(props: { status: Status; message?: string; children
       <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto" }}>
         <div className="alignRight">State:</div>
         <div>{status.cdsp_status}</div>
-        <div className="alignRight">Controller:</div>
-        <div>
-          <ControllerIndicator status={status} />
-        </div>
         <div className="alignRight">Capt. samplerate:</div>
         <div>{running ? status.capturerate : ""}</div>
         <div className="alignRight">Rate adjust:</div>
@@ -48,78 +42,5 @@ export function CdspStateBox(props: { status: Status; message?: string; children
       />
       <LogFileViewerPopup open={logFileViewerOpen} onClose={() => setLogFileViewerOpen(false)} />
     </Box>
-  )
-}
-
-const ON_COLOR = "var(--success-text-color)"
-const WARNING_COLOR = "var(--warning-text-color)"
-const OFF_COLOR = "var(--disabled-text-color)"
-
-/**
- * Whether the built-in controller follows the source and recovers from errors, green when on,
- * yellow while waiting for a source or retrying, grey when off.
- */
-function ControllerIndicator(props: { status: Status }) {
-  const { status } = props
-  if (!isCdspOnline(status)) return null
-  const controller = status.controller
-  if (!controller) {
-    return (
-      <span
-        style={{ color: OFF_COLOR }}
-        data-tooltip-html="This CamillaDSP has no built-in controller"
-        data-tooltip-id="main-tooltip"
-      >
-        none
-      </span>
-    )
-  }
-  let follow = { icon: mdiSyncOff, color: OFF_COLOR, tooltip: "Not following the capture source", text: "follow" }
-  if (controller.manual) {
-    follow = {
-      icon: mdiPauseCircleOutline,
-      color: WARNING_COLOR,
-      tooltip: "Paused while a config tried from the editor runs.<br>Resume, or run a file, to follow again.",
-      text: "paused",
-    }
-  } else if (controller.following && controller.waiting_for_source) {
-    follow = {
-      icon: mdiSyncAlert,
-      color: WARNING_COLOR,
-      tooltip: "Following the capture source, waiting for a format it has a config for",
-      text: "follow",
-    }
-  } else if (controller.following) {
-    follow = { icon: mdiSync, color: ON_COLOR, tooltip: "Following the capture source", text: "follow" }
-  }
-  let recovery = { color: OFF_COLOR, tooltip: "Error recovery is off", text: "recover" }
-  if (controller.recovering) {
-    recovery = {
-      color: WARNING_COLOR,
-      tooltip: "Recovering from a device error",
-      text: `retry ${controller.attempts}`,
-    }
-  } else if (controller.error_recovery) {
-    recovery = { color: ON_COLOR, tooltip: "Error recovery is on", text: "recover" }
-  }
-  return (
-    <span style={{ display: "inline-flex", gap: "10px", alignItems: "center" }}>
-      <span
-        style={{ color: follow.color, display: "inline-flex", alignItems: "center", gap: "2px" }}
-        data-tooltip-html={follow.tooltip}
-        data-tooltip-id="main-tooltip"
-      >
-        <Icon path={follow.icon} size="16px" />
-        {follow.text}
-      </span>
-      <span
-        style={{ color: recovery.color, display: "inline-flex", alignItems: "center", gap: "2px" }}
-        data-tooltip-html={recovery.tooltip}
-        data-tooltip-id="main-tooltip"
-      >
-        <Icon path={mdiLifebuoy} size="16px" />
-        {recovery.text}
-      </span>
-    </span>
   )
 }

@@ -8,6 +8,7 @@ import { GuiConfig } from "./guiconfig"
 import { AuxFadersBox } from "./sidepanel/auxfaderbox"
 import camillalogo from "./sidepanel/camilladsp.svg"
 import { CdspStateBox } from "./sidepanel/cdspstatebox"
+import { ControllerBox } from "./sidepanel/controllerbox"
 import { VolumeBox } from "./sidepanel/volumebox"
 import { SpectrumBox } from "./spectrumbox"
 import { loadActiveConfigFilename } from "./utilities/files"
@@ -98,6 +99,7 @@ export function DashboardView(props: {
         )}
         {cdspOnline && <AuxFadersBox guiConfig={guiConfig} dashboardExpanded={true} />}
         <CdspStateBox status={cdspStatus} message={message} />
+        <ControllerBox status={cdspStatus} />
         <VersionLabels versions={cdspStatus} />
       </div>
     </section>

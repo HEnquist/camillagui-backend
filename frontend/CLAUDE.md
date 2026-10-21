@@ -69,6 +69,8 @@ sidepanel/
   volumebox.tsx             # Volume fader
   auxfaderbox.tsx           # Aux fader
   cdspstatebox.tsx          # DSP running/offline state badge
+  controllerbox.tsx         # The built-in controller: following, recovery, the active config
+  manualnotice.tsx          # Notice of a tried config, with Resume
   vumeter.tsx               # VU meter bars
   logfileviewer.tsx         # Log file modal
   configcheckmessage.tsx    # Config error banner
@@ -169,9 +171,11 @@ panel alike:
 - The editor is the Title to Pipeline tabs and Files, and the side panel's Editor box: one
   config, the file it belongs to, Save, Revert and auto-save. The Files table only marks the
   active config (★) and the file following runs (▶), it does not change them.
-- CamillaDSP is the CamillaDSP tab and the side panel's CamillaDSP box. The tab picks the active
-  config file and runs it (`setactiveconfigfile`, which reloads a running CamillaDSP), and holds
-  the controller settings. The box shows what runs.
+- CamillaDSP is the CamillaDSP tab and the side panel's CamillaDSP and Controller boxes. The tab
+  picks the active config file and runs it (`setactiveconfigfile`, which reloads a running
+  CamillaDSP), and holds the controller settings. The CamillaDSP box shows its state, the
+  Controller box everything about the controller: following, recovery, the active config, the
+  file following runs, and the notice of a tried config. It is left out without a controller.
 - The two meet in three places only: "Try editor config" (`setconfig`, not saved to any file,
   and auto-applied with "Try automatically"), "Load into editor" (`getstartconfig`, the same
   as at startup, so an adapted config is never loaded), and "Open in editor" on a file name

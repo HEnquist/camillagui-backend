@@ -5,7 +5,7 @@ import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
-import { ManualNotice } from "./manualnotice"
+import { ControllerBox } from "./controllerbox"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
@@ -44,8 +44,9 @@ interface SidePanelProps {
 }
 
 /**
- * The volume, then CamillaDSP and what it runs, then the config editor and its file. The editor
- * reaches CamillaDSP only by trying its config there, which is not saved anywhere.
+ * The volume, then CamillaDSP, its controller and what it runs, then the config editor and its
+ * file. The editor reaches CamillaDSP only by trying its config there, which is not saved
+ * anywhere.
  */
 export class SidePanel extends React.Component<
   SidePanelProps,
@@ -132,6 +133,7 @@ export class SidePanel extends React.Component<
           )}
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
           <CdspStateBox status={this.state.cdspStatus}>{this.dspControls()}</CdspStateBox>
+          <ControllerBox status={this.state.cdspStatus} />
           {this.editorBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
@@ -151,36 +153,9 @@ export class SidePanel extends React.Component<
   private dspControls() {
     const status = this.state.cdspStatus
     const online = isCdspOnline(status)
-    const controller = status.controller
     const unapplied = this.props.unappliedChanges
-    const variant = controller?.following ? controller.active_config_file : null
     return (
       <>
-        {controller && (
-          <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto", marginTop: "5px" }}>
-            <div className="alignRight">Active config:</div>
-            <div
-              style={{ overflowWrap: "anywhere" }}
-              data-tooltip-html="The config file CamillaDSP starts from, set in the CamillaDSP tab"
-              data-tooltip-id="main-tooltip"
-            >
-              {controller.entry_config_file ?? "none"}
-            </div>
-            {variant && (
-              <>
-                <div className="alignRight">Running:</div>
-                <div
-                  style={{ overflowWrap: "anywhere" }}
-                  data-tooltip-html="Picked by following the capture source"
-                  data-tooltip-id="main-tooltip"
-                >
-                  {variant}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        <ManualNotice controller={controller} inactive={status.cdsp_status === "Inactive"} />
         <div className="two-column-grid" style={{ marginTop: "5px" }}>
           <SuccessFailureButton
             enabled={online && !this.state.applyConfigAutomatically}
