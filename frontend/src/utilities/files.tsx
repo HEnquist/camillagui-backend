@@ -132,6 +132,7 @@ export async function loadStartupConfig(): Promise<{
   config_file_name: string | null
   config: Config
   source: Schemas["ConfigSource"]
+  adapted_to_samplerate?: number
 }> {
   const { data, error, response } = await api.GET("/api/getstartconfig")
   if (data) return { ...data, config: completeConfig(data.config) }

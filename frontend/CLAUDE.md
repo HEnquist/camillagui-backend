@@ -55,6 +55,7 @@ mixerstab.tsx
 processorstab.tsx
 shortcuts.tsx
 filestab.tsx
+controllertab.tsx           # CamillaDSP's built-in controller: following and error recovery
 playbacktab.tsx             # Playing an audio file through the pipeline
 
 custom-pages/               # Extra tabs: a .tsx here is a tab, see its README.md
@@ -153,6 +154,12 @@ Key endpoints used by the frontend:
   open stream holds one
 - `GET /api/devices/{direction}/{backend}` and `.../capabilities?device=...`, `GET /api/backends`
   (the devices CamillaDSP can use)
+- `GET` and `POST /api/controller/settings`, `GET /api/controller/checkfiles`: the built-in
+  controller of CamillaDSP 6.0, which follows the capture source format and recovers from device
+  errors. Its status comes with `/api/status` as `controller`, null without one. The
+  `SidePanel` passes it up when it changes, for the Files and Controller tabs. While following,
+  the active config (the star) is where CamillaDSP starts, and the config that runs can be
+  another file or the active one adapted to the source rate, see `getstartconfig`
 
 ## Filter evaluation
 

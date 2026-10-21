@@ -24,6 +24,50 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  "/api/controller/checkfiles": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Check the configs the built-in controller can follow with: each file the
+     *     Specific template matches, and the entry config Adapt starts from. Loads
+     *     every file, so it is run on demand rather than polled. Files in config_dir
+     *     are given as file names.
+     */
+    get: operations["check_controller_files"]
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/controller/settings": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * The settings of CamillaDSP's built-in controller, the `controller`
+     *     section of its statefile, null when there is none. A Specific template in
+     *     config_dir is given as a file name.
+     */
+    get: operations["get_controller_settings"]
+    put?: never
+    /** Replace the settings of CamillaDSP's built-in controller. */
+    post: operations["set_controller_settings"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   "/api/convcoeffs": {
     parameters: {
       query?: never
@@ -374,6 +418,7 @@ export interface paths {
     /**
      * The config to load into the GUI when it starts: the one in CamillaDSP if
      *     there is one, otherwise the active config file, otherwise the default one.
+     *     While CamillaDSP follows the capture source, see `following_start_config`.
      */
     get: operations["get_config_at_gui_start"]
     put?: never
@@ -676,6 +721,32 @@ export interface components {
        *     not in config_dir.
        */
       config_file_name: string | null
+    }
+    /**
+     * @description The entry config that the Adapt provider starts from, and what is wrong with it, if
+     *     anything. The format is the one the config is written for, after the command line
+     *     overrides. Adapt changes the rate and the sample format, but not the channel count.
+     */
+    AdaptCheck: {
+      /** @description Path of the entry config file, `null` for a config that was sent over the websocket. */
+      file?: string | null
+      /** @description Capture sample rate, `null` when no config is loaded. */
+      samplerate?: number | null
+      /**
+       * @description The rates that run natively, when `samplerate` is a list, with the preferred one first.
+       *     Other rates are resampled to the first one. `null` for a single `samplerate`, and then
+       *     every rate runs natively.
+       */
+      samplerates?: number[] | null
+      /** @description Capture channels, `null` when no config is loaded. */
+      channels?: number | null
+      /** @description Capture sample format, `null` when it is automatic or no config is loaded. */
+      format?: string | null
+      /**
+       * @description What is wrong with the config, `null` if it is usable. Also lists the settings that
+       *     are only right at the config's own rate, when Adapt would change its samplerate.
+       */
+      problem?: string | null
     }
     /** @enum {string} */
     AlsaSampleFormat: "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"
@@ -1077,7 +1148,7 @@ export interface components {
      * @description Where the config the GUI starts with came from.
      * @enum {string}
      */
-    ConfigSource: "dsp" | "active" | "default"
+    ConfigSource: "dsp" | "variant" | "adapted" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
       title?: string | null
@@ -1093,6 +1164,55 @@ export interface components {
         [key: string]: components["schemas"]["Processor"]
       } | null
       pipeline?: components["schemas"]["PipelineStep"][] | null
+    }
+    /** @description Value of the `CheckControllerFiles` reply, one section per follow provider. */
+    ControllerFileChecks: {
+      /**
+       * @description Each file the Specific template matches, with the format read from its name and the
+       *     problem found, if any. `null` when Specific is off.
+       */
+      specific?: components["schemas"]["FileCheck"][] | null
+      adapt?: components["schemas"]["AdaptCheck"] | null
+    }
+    /** @description The `controller` section of the statefile. */
+    ControllerSettings: {
+      follow_capture?: components["schemas"]["FollowCapture"] | null
+      /** @description Retry after a device error. */
+      error_recovery?: boolean | null
+    }
+    ControllerSettingsBody: {
+      settings: components["schemas"]["ControllerSettings"] | null
+      /**
+       * @description Load the active config file again, so the settings apply at once
+       *     rather than at the next start.
+       */
+      restart: boolean
+    }
+    /** @description The state of the built-in controller, returned by the `GetControllerStatus` command. */
+    ControllerStatusReport: {
+      /**
+       * @description The Specific config file that runs, `null` when the entry config runs as is or
+       *     adapted.
+       */
+      active_config_file?: string | null
+      /** @description The entry config file, the one `GetConfigFilePath` gives. */
+      entry_config_file?: string | null
+      /** @description Waiting to retry after a device error. */
+      recovering: boolean
+      /** @description Retries since the last session that ran long enough. */
+      attempts: number
+      /**
+       * Format: float
+       * @description Seconds until the next retry, while waiting for one.
+       */
+      next_retry_s?: number | null
+      waiting_for_source?: components["schemas"]["SourceFormat"] | null
+      /** @description Whether following is on, enabled and in wait mode. */
+      following: boolean
+      /** @description Whether error recovery is on, enabled and in wait mode. */
+      error_recovery: boolean
+      /** @description Why processing last stopped. */
+      stop_reason: components["schemas"]["StopReason"]
     }
     /**
      * @description The Conv filter subtypes that read a file.
@@ -1375,6 +1495,19 @@ export interface components {
       /** @description Whether the fader is muted. */
       mute: boolean
     }
+    /** @description One file the Specific template matches, and what is wrong with it, if anything. */
+    FileCheck: {
+      /** @description Path of the file. */
+      file: string
+      /** @description Sample rate read from the file name, if the template has the token. */
+      samplerate?: number | null
+      /** @description Channels read from the file name, if the template has the token. */
+      channels?: number | null
+      /** @description Sample format read from the file name, if the template has the token. */
+      format?: string | null
+      /** @description What is wrong with the file, `null` if it is usable. */
+      problem?: string | null
+    }
     /**
      * @description A file in a listing. What is known about it beyond its name, size and time
      *     depends on the folder: configs have their title, version and validity, wav
@@ -1548,6 +1681,13 @@ export interface components {
       coeff: string
       /** @description Left out when no audiofiles_dir is set. */
       audiofile?: string
+    }
+    /** @description Settings for following the capture source format. */
+    FollowCapture: {
+      /** @description Template for the Specific provider, absent to disable it. */
+      specific?: string | null
+      /** @description Enable the Adapt provider. */
+      adapt?: boolean | null
     }
     /** @description Parameters for the static gain filter. */
     GainParameters: {
@@ -2125,6 +2265,11 @@ export interface components {
       source: components["schemas"]["ConfigSource"]
       /** @description The file the config came from, null if it is not known. */
       config_file_name: string | null
+      /**
+       * @description The source rate CamillaDSP adapted the config to, when the source is
+       *     `adapted`.
+       */
+      adapted_to_samplerate?: number
     }
     /** @description Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`]. */
     StateUpdate: {
@@ -2167,6 +2312,7 @@ export interface components {
       labels: components["schemas"]["ChannelLabels"]
       title: string | null
       description: string | null
+      controller: components["schemas"]["ControllerStatusReport"] | null
     }
     /** @description Reason a processing run ended. */
     StopReason:
@@ -2282,6 +2428,119 @@ export interface operations {
         }
         content: {
           "application/json": components["schemas"]["DeviceTypeLists"] | null
+        }
+      }
+    }
+  }
+  check_controller_files: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ControllerFileChecks"]
+        }
+      }
+      /** @description CamillaDSP has no built-in controller */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  get_controller_settings: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ControllerSettings"] | null
+        }
+      }
+      /** @description CamillaDSP has no built-in controller */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+    }
+  }
+  set_controller_settings: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ControllerSettingsBody"]
+      }
+    }
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The template is not valid, or CamillaDSP refused */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
+        }
+      }
+      /** @description CamillaDSP cannot be reached */
+      default: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "application/json": components["schemas"]["ErrorBody"]
         }
       }
     }

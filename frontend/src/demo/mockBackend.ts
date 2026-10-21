@@ -29,6 +29,7 @@ type DemoState = {
   guiConfig: GuiConfig
   processingStopped: boolean
   logLines: string[]
+  controllerSettings: Schemas["ControllerSettings"] | null
 }
 
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
@@ -292,6 +293,88 @@ function defaultState(): DemoState {
     guiConfig: createGuiConfig(),
     processingStopped: false,
     logLines: ["[demo] CamillaGUI mock backend initialized", "[demo] Static mode enabled for GitHub Pages deployment"],
+    controllerSettings: null,
+  }
+}
+
+/** The demo source, a 48 kHz stereo player. */
+const DEMO_SOURCE = { samplerate: 48000, channels: 2, format: "S32_LE" }
+
+const TEMPLATE_TOKENS: Record<string, string> = {
+  $samplerate$: "(?<samplerate>\\d+)",
+  $channels$: "(?<channels>\\d+)",
+  $format$: "(?<format>[A-Za-z0-9_]+)",
+}
+
+/** The stored configs a Specific template matches, with the format read from each name. */
+function demoTemplateMatches(template: string): Schemas["FileCheck"][] {
+  const pattern = template
+    .split(/(\$samplerate\$|\$channels\$|\$format\$)/)
+    .map((part) => TEMPLATE_TOKENS[part] ?? part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("")
+  const regex = new RegExp(`^${pattern}$`)
+  return Object.keys(state.storedConfigs).flatMap((name) => {
+    const groups = regex.exec(name)?.groups
+    if (!groups) return []
+    const config = state.storedConfigs[name]
+    const rate = groups.samplerate ? parseInt(groups.samplerate) : null
+    const preferred = Array.isArray(config.devices.samplerate)
+      ? config.devices.samplerate[0]
+      : config.devices.samplerate
+    const ratesDiffer = rate !== null && config.devices.resampler === null && rate !== preferred
+    return [
+      {
+        file: name,
+        samplerate: rate,
+        channels: groups.channels ? parseInt(groups.channels) : null,
+        format: groups.format ?? null,
+        problem: ratesDiffer ? `The file name says ${rate} Hz, but the config runs at ${preferred} Hz` : null,
+      },
+    ]
+  })
+}
+
+function demoControllerStatus(): Schemas["ControllerStatusReport"] {
+  const follow = state.controllerSettings?.follow_capture
+  const following = follow?.adapt === true || follow?.specific != null
+  const running = follow?.specific
+    ? demoTemplateMatches(follow.specific).find(
+        (file) =>
+          !file.problem &&
+          (file.samplerate ?? DEMO_SOURCE.samplerate) === DEMO_SOURCE.samplerate &&
+          (file.channels ?? DEMO_SOURCE.channels) === DEMO_SOURCE.channels,
+      )
+    : undefined
+  return {
+    active_config_file: running?.file ?? null,
+    entry_config_file: state.activeConfigFileName,
+    recovering: false,
+    attempts: 0,
+    next_retry_s: null,
+    waiting_for_source: following && !running && !follow?.adapt ? DEMO_SOURCE : null,
+    following,
+    error_recovery: state.controllerSettings?.error_recovery === true,
+    stop_reason: "None",
+  }
+}
+
+function demoControllerFileChecks(): Schemas["ControllerFileChecks"] {
+  const follow = state.controllerSettings?.follow_capture
+  const entryName = state.activeConfigFileName
+  const entry = entryName ? state.storedConfigs[entryName] : state.currentConfig
+  const rates = entry ? entry.devices.samplerate : null
+  return {
+    specific: follow?.specific ? demoTemplateMatches(follow.specific) : null,
+    adapt: follow?.adapt
+      ? {
+          file: entryName,
+          samplerate: Array.isArray(rates) ? rates[0] : rates,
+          samplerates: Array.isArray(rates) ? rates : null,
+          channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
+          format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
+          problem: null,
+        }
+      : null,
   }
 }
 
@@ -487,7 +570,7 @@ function makeConfigFileInfo(name: string, config: Config): FileInfo {
     size: JSON.stringify(config).length,
     title: config.title ?? undefined,
     description: config.description ?? undefined,
-    version: 5,
+    version: 6,
     outdated: false,
     valid: true,
     loadable: true,
@@ -773,8 +856,26 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       labels,
       title: state.currentConfig.title,
       description: state.currentConfig.description,
+      controller: demoControllerStatus(),
     }
     return jsonResponse(status)
+  }
+
+  if (pathname === "/api/controller/settings" && method === "GET") {
+    return jsonResponse(state.controllerSettings)
+  }
+
+  if (pathname === "/api/controller/settings" && method === "POST") {
+    const { settings, restart } = await requestJson<Schemas["ControllerSettingsBody"]>(input, init)
+    state.controllerSettings = settings
+    if (restart) state.processingStopped = false
+    appendLog(`controller settings ${JSON.stringify(settings)}${restart ? ", restarted" : ""}`)
+    persistState()
+    return noContent()
+  }
+
+  if (pathname === "/api/controller/checkfiles" && method === "GET") {
+    return jsonResponse(demoControllerFileChecks())
   }
 
   if (pathname === "/api/param/volume" && method === "GET") {

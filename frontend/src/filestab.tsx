@@ -5,6 +5,7 @@ import {
   mdiFileExport,
   mdiFileImport,
   mdiMenu,
+  mdiPlayCircleOutline,
   mdiScaleUnbalanced,
   mdiStar,
   mdiStarOutline,
@@ -15,6 +16,7 @@ import { isEqual } from "lodash"
 import { api, errorMessage } from "./api/client"
 import { Config, defaultConfig } from "./camilladsp/config"
 import { clearCoefficientCache } from "./camilladsp/eval"
+import { ControllerStatus } from "./camilladsp/status"
 import { GuiConfig } from "./guiconfig"
 import { ImportPopup, ImportPopupProps } from "./import/importpopup"
 import { PipelinePopup } from "./pipeline/pipelineplotter"
@@ -60,6 +62,7 @@ import {
   fileTitleSort,
   fileValidSort,
   MdiButton,
+  MdiIcon,
   PlotButton,
 } from "./utilities/ui-components"
 
@@ -71,7 +74,9 @@ export function Files(props: {
   setCurrentConfigFileName: (filename: string | undefined) => void
   updateConfig: (update: Update<Config>) => void
   saveNotify: () => void
+  controllerStatus: ControllerStatus | null
 }) {
+  const controller = props.controllerStatus
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
@@ -90,6 +95,8 @@ export function Files(props: {
             setCurrentConfigFileName={props.setCurrentConfigFileName}
             saveNotify={props.saveNotify}
             canUpdateActiveConfig={props.guiConfig.can_update_active_config}
+            following={controller?.following === true}
+            runningConfigFile={controller?.following ? controller.active_config_file : null}
           />
           <FileTable title="Filters" type="coeff" />
         </div>
@@ -107,6 +114,10 @@ interface FileTableProps {
   currentConfigFile?: string
   config?: Config
   canUpdateActiveConfig?: boolean
+  /** Whether CamillaDSP follows the capture source, starting from the active config. */
+  following?: boolean
+  /** The config file following picked, which CamillaDSP runs instead of the active one. */
+  runningConfigFile?: string | null
   setCurrentConfig?: (filename: string, config: Config) => void
   setCurrentConfigFileName?: (filename: string | undefined) => void
   saveNotify?: () => void
@@ -488,6 +499,7 @@ class FileTable extends Component<
               active={row.original.name === activeConfigFileName}
               onClick={() => this.setActiveConfig(row.original.name)}
               canUpdate={this.props.canUpdateActiveConfig}
+              following={this.props.following === true}
               file={row.original}
             />
             <SaveButton filename={row.original.name} fileStatus={fileStatus} saveConfig={this.overwriteConfig} />
@@ -557,6 +569,13 @@ class FileTable extends Component<
               filename={row.original.name}
               isCurrentConfig={row.original.name === this.props.currentConfigFile}
             />
+            {row.original.name === this.props.runningConfigFile && (
+              <MdiIcon
+                icon={mdiPlayCircleOutline}
+                tooltip="CamillaDSP runs this config file, picked by following the capture source."
+                style={{ marginLeft: "5px" }}
+              />
+            )}
             <FileStatusMessage filename={row.original.name} fileStatus={fileStatus} type={this.type} />
           </div>
         ),
@@ -741,8 +760,14 @@ class FileTable extends Component<
   }
 }
 
-function SetActiveButton(props: { active: boolean; onClick: () => void; canUpdate?: boolean; file: FileInfo }) {
-  const { active, onClick, canUpdate, file } = props
+function SetActiveButton(props: {
+  active: boolean
+  onClick: () => void
+  canUpdate?: boolean
+  following: boolean
+  file: FileInfo
+}) {
+  const { active, onClick, canUpdate, following, file } = props
   let disabledReason = ""
   if (canUpdate === false) {
     disabledReason =
@@ -763,6 +788,10 @@ function SetActiveButton(props: { active: boolean; onClick: () => void; canUpdat
     } else {
       tooltip = "Mark this config file as active, and load it into the GUI."
     }
+  }
+  if (following) {
+    tooltip +=
+      "<br>CamillaDSP starts from the active config,<br>and following adapts it or picks another file for the source format."
   }
 
   return (

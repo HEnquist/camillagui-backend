@@ -93,7 +93,7 @@ export function setSamplerates(devices: Devices, preferred: number, others: numb
   devices.samplerate = others.length > 0 ? [preferred, ...others] : preferred
 }
 
-export const FilterSortKeys =["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]
+export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]
 
 export const ProcessorSortKeys = ["Name", "Type"]
 

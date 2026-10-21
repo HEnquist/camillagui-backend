@@ -222,7 +222,7 @@ function Samplerate(props: {
         data-tooltip-html="Other rates the hardware runs natively, separated by commas, used when following the capture source.<br>A listed rate runs natively, any other rate is resampled to samplerate.<br>Leave empty for a single rate."
         style={{ padding: "0 12px" }}
       >
-        <label className="setting-label">other native rates</label>
+        <div className="setting-label">other native rates</div>
         <ParsedInput
           value={others}
           immediate={false}

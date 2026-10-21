@@ -19,7 +19,9 @@ import {
   getCaptureDeviceChannelCount,
   preferredSamplerate,
 } from "./camilladsp/config"
+import { ControllerStatus } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
+import { ControllerTab } from "./controllertab"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
@@ -37,7 +39,7 @@ import { SidePanel } from "./sidepanel/sidepanel"
 import { TitleTab } from "./titletab"
 import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
-import { loadStartupConfig } from "./utilities/files"
+import { loadConfigJson, loadStartupConfig } from "./utilities/files"
 import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
 
 const customPageModules = import.meta.glob<{ default: CustomPageComponent }>("./custom-pages/*.tsx", { eager: true })
@@ -57,6 +59,7 @@ class CamillaConfig extends React.Component<
     message: string
     unsavedChanges: boolean
     unappliedChanges: boolean
+    controllerStatus: ControllerStatus | null
   }
 > {
   constructor(props: unknown) {
@@ -68,6 +71,7 @@ class CamillaConfig extends React.Component<
     this.saveAndApplyConfig = this.saveAndApplyConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
     this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
+    this.openConfigFile = this.openConfigFile.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.switchTab = this.switchTab.bind(this)
     this.setViewMode = this.setViewMode.bind(this)
@@ -83,6 +87,7 @@ class CamillaConfig extends React.Component<
       message: "",
       unsavedChanges: false,
       unappliedChanges: true,
+      controllerStatus: null,
     }
     this.loadGuiConfig()
     this.loadConfigAtStart()
@@ -105,6 +110,10 @@ class CamillaConfig extends React.Component<
       let message = ""
       if (json.source === "dsp") {
         message = "Loaded from DSP"
+      } else if (json.source === "variant") {
+        message = "Loaded the config file that following picked"
+      } else if (json.source === "adapted") {
+        message = `Loaded active, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
       } else if (json.source === "active") {
         message = "Loaded active"
       } else if (json.source === "default") {
@@ -211,6 +220,13 @@ class CamillaConfig extends React.Component<
     })
   }
 
+  /** Load a config file into the editor, and show its devices. */
+  private async openConfigFile(name: string) {
+    const config = await loadConfigJson(name, (reason) => this.setState({ message: reason }))
+    this.setCurrentConfig(name, config)
+    this.setState({ activetab: 2, message: `Opened ${name}` })
+  }
+
   private setCurrentConfigFileName(filename: string | undefined) {
     this.setState({
       currentConfigFile: filename,
@@ -279,6 +295,7 @@ class CamillaConfig extends React.Component<
           saveConfig={this.saveConfig}
           saveAndApplyConfig={this.saveAndApplyConfig}
           setErrors={this.setErrors}
+          onControllerStatus={(controllerStatus) => this.setState({ controllerStatus })}
           message={this.state.message}
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
@@ -333,6 +350,7 @@ class CamillaConfig extends React.Component<
             <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
             <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
             <Tab>Files</Tab>
+            <Tab>Controller</Tab>
             {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
             <Tab>Shortcuts</Tab>
             {customPages.map((customPage) => (
@@ -380,6 +398,14 @@ class CamillaConfig extends React.Component<
               updateConfig={this.updateConfig}
               saveNotify={this.saveNotify}
               guiConfig={this.state.guiConfig}
+              controllerStatus={this.state.controllerStatus}
+            />
+          </TabPanel>
+          <TabPanel>
+            <ControllerTab
+              status={this.state.controllerStatus}
+              guiConfig={this.state.guiConfig}
+              openConfigFile={this.openConfigFile}
             />
           </TabPanel>
           {this.state.guiConfig.audiofiles_supported && (

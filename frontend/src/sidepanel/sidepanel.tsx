@@ -9,7 +9,15 @@ import { Configcheckmessage } from "./configcheckmessage"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
-import { defaultStatus, isBackendOnline, isCdspOnline, isCdspRunning, Status, StatusPoller } from "../camilladsp/status"
+import {
+  ControllerStatus,
+  defaultStatus,
+  isBackendOnline,
+  isCdspOnline,
+  isCdspRunning,
+  Status,
+  StatusPoller,
+} from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
 import { DiffPopup } from "../utilities/diffpopup"
@@ -24,6 +32,8 @@ interface SidePanelProps {
   saveConfig: () => Promise<void>
   saveAndApplyConfig: () => Promise<void>
   setErrors: (errors: Errors) => void
+  /** Called when the controller status changes, null when there is none. */
+  onControllerStatus: (status: ControllerStatus | null) => void
   currentConfigFile?: string
   message: string
   unsavedChanges: boolean
@@ -42,10 +52,12 @@ export class SidePanel extends React.Component<
     showDiffPopup: boolean
   }
 > {
-  private statusPoller = new StatusPoller(
-    (cdspStatus) => this.setState({ cdspStatus }),
-    this.props.guiConfig.status_update_interval,
-  )
+  private statusPoller = new StatusPoller((cdspStatus) => {
+    // Passed on only when it changes, since it re-renders the whole GUI.
+    if (!isEqual(cdspStatus.controller, this.state.cdspStatus.controller))
+      this.props.onControllerStatus(cdspStatus.controller)
+    this.setState({ cdspStatus })
+  }, this.props.guiConfig.status_update_interval)
 
   private applyTimer = delayedExecutor(500)
   private saveTimer = delayedExecutor(500)
@@ -168,6 +180,7 @@ export class SidePanel extends React.Component<
         >
           {activeConfigFile ? activeConfigFile : "(no config selected as active)"}
         </div>
+        <FollowingNote controller={status.controller} currentConfigFile={activeConfigFile} />
         <div className="two-column-grid">
           <SuccessFailureButton
             enabled={fetchEnabled}
@@ -295,4 +308,28 @@ export class SidePanel extends React.Component<
       console.log(e)
     }
   }
+}
+
+/** Which file CamillaDSP runs, when following picked another one than the GUI has. */
+function FollowingNote(props: { controller: ControllerStatus | null; currentConfigFile?: string }) {
+  const { controller, currentConfigFile } = props
+  if (!controller?.following) return null
+  const running = controller.active_config_file
+  let note: string | null = null
+  if (running && running !== currentConfigFile) note = `CamillaDSP runs ${running}, picked by following the source.`
+  else if (controller.waiting_for_source) note = "Following is waiting for a source format it has a config for."
+  if (!note) return null
+  return (
+    <div
+      style={{
+        width: "220px",
+        overflowWrap: "break-word",
+        textAlign: "center",
+        margin: "0 auto 5px",
+        fontStyle: "italic",
+      }}
+    >
+      {note}
+    </div>
+  )
 }

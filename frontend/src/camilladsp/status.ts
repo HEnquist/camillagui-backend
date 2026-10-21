@@ -9,6 +9,12 @@ export interface VuMeterStatus {
 
 export type Labels = Schemas["ChannelLabels"]
 
+/**
+ * The state of CamillaDSP's built-in controller, with its config files as names in the
+ * config folder where they are in it.
+ */
+export type ControllerStatus = Schemas["ControllerStatusReport"]
+
 /** What `/api/status` answers. */
 type PolledStatus = Schemas["Status"]
 
@@ -72,6 +78,7 @@ function offlineStatus(): Status {
     labels: { playback: null, capture: null },
     title: null,
     description: null,
+    controller: null,
   }
 }
 
