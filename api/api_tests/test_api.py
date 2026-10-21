@@ -90,7 +90,10 @@ def test_read_status(server):
         "labels",
         "title",
         "description",
+        "controller",
     }
+    # The fake has no built-in controller, and refuses its commands like an older CamillaDSP.
+    assert status["controller"] is None
     assert server.get("/api/backends").json() == {
         "playback": ["Alsa", "Stdout"],
         "capture": ["Alsa", "Stdin"],
@@ -823,6 +826,131 @@ def test_startup_config_offline_falls_back_to_default_for_legacy_active(server):
         legacy_path.unlink()
 
 
+# ── Built-in controller ───────────────────────────────────────────────────
+
+
+def controller_status(**fields):
+    status = {
+        "active_config_file": None,
+        "entry_config_file": None,
+        "recovering": False,
+        "attempts": 0,
+        "next_retry_s": None,
+        "waiting_for_source": None,
+        "following": False,
+        "error_recovery": False,
+        "stop_reason": "None",
+    }
+    return {**status, **fields}
+
+
+def enable_controller(server, **status):
+    server.fake.state["controller"] = {
+        "settings": None,
+        "status": controller_status(**status),
+        "checks": {"specific": None, "adapt": None},
+    }
+
+
+def test_controller_refused_without_one(server):
+    resp = server.get("/api/controller/settings")
+    assert resp.status == 400
+    assert resp.json()["result"] == "Invalid"
+
+
+def test_controller_status_names_the_files_in_config_dir(server):
+    enable_controller(
+        server,
+        following=True,
+        active_config_file=str(server.config_dir / "config2.yml"),
+        entry_config_file="/elsewhere/entry.yml",
+        stop_reason={"CaptureFormatChange": {"samplerate": 96000, "channels": None, "format": None}},
+    )
+    deadline = time.time() + 5
+    while (controller := server.get("/api/status").json()["controller"]) is None:
+        assert time.time() < deadline
+        time.sleep(0.05)
+    assert controller["active_config_file"] == "config2.yml"
+    assert controller["entry_config_file"] == "/elsewhere/entry.yml"
+    assert controller["stop_reason"]["CaptureFormatChange"]["samplerate"] == 96000
+
+
+def test_controller_settings_template_is_a_name_in_config_dir(server):
+    enable_controller(server)
+    assert server.get("/api/controller/settings").json() is None
+    settings = {"follow_capture": {"specific": "conf_$samplerate$.yml", "adapt": True}, "error_recovery": True}
+    resp = server.post("/api/controller/settings", json_body={"settings": settings, "restart": False})
+    assert resp.status == 204
+    stored = server.fake.state["controller"]["settings"]
+    assert stored["follow_capture"]["specific"] == str(server.config_dir / "conf_$samplerate$.yml")
+    assert not server.fake.commands("Reload")
+    assert server.get("/api/controller/settings").json() == settings
+    # Restarting loads the active config again, which applies the settings at once.
+    resp = server.post("/api/controller/settings", json_body={"settings": None, "restart": True})
+    assert resp.status == 204
+    assert server.fake.state["controller"]["settings"] is None
+    assert len(server.fake.commands("Reload")) == 1
+
+
+def test_controller_settings_refuse_a_template_elsewhere(server):
+    enable_controller(server)
+    for template in ["/elsewhere/conf_$samplerate$.yml", "../conf_$samplerate$.yml"]:
+        settings = {"follow_capture": {"specific": template}}
+        resp = server.post("/api/controller/settings", json_body={"settings": settings, "restart": False})
+        assert resp.status == 400, template
+    assert server.fake.state["controller"]["settings"] is None
+
+
+def test_controller_file_checks_name_the_files_in_config_dir(server):
+    enable_controller(server)
+    file_check = {"samplerate": 96000, "channels": None, "format": None, "problem": None}
+    server.fake.state["controller"]["checks"] = {
+        "specific": [{"file": str(server.config_dir / "conf_96000.yml"), **file_check}],
+        "adapt": {
+            "file": str(server.config_dir / "config.yml"),
+            "samplerate": 48000,
+            "samplerates": [48000, 96000],
+            "channels": 2,
+            "format": None,
+            "problem": None,
+        },
+    }
+    checks = server.get("/api/controller/checkfiles").json()
+    assert checks["specific"] == [{"file": "conf_96000.yml", **file_check}]
+    assert checks["adapt"]["file"] == "config.yml"
+    assert checks["adapt"]["samplerates"] == [48000, 96000]
+
+
+def test_startup_config_is_the_variant_that_runs(server):
+    enable_controller(
+        server,
+        following=True,
+        active_config_file=str(server.config_dir / "config2.yml"),
+        entry_config_file=str(server.config_dir / "config.yml"),
+    )
+    content = server.get("/api/getstartconfig").json()
+    assert content["source"] == "variant"
+    assert content["config_file_name"] == "config2.yml"
+    # The running config, which is the variant.
+    assert content["config"]["devices"]["samplerate"] == 44100
+
+
+def test_startup_config_is_the_active_file_when_it_runs_adapted(server):
+    enable_controller(server, following=True, entry_config_file=str(server.config_dir / "config.yml"))
+    # Running as it is, so the running config is the one to start with, as without following.
+    content = server.get("/api/getstartconfig").json()
+    assert content["source"] == "dsp"
+    assert "adapted_to_samplerate" not in content
+    # Adapted to a 96 kHz source, so the file, without the adapted rate.
+    server.fake.state["config"]["devices"]["samplerate"] = 96000
+    server.fake.state["config"]["devices"]["chunksize"] = 2048
+    content = server.get("/api/getstartconfig").json()
+    assert content["source"] == "adapted"
+    assert content["config_file_name"] == "config.yml"
+    assert content["config"]["devices"]["samplerate"] == 44100
+    assert content["adapted_to_samplerate"] == 96000
+
+
 EQAPO_EXAMPLE = """
 Preamp: -6 db
 Filter  1: ON  PK       Fc     50 Hz   Gain  -3.0 dB  Q 10.00
@@ -1065,7 +1193,7 @@ def test_stored_configs(server):
     assert config_file["valid"] is True
     assert config_file["loadable"] is True
     assert "errors" not in config_file
-    assert config_file["version"] == 5
+    assert config_file["version"] == 6
 
 
 def test_stored_configs_missing_file_still_loads(server):

@@ -88,6 +88,9 @@ def default_state(config_file_path):
         "capability_errors": {},
         # the config is refused with this message, if set
         "reject_config": None,
+        # the built-in controller, None for a CamillaDSP without one: "settings", "status" and
+        # "checks", the values of its Get and Check commands
+        "controller": None,
         # every command received, in order
         "received": [],
     }
@@ -347,4 +350,17 @@ class FakeCamillaDSP:
             if device not in s[key]:
                 return error("DeviceNotFoundError", "device not found", CAPTURE_CAPABILITIES)
             return ok(s[key][device])
+        controller = s["controller"]
+        if controller is not None:
+            if name == "GetControllerSettings":
+                return ok(controller["settings"])
+            if name == "SetControllerSettings":
+                controller["settings"] = command["value"]
+                return ok(has_value=False)
+            if name == "GetControllerStatus":
+                return ok(controller["status"])
+            if name == "CheckControllerFiles":
+                return ok(controller["checks"])
+            if name == "Reload":
+                return ok(has_value=False)
         return {"reply": "Invalid", "error": f"Unknown command {name}"}
