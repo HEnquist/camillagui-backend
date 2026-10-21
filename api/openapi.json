@@ -114,7 +114,7 @@
         }
       },
       "post": {
-        "summary": "Replace the settings of CamillaDSP's built-in controller.",
+        "summary": "Replace the settings of CamillaDSP's built-in controller, and load the\nactive config file again, so that they apply at once rather than at the\nnext start.",
         "operationId": "set_controller_settings",
         "requestBody": {
           "content": {
@@ -3402,8 +3402,7 @@
       "ControllerSettingsBody": {
         "type": "object",
         "required": [
-          "settings",
-          "restart"
+          "settings"
         ],
         "properties": {
           "settings": {
@@ -3416,10 +3415,6 @@
                 "type": "null"
               }
             ]
-          },
-          "restart": {
-            "type": "boolean",
-            "description": "Load the active config file again, so the settings apply at once\nrather than at the next start."
           }
         }
       },

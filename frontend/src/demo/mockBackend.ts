@@ -866,10 +866,10 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   }
 
   if (pathname === "/api/controller/settings" && method === "POST") {
-    const { settings, restart } = await requestJson<Schemas["ControllerSettingsBody"]>(input, init)
+    const { settings } = await requestJson<Schemas["ControllerSettingsBody"]>(input, init)
     state.controllerSettings = settings
-    if (restart) state.processingStopped = false
-    appendLog(`controller settings ${JSON.stringify(settings)}${restart ? ", restarted" : ""}`)
+    state.processingStopped = false
+    appendLog(`controller settings ${JSON.stringify(settings)}, reloaded`)
     persistState()
     return noContent()
   }

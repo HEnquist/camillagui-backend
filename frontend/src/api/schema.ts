@@ -60,7 +60,11 @@ export interface paths {
      */
     get: operations["get_controller_settings"]
     put?: never
-    /** Replace the settings of CamillaDSP's built-in controller. */
+    /**
+     * Replace the settings of CamillaDSP's built-in controller, and load the
+     *     active config file again, so that they apply at once rather than at the
+     *     next start.
+     */
     post: operations["set_controller_settings"]
     delete?: never
     options?: never
@@ -1182,11 +1186,6 @@ export interface components {
     }
     ControllerSettingsBody: {
       settings: components["schemas"]["ControllerSettings"] | null
-      /**
-       * @description Load the active config file again, so the settings apply at once
-       *     rather than at the next start.
-       */
-      restart: boolean
     }
     /** @description The state of the built-in controller, returned by the `GetControllerStatus` command. */
     ControllerStatusReport: {

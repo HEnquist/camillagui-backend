@@ -85,17 +85,22 @@ export function ControllerTab(props: {
     fetchSettings().then(showLoaded)
   }, [])
 
-  async function save(restart: boolean) {
+  async function apply() {
     if (!draft) return
     const { error, response } = await api.POST("/api/controller/settings", {
-      body: { settings: settingsOf(draft), restart },
+      body: { settings: settingsOf(draft) },
     })
     if (error) {
       setMessage(errorMessage(error, response))
       return
     }
-    setMessage(restart ? "Saved, and CamillaDSP started again from the active config" : "Saved")
+    setMessage("Applied, CamillaDSP started again from the active config")
     await loadSettings()
+  }
+
+  function discard() {
+    setDraft(saved)
+    setMessage("")
   }
 
   return (
@@ -114,7 +119,8 @@ export function ControllerTab(props: {
                 changed={!isEqual(draft, saved)}
                 message={message}
                 onChange={setDraft}
-                save={save}
+                apply={apply}
+                discard={discard}
               />
               <StatusBox status={props.status} openConfigFile={props.openConfigFile} />
               <FileCheckBox openConfigFile={props.openConfigFile} />
@@ -132,11 +138,11 @@ function SettingsBox(props: {
   changed: boolean
   message: string
   onChange: (draft: Draft) => void
-  save: (restart: boolean) => Promise<void>
+  apply: () => Promise<void>
+  discard: () => void
 }) {
-  const { draft, onChange } = props
+  const { draft, onChange, changed } = props
   const problem = draftProblem(draft)
-  const canSave = props.changed && problem === undefined
   return (
     <Box
       title="Settings"
@@ -169,19 +175,15 @@ function SettingsBox(props: {
         tooltip="Start again after a device error, waiting 1 s at first and up to 30 s between tries."
         onChange={(errorRecovery) => onChange({ ...draft, errorRecovery })}
       />
-      <div style={{ display: "flex", flexDirection: "row", marginTop: "5px" }}>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: "5px" }}>
         <Button
-          text="Save"
-          tooltip="Save the settings, they apply when CamillaDSP next starts processing"
-          enabled={canSave}
-          onClick={() => props.save(false)}
+          text="Apply"
+          tooltip="Store the settings in CamillaDSP's statefile, and start processing again<br>from the active config file, so they apply at once.<br>Changes applied to CamillaDSP but not saved to a file are lost."
+          enabled={changed && problem === undefined}
+          onClick={props.apply}
         />
-        <Button
-          text="Save and restart"
-          tooltip="Save the settings, and start processing again from the active config file,<br>so they apply at once. Changes applied to CamillaDSP but not saved are lost."
-          enabled={canSave}
-          onClick={() => props.save(true)}
-        />
+        <Button text="Discard" tooltip="Go back to the applied settings" enabled={changed} onClick={props.discard} />
+        {changed && <span style={{ marginLeft: "10px" }}>Not applied: ⚠️</span>}
       </div>
       {props.message && <div>{props.message}</div>}
     </Box>

@@ -879,26 +879,28 @@ def test_controller_settings_template_is_a_name_in_config_dir(server):
     enable_controller(server)
     assert server.get("/api/controller/settings").json() is None
     settings = {"follow_capture": {"specific": "conf_$samplerate$.yml", "adapt": True}, "error_recovery": True}
-    resp = server.post("/api/controller/settings", json_body={"settings": settings, "restart": False})
+    resp = server.post("/api/controller/settings", json_body={"settings": settings})
     assert resp.status == 204
     stored = server.fake.state["controller"]["settings"]
     assert stored["follow_capture"]["specific"] == str(server.config_dir / "conf_$samplerate$.yml")
-    assert not server.fake.commands("Reload")
     assert server.get("/api/controller/settings").json() == settings
-    # Restarting loads the active config again, which applies the settings at once.
-    resp = server.post("/api/controller/settings", json_body={"settings": None, "restart": True})
+    # Loaded again after the settings, which applies them at once.
+    names = [cmd["command"] for cmd in server.fake.state["received"]]
+    assert names.index("SetControllerSettings") < names.index("Reload")
+    resp = server.post("/api/controller/settings", json_body={"settings": None})
     assert resp.status == 204
     assert server.fake.state["controller"]["settings"] is None
-    assert len(server.fake.commands("Reload")) == 1
+    assert len(server.fake.commands("Reload")) == 2
 
 
 def test_controller_settings_refuse_a_template_elsewhere(server):
     enable_controller(server)
     for template in ["/elsewhere/conf_$samplerate$.yml", "../conf_$samplerate$.yml"]:
         settings = {"follow_capture": {"specific": template}}
-        resp = server.post("/api/controller/settings", json_body={"settings": settings, "restart": False})
+        resp = server.post("/api/controller/settings", json_body={"settings": settings})
         assert resp.status == 400, template
     assert server.fake.state["controller"]["settings"] is None
+    assert not server.fake.commands("Reload")
 
 
 def test_controller_file_checks_name_the_files_in_config_dir(server):

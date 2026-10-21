@@ -1300,12 +1300,11 @@ pub struct ControllerSettingsBody {
     /// absolute paths are allowed.
     #[schema(required)]
     settings: Option<ControllerSettings>,
-    /// Load the active config file again, so the settings apply at once
-    /// rather than at the next start.
-    restart: bool,
 }
 
-/// Replace the settings of CamillaDSP's built-in controller.
+/// Replace the settings of CamillaDSP's built-in controller, and load the
+/// active config file again, so that they apply at once rather than at the
+/// next start.
 #[utoipa::path(
     post,
     path = "/controller/settings",
@@ -1343,9 +1342,7 @@ pub async fn set_controller_settings(
         .set_controller_settings(settings)
         .await
         .map_err(refused)?;
-    if body.restart {
-        app.camilla.reload().await.map_err(refused)?;
-    }
+    app.camilla.reload().await.map_err(refused)?;
     Ok(NoContent)
 }
 
