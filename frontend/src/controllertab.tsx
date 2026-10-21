@@ -4,8 +4,8 @@ import { isEqual } from "lodash"
 import { api, errorMessage, Schemas } from "./api/client"
 import { ControllerStatus } from "./camilladsp/status"
 import { GuiConfig } from "./guiconfig"
-import { CONFIG_FILE_STATUS_ICONS } from "./utilities/files"
-import { BoolOption, Box, Button, ErrorBoundary, TextOption } from "./utilities/ui-components"
+import { CONFIG_FILE_STATUS_ICONS, loadActiveConfigFilename, loadFiles } from "./utilities/files"
+import { BoolOption, Box, Button, EnumOption, ErrorBoundary, OptionLine, TextOption } from "./utilities/ui-components"
 
 type SourceFormat = Schemas["SourceFormat"]
 type StopReason = Schemas["StopReason"]
@@ -13,21 +13,26 @@ type FileChecks = Schemas["ControllerFileChecks"]
 
 const TOKENS = ["$samplerate$", "$channels$", "$format$"]
 
-/** The settings as the tab edits them. The template is kept while Specific is off. */
+/**
+ * The settings as the tab edits them. The template is kept while Specific is off. `entry` is the
+ * active config file, which Adapt starts from.
+ */
 interface Draft {
   adapt: boolean
   specific: boolean
   template: string
   errorRecovery: boolean
+  entry: string | null
 }
 
-function draftOf(settings: Schemas["ControllerSettings"] | null): Draft {
+function draftOf(settings: Schemas["ControllerSettings"] | null, entry: string | null): Draft {
   const follow = settings?.follow_capture
   return {
     adapt: follow?.adapt === true,
     specific: follow?.specific != null,
     template: follow?.specific ?? "",
     errorRecovery: settings?.error_recovery === true,
+    entry,
   }
 }
 
@@ -49,12 +54,19 @@ function draftProblem(draft: Draft): string | undefined {
   return undefined
 }
 
-/** The saved settings, or why there are none. */
+/** The saved settings with the active config file, or why there are none. */
 async function fetchSettings(): Promise<Draft | string> {
   const { data, error, response } = await api.GET("/api/controller/settings")
   if (error)
     return error.result === "Invalid" ? "This CamillaDSP has no built-in controller." : errorMessage(error, response)
-  return draftOf(data ?? null)
+  const active = await loadActiveConfigFilename().catch(() => null)
+  return draftOf(data ?? null, active?.config_file_name ?? null)
+}
+
+/** The config files Adapt can start from: the ones the GUI can load and are current. */
+async function fetchEntryCandidates(): Promise<string[]> {
+  const files = await loadFiles("config")
+  return files.filter((file) => file.loadable === true && file.outdated !== true).map((file) => file.name)
 }
 
 export function ControllerTab(props: {
@@ -66,6 +78,7 @@ export function ControllerTab(props: {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [message, setMessage] = useState("")
   const [unavailable, setUnavailable] = useState<string | null>(null)
+  const [entryCandidates, setEntryCandidates] = useState<string[]>([])
 
   function showLoaded(loaded: Draft | string) {
     if (typeof loaded === "string") {
@@ -83,10 +96,19 @@ export function ControllerTab(props: {
 
   useEffect(() => {
     fetchSettings().then(showLoaded)
+    fetchEntryCandidates().then(setEntryCandidates)
   }, [])
 
   async function apply() {
     if (!draft) return
+    // The active config first, so that the reload after the settings starts from it.
+    if (draft.entry !== null && draft.entry !== saved?.entry) {
+      const { error, response } = await api.POST("/api/setactiveconfigfile", { body: { name: draft.entry } })
+      if (error) {
+        setMessage(errorMessage(error, response))
+        return
+      }
+    }
     const { error, response } = await api.POST("/api/controller/settings", {
       body: { settings: settingsOf(draft) },
     })
@@ -121,6 +143,9 @@ export function ControllerTab(props: {
                 onChange={setDraft}
                 apply={apply}
                 discard={discard}
+                entryCandidates={entryCandidates}
+                savedEntry={saved?.entry ?? null}
+                canUpdateEntry={props.guiConfig.can_update_active_config}
               />
               <StatusBox status={props.status} openConfigFile={props.openConfigFile} />
               <FileCheckBox openConfigFile={props.openConfigFile} />
@@ -140,9 +165,19 @@ function SettingsBox(props: {
   onChange: (draft: Draft) => void
   apply: () => Promise<void>
   discard: () => void
+  entryCandidates: string[]
+  savedEntry: string | null
+  canUpdateEntry: boolean
 }) {
   const { draft, onChange, changed } = props
   const problem = draftProblem(draft)
+  const entryOptions: { value: string | null; label: string }[] = props.entryCandidates.map((name) => ({
+    value: name,
+    label: name,
+  }))
+  if (draft.entry !== null && !props.entryCandidates.includes(draft.entry))
+    entryOptions.unshift({ value: draft.entry, label: draft.entry })
+  if (draft.entry === null) entryOptions.unshift({ value: null, label: "(no active config)" })
   return (
     <Box
       title="Settings"
@@ -152,8 +187,28 @@ function SettingsBox(props: {
         value={draft.adapt}
         desc="adapt"
         tooltip="Follow the capture source by adapting the active config to its sample rate.<br>A config with settings that only fit its own rate is not adapted,<br>unless its samplerate list makes the source rate get resampled."
-        onChange={(adapt) => onChange({ ...draft, adapt })}
+        onChange={(adapt) =>
+          // A file picked to adapt from is dropped with Adapt.
+          onChange({ ...draft, adapt, entry: adapt ? draft.entry : props.savedEntry })
+        }
       />
+      {draft.adapt &&
+        (props.canUpdateEntry ? (
+          <EnumOption
+            value={draft.entry}
+            options={entryOptions}
+            desc="adapt from"
+            tooltip="The config file Adapt starts from.<br>This is the active config, the one marked with a star in the Files tab,<br>so picking another file here makes that one active."
+            onChange={(entry) => onChange({ ...draft, entry })}
+          />
+        ) : (
+          <OptionLine
+            desc="adapt from"
+            tooltip="The config file Adapt starts from, the active config.<br>The backend cannot change the active config, check its settings."
+          >
+            <span className="setting-input">{draft.entry ?? "(no active config)"}</span>
+          </OptionLine>
+        ))}
       <BoolOption
         value={draft.specific}
         desc="specific"
