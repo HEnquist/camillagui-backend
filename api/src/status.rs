@@ -3,7 +3,9 @@
 
 use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
-use camilladsp_schema::protocol::{AudioDeviceDescriptor, ChannelLabels, ControllerStatusReport};
+use camilladsp_schema::protocol::{
+    AudioDeviceDescriptor, ChannelLabels, ControllerSettings, ControllerStatusReport,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -74,6 +76,11 @@ pub struct Status {
     /// when they are in it.
     #[schema(required)]
     pub controller: Option<ControllerStatusReport>,
+    /// The settings of the built-in controller, null while offline, when
+    /// CamillaDSP has none, or when its statefile has no controller section.
+    /// A Specific template in config_dir is given as a file name.
+    #[schema(required)]
+    pub controller_settings: Option<ControllerSettings>,
 }
 
 impl Status {
@@ -92,6 +99,7 @@ impl Status {
             title: None,
             description: None,
             controller: None,
+            controller_settings: None,
         }
     }
 }
@@ -228,6 +236,7 @@ impl StatusCache {
         let title = value(camilla.config_title().await)?;
         let description = value(camilla.config_description().await)?;
         let controller = value(camilla.controller_status().await)?;
+        let controller_settings = value(camilla.controller_settings().await)?.flatten();
         // Stored only once on_reconnect is through, so that a poll dropped
         // halfway, by a page reload, leaves it for the next one. Two polls may
         // both run it, which only reads the same values twice.
@@ -248,6 +257,7 @@ impl StatusCache {
         status.title = title;
         status.description = description;
         status.controller = controller;
+        status.controller_settings = controller_settings;
         Ok(())
     }
 
@@ -426,7 +436,8 @@ mod tests {
                                 }
                             }
                             // Like a CamillaDSP without the built-in controller.
-                            WsCommand::GetControllerStatus {} => WsReply::Invalid {
+                            WsCommand::GetControllerStatus {}
+                            | WsCommand::GetControllerSettings {} => WsReply::Invalid {
                                 error: "Unknown command".to_string(),
                             },
                             command => panic!("unexpected command {command:?}"),

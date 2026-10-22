@@ -129,6 +129,7 @@ export function SuccessFailureButton(props: {
   onClick: () => Promise<void>
   style?: CSSProperties
   enabled?: boolean
+  highlighted?: boolean | null
 }) {
   const [timer] = useState(() => delayedExecutor(1000))
   const [success, setSuccess] = useState<boolean | undefined>(undefined)
@@ -1237,10 +1238,12 @@ export function FileSelectPopup(props: {
   open: boolean
   header?: ReactNode
   files: FileInfo[]
+  /** Shown after a file's name, like a mark for the active config. */
+  marker?: (name: string) => string
   onSelect: (value: string) => void
   onClose: () => void
 }) {
-  const { open, files, onSelect, onClose } = props
+  const { open, files, marker, onSelect, onClose } = props
   const selectItem = (item: FileInfo) => {
     onSelect(item.name)
     onClose()
@@ -1251,6 +1254,7 @@ export function FileSelectPopup(props: {
       id: "filename",
       header: "Filename",
       accessorFn: (row: FileInfo) => row.name,
+      cell: (info) => (marker ? `${info.row.original.name} ${marker(info.row.original.name)}` : info.getValue()),
       sortingFn: sortByRows(fileNameSort),
     },
     {

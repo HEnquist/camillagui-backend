@@ -149,7 +149,7 @@ def test_config_and_volume_reach_camilladsp(page, server):
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
     expect(sidepanel.locator(".config-status")).to_have_text("OK")
-    sidepanel.get_by_text("Try editor config", exact=True).click()
+    sidepanel.get_by_text("Apply to DSP", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     # The volume box only sends a change once it has read the volume.
     wait_for(lambda: server.fake.commands("GetMute"))
@@ -157,3 +157,65 @@ def test_config_and_volume_reach_camilladsp(page, server):
     wait_for(lambda: server.fake.state["mute"] is True)
     sidepanel.locator('[data-tooltip-html="Lower volume by 1 dB"]').click()
     wait_for(lambda: server.fake.state["volume"] == -21.0)
+
+
+def with_controller(page, server):
+    """Give the fake CamillaDSP a controller running config.yml from files, and load the GUI again."""
+    path = str(server.config_dir / "config.yml")
+    server.fake.state["controller"] = {
+        "settings": None,
+        "status": {
+            "source": "Files",
+            "provider": "Single",
+            "config_file": path,
+            "entry_config_file": path,
+            "recovering": False,
+            "attempts": 0,
+            "next_retry_s": None,
+            "waiting_for_source": None,
+            "following": False,
+            "error_recovery": False,
+            "stop_reason": "None",
+        },
+        "checks": {"specific": None, "adapt": None},
+    }
+    page.reload()
+    source = page.locator(".sidepanel").get_by_text("Source:", exact=True).locator("xpath=following-sibling::div[1]")
+    expect(source).to_have_text("files, single file")
+    return source
+
+
+def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
+    source = with_controller(page, server)
+    sidepanel = page.locator(".sidepanel")
+    sidepanel.get_by_text("Apply to DSP", exact=True).click()
+    wait_for(lambda: server.fake.commands("SetConfigJson"))
+    expect(source).to_have_text("file-less")
+    expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
+    sidepanel.get_by_text("Run from files", exact=True).click()
+    wait_for(lambda: server.fake.commands("Reload"))
+    expect(source).to_have_text("files, single file")
+
+
+def test_apply_automatically_leaves_files_alone(page, server):
+    source = with_controller(page, server)
+    page.locator(".sidepanel").get_by_text("Apply automatically").click()
+    page.locator('[data-tooltip-html="Optional title for the configuration"]').fill("Edited")
+    # Well past the delay before an automatic apply.
+    time.sleep(1.5)
+    assert not server.fake.commands("SetConfigJson")
+    expect(source).to_have_text("files, single file")
+
+
+def test_a_picked_file_runs_with_run_from_files(page, server):
+    with_controller(page, server)
+    sidepanel = page.locator(".sidepanel")
+    sidepanel.locator('[data-tooltip-html^="Pick the config file"]').click()
+    page.get_by_text("config2.yml", exact=True).click()
+    # Staged only, until Run from files.
+    expect(sidepanel.get_by_text("Not running: ⚠️")).to_be_visible()
+    assert not server.fake.commands("SetConfigFilePath")
+    sidepanel.get_by_text("Run from files", exact=True).click()
+    wait_for(lambda: server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml"))
+    wait_for(lambda: server.fake.commands("Reload"))
+    expect(sidepanel.get_by_text("Not running: ⚠️")).to_have_count(0)

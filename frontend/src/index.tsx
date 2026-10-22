@@ -13,7 +13,7 @@ import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
 import { Config, defaultConfig, getCaptureDeviceChannelCount, preferredSamplerate } from "./camilladsp/config"
-import { ControllerStatus } from "./camilladsp/status"
+import { ControllerSettings, ControllerStatus, isFileless } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
@@ -54,6 +54,7 @@ class CamillaConfig extends React.Component<
     unsavedChanges: boolean
     unappliedChanges: boolean
     controllerStatus: ControllerStatus | null
+    controllerSettings: ControllerSettings | null
     /** Whether processing is stopped, as the side panel saw it with the controller status. */
     dspInactive: boolean
   }
@@ -84,6 +85,7 @@ class CamillaConfig extends React.Component<
       unsavedChanges: false,
       unappliedChanges: true,
       controllerStatus: null,
+      controllerSettings: null,
       dspInactive: false,
     }
     this.loadGuiConfig()
@@ -123,7 +125,8 @@ class CamillaConfig extends React.Component<
       message = `Loaded ${name}, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
     else if (json.source === "active") message = "Loaded the active config"
     else if (json.source === "default") message = "Loaded the default config"
-    else if (json.source === "manual") message = "Loaded the config tried in CamillaDSP, it is not saved to any file"
+    else if (json.source === "fileless")
+      message = "Loaded the file-less config CamillaDSP runs, it is not saved to any file"
     this.setState({
       unsavedChanges: false,
       // Only the config CamillaDSP runs as it is equals the editor's.
@@ -207,6 +210,20 @@ class CamillaConfig extends React.Component<
     }
   }
 
+  /**
+   * Run a config file from files, following the source as before, and load it into the editor.
+   * For the quick config switch, which picks a file rather than a config to apply.
+   */
+  private async runConfigFile(filename: string, config: Config) {
+    const { error, response } = await api.POST("/api/runfromfiles", { body: { file: filename, follow: null } })
+    if (error) {
+      this.setState({ message: errorMessage(error, response) })
+      return
+    }
+    this.setCurrentConfig(filename, config)
+    this.setState({ message: `Running ${filename} from files`, unappliedChanges: false })
+  }
+
   private setCurrentConfig(filename: string | undefined, config: Config) {
     this.setState({
       unsavedChanges: false,
@@ -264,8 +281,7 @@ class CamillaConfig extends React.Component<
             currentConfigName={this.state.currentConfigFile}
             config={this.state.undoRedo.current()}
             setConfig={(filename, config) => {
-              this.setCurrentConfig(filename, config)
-              this.applyConfigRequest(config)
+              this.runConfigFile(filename, config).catch(() => {})
             }}
             updateConfig={(update) => this.updateConfig(update, true)}
             switchToNormalView={() => this.setViewMode("normal")}
@@ -300,14 +316,15 @@ class CamillaConfig extends React.Component<
           saveConfig={this.saveConfig}
           revertConfig={this.revertConfig}
           setErrors={this.setErrors}
-          onControllerStatus={(controllerStatus, dspInactive) =>
+          onControllerStatus={(controllerStatus, controllerSettings, dspInactive) =>
             this.setState((prev) => ({
               controllerStatus,
+              controllerSettings,
               dspInactive,
-              // Manual mode ended, so CamillaDSP went back to a file and no longer runs the
-              // config tried from the editor.
+              // CamillaDSP went back to files, so it no longer runs the config applied from the
+              // editor.
               unappliedChanges:
-                prev.unappliedChanges || (prev.controllerStatus?.manual === true && controllerStatus?.manual !== true),
+                prev.unappliedChanges || (isFileless(prev.controllerStatus) && !isFileless(controllerStatus)),
             }))
           }
           message={this.state.message}
@@ -418,8 +435,8 @@ class CamillaConfig extends React.Component<
           <TabPanel>
             <DspTab
               status={this.state.controllerStatus}
+              settings={this.state.controllerSettings}
               inactive={this.state.dspInactive}
-              guiConfig={this.state.guiConfig}
               openConfigFile={this.openConfigFile}
             />
           </TabPanel>
@@ -433,8 +450,7 @@ class CamillaConfig extends React.Component<
               currentConfigName={currentConfigFile}
               config={this.state.undoRedo.current()}
               setConfig={(filename, config) => {
-                this.setCurrentConfig(filename, config)
-                this.applyConfigRequest(config)
+                this.runConfigFile(filename, config).catch(() => {})
               }}
               updateConfig={(update) => this.updateConfig(update, true)}
               shortcutSections={this.state.guiConfig.custom_shortcuts}

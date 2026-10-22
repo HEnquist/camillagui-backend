@@ -1,90 +1,43 @@
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import "./index.css"
-import { isEqual } from "lodash"
 import { api, errorMessage, Schemas } from "./api/client"
-import { ControllerStatus, describeFormat, describeStopReason } from "./camilladsp/status"
-import { GuiConfig } from "./guiconfig"
-import { ManualNotice } from "./sidepanel/manualnotice"
-import { CONFIG_FILE_STATUS_ICONS, loadActiveConfigFilename, loadFiles } from "./utilities/files"
-import { BoolOption, Box, Button, EnumInput, ErrorBoundary, TextOption } from "./utilities/ui-components"
+import {
+  ControllerSettings,
+  ControllerStatus,
+  describeFormat,
+  describeStopReason,
+  isFileless,
+  stoppingFormat,
+} from "./camilladsp/status"
+import { CONFIG_FILE_STATUS_ICONS } from "./utilities/files"
+import { BoolOption, Box, Button, ErrorBoundary } from "./utilities/ui-components"
 
 type FileChecks = Schemas["ControllerFileChecks"]
 
-const TOKENS = ["$samplerate$", "$channels$", "$format$"]
-
-/** The controller settings as the tab edits them. The template is kept while Specific is off. */
-interface Draft {
-  adapt: boolean
-  specific: boolean
-  template: string
-  errorRecovery: boolean
-}
-
-function draftOf(settings: Schemas["ControllerSettings"] | null): Draft {
-  const follow = settings?.follow_capture
-  return {
-    adapt: follow?.adapt === true,
-    specific: follow?.specific != null,
-    template: follow?.specific ?? "",
-    errorRecovery: settings?.error_recovery === true,
-  }
-}
-
-function settingsOf(draft: Draft): Schemas["ControllerSettings"] | null {
-  const following = draft.adapt || draft.specific
-  if (!following && !draft.errorRecovery) return null
-  return {
-    follow_capture: following
-      ? { adapt: draft.adapt ? true : null, specific: draft.specific ? draft.template : null }
-      : null,
-    error_recovery: draft.errorRecovery ? true : null,
-  }
-}
-
-/** What is wrong with the draft, the same rules CamillaDSP checks. */
-function draftProblem(draft: Draft): string | undefined {
-  if (draft.specific && !TOKENS.some((token) => draft.template.includes(token)))
-    return `The template needs at least one of ${TOKENS.join(", ")}`
-  return undefined
-}
-
-/** The saved controller settings, or why there are none. */
-async function fetchSettings(): Promise<Draft | string> {
-  const { data, error, response } = await api.GET("/api/controller/settings")
-  if (error)
-    return error.result === "Invalid" ? "This CamillaDSP has no built-in controller." : errorMessage(error, response)
-  return draftOf(data ?? null)
-}
-
-/** The config files that can be made active: the ones the GUI can load and are current. */
-async function fetchActiveCandidates(): Promise<string[]> {
-  const files = await loadFiles("config")
-  return files.filter((file) => file.loadable === true && file.outdated !== true).map((file) => file.name)
+const PROVIDER_DESCRIPTIONS = {
+  Single: "single file, the active config as it is",
+  Adapt: "adapt, the active config adapted to the source",
+  Specific: "specific, the file made for the source format",
 }
 
 /**
- * Everything about what CamillaDSP runs: the active config file it starts from, the built-in
- * controller that follows the source and recovers from errors, and what runs now. The config
- * editor is the other tabs.
+ * The details of CamillaDSP's built-in controller: error recovery, what runs now, and a check
+ * of the files following can use. What runs is chosen in the side panel's Controller box, the
+ * config editor is the other tabs.
  */
 export function DspTab(props: {
   status: ControllerStatus | null
+  settings: ControllerSettings | null
   /** Whether processing is stopped. */
   inactive: boolean
-  guiConfig: GuiConfig
   openConfigFile: (name: string) => Promise<void>
 }) {
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
         <div className="tabpanel" style={{ width: "700px" }}>
-          <ActiveConfigBox
-            status={props.status}
-            canUpdate={props.guiConfig.can_update_active_config}
-            openConfigFile={props.openConfigFile}
-          />
-          <ControllerBox />
           <RunningBox status={props.status} inactive={props.inactive} openConfigFile={props.openConfigFile} />
+          <RecoveryBox status={props.status} settings={props.settings} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>
         <div className="tabspacer" />
@@ -93,190 +46,50 @@ export function DspTab(props: {
   )
 }
 
-function ActiveConfigBox(props: {
-  status: ControllerStatus | null
-  canUpdate: boolean
-  openConfigFile: (name: string) => Promise<void>
-}) {
-  const [loaded, setLoaded] = useState<string | null>(null)
-  const [candidates, setCandidates] = useState<string[]>([])
-  const [picked, setPicked] = useState<string | null>(null)
+/** Error recovery, which applies at once, whether CamillaDSP runs from files or file-less. */
+function RecoveryBox(props: { status: ControllerStatus | null; settings: ControllerSettings | null }) {
+  const { status, settings } = props
+  // A change shows in the settings at the next status poll, until then the value set counts.
+  const [pending, setPending] = useState<{ value: boolean; base: boolean } | null>(null)
   const [message, setMessage] = useState("")
+  const stored = settings?.error_recovery === true
+  const waiting = pending !== null && pending.base === stored
 
-  useEffect(() => {
-    loadActiveConfigFilename()
-      .then((active) => setLoaded(active.config_file_name))
-      .catch(() => {})
-    fetchActiveCandidates().then(setCandidates)
-  }, [])
+  if (!status) return null
 
-  // The controller status follows changes made elsewhere, the name read at the start does not.
-  const active = props.status?.entry_config_file ?? loaded
-  const selected = picked ?? active
-  const options: { value: string | null; label: string }[] = candidates.map((name) => ({ value: name, label: name }))
-  if (selected !== null && !candidates.includes(selected)) options.unshift({ value: selected, label: selected })
-  if (selected === null) options.unshift({ value: null, label: "(none)" })
-
-  async function run() {
-    if (selected === null) return
-    const { error, response } = await api.POST("/api/setactiveconfigfile", { body: { name: selected } })
-    if (error) {
-      setMessage(errorMessage(error, response))
-      return
-    }
-    setLoaded(selected)
-    setPicked(null)
-    setMessage(`${selected} is active. A running CamillaDSP has loaded it, one that is stopped starts with it.`)
-  }
-
-  return (
-    <Box
-      title="Active config"
-      tooltip="The config file CamillaDSP starts from, kept in its statefile.<br>Following adapts it to the source, or switches to a file made for the source format."
-    >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "5px" }}>
-        {props.canUpdate ? (
-          <EnumInput
-            value={selected}
-            options={options}
-            desc="active config"
-            tooltip="The config file CamillaDSP starts from"
-            className="setting-input"
-            style={{ flexGrow: 1 }}
-            onChange={(name) => {
-              setPicked(name)
-              setMessage("")
-            }}
-          />
-        ) : (
-          <span
-            style={{ flexGrow: 1 }}
-            data-tooltip-html="The backend cannot change the active config, check its settings"
-            data-tooltip-id="main-tooltip"
-          >
-            {active ?? "(none)"}
-          </span>
-        )}
-        <Button
-          text="Run"
-          tooltip="Make this the active config, and load it in CamillaDSP.<br>A config tried from the editor but not saved is replaced."
-          enabled={props.canUpdate && selected !== null}
-          onClick={run}
-        />
-        <Button
-          text="Open in editor"
-          tooltip="Load this config file into the editor"
-          style={{ whiteSpace: "nowrap" }}
-          enabled={selected !== null}
-          onClick={() => {
-            if (selected !== null) props.openConfigFile(selected).catch(() => {})
-          }}
-        />
-      </div>
-      {message && <div>{message}</div>}
-    </Box>
-  )
-}
-
-function ControllerBox() {
-  const [saved, setSaved] = useState<Draft | null>(null)
-  const [draft, setDraft] = useState<Draft | null>(null)
-  const [message, setMessage] = useState("")
-  const [unavailable, setUnavailable] = useState<string | null>(null)
-
-  function showLoaded(loaded: Draft | string) {
-    if (typeof loaded === "string") {
-      setUnavailable(loaded)
-      return
-    }
-    setUnavailable(null)
-    setSaved(loaded)
-    setDraft(loaded)
-  }
-
-  async function loadSettings() {
-    showLoaded(await fetchSettings())
-  }
-
-  useEffect(() => {
-    fetchSettings().then(showLoaded)
-  }, [])
-
-  async function apply() {
-    if (!draft) return
+  async function set(on: boolean) {
+    setPending({ value: on, base: stored })
+    const next = { ...settings, error_recovery: on ? true : null }
+    const empty = next.follow_capture == null && next.error_recovery == null
     const { error, response } = await api.POST("/api/controller/settings", {
-      body: { settings: settingsOf(draft) },
+      body: { settings: empty ? null : next },
     })
     if (error) {
+      setPending(null)
       setMessage(errorMessage(error, response))
-      return
+    } else {
+      setMessage("")
     }
-    setMessage("Applied, CamillaDSP started again from the active config")
-    await loadSettings()
   }
 
-  const title = "Following and recovery"
-  const tooltip =
-    "The built-in controller, set in CamillaDSP's statefile.<br>It only works when CamillaDSP runs with --wait."
-  if (unavailable !== null) {
-    return (
-      <Box title={title} tooltip={tooltip}>
-        <div>{unavailable}</div>
-        <Button text="Try again" onClick={loadSettings} />
-      </Box>
-    )
-  }
-  if (draft === null) return null
-  const changed = !isEqual(draft, saved)
-  const problem = draftProblem(draft)
+  const on = waiting ? pending!.value : stored
   return (
-    <Box title={title} tooltip={tooltip}>
+    <Box
+      title="Error recovery"
+      tooltip="Set in CamillaDSP's statefile. It only works when CamillaDSP runs with --wait."
+    >
       <BoolOption
-        value={draft.adapt}
-        desc="adapt"
-        tooltip="Follow the capture source by adapting the active config to its sample rate.<br>A config with settings that only fit its own rate is not adapted,<br>unless its samplerate list makes the source rate get resampled."
-        onChange={(adapt) => setDraft({ ...draft, adapt })}
-      />
-      <BoolOption
-        value={draft.specific}
-        desc="specific"
-        tooltip="Follow the capture source by switching to the config file made for its format.<br>With adapt as well, a format without its own file adapts the active config."
-        onChange={(specific) => setDraft({ ...draft, specific })}
-      />
-      {draft.specific && (
-        <TextOption
-          value={draft.template}
-          desc="template"
-          tooltip={`File name of the config for each format, in the config folder.<br>Use the tokens ${TOKENS.join(", ")}.<br>$samplerate$ works with every source that is followed,<br>$channels$ and $format$ need a source that reports them, like the ALSA loopback.`}
-          error={problem}
-          onChange={(template) => setDraft({ ...draft, template })}
-        />
-      )}
-      <BoolOption
-        value={draft.errorRecovery}
+        value={on}
         desc="error_recovery"
-        tooltip="Start again after a device error, waiting 1 s at first and up to 30 s between tries."
-        onChange={(errorRecovery) => setDraft({ ...draft, errorRecovery })}
+        tooltip="Start again after a device error, waiting 1 s at first and up to 10 s between tries.<br>Applies at once, to a config from files and a file-less one alike."
+        onChange={(value) => {
+          set(value).catch(() => {})
+        }}
       />
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: "5px" }}>
-        <Button
-          text="Apply"
-          tooltip="Store the settings in CamillaDSP's statefile, and start processing again<br>from the active config file, so they apply at once.<br>A config tried from the editor but not saved is replaced."
-          enabled={changed && problem === undefined}
-          onClick={apply}
-        />
-        <Button
-          text="Discard"
-          tooltip="Go back to the applied settings"
-          enabled={changed}
-          onClick={() => {
-            setDraft(saved)
-            setMessage("")
-          }}
-        />
-        {changed && <span style={{ marginLeft: "10px" }}>Not applied: ⚠️</span>}
-      </div>
-      {message && <div>{message}</div>}
+      {on && !status.error_recovery && !waiting && (
+        <div>CamillaDSP does not run with --wait, so error recovery is off.</div>
+      )}
+      {message && <div className="error-text">{message}</div>}
     </Box>
   )
 }
@@ -295,22 +108,20 @@ function RunningBox(props: {
       </Box>
     )
   }
-  const runningVariant = status.following ? status.active_config_file : null
-  const rows: [string, React.ReactNode][] = [
-    ["Following", status.manual ? "paused while trying a config" : status.following ? "on" : "off"],
-  ]
-  rows.push([
-    "Config",
-    status.manual ? (
-      "tried from the editor, not saved"
-    ) : runningVariant ? (
-      <FileLink key="running" name={runningVariant} open={props.openConfigFile} />
-    ) : status.following ? (
-      "the active config, adapted to the source if needed"
-    ) : (
-      "the active config"
-    ),
-  ])
+  const fileless = isFileless(status)
+  const rows: [string, React.ReactNode][] = []
+  if (fileless) {
+    rows.push(["Source", "file-less, a config applied from the editor and not saved"])
+    const stoppedBy = props.inactive ? stoppingFormat(status.stop_reason) : null
+    if (stoppedBy)
+      rows.push(["Stopped", `the source changed to ${describeFormat(stoppedBy)}, a file-less config is not followed`])
+  } else {
+    rows.push(["Source", "files"])
+    rows.push(["Provider", status.provider ? PROVIDER_DESCRIPTIONS[status.provider] : "none, nothing runs"])
+    rows.push(["Config", <FileLink key="running" name={status.config_file} open={props.openConfigFile} />])
+    rows.push(["Following", status.following ? "on" : "off"])
+  }
+  rows.push(["Active config", <FileLink key="active" name={status.entry_config_file} open={props.openConfigFile} />])
   if (status.waiting_for_source) rows.push(["Waiting", `no config for ${describeFormat(status.waiting_for_source)}`])
   rows.push(["Error recovery", status.error_recovery ? "on" : "off"])
   if (status.recovering) {
@@ -319,8 +130,10 @@ function RunningBox(props: {
   }
   rows.push(["Last stop", describeStopReason(status.stop_reason)])
   return (
-    <Box title={title} tooltip="Following and error recovery are on only when enabled and CamillaDSP runs with --wait.">
-      <ManualNotice controller={status} inactive={props.inactive} />
+    <Box
+      title={title}
+      tooltip="Following and error recovery are on only when enabled and CamillaDSP runs with --wait.<br>Choose what runs in the side panel's Controller box."
+    >
       <div style={{ display: "grid", gridTemplateColumns: "max-content auto", columnGap: "15px", rowGap: "3px" }}>
         {rows.map(([label, value]) => (
           <React.Fragment key={label}>
@@ -353,7 +166,7 @@ function FileCheckBox(props: { openConfigFile: (name: string) => Promise<void> }
   return (
     <Box
       title="Config check"
-      tooltip="Load every config following can use, as the saved settings have them.<br>Reads every file, so it runs only when asked."
+      tooltip="Load every config following can use, as the stored settings have them.<br>Reads every file, so it runs only when asked."
     >
       <Button text="Check the configs" onClick={check} />
       {error && <div className="error-text">{error}</div>}

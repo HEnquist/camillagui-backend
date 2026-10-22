@@ -21,8 +21,9 @@ use camilladsp_schema::config::{
     PipelineStep, PlaybackDevice, Processor, Resampler, SampleRates,
 };
 use camilladsp_schema::protocol::{
-    AudioDeviceDescriptor, ControllerFileChecks, ControllerSettings, ControllerStatusReport, Fader,
-    SpectrumSide, SpectrumSubscription, VuSubscription,
+    AudioDeviceDescriptor, ConfigProvider, ControllerFileChecks, ControllerSettings,
+    ControllerSource, ControllerStatusReport, Fader, FollowCapture, SpectrumSide,
+    SpectrumSubscription, VuSubscription,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -154,6 +155,7 @@ pub async fn get_status(State(app): Shared) -> Reply<Status> {
     if let Some(controller) = status.controller.as_mut() {
         controller_status_for_gui(&app, controller);
     }
+    controller_settings_for_gui(&app, &mut status.controller_settings);
     Reply(status)
 }
 
@@ -1214,32 +1216,6 @@ pub async fn get_active_config_name(State(app): Shared) -> Reply<ActiveConfigFil
     Reply(ActiveConfigFile { config_file_name })
 }
 
-#[derive(Deserialize, ToSchema)]
-pub struct ActiveConfigBody {
-    /// The file name, in config_dir.
-    name: String,
-}
-
-/// Make a config file the active one, the one CamillaDSP loads when it
-/// starts. A running CamillaDSP loads it at once. One that is offline gets it
-/// in its statefile, for when it starts.
-#[utoipa::path(
-    post,
-    path = "/setactiveconfigfile",
-    responses(
-        (status = 400, description = "The file name is not valid", body = ErrorBody),
-        (status = "default", description = "CamillaDSP refused", body = ErrorBody),
-    )
-)]
-pub async fn set_active_config_name(
-    State(app): Shared,
-    Json(body): Json<ActiveConfigBody>,
-) -> ApiResult<NoContent> {
-    let path = file_in_folder(&app.settings.config_dir, &body.name).map_err(bad_request)?;
-    set_active_config_path(&app, &paths::to_string(&path)).await?;
-    Ok(NoContent)
-}
-
 // ── Built-in controller ────────────────────────────────────────────────────
 
 /// A config file path as the GUI shows it: the file name when the file is in
@@ -1256,14 +1232,47 @@ fn config_file_for_gui(app: &AppState, path: String) -> String {
 
 /// The controller status with its config files as the GUI shows them.
 pub fn controller_status_for_gui(app: &AppState, status: &mut ControllerStatusReport) {
-    status.active_config_file = status
-        .active_config_file
+    status.config_file = status
+        .config_file
         .take()
         .map(|path| config_file_for_gui(app, path));
     status.entry_config_file = status
         .entry_config_file
         .take()
         .map(|path| config_file_for_gui(app, path));
+}
+
+/// The controller settings with the Specific template as the GUI shows it.
+pub fn controller_settings_for_gui(app: &AppState, settings: &mut Option<ControllerSettings>) {
+    if let Some(follow) = settings.as_mut().and_then(|s| s.follow_capture.as_mut()) {
+        follow.specific = follow
+            .specific
+            .take()
+            .map(|template| config_file_for_gui(app, template));
+    }
+}
+
+/// A Specific template from the GUI as a path for CamillaDSP: a file name in
+/// config_dir, or an absolute path when absolute paths are allowed.
+fn template_for_dsp(app: &AppState, template: String) -> Result<String, ApiError> {
+    if Path::new(&template).is_absolute() {
+        if !app.settings.allow_absolute_paths {
+            return Err(bad_request(
+                "The template must be a file name in the config folder",
+            ));
+        }
+        return Ok(template);
+    }
+    let path = file_in_folder(&app.settings.config_dir, &template).map_err(bad_request)?;
+    Ok(paths::to_string(&path))
+}
+
+/// A refused controller command as a 400, with CamillaDSP's result.
+fn refused(err: DspError) -> ApiError {
+    match err {
+        DspError::Command { result, message } => bad_request(message).with_result(result),
+        err => err.into(),
+    }
 }
 
 /// The settings of CamillaDSP's built-in controller, the `controller`
@@ -1280,19 +1289,8 @@ pub fn controller_status_for_gui(app: &AppState, status: &mut ControllerStatusRe
 pub async fn get_controller_settings(
     State(app): Shared,
 ) -> ApiResult<Reply<Option<ControllerSettings>>> {
-    let mut settings = match app.camilla.controller_settings().await {
-        Ok(settings) => settings,
-        Err(DspError::Command { result, message }) => {
-            return Err(bad_request(message).with_result(result));
-        }
-        Err(err) => return Err(err.into()),
-    };
-    if let Some(follow) = settings.as_mut().and_then(|s| s.follow_capture.as_mut()) {
-        follow.specific = follow
-            .specific
-            .take()
-            .map(|template| config_file_for_gui(&app, template));
-    }
+    let mut settings = app.camilla.controller_settings().await.map_err(refused)?;
+    controller_settings_for_gui(&app, &mut settings);
     Ok(Reply(settings))
 }
 
@@ -1305,9 +1303,8 @@ pub struct ControllerSettingsBody {
     settings: Option<ControllerSettings>,
 }
 
-/// Replace the settings of CamillaDSP's built-in controller, and load the
-/// active config file again, so that they apply at once rather than at the
-/// next start.
+/// Replace the settings of CamillaDSP's built-in controller. Following takes
+/// them at the next run from files, error recovery at the next device error.
 #[utoipa::path(
     post,
     path = "/controller/settings",
@@ -1324,47 +1321,86 @@ pub async fn set_controller_settings(
     if let Some(follow) = settings.as_mut().and_then(|s| s.follow_capture.as_mut())
         && let Some(template) = follow.specific.take()
     {
-        let path = if Path::new(&template).is_absolute() {
-            if !app.settings.allow_absolute_paths {
-                return Err(bad_request(
-                    "The template must be a file name in the config folder",
-                ));
-            }
-            template
-        } else {
-            let path = file_in_folder(&app.settings.config_dir, &template).map_err(bad_request)?;
-            paths::to_string(&path)
-        };
-        follow.specific = Some(path);
+        follow.specific = Some(template_for_dsp(&app, template)?);
     }
-    let refused = |err: DspError| match err {
-        DspError::Command { result, message } => bad_request(message).with_result(result),
-        err => err.into(),
-    };
     app.camilla
         .set_controller_settings(settings)
         .await
         .map_err(refused)?;
-    app.camilla.reload().await.map_err(refused)?;
     Ok(NoContent)
 }
 
-/// Load the active config file again. It ends the built-in controller's
-/// manual mode, so following resumes if it is enabled.
+/// How the controller picks the file to run.
+#[derive(Deserialize, ToSchema)]
+pub struct FollowChoice {
+    /// Adapt the file to the source format.
+    adapt: bool,
+    /// The Specific template, a file name in config_dir, or null for no
+    /// Specific. With adapt as well, a format without its own file adapts the
+    /// config file.
+    #[schema(required)]
+    specific: Option<String>,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct RunFromFilesBody {
+    /// The config file to run, a file name in config_dir.
+    file: String,
+    /// How to follow the source. Null keeps the stored settings. Neither Adapt
+    /// nor Specific runs the file as it is.
+    #[schema(required)]
+    follow: Option<FollowChoice>,
+}
+
+/// Make CamillaDSP run from files: store the config file and how to follow
+/// the source, and load the file. This ends running a config sent from the
+/// GUI, which has no file. Error recovery keeps its setting.
+///
+/// A CamillaDSP that is offline gets the file in its statefile, for when it
+/// starts. Following can only be changed while it is online.
 #[utoipa::path(
     post,
-    path = "/reload",
+    path = "/runfromfiles",
     responses(
-        (status = 400, description = "CamillaDSP refused", body = ErrorBody),
+        (status = 400, description = "The file or template is not valid, or CamillaDSP refused", body = ErrorBody),
         (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
-pub async fn reload_config(State(app): Shared) -> ApiResult<NoContent> {
-    match app.camilla.reload().await {
-        Ok(()) => Ok(NoContent),
-        Err(DspError::Command { result, message }) => Err(bad_request(message).with_result(result)),
-        Err(err) => Err(err.into()),
+pub async fn run_from_files(
+    State(app): Shared,
+    Json(body): Json<RunFromFilesBody>,
+) -> ApiResult<NoContent> {
+    let path = file_in_folder(&app.settings.config_dir, &body.file).map_err(bad_request)?;
+    if let Some(choice) = body.follow {
+        let specific = choice
+            .specific
+            .map(|template| template_for_dsp(&app, template))
+            .transpose()?;
+        let following = choice.adapt || specific.is_some();
+        match app.camilla.controller_settings().await {
+            Ok(current) => {
+                let settings = ControllerSettings {
+                    follow_capture: following.then(|| FollowCapture {
+                        specific,
+                        adapt: choice.adapt.then_some(true),
+                    }),
+                    error_recovery: current.as_ref().and_then(|s| s.error_recovery),
+                };
+                let settings = (settings != ControllerSettings::default()).then_some(settings);
+                if settings != current {
+                    app.camilla
+                        .set_controller_settings(settings)
+                        .await
+                        .map_err(refused)?;
+                }
+            }
+            // A CamillaDSP without the controller can still run a file as it is.
+            Err(DspError::Command { .. }) if !following => {}
+            Err(err) => return Err(refused(err)),
+        }
     }
+    set_active_config_path(&app, &paths::to_string(&path)).await?;
+    Ok(NoContent)
 }
 
 /// Check the configs the built-in controller can follow with: each file the
@@ -1380,13 +1416,11 @@ pub async fn reload_config(State(app): Shared) -> ApiResult<NoContent> {
     )
 )]
 pub async fn check_controller_files(State(app): Shared) -> ApiResult<Reply<ControllerFileChecks>> {
-    let mut checks = match app.camilla.check_controller_files().await {
-        Ok(checks) => checks,
-        Err(DspError::Command { result, message }) => {
-            return Err(bad_request(message).with_result(result));
-        }
-        Err(err) => return Err(err.into()),
-    };
+    let mut checks = app
+        .camilla
+        .check_controller_files()
+        .await
+        .map_err(refused)?;
     for check in checks.specific.iter_mut().flatten() {
         check.file = config_file_for_gui(&app, std::mem::take(&mut check.file));
     }
@@ -1412,7 +1446,7 @@ pub enum ConfigSource {
     Adapted,
     /// A config CamillaDSP got over its websocket, which is not saved in
     /// any file.
-    Manual,
+    Fileless,
     /// The active config file.
     Active,
     /// The default config file.
@@ -1433,38 +1467,41 @@ pub struct StartConfig {
     pub adapted_to_samplerate: Option<usize>,
 }
 
-/// While CamillaDSP follows the capture source, the config it runs is not the
-/// active config file. A Specific file runs under its own name, so that saving
-/// writes to it. An adapted config is replaced by the file it was adapted from,
-/// so that saving cannot write the adapted rate, and the resampler Adapt may
-/// have added, into it. In manual mode, the running config was sent over the
-/// websocket, so it has no file, and saving it to the active one is left to
-/// the user. `None` when the running config is the GUI's to start with, as
-/// without following.
+/// The config CamillaDSP runs is not always the active config file as it is.
+/// A Specific file runs under its own name, so that saving writes to it. An
+/// adapted config is replaced by the file it was adapted from, so that saving
+/// cannot write the adapted rate, and the resampler Adapt may have added, into
+/// it. A file-less config was sent over the websocket, so it has no file, and
+/// saving it to the active one is left to the user. `None` when the running
+/// config is the active file as it is.
 async fn following_start_config(
     app: &Arc<AppState>,
     running: &Configuration,
 ) -> Option<StartConfig> {
     let status = app.camilla.controller_status().await.ok()?;
-    if status.manual {
+    if status.source == ControllerSource::Websocket {
         return Some(StartConfig {
             config: running.clone(),
-            source: ConfigSource::Manual,
+            source: ConfigSource::Fileless,
             config_file_name: None,
             adapted_to_samplerate: None,
         });
     }
-    if !status.following {
-        return None;
-    }
     let config_dir = &app.settings.config_dir;
-    if let Some(variant) = status.active_config_file {
-        return Some(StartConfig {
-            config: running.clone(),
-            source: ConfigSource::Variant,
-            config_file_name: files::verify_path_in_config_dir(Some(&variant), config_dir),
-            adapted_to_samplerate: None,
-        });
+    match status.provider? {
+        ConfigProvider::Single => return None,
+        ConfigProvider::Specific => {
+            return Some(StartConfig {
+                config: running.clone(),
+                source: ConfigSource::Variant,
+                config_file_name: files::verify_path_in_config_dir(
+                    status.config_file.as_deref(),
+                    config_dir,
+                ),
+                adapted_to_samplerate: None,
+            });
+        }
+        ConfigProvider::Adapt => {}
     }
     let entry = status.entry_config_file?;
     let name = files::verify_path_in_config_dir(Some(&entry), config_dir)?;

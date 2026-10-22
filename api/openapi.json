@@ -114,7 +114,7 @@
         }
       },
       "post": {
-        "summary": "Replace the settings of CamillaDSP's built-in controller, and load the\nactive config file again, so that they apply at once rather than at the\nnext start.",
+        "summary": "Replace the settings of CamillaDSP's built-in controller. Following takes\nthem at the next run from files, error recovery at the next device error.",
         "operationId": "set_controller_settings",
         "requestBody": {
           "content": {
@@ -1264,14 +1264,25 @@
         }
       }
     },
-    "/api/reload": {
+    "/api/runfromfiles": {
       "post": {
-        "summary": "Load the active config file again. It ends the built-in controller's\nmanual mode, so following resumes if it is enabled.",
-        "operationId": "reload_config",
+        "summary": "Make CamillaDSP run from files: store the config file and how to follow\nthe source, and load the file. This ends running a config sent from the\nGUI, which has no file. Error recovery keeps its setting.",
+        "description": "A CamillaDSP that is offline gets the file in its statefile, for when it\nstarts. Following can only be changed while it is online.",
+        "operationId": "run_from_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunFromFilesBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "204": {},
           "400": {
-            "description": "CamillaDSP refused",
+            "description": "The file or template is not valid, or CamillaDSP refused",
             "content": {
               "application/json": {
                 "schema": {
@@ -1331,45 +1342,6 @@
           },
           "default": {
             "description": "The file could not be written",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/setactiveconfigfile": {
-      "post": {
-        "summary": "Make a config file the active one, the one CamillaDSP loads when it\nstarts. A running CamillaDSP loads it at once. One that is offline gets it\nin its statefile, for when it starts.",
-        "operationId": "set_active_config_name",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ActiveConfigBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {},
-          "400": {
-            "description": "The file name is not valid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "CamillaDSP refused",
             "content": {
               "application/json": {
                 "schema": {
@@ -1606,18 +1578,6 @@
   },
   "components": {
     "schemas": {
-      "ActiveConfigBody": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The file name, in config_dir."
-          }
-        }
-      },
       "ActiveConfigFile": {
         "type": "object",
         "required": [
@@ -3295,6 +3255,15 @@
           }
         }
       },
+      "ConfigProvider": {
+        "type": "string",
+        "description": "The provider that supplied a config of the files source.\n\n- `Single`: the entry config file as is.\n- `Adapt`: the entry config file adapted to the source format.\n- `Specific`: the per-format file the template gives.",
+        "enum": [
+          "Single",
+          "Adapt",
+          "Specific"
+        ]
+      },
       "ConfigSource": {
         "type": "string",
         "description": "Where the config the GUI starts with came from.",
@@ -3302,7 +3271,7 @@
           "dsp",
           "variant",
           "adapted",
-          "manual",
+          "fileless",
           "active",
           "default"
         ]
@@ -3448,24 +3417,47 @@
           }
         }
       },
+      "ControllerSource": {
+        "type": "string",
+        "description": "Where the config the controller runs comes from.\n\n- `Files`: the controller loads it from the entry config file, through a provider.\n- `Websocket`: it was sent over the websocket, and runs exactly as sent.",
+        "enum": [
+          "Files",
+          "Websocket"
+        ]
+      },
       "ControllerStatusReport": {
         "type": "object",
         "description": "The state of the built-in controller, returned by the `GetControllerStatus` command.",
         "required": [
+          "source",
           "recovering",
           "attempts",
-          "manual",
           "following",
           "error_recovery",
           "stop_reason"
         ],
         "properties": {
-          "active_config_file": {
+          "source": {
+            "$ref": "#/components/schemas/ControllerSource",
+            "description": "Where the config comes from. It stays until the next switch, also while nothing runs."
+          },
+          "provider": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConfigProvider",
+                "description": "The provider of the running config. `null` for the websocket source, and while\nnothing runs."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "config_file": {
             "type": [
               "string",
               "null"
             ],
-            "description": "The Specific config file that runs, `null` when the entry config runs as is or\nadapted, and in manual mode."
+            "description": "The file that runs: the entry config file for `Single` and `Adapt`, the per-format\nfile for `Specific`. `null` when `provider` is."
           },
           "entry_config_file": {
             "type": [
@@ -3502,13 +3494,9 @@
               }
             ]
           },
-          "manual": {
-            "type": "boolean",
-            "description": "Manual mode: a config sent with `SetConfig` or `SetConfigJson` runs as sent, and the\ncontroller leaves it alone until a config is loaded from a file, for example with\n`Reload`."
-          },
           "following": {
             "type": "boolean",
-            "description": "Whether following is on, enabled and in wait mode. `false` in manual mode."
+            "description": "Whether following is on, enabled and in wait mode. `false` for the websocket source."
           },
           "error_recovery": {
             "type": "boolean",
@@ -5014,6 +5002,27 @@
           }
         },
         "additionalProperties": false
+      },
+      "FollowChoice": {
+        "type": "object",
+        "description": "How the controller picks the file to run.",
+        "required": [
+          "adapt",
+          "specific"
+        ],
+        "properties": {
+          "adapt": {
+            "type": "boolean",
+            "description": "Adapt the file to the source format."
+          },
+          "specific": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Specific template, a file name in config_dir, or null for no\nSpecific. With adapt as well, a format without its own file adapts the\nconfig file."
+          }
+        }
       },
       "GainParameters": {
         "type": "object",
@@ -6538,6 +6547,30 @@
         ],
         "description": "Resampler algorithm selection."
       },
+      "RunFromFilesBody": {
+        "type": "object",
+        "required": [
+          "file",
+          "follow"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The config file to run, a file name in config_dir."
+          },
+          "follow": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FollowChoice",
+                "description": "How to follow the source. Null keeps the stored settings. Neither Adapt\nnor Specific runs the file as it is."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
       "SampleRates": {
         "oneOf": [
           {
@@ -6964,7 +6997,8 @@
           "labels",
           "title",
           "description",
-          "controller"
+          "controller",
+          "controller_settings"
         ],
         "properties": {
           "cdsp_online": {
@@ -7047,6 +7081,17 @@
               {
                 "$ref": "#/components/schemas/ControllerStatusReport",
                 "description": "The state of the built-in controller, null while offline or when\nCamillaDSP has none. Its config files are given as names in config_dir,\nwhen they are in it."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "controller_settings": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ControllerSettings",
+                "description": "The settings of the built-in controller, null while offline, when\nCamillaDSP has none, or when its statefile has no controller section.\nA Specific template in config_dir is given as a file name."
               },
               {
                 "type": "null"

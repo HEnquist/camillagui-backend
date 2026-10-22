@@ -30,8 +30,8 @@ type DemoState = {
   processingStopped: boolean
   logLines: string[]
   controllerSettings: Schemas["ControllerSettings"] | null
-  /** A config was tried from the editor, and the controller leaves it alone until a reload. */
-  manual: boolean
+  /** A config was applied from the editor, and runs file-less until a run from files. */
+  fileless: boolean
 }
 
 const ENABLE_DEMO_BACKEND = import.meta.env.VITE_ENABLE_DEMO_BACKEND === "true"
@@ -296,7 +296,7 @@ function defaultState(): DemoState {
     processingStopped: false,
     logLines: ["[demo] CamillaGUI mock backend initialized", "[demo] Static mode enabled for GitHub Pages deployment"],
     controllerSettings: null,
-    manual: false,
+    fileless: false,
   }
 }
 
@@ -337,17 +337,17 @@ function demoTemplateMatches(template: string): Schemas["FileCheck"][] {
   })
 }
 
-/** Load the active config again, like CamillaDSP's Reload, which ends manual mode. */
+/** Load the active config again, like CamillaDSP's Reload, which goes back to files. */
 function demoReload() {
   const active = state.activeConfigFileName
   if (active && state.storedConfigs[active]) state.currentConfig = cloneConfig(state.storedConfigs[active])
-  state.manual = false
+  state.fileless = false
   state.processingStopped = false
 }
 
 function demoControllerStatus(): Schemas["ControllerStatusReport"] {
   const follow = state.controllerSettings?.follow_capture
-  const following = !state.manual && (follow?.adapt === true || follow?.specific != null)
+  const following = !state.fileless && (follow?.adapt === true || follow?.specific != null)
   const running =
     following && follow?.specific
       ? demoTemplateMatches(follow.specific).find(
@@ -357,14 +357,18 @@ function demoControllerStatus(): Schemas["ControllerStatusReport"] {
             (file.channels ?? DEMO_SOURCE.channels) === DEMO_SOURCE.channels,
         )
       : undefined
+  const waiting = following && !running && !follow?.adapt
+  let provider: Schemas["ConfigProvider"] | null = null
+  if (!state.fileless && !waiting) provider = running ? "Specific" : following ? "Adapt" : "Single"
   return {
-    active_config_file: running?.file ?? null,
+    source: state.fileless ? "Websocket" : "Files",
+    provider,
+    config_file: running?.file ?? (provider ? state.activeConfigFileName : null),
     entry_config_file: state.activeConfigFileName,
     recovering: false,
     attempts: 0,
     next_retry_s: null,
-    waiting_for_source: following && !running && !follow?.adapt ? DEMO_SOURCE : null,
-    manual: state.manual,
+    waiting_for_source: waiting ? DEMO_SOURCE : null,
     following,
     error_recovery: state.controllerSettings?.error_recovery === true,
     stop_reason: "None",
@@ -773,8 +777,8 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     const config = activeName && state.storedConfigs[activeName] ? state.storedConfigs[activeName] : state.currentConfig
     state.currentConfig = cloneConfig(config)
     persistState()
-    const startConfig: Schemas["StartConfig"] = state.manual
-      ? { config_file_name: null, config: demoStripAudioPaths(cloneConfig(state.currentConfig)), source: "manual" }
+    const startConfig: Schemas["StartConfig"] = state.fileless
+      ? { config_file_name: null, config: demoStripAudioPaths(cloneConfig(state.currentConfig)), source: "fileless" }
       : {
           config_file_name: activeName,
           config: demoStripAudioPaths(cloneConfig(config)),
@@ -803,7 +807,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     }
     state.currentConfig = cloneConfig(completeConfig(config))
     state.processingStopped = false
-    state.manual = true
+    state.fileless = true
     appendLog("applied config")
     persistState()
     return noContent()
@@ -839,12 +843,21 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
     return jsonResponse(createSampleConfig())
   }
 
-  if (pathname === "/api/setactiveconfigfile" && method === "POST") {
-    const { name } = await requestJson<Schemas["ActiveConfigBody"]>(input, init)
-    if (!state.storedConfigs[name]) return errorResponse(`Config file '${name}' not found.`, 404)
-    state.activeConfigFileName = name
+  if (pathname === "/api/runfromfiles" && method === "POST") {
+    const { file, follow } = await requestJson<Schemas["RunFromFilesBody"]>(input, init)
+    if (!state.storedConfigs[file]) return errorResponse(`Config file '${file}' not found.`, 400)
+    if (follow) {
+      const following = follow.adapt || follow.specific != null
+      const errorRecovery = state.controllerSettings?.error_recovery ?? null
+      const settings = {
+        follow_capture: following ? { adapt: follow.adapt ? true : null, specific: follow.specific } : null,
+        error_recovery: errorRecovery,
+      }
+      state.controllerSettings = following || errorRecovery ? settings : null
+    }
+    state.activeConfigFileName = file
     demoReload()
-    appendLog(`activated config ${name}`)
+    appendLog(`running ${file} from files`)
     persistState()
     return noContent()
   }
@@ -873,6 +886,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       title: state.currentConfig.title,
       description: state.currentConfig.description,
       controller: demoControllerStatus(),
+      controller_settings: state.controllerSettings,
     }
     return jsonResponse(status)
   }
@@ -884,15 +898,7 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/controller/settings" && method === "POST") {
     const { settings } = await requestJson<Schemas["ControllerSettingsBody"]>(input, init)
     state.controllerSettings = settings
-    demoReload()
-    appendLog(`controller settings ${JSON.stringify(settings)}, reloaded`)
-    persistState()
-    return noContent()
-  }
-
-  if (pathname === "/api/reload" && method === "POST") {
-    demoReload()
-    appendLog("reloaded the active config")
+    appendLog(`controller settings ${JSON.stringify(settings)}`)
     persistState()
     return noContent()
   }

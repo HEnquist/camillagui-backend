@@ -317,6 +317,9 @@ class FakeCamillaDSP:
                 return error("ConfigValidationError", s["reject_config"])
             loader = yaml.safe_load if name == "SetConfig" else json.loads
             s["config"] = loader(command["value"])
+            # A sent config runs file-less, as in CamillaDSP.
+            if s["controller"] is not None:
+                s["controller"]["status"].update(source="Websocket", provider=None, config_file=None, following=False)
             return ok(has_value=False)
         if name == "SetConfigFilePath":
             s["config_file_path"] = command["value"]
@@ -362,5 +365,9 @@ class FakeCamillaDSP:
             if name == "CheckControllerFiles":
                 return ok(controller["checks"])
         if name == "Reload":
+            # Back to files, running the active file as it is.
+            if controller is not None:
+                path = s["config_file_path"]
+                controller["status"].update(source="Files", provider="Single", config_file=path, entry_config_file=path)
             return ok(has_value=False)
         return {"reply": "Invalid", "error": f"Unknown command {name}"}

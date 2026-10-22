@@ -61,9 +61,8 @@ export interface paths {
     get: operations["get_controller_settings"]
     put?: never
     /**
-     * Replace the settings of CamillaDSP's built-in controller, and load the
-     *     active config file again, so that they apply at once rather than at the
-     *     next start.
+     * Replace the settings of CamillaDSP's built-in controller. Following takes
+     *     them at the next run from files, error recovery at the next device error.
      */
     post: operations["set_controller_settings"]
     delete?: never
@@ -557,7 +556,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  "/api/reload": {
+  "/api/runfromfiles": {
     parameters: {
       query?: never
       header?: never
@@ -567,10 +566,13 @@ export interface paths {
     get?: never
     put?: never
     /**
-     * Load the active config file again. It ends the built-in controller's
-     *     manual mode, so following resumes if it is enabled.
+     * Make CamillaDSP run from files: store the config file and how to follow
+     *     the source, and load the file. This ends running a config sent from the
+     *     GUI, which has no file. Error recovery keeps its setting.
+     * @description A CamillaDSP that is offline gets the file in its statefile, for when it
+     *     starts. Following can only be changed while it is online.
      */
-    post: operations["reload_config"]
+    post: operations["run_from_files"]
     delete?: never
     options?: never
     head?: never
@@ -591,27 +593,6 @@ export interface paths {
      *     CamillaDSP can use it at startup without the GUI.
      */
     post: operations["save_config_file"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/setactiveconfigfile": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /**
-     * Make a config file the active one, the one CamillaDSP loads when it
-     *     starts. A running CamillaDSP loads it at once. One that is offline gets it
-     *     in its statefile, for when it starts.
-     */
-    post: operations["set_active_config_name"]
     delete?: never
     options?: never
     head?: never
@@ -736,10 +717,6 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
-    ActiveConfigBody: {
-      /** @description The file name, in config_dir. */
-      name: string
-    }
     ActiveConfigFile: {
       /**
        * @description The file name of the active config, null when there is none, or it is
@@ -1170,10 +1147,19 @@ export interface components {
       pipeline?: components["schemas"]["PipelineStep"][]
     }
     /**
+     * @description The provider that supplied a config of the files source.
+     *
+     *     - `Single`: the entry config file as is.
+     *     - `Adapt`: the entry config file adapted to the source format.
+     *     - `Specific`: the per-format file the template gives.
+     * @enum {string}
+     */
+    ConfigProvider: "Single" | "Adapt" | "Specific"
+    /**
      * @description Where the config the GUI starts with came from.
      * @enum {string}
      */
-    ConfigSource: "dsp" | "variant" | "adapted" | "manual" | "active" | "default"
+    ConfigSource: "dsp" | "variant" | "adapted" | "fileless" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
       title?: string | null
@@ -1208,13 +1194,24 @@ export interface components {
     ControllerSettingsBody: {
       settings: components["schemas"]["ControllerSettings"] | null
     }
+    /**
+     * @description Where the config the controller runs comes from.
+     *
+     *     - `Files`: the controller loads it from the entry config file, through a provider.
+     *     - `Websocket`: it was sent over the websocket, and runs exactly as sent.
+     * @enum {string}
+     */
+    ControllerSource: "Files" | "Websocket"
     /** @description The state of the built-in controller, returned by the `GetControllerStatus` command. */
     ControllerStatusReport: {
+      /** @description Where the config comes from. It stays until the next switch, also while nothing runs. */
+      source: components["schemas"]["ControllerSource"]
+      provider?: components["schemas"]["ConfigProvider"] | null
       /**
-       * @description The Specific config file that runs, `null` when the entry config runs as is or
-       *     adapted, and in manual mode.
+       * @description The file that runs: the entry config file for `Single` and `Adapt`, the per-format
+       *     file for `Specific`. `null` when `provider` is.
        */
-      active_config_file?: string | null
+      config_file?: string | null
       /**
        * @description The entry config file, the one `GetConfigFilePath` gives, and the one `Reload`
        *     loads.
@@ -1230,13 +1227,7 @@ export interface components {
        */
       next_retry_s?: number | null
       waiting_for_source?: components["schemas"]["SourceFormat"] | null
-      /**
-       * @description Manual mode: a config sent with `SetConfig` or `SetConfigJson` runs as sent, and the
-       *     controller leaves it alone until a config is loaded from a file, for example with
-       *     `Reload`.
-       */
-      manual: boolean
-      /** @description Whether following is on, enabled and in wait mode. `false` in manual mode. */
+      /** @description Whether following is on, enabled and in wait mode. `false` for the websocket source. */
       following: boolean
       /** @description Whether error recovery is on, enabled and in wait mode. */
       error_recovery: boolean
@@ -1718,6 +1709,17 @@ export interface components {
       /** @description Enable the Adapt provider. */
       adapt?: boolean | null
     }
+    /** @description How the controller picks the file to run. */
+    FollowChoice: {
+      /** @description Adapt the file to the source format. */
+      adapt: boolean
+      /**
+       * @description The Specific template, a file name in config_dir, or null for no
+       *     Specific. With adapt as well, a format without its own file adapts the
+       *     config file.
+       */
+      specific: string | null
+    }
     /** @description Parameters for the static gain filter. */
     GainParameters: {
       gain: components["schemas"]["FiniteF64"]
@@ -2144,6 +2146,11 @@ export interface components {
           /** @enum {string} */
           type: "Slip"
         }
+    RunFromFilesBody: {
+      /** @description The config file to run, a file name in config_dir. */
+      file: string
+      follow: components["schemas"]["FollowChoice"] | null
+    }
     SampleRates: number | number[]
     /**
      * @description The width of the samples in a coefficient frame.
@@ -2342,6 +2349,7 @@ export interface components {
       title: string | null
       description: string | null
       controller: components["schemas"]["ControllerStatusReport"] | null
+      controller_settings: components["schemas"]["ControllerSettings"] | null
     }
     /** @description Reason a processing run ended. */
     StopReason:
@@ -3493,14 +3501,18 @@ export interface operations {
       }
     }
   }
-  reload_config: {
+  run_from_files: {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    requestBody?: never
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RunFromFilesBody"]
+      }
+    }
     responses: {
       204: {
         headers: {
@@ -3508,7 +3520,7 @@ export interface operations {
         }
         content?: never
       }
-      /** @description CamillaDSP refused */
+      /** @description The file or template is not valid, or CamillaDSP refused */
       400: {
         headers: {
           [name: string]: unknown
@@ -3566,45 +3578,6 @@ export interface operations {
         }
       }
       /** @description The file could not be written */
-      default: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/json": components["schemas"]["ErrorBody"]
-        }
-      }
-    }
-  }
-  set_active_config_name: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ActiveConfigBody"]
-      }
-    }
-    responses: {
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      /** @description The file name is not valid */
-      400: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/json": components["schemas"]["ErrorBody"]
-        }
-      }
-      /** @description CamillaDSP refused */
       default: {
         headers: {
           [name: string]: unknown
