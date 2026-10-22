@@ -340,6 +340,7 @@ function demoControllerFileChecks(): Schemas["ControllerFileChecks"] {
             channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
             format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
             problem: null,
+            warnings: [],
           }
         : null,
   }

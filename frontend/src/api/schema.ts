@@ -746,6 +746,12 @@ export interface components {
        *     are only right at the config's own rate, when Adapt would change its samplerate.
        */
       problem?: string | null
+      /**
+       * @description The per-rate variants the config is missing for an alternate rate: a coefficient file
+       *     or a filter, mixer or processor named with `$samplerate$`. The config still runs at
+       *     the other rates, but a source at that rate gets no config.
+       */
+      warnings: string[]
     }
     /** @enum {string} */
     AlsaSampleFormat: "S16_LE" | "S24_3_LE" | "S24_4_LE" | "S32_LE" | "F32_LE" | "F64_LE"

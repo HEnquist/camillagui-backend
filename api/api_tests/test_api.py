@@ -947,10 +947,12 @@ def test_controller_file_checks_name_the_file_in_config_dir(server):
             "channels": 2,
             "format": None,
             "problem": None,
+            "warnings": ["filter 'fir': no file for 96000 Hz, fir_96000.raw"],
         },
     }
     checks = server.get("/api/controller/checkfiles").json()
     assert checks["adapt"]["file"] == "config.yml"
+    assert checks["adapt"]["warnings"] == ["filter 'fir': no file for 96000 Hz, fir_96000.raw"]
     assert checks["adapt"]["alternate_samplerates"] == [96000]
 
 

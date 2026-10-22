@@ -201,15 +201,29 @@ function FileCheckBox(props: { openConfigFile: (name: string) => Promise<void> }
               <td style={{ textAlign: "right" }}>{adapt.channels ?? "any"}</td>
               <td>{adapt.format ?? "any"}</td>
               <td
-                data-tooltip-html={adapt.problem ?? "Usable"}
+                data-tooltip-html={adapt.problem ?? (adapt.warnings.length > 0 ? "Usable, with warnings" : "Usable")}
                 data-tooltip-id="main-tooltip"
                 style={{ textAlign: "center" }}
               >
-                {adapt.problem ? CONFIG_FILE_STATUS_ICONS.errors : CONFIG_FILE_STATUS_ICONS.valid}
+                {adapt.problem
+                  ? CONFIG_FILE_STATUS_ICONS.errors
+                  : adapt.warnings.length > 0
+                    ? "⚠️"
+                    : CONFIG_FILE_STATUS_ICONS.valid}
               </td>
             </tr>
           </tbody>
         </table>
+      )}
+      {adapt && adapt.warnings.length > 0 && (
+        <div style={{ color: "var(--warning-text-color)" }}>
+          A source at these rates gets no config:
+          <ul style={{ margin: "3px 0" }}>
+            {adapt.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
       )}
     </Box>
   )
