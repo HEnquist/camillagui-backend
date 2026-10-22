@@ -5,7 +5,6 @@ import {
   mdiFileExport,
   mdiFileImport,
   mdiMenu,
-  mdiPlayCircleOutline,
   mdiScaleUnbalanced,
   mdiStar,
   mdiUpdate,
@@ -94,7 +93,6 @@ export function Files(props: {
             setCurrentConfigFileName={props.setCurrentConfigFileName}
             saveNotify={props.saveNotify}
             activeConfigFile={controller?.entry_config_file}
-            runningConfigFile={controller?.provider === "Specific" ? controller.config_file : null}
           />
           <FileTable title="Filters" type="coeff" />
         </div>
@@ -116,8 +114,6 @@ interface FileTableProps {
    * Without it, the name read when the table is shown.
    */
   activeConfigFile?: string | null
-  /** The config file following picked, which CamillaDSP runs instead of the active one. */
-  runningConfigFile?: string | null
   setCurrentConfig?: (filename: string, config: Config) => void
   setCurrentConfigFileName?: (filename: string | undefined) => void
   saveNotify?: () => void
@@ -561,13 +557,6 @@ class FileTable extends Component<
               <MdiIcon
                 icon={mdiStar}
                 tooltip="The active config, which CamillaDSP starts from.<br>Pick another one in the side panel's Controller box."
-                style={{ marginLeft: "5px" }}
-              />
-            )}
-            {row.original.name === this.props.runningConfigFile && (
-              <MdiIcon
-                icon={mdiPlayCircleOutline}
-                tooltip="CamillaDSP runs this config file, picked by following the capture source."
                 style={{ marginLeft: "5px" }}
               />
             )}

@@ -18,12 +18,12 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use camilladsp_schema::config::{
     CaptureDevice, Configuration, ConvParameters, Filter, FiniteF32, FiniteF64, Mixer, PathElement,
-    PipelineStep, PlaybackDevice, Processor, Resampler, SampleRates,
+    PipelineStep, PlaybackDevice, Processor, Resampler,
 };
 use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, ConfigProvider, ControllerFileChecks, ControllerSettings,
-    ControllerSource, ControllerStatusReport, Fader, FollowCapture, SpectrumSide,
-    SpectrumSubscription, VuSubscription,
+    ControllerSource, ControllerStatusReport, Fader, SpectrumSide, SpectrumSubscription,
+    VuSubscription,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -155,7 +155,6 @@ pub async fn get_status(State(app): Shared) -> Reply<Status> {
     if let Some(controller) = status.controller.as_mut() {
         controller_status_for_gui(&app, controller);
     }
-    controller_settings_for_gui(&app, &mut status.controller_settings);
     Reply(status)
 }
 
@@ -899,8 +898,11 @@ pub struct ConfigFragment {
 #[serde(deny_unknown_fields)]
 pub struct DevicesFragment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
-    pub samplerate: Option<SampleRates>,
+    #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
+    pub samplerate: Option<NonZeroUsize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<Vec<usize>>, nullable = false)]
+    pub alternate_samplerates: Option<Vec<NonZeroUsize>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<usize>, minimum = 1, nullable = false)]
     pub chunksize: Option<NonZeroUsize>,
@@ -1242,31 +1244,6 @@ pub fn controller_status_for_gui(app: &AppState, status: &mut ControllerStatusRe
         .map(|path| config_file_for_gui(app, path));
 }
 
-/// The controller settings with the Specific template as the GUI shows it.
-pub fn controller_settings_for_gui(app: &AppState, settings: &mut Option<ControllerSettings>) {
-    if let Some(follow) = settings.as_mut().and_then(|s| s.follow_capture.as_mut()) {
-        follow.specific = follow
-            .specific
-            .take()
-            .map(|template| config_file_for_gui(app, template));
-    }
-}
-
-/// A Specific template from the GUI as a path for CamillaDSP: a file name in
-/// config_dir, or an absolute path when absolute paths are allowed.
-fn template_for_dsp(app: &AppState, template: String) -> Result<String, ApiError> {
-    if Path::new(&template).is_absolute() {
-        if !app.settings.allow_absolute_paths {
-            return Err(bad_request(
-                "The template must be a file name in the config folder",
-            ));
-        }
-        return Ok(template);
-    }
-    let path = file_in_folder(&app.settings.config_dir, &template).map_err(bad_request)?;
-    Ok(paths::to_string(&path))
-}
-
 /// A refused controller command as a 400, with CamillaDSP's result.
 fn refused(err: DspError) -> ApiError {
     match err {
@@ -1276,8 +1253,7 @@ fn refused(err: DspError) -> ApiError {
 }
 
 /// The settings of CamillaDSP's built-in controller, the `controller`
-/// section of its statefile, null when there is none. A Specific template in
-/// config_dir is given as a file name.
+/// section of its statefile, null when there is none.
 #[utoipa::path(
     get,
     path = "/controller/settings",
@@ -1289,16 +1265,13 @@ fn refused(err: DspError) -> ApiError {
 pub async fn get_controller_settings(
     State(app): Shared,
 ) -> ApiResult<Reply<Option<ControllerSettings>>> {
-    let mut settings = app.camilla.controller_settings().await.map_err(refused)?;
-    controller_settings_for_gui(&app, &mut settings);
+    let settings = app.camilla.controller_settings().await.map_err(refused)?;
     Ok(Reply(settings))
 }
 
 #[derive(Deserialize, ToSchema)]
 pub struct ControllerSettingsBody {
-    /// The whole `controller` section, null to remove it. A Specific
-    /// template is a file name in config_dir, or an absolute path when
-    /// absolute paths are allowed.
+    /// The whole `controller` section, null to remove it.
     #[schema(required)]
     settings: Option<ControllerSettings>,
 }
@@ -1309,7 +1282,7 @@ pub struct ControllerSettingsBody {
     post,
     path = "/controller/settings",
     responses(
-        (status = 400, description = "The template is not valid, or CamillaDSP refused", body = ErrorBody),
+        (status = 400, description = "CamillaDSP refused", body = ErrorBody),
         (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
@@ -1317,39 +1290,21 @@ pub async fn set_controller_settings(
     State(app): Shared,
     Json(body): Json<ControllerSettingsBody>,
 ) -> ApiResult<NoContent> {
-    let mut settings = body.settings;
-    if let Some(follow) = settings.as_mut().and_then(|s| s.follow_capture.as_mut())
-        && let Some(template) = follow.specific.take()
-    {
-        follow.specific = Some(template_for_dsp(&app, template)?);
-    }
     app.camilla
-        .set_controller_settings(settings)
+        .set_controller_settings(body.settings)
         .await
         .map_err(refused)?;
     Ok(NoContent)
-}
-
-/// How the controller picks the file to run.
-#[derive(Deserialize, ToSchema)]
-pub struct FollowChoice {
-    /// Adapt the file to the source format.
-    adapt: bool,
-    /// The Specific template, a file name in config_dir, or null for no
-    /// Specific. With adapt as well, a format without its own file adapts the
-    /// config file.
-    #[schema(required)]
-    specific: Option<String>,
 }
 
 #[derive(Deserialize, ToSchema)]
 pub struct RunFromFilesBody {
     /// The config file to run, a file name in config_dir.
     file: String,
-    /// How to follow the source. Null keeps the stored settings. Neither Adapt
-    /// nor Specific runs the file as it is.
+    /// Whether to follow the source, adapting the file to its format. Null
+    /// keeps the stored settings.
     #[schema(required)]
-    follow: Option<FollowChoice>,
+    follow: Option<bool>,
 }
 
 /// Make CamillaDSP run from files: store the config file and how to follow
@@ -1362,7 +1317,7 @@ pub struct RunFromFilesBody {
     post,
     path = "/runfromfiles",
     responses(
-        (status = 400, description = "The file or template is not valid, or CamillaDSP refused", body = ErrorBody),
+        (status = 400, description = "The file is not valid, or CamillaDSP refused", body = ErrorBody),
         (status = "default", description = "CamillaDSP cannot be reached", body = ErrorBody),
     )
 )]
@@ -1371,19 +1326,11 @@ pub async fn run_from_files(
     Json(body): Json<RunFromFilesBody>,
 ) -> ApiResult<NoContent> {
     let path = file_in_folder(&app.settings.config_dir, &body.file).map_err(bad_request)?;
-    if let Some(choice) = body.follow {
-        let specific = choice
-            .specific
-            .map(|template| template_for_dsp(&app, template))
-            .transpose()?;
-        let following = choice.adapt || specific.is_some();
+    if let Some(following) = body.follow {
         match app.camilla.controller_settings().await {
             Ok(current) => {
                 let settings = ControllerSettings {
-                    follow_capture: following.then(|| FollowCapture {
-                        specific,
-                        adapt: choice.adapt.then_some(true),
-                    }),
+                    follow_capture: following.then_some(true),
                     error_recovery: current.as_ref().and_then(|s| s.error_recovery),
                 };
                 let settings = (settings != ControllerSettings::default()).then_some(settings);
@@ -1403,10 +1350,9 @@ pub async fn run_from_files(
     Ok(NoContent)
 }
 
-/// Check the configs the built-in controller can follow with: each file the
-/// Specific template matches, and the entry config Adapt starts from. Loads
-/// every file, so it is run on demand rather than polled. Files in config_dir
-/// are given as file names.
+/// Check the entry config the built-in controller adapts when it follows the
+/// source. Loads the config and its coefficient files, so it is run on demand
+/// rather than polled. A file in config_dir is given as a file name.
 #[utoipa::path(
     get,
     path = "/controller/checkfiles",
@@ -1421,9 +1367,6 @@ pub async fn check_controller_files(State(app): Shared) -> ApiResult<Reply<Contr
         .check_controller_files()
         .await
         .map_err(refused)?;
-    for check in checks.specific.iter_mut().flatten() {
-        check.file = config_file_for_gui(&app, std::mem::take(&mut check.file));
-    }
     if let Some(adapt) = checks.adapt.as_mut() {
         adapt.file = adapt
             .file
@@ -1439,9 +1382,6 @@ pub async fn check_controller_files(State(app): Shared) -> ApiResult<Reply<Contr
 pub enum ConfigSource {
     /// The config CamillaDSP runs.
     Dsp,
-    /// The config file CamillaDSP runs, picked by following the capture
-    /// source rather than the active one.
-    Variant,
     /// The active config file, which CamillaDSP runs adapted to the source.
     Adapted,
     /// A config CamillaDSP got over its websocket, which is not saved in
@@ -1468,8 +1408,7 @@ pub struct StartConfig {
 }
 
 /// The config CamillaDSP runs is not always the active config file as it is.
-/// A Specific file runs under its own name, so that saving writes to it. An
-/// adapted config is replaced by the file it was adapted from, so that saving
+/// An adapted config is replaced by the file it was adapted from, so that saving
 /// cannot write the adapted rate, and the resampler Adapt may have added, into
 /// it. A file-less config was sent over the websocket, so it has no file, and
 /// saving it to the active one is left to the user. `None` when the running
@@ -1487,22 +1426,10 @@ async fn following_start_config(
             adapted_to_samplerate: None,
         });
     }
-    let config_dir = &app.settings.config_dir;
-    match status.provider? {
-        ConfigProvider::Single => return None,
-        ConfigProvider::Specific => {
-            return Some(StartConfig {
-                config: running.clone(),
-                source: ConfigSource::Variant,
-                config_file_name: files::verify_path_in_config_dir(
-                    status.config_file.as_deref(),
-                    config_dir,
-                ),
-                adapted_to_samplerate: None,
-            });
-        }
-        ConfigProvider::Adapt => {}
+    if status.provider? == ConfigProvider::Single {
+        return None;
     }
+    let config_dir = &app.settings.config_dir;
     let entry = status.entry_config_file?;
     let name = files::verify_path_in_config_dir(Some(&entry), config_dir)?;
     let path = config_dir.join(&name);
@@ -2192,6 +2119,7 @@ mod tests {
     fn fragment_of(devices: Devices) -> DevicesFragment {
         let Devices {
             samplerate,
+            alternate_samplerates,
             chunksize,
             queuelimit,
             silence_threshold,
@@ -2212,6 +2140,7 @@ mod tests {
         } = devices;
         DevicesFragment {
             samplerate: Some(samplerate),
+            alternate_samplerates,
             chunksize: Some(chunksize),
             queuelimit,
             silence_threshold,

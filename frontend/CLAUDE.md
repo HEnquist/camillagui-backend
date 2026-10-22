@@ -160,10 +160,10 @@ Key endpoints used by the frontend:
   capture source format and recovers from device errors. Its status and settings come with
   `/api/status` as `controller` and `controller_settings`, null without one. The `SidePanel`
   passes them up when they change, for the Files and CamillaDSP tabs. While following, the
-  active config is where CamillaDSP starts, and the config that runs can be another file or the
-  active one adapted to the source rate, see `getstartconfig`. `runfromfiles` stores the active
-  file and, unless `follow` is null, the way to follow, then reloads. The settings endpoint only
-  stores, it does not reload
+  config that runs is the active one adapted to the source format, see `getstartconfig`. A
+  source at `samplerate` or one of the `alternate_samplerates` runs natively, any other rate is
+  resampled to `samplerate`. `runfromfiles` stores the active file and, unless `follow` is null,
+  whether to follow, then reloads. The settings endpoint only stores, it does not reload
 
 ## Editor and CamillaDSP
 
@@ -172,24 +172,24 @@ panel alike:
 
 - The editor is the Title to Pipeline tabs and Files, and the side panel's Editor box: one
   config, the file it belongs to, Save, Revert and auto-save. The Files table only marks the
-  active config (★) and the file following runs (▶), it does not change them.
+  active config (★), it does not change it.
 - CamillaDSP is the side panel's CamillaDSP and Controller boxes and the CamillaDSP tab. The
   CamillaDSP box shows its state, with "Load into editor", "Compare" and "Stop processing",
   none of which changes what runs. The Controller box shows the *source* (files, with the
   provider, or file-less), the file that runs, following and recovery, and is where the user
   chooses what runs. The tab holds the details: the error recovery toggle, which applies at
-  once, what runs now, and the check of the files following can use.
+  once, what runs now, and the check of the active config that following adapts.
 - CamillaDSP's config comes from one of two sources, and each direction has one button:
   - "Apply to DSP" sends the editor's config (`setconfig`). It runs *file-less*, exactly as
     sent: nothing follows the source, and recovery restarts it. `source` is `Websocket`.
-  - "Run from files" (`runfromfiles`) stores the active config file and the way to follow
-    (Off, Adapt, Specific, Specific else adapt, with the Specific template), then reloads.
-    The file (picked in a `FileSelectPopup`), the follow mode and the template are only staged
-    in the side panel until then, with "Not running: ⚠️" while they differ from what runs.
+  - "Run from files" (`runfromfiles`) stores the active config file and whether to follow the
+    capture source, then reloads. The file (picked in a `FileSelectPopup`) and the follow
+    checkbox are only staged in the side panel until then, with "Not running: ⚠️" while they
+    differ from what runs.
   - "Apply automatically" only resends a config that already runs file-less, it never leaves
     files. Without a controller it applies after every change, as there are no files to leave.
   - The quick config switch in the Shortcuts tab and the compact view picks a file, so it runs
-    it from files (`runfromfiles` with `follow` null), keeping the way to follow.
+    it from files (`runfromfiles` with `follow` null), keeping the follow setting.
 - The editor meets CamillaDSP in those buttons, in "Load into editor" (`getstartconfig`, the
   same as at startup, so an adapted config is never loaded), and in "Open in editor" on a file
   name. When the source goes from file-less back to files, the GUI marks the editor's config as

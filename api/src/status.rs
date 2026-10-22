@@ -78,7 +78,6 @@ pub struct Status {
     pub controller: Option<ControllerStatusReport>,
     /// The settings of the built-in controller, null while offline, when
     /// CamillaDSP has none, or when its statefile has no controller section.
-    /// A Specific template in config_dir is given as a file name.
     #[schema(required)]
     pub controller_settings: Option<ControllerSettings>,
 }

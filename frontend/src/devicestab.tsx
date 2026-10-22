@@ -25,9 +25,6 @@ import {
   ResamplerType,
   ResamplerTypeOptions,
   getFormatOptions,
-  otherNativeSamplerates,
-  preferredSamplerate,
-  setSamplerates,
   WasapiFormat,
   Signals,
 } from "./camilladsp/config"
@@ -68,11 +65,11 @@ function getEffectiveCaptureSamplerate(devices: Devices): number | null {
   if (devices.resampler !== null) {
     return devices.capture_samplerate
   }
-  return preferredSamplerate(devices)
+  return devices.samplerate
 }
 
 function getEffectivePlaybackSamplerate(devices: Devices): number {
-  return preferredSamplerate(devices)
+  return devices.samplerate
 }
 
 function getCaptureSamplerateDescription(devices: Devices): string {
@@ -82,11 +79,11 @@ function getCaptureSamplerateDescription(devices: Devices): string {
     }
     return "Currently selecting values from capture_samplerate."
   }
-  return `Currently selecting values for ${preferredSamplerate(devices)} Hz from samplerate.`
+  return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
 }
 
 function getPlaybackSamplerateDescription(devices: Devices): string {
-  return `Currently selecting values for ${preferredSamplerate(devices)} Hz from samplerate.`
+  return `Currently selecting values for ${devices.samplerate} Hz from samplerate.`
 }
 
 /** The devices of a device type, as name and description, none if they cannot be listed. */
@@ -202,38 +199,37 @@ function Samplerate(props: {
   onChange: (update: Update<Devices>) => void
 }) {
   if (props.hide_capture_samplerate && props.devices.resampler !== null) return null
-  const others = otherNativeSamplerates(props.devices)
   return (
     <>
       <SamplerateOption
-        samplerate={preferredSamplerate(props.devices)}
+        samplerate={props.devices.samplerate}
         error={props.errors.messageFor("samplerate")}
         desc="samplerate"
         tooltip="Sample rate for processing and output"
         onChange={(samplerate) =>
           props.onChange((devices) => {
-            setSamplerates(devices, samplerate, otherNativeSamplerates(devices))
+            devices.samplerate = samplerate
           })
         }
         extraPadding={true}
       />
       <div
         className="setting"
-        data-tooltip-html="Other rates the hardware runs natively, separated by commas, used when following the capture source.<br>A listed rate runs natively, any other rate is resampled to samplerate.<br>Leave empty for a single rate."
+        data-tooltip-html="More rates the hardware runs natively besides samplerate, separated by commas.<br>Used when following the capture source: a source at one of them runs natively,<br>any other rate is resampled to samplerate.<br>Leave empty to always resample to samplerate."
         style={{ padding: "0 12px" }}
       >
-        <div className="setting-label">other native rates</div>
+        <div className="setting-label">alternate_samplerates</div>
         <ParsedInput
-          value={others}
+          value={props.devices.alternate_samplerates ?? []}
           immediate={false}
-          tooltip="Other rates the hardware runs natively, separated by commas"
+          tooltip="More rates the hardware runs natively, separated by commas"
           placeholder="none"
           className="setting-input"
           asString={(rates: number[]) => rates.join(", ")}
           parseValue={parseRateList}
           onChange={(rates) =>
             props.onChange((devices) => {
-              setSamplerates(devices, preferredSamplerate(devices), rates)
+              devices.alternate_samplerates = rates.length > 0 ? rates : null
             })
           }
         />

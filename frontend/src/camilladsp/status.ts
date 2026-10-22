@@ -15,7 +15,7 @@ export type Labels = Schemas["ChannelLabels"]
  */
 export type ControllerStatus = Schemas["ControllerStatusReport"]
 
-/** The `controller` section of CamillaDSP's statefile, with the Specific template as a name. */
+/** The `controller` section of CamillaDSP's statefile. */
 export type ControllerSettings = Schemas["ControllerSettings"]
 
 /** Whether CamillaDSP runs a config sent from the GUI, which belongs to no file. */
@@ -23,42 +23,9 @@ export function isFileless(controller: ControllerStatus | null): boolean {
   return controller?.source === "Websocket"
 }
 
-/** How the controller picks the file to run, the choices the side panel offers. */
-export type FollowMode = "single" | "adapt" | "specific" | "specificElseAdapt"
-
-export const FOLLOW_MODES: { value: FollowMode; label: string }[] = [
-  { value: "single", label: "Off" },
-  { value: "adapt", label: "Adapt" },
-  { value: "specific", label: "Specific" },
-  { value: "specificElseAdapt", label: "Specific, else adapt" },
-]
-
-export function followModeOf(settings: ControllerSettings | null): FollowMode {
-  const follow = settings?.follow_capture
-  const specific = follow?.specific != null
-  const adapt = follow?.adapt === true
-  if (specific) return adapt ? "specificElseAdapt" : "specific"
-  return adapt ? "adapt" : "single"
-}
-
-export function usesTemplate(mode: FollowMode): boolean {
-  return mode === "specific" || mode === "specificElseAdapt"
-}
-
-export function followChoiceOf(mode: FollowMode, template: string): Schemas["FollowChoice"] {
-  return {
-    adapt: mode === "adapt" || mode === "specificElseAdapt",
-    specific: usesTemplate(mode) ? template : null,
-  }
-}
-
-export const TEMPLATE_TOKENS = ["$samplerate$", "$channels$", "$format$"]
-
-/** What is wrong with a Specific template, the same rule CamillaDSP checks. */
-export function templateProblem(template: string): string | undefined {
-  if (!TEMPLATE_TOKENS.some((token) => template.includes(token)))
-    return `The template needs at least one of ${TEMPLATE_TOKENS.join(", ")}`
-  return undefined
+/** Whether following the capture source is enabled in the settings. */
+export function followsCapture(settings: ControllerSettings | null): boolean {
+  return settings?.follow_capture === true
 }
 
 export function describeFormat(format: Schemas["SourceFormat"]): string {

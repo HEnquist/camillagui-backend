@@ -274,11 +274,8 @@ export class SidePanel extends React.Component<
 function EditorFileNote(props: { controller: ControllerStatus | null; file?: string }) {
   const { controller, file } = props
   if (!controller || !file) return null
-  let note: string | null = null
-  if (controller.provider === "Specific" && controller.config_file === file)
-    note = "CamillaDSP runs this file, picked by following."
-  else if (controller.entry_config_file === file) note = "This is the active config."
-  if (!note) return null
+  if (controller.entry_config_file !== file) return null
+  const note = "This is the active config."
   return (
     <div
       style={{

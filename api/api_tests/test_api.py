@@ -861,7 +861,7 @@ def enable_controller(server, **status):
     server.fake.state["controller"] = {
         "settings": None,
         "status": controller_status(**status),
-        "checks": {"specific": None, "adapt": None},
+        "checks": {"adapt": None},
     }
 
 
@@ -875,13 +875,12 @@ def test_controller_status_names_the_files_in_config_dir(server):
     enable_controller(
         server,
         following=True,
-        provider="Specific",
+        provider="Adapt",
         config_file=str(server.config_dir / "config2.yml"),
         entry_config_file="/elsewhere/entry.yml",
         stop_reason={"CaptureFormatChange": {"samplerate": 96000, "channels": None, "format": None}},
     )
-    template = str(server.config_dir / "conf_$samplerate$.yml")
-    server.fake.state["controller"]["settings"] = {"follow_capture": {"specific": template, "adapt": None}}
+    server.fake.state["controller"]["settings"] = {"follow_capture": True, "error_recovery": None}
     deadline = time.time() + 5
     while (status := server.get("/api/status").json())["controller"] is None:
         assert time.time() < deadline
@@ -890,17 +889,16 @@ def test_controller_status_names_the_files_in_config_dir(server):
     assert controller["config_file"] == "config2.yml"
     assert controller["entry_config_file"] == "/elsewhere/entry.yml"
     assert controller["stop_reason"]["CaptureFormatChange"]["samplerate"] == 96000
-    assert status["controller_settings"]["follow_capture"]["specific"] == "conf_$samplerate$.yml"
+    assert status["controller_settings"]["follow_capture"] is True
 
 
-def test_controller_settings_template_is_a_name_in_config_dir(server):
+def test_controller_settings_round_trip(server):
     enable_controller(server)
     assert server.get("/api/controller/settings").json() is None
-    settings = {"follow_capture": {"specific": "conf_$samplerate$.yml", "adapt": True}, "error_recovery": True}
+    settings = {"follow_capture": True, "error_recovery": True}
     resp = server.post("/api/controller/settings", json_body={"settings": settings})
     assert resp.status == 204
-    stored = server.fake.state["controller"]["settings"]
-    assert stored["follow_capture"]["specific"] == str(server.config_dir / "conf_$samplerate$.yml")
+    assert server.fake.state["controller"]["settings"] == settings
     assert server.get("/api/controller/settings").json() == settings
     resp = server.post("/api/controller/settings", json_body={"settings": None})
     assert resp.status == 204
@@ -912,93 +910,48 @@ def test_controller_settings_template_is_a_name_in_config_dir(server):
 def test_run_from_files_sets_following_then_runs_the_file(server):
     enable_controller(server)
     server.fake.state["controller"]["settings"] = {"follow_capture": None, "error_recovery": True}
-    follow = {"adapt": True, "specific": "conf_$samplerate$.yml"}
-    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": follow})
+    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": True})
     assert resp.status == 204
     # Error recovery keeps its setting.
-    assert server.fake.state["controller"]["settings"] == {
-        "follow_capture": {"specific": str(server.config_dir / "conf_$samplerate$.yml"), "adapt": True},
-        "error_recovery": True,
-    }
+    assert server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": True}
     names = [cmd["command"] for cmd in server.fake.state["received"]]
     assert names.index("SetControllerSettings") < names.index("SetConfigFilePath") < names.index("Reload")
 
 
 def test_run_from_files_as_it_is_removes_following(server):
     enable_controller(server)
-    template = str(server.config_dir / "conf_$samplerate$.yml")
-    server.fake.state["controller"]["settings"] = {"follow_capture": {"specific": template, "adapt": None}}
-    follow = {"adapt": False, "specific": None}
-    resp = server.post("/api/runfromfiles", json_body={"file": "config.yml", "follow": follow})
+    server.fake.state["controller"]["settings"] = {"follow_capture": True, "error_recovery": None}
+    resp = server.post("/api/runfromfiles", json_body={"file": "config.yml", "follow": False})
     assert resp.status == 204
     assert server.fake.state["controller"]["settings"] is None
     assert len(server.fake.commands("Reload")) == 1
-
-
-def test_run_from_files_refuses_a_template_elsewhere(server):
-    enable_controller(server)
-    follow = {"adapt": False, "specific": "/elsewhere/conf_$samplerate$.yml"}
-    resp = server.post("/api/runfromfiles", json_body={"file": "config.yml", "follow": follow})
-    assert resp.status == 400
-    assert server.fake.state["controller"]["settings"] is None
-    assert not server.fake.commands("Reload")
 
 
 def test_run_from_files_without_a_controller(server):
     # The file runs as it is, but following cannot be asked for.
-    single = {"adapt": False, "specific": None}
-    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": single})
+    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": False})
     assert resp.status == 204
     assert len(server.fake.commands("Reload")) == 1
-    adapt = {"adapt": True, "specific": None}
-    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": adapt})
+    resp = server.post("/api/runfromfiles", json_body={"file": "config2.yml", "follow": True})
     assert resp.status == 400
     assert len(server.fake.commands("Reload")) == 1
 
 
-def test_controller_settings_refuse_a_template_elsewhere(server):
+def test_controller_file_checks_name_the_file_in_config_dir(server):
     enable_controller(server)
-    for template in ["/elsewhere/conf_$samplerate$.yml", "../conf_$samplerate$.yml"]:
-        settings = {"follow_capture": {"specific": template}}
-        resp = server.post("/api/controller/settings", json_body={"settings": settings})
-        assert resp.status == 400, template
-    assert server.fake.state["controller"]["settings"] is None
-    assert not server.fake.commands("Reload")
-
-
-def test_controller_file_checks_name_the_files_in_config_dir(server):
-    enable_controller(server)
-    file_check = {"samplerate": 96000, "channels": None, "format": None, "problem": None}
     server.fake.state["controller"]["checks"] = {
-        "specific": [{"file": str(server.config_dir / "conf_96000.yml"), **file_check}],
         "adapt": {
             "file": str(server.config_dir / "config.yml"),
             "samplerate": 48000,
-            "samplerates": [48000, 96000],
+            "alternate_samplerates": [96000],
             "channels": 2,
             "format": None,
             "problem": None,
         },
     }
     checks = server.get("/api/controller/checkfiles").json()
-    assert checks["specific"] == [{"file": "conf_96000.yml", **file_check}]
     assert checks["adapt"]["file"] == "config.yml"
-    assert checks["adapt"]["samplerates"] == [48000, 96000]
-
-
-def test_startup_config_is_the_variant_that_runs(server):
-    enable_controller(
-        server,
-        following=True,
-        provider="Specific",
-        config_file=str(server.config_dir / "config2.yml"),
-        entry_config_file=str(server.config_dir / "config.yml"),
-    )
-    content = server.get("/api/getstartconfig").json()
-    assert content["source"] == "variant"
-    assert content["config_file_name"] == "config2.yml"
-    # The running config, which is the variant.
-    assert content["config"]["devices"]["samplerate"] == 44100
+    assert checks["adapt"]["alternate_samplerates"] == [96000]
 
 
 def test_startup_config_file_less_has_no_file(server):

@@ -32,10 +32,9 @@ export interface paths {
       cookie?: never
     }
     /**
-     * Check the configs the built-in controller can follow with: each file the
-     *     Specific template matches, and the entry config Adapt starts from. Loads
-     *     every file, so it is run on demand rather than polled. Files in config_dir
-     *     are given as file names.
+     * Check the entry config the built-in controller adapts when it follows the
+     *     source. Loads the config and its coefficient files, so it is run on demand
+     *     rather than polled. A file in config_dir is given as a file name.
      */
     get: operations["check_controller_files"]
     put?: never
@@ -55,8 +54,7 @@ export interface paths {
     }
     /**
      * The settings of CamillaDSP's built-in controller, the `controller`
-     *     section of its statefile, null when there is none. A Specific template in
-     *     config_dir is given as a file name.
+     *     section of its statefile, null when there is none.
      */
     get: operations["get_controller_settings"]
     put?: never
@@ -735,11 +733,10 @@ export interface components {
       /** @description Capture sample rate, `null` when no config is loaded. */
       samplerate?: number | null
       /**
-       * @description The rates that run natively, when `samplerate` is a list, with the preferred one first.
-       *     Other rates are resampled to the first one. `null` for a single `samplerate`, and then
-       *     every rate runs natively.
+       * @description The `alternate_samplerates` of the config, the rates besides its `samplerate` that run
+       *     natively. A source at any other rate is resampled to `samplerate`.
        */
-      samplerates?: number[] | null
+      alternate_samplerates: number[]
       /** @description Capture channels, `null` when no config is loaded. */
       channels?: number | null
       /** @description Capture sample format, `null` when it is automatic or no config is loaded. */
@@ -1151,15 +1148,14 @@ export interface components {
      *
      *     - `Single`: the entry config file as is.
      *     - `Adapt`: the entry config file adapted to the source format.
-     *     - `Specific`: the per-format file the template gives.
      * @enum {string}
      */
-    ConfigProvider: "Single" | "Adapt" | "Specific"
+    ConfigProvider: "Single" | "Adapt"
     /**
      * @description Where the config the GUI starts with came from.
      * @enum {string}
      */
-    ConfigSource: "dsp" | "variant" | "adapted" | "fileless" | "active" | "default"
+    ConfigSource: "dsp" | "adapted" | "fileless" | "active" | "default"
     /** @description A complete CamillaDSP configuration: devices, filters, mixers, processors, and the pipeline. */
     Configuration: {
       title?: string | null
@@ -1176,18 +1172,14 @@ export interface components {
       } | null
       pipeline?: components["schemas"]["PipelineStep"][] | null
     }
-    /** @description Value of the `CheckControllerFiles` reply, one section per follow provider. */
+    /** @description Value of the `CheckControllerFiles` reply. */
     ControllerFileChecks: {
-      /**
-       * @description Each file the Specific template matches, with the format read from its name and the
-       *     problem found, if any. `null` when Specific is off.
-       */
-      specific?: components["schemas"]["FileCheck"][] | null
       adapt?: components["schemas"]["AdaptCheck"] | null
     }
     /** @description The `controller` section of the statefile. */
     ControllerSettings: {
-      follow_capture?: components["schemas"]["FollowCapture"] | null
+      /** @description Follow the capture source format, adapting the entry config to it. */
+      follow_capture?: boolean | null
       /** @description Retry after a device error. */
       error_recovery?: boolean | null
     }
@@ -1207,10 +1199,7 @@ export interface components {
       /** @description Where the config comes from. It stays until the next switch, also while nothing runs. */
       source: components["schemas"]["ControllerSource"]
       provider?: components["schemas"]["ConfigProvider"] | null
-      /**
-       * @description The file that runs: the entry config file for `Single` and `Adapt`, the per-format
-       *     file for `Specific`. `null` when `provider` is.
-       */
+      /** @description The entry config file that runs, `null` when `provider` is. */
       config_file?: string | null
       /**
        * @description The entry config file, the one `GetConfigFilePath` gives, and the one `Reload`
@@ -1298,8 +1287,13 @@ export interface components {
     }
     /** @description Top-level device and pipeline timing configuration. */
     Devices: {
-      /** @description Output sample rate in Hz, or a list of the rates Adapt runs natively. */
-      samplerate: components["schemas"]["SampleRates"]
+      /** @description Output sample rate in Hz. */
+      samplerate: number
+      /**
+       * @description More rates the devices run natively when following the capture source, besides
+       *     `samplerate`. A source at any other rate is resampled to `samplerate`.
+       */
+      alternate_samplerates?: number[] | null
       /** @description Number of frames per processing chunk. */
       chunksize: number
       queuelimit?: number | null
@@ -1325,7 +1319,8 @@ export interface components {
      *     out when the import does not have it.
      */
     DevicesFragment: {
-      samplerate?: components["schemas"]["SampleRates"]
+      samplerate?: number
+      alternate_samplerates?: number[]
       chunksize?: number
       queuelimit?: number
       silence_threshold?: components["schemas"]["FiniteF64"]
@@ -1515,19 +1510,6 @@ export interface components {
       /** @description Whether the fader is muted. */
       mute: boolean
     }
-    /** @description One file the Specific template matches, and what is wrong with it, if anything. */
-    FileCheck: {
-      /** @description Path of the file. */
-      file: string
-      /** @description Sample rate read from the file name, if the template has the token. */
-      samplerate?: number | null
-      /** @description Channels read from the file name, if the template has the token. */
-      channels?: number | null
-      /** @description Sample format read from the file name, if the template has the token. */
-      format?: string | null
-      /** @description What is wrong with the file, `null` if it is usable. */
-      problem?: string | null
-    }
     /**
      * @description A file in a listing. What is known about it beyond its name, size and time
      *     depends on the folder: configs have their title, version and validity, wav
@@ -1701,24 +1683,6 @@ export interface components {
       coeff: string
       /** @description Left out when no audiofiles_dir is set. */
       audiofile?: string
-    }
-    /** @description Settings for following the capture source format. */
-    FollowCapture: {
-      /** @description Template for the Specific provider, absent to disable it. */
-      specific?: string | null
-      /** @description Enable the Adapt provider. */
-      adapt?: boolean | null
-    }
-    /** @description How the controller picks the file to run. */
-    FollowChoice: {
-      /** @description Adapt the file to the source format. */
-      adapt: boolean
-      /**
-       * @description The Specific template, a file name in config_dir, or null for no
-       *     Specific. With adapt as well, a format without its own file adapts the
-       *     config file.
-       */
-      specific: string | null
     }
     /** @description Parameters for the static gain filter. */
     GainParameters: {
@@ -2149,9 +2113,12 @@ export interface components {
     RunFromFilesBody: {
       /** @description The config file to run, a file name in config_dir. */
       file: string
-      follow: components["schemas"]["FollowChoice"] | null
+      /**
+       * @description Whether to follow the source, adapting the file to its format. Null
+       *     keeps the stored settings.
+       */
+      follow: boolean | null
     }
-    SampleRates: number | number[]
     /**
      * @description The width of the samples in a coefficient frame.
      * @enum {string}
@@ -2562,7 +2529,7 @@ export interface operations {
         }
         content?: never
       }
-      /** @description The template is not valid, or CamillaDSP refused */
+      /** @description CamillaDSP refused */
       400: {
         headers: {
           [name: string]: unknown
@@ -3520,7 +3487,7 @@ export interface operations {
         }
         content?: never
       }
-      /** @description The file or template is not valid, or CamillaDSP refused */
+      /** @description The file is not valid, or CamillaDSP refused */
       400: {
         headers: {
           [name: string]: unknown

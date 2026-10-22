@@ -3,7 +3,7 @@ import { mdiAlertCircle, mdiCheck, mdiOpenInApp, mdiPlay } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { cloneDeep, isEqual } from "lodash"
 import { api, errorMessage } from "./api/client"
-import { CaptureDevice, Config, Mixer, PlaybackDevice, preferredSamplerate } from "./camilladsp/config"
+import { CaptureDevice, Config, Mixer, PlaybackDevice } from "./camilladsp/config"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import {
   DeleteFilesButton,
@@ -478,7 +478,7 @@ function BaseConfigInfo(props: { config: Config }) {
         </>
       )}
       <span style={{ fontWeight: "bold" }}>Sample rate</span>
-      <span>{preferredSamplerate(config.devices)} Hz</span>
+      <span>{config.devices.samplerate} Hz</span>
       <span style={{ fontWeight: "bold" }}>Channels in / out</span>
       <span>
         {captureChannels} / {playbackChannels}
@@ -530,9 +530,7 @@ export function buildPlaybackConfig(
     labels: null,
   }
 
-  // Resampling: file capture has no clock drift, so synchronous is enough. A list of native
-  // rates only matters when following a source, so the file plays at the preferred one.
-  config.devices.samplerate = preferredSamplerate(config.devices)
+  // Resampling: file capture has no clock drift, so synchronous is enough
   if (wav.samplerate === config.devices.samplerate) {
     config.devices.resampler = null
     config.devices.capture_samplerate = null

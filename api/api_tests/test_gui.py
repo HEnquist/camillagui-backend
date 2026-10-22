@@ -177,11 +177,11 @@ def with_controller(page, server):
             "error_recovery": False,
             "stop_reason": "None",
         },
-        "checks": {"specific": None, "adapt": None},
+        "checks": {"adapt": None},
     }
     page.reload()
     source = page.locator(".sidepanel").get_by_text("Source:", exact=True).locator("xpath=following-sibling::div[1]")
-    expect(source).to_have_text("files, single file")
+    expect(source).to_have_text("files, as written")
     return source
 
 
@@ -194,7 +194,7 @@ def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
     expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
     sidepanel.get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
-    expect(source).to_have_text("files, single file")
+    expect(source).to_have_text("files, as written")
 
 
 def test_apply_automatically_leaves_files_alone(page, server):
@@ -204,7 +204,7 @@ def test_apply_automatically_leaves_files_alone(page, server):
     # Well past the delay before an automatic apply.
     time.sleep(1.5)
     assert not server.fake.commands("SetConfigJson")
-    expect(source).to_have_text("files, single file")
+    expect(source).to_have_text("files, as written")
 
 
 def test_a_picked_file_runs_with_run_from_files(page, server):
@@ -219,3 +219,15 @@ def test_a_picked_file_runs_with_run_from_files(page, server):
     wait_for(lambda: server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml"))
     wait_for(lambda: server.fake.commands("Reload"))
     expect(sidepanel.get_by_text("Not running: ⚠️")).to_have_count(0)
+
+
+def test_following_is_set_with_run_from_files(page, server):
+    with_controller(page, server)
+    sidepanel = page.locator(".sidepanel")
+    sidepanel.get_by_text("the capture source", exact=True).click()
+    # Staged only, until Run from files.
+    expect(sidepanel.get_by_text("Not running: ⚠️")).to_be_visible()
+    assert not server.fake.commands("SetControllerSettings")
+    sidepanel.get_by_text("Run from files", exact=True).click()
+    wait_for(lambda: server.fake.commands("Reload"))
+    assert server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": None}

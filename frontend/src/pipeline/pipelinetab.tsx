@@ -19,7 +19,6 @@ import {
   MixerStep,
   Pipeline,
   PipelineStep,
-  preferredSamplerate,
   processorNamesOf,
   Processors,
   ProcessorStep,
@@ -106,7 +105,7 @@ export class PipelineTab extends React.Component<
     const config = this.props.config
     evalFilterStep(config, index, {
       name: `Filterstep ${index}`,
-      samplerate: samplerate || preferredSamplerate(config.devices),
+      samplerate: samplerate || config.devices.samplerate,
       channels: channels || this.state.capture_channels,
       volume: this.state.plot_at_volume,
     }).then(

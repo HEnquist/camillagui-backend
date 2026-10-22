@@ -10,7 +10,7 @@ axum = { version = "0.8.9", features = ["multipart"] }
 # this in api/.cargo/config.toml:
 # [patch."https://github.com/HEnquist/camilladsp"]
 # camilladsp-schema = { path = "/path/to/camilladsp/camilladsp-schema" }
-camilladsp-schema = { version = "5.0.0-beta.2", git = "https://github.com/HEnquist/camilladsp", branch = "follow_capture", features = ["pipewire-backend", "utoipa"] }
+camilladsp-schema = { version = "5.0.0-beta.2", git = "https://github.com/HEnquist/camilladsp", branch = "follow_adapt", features = ["pipewire-backend", "utoipa"] }
 clap = { version = "4.6.7", features = ["derive"] }
 flexi_logger = "0.30.2"
 futures-util = "0.3.34"

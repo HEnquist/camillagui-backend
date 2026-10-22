@@ -15,14 +15,13 @@ import { BoolOption, Box, Button, ErrorBoundary } from "./utilities/ui-component
 type FileChecks = Schemas["ControllerFileChecks"]
 
 const PROVIDER_DESCRIPTIONS = {
-  Single: "single file, the active config as it is",
-  Adapt: "adapt, the active config adapted to the source",
-  Specific: "specific, the file made for the source format",
+  Single: "the active config as written",
+  Adapt: "the active config adapted to the source",
 }
 
 /**
  * The details of CamillaDSP's built-in controller: error recovery, what runs now, and a check
- * of the files following can use. What runs is chosen in the side panel's Controller box, the
+ * of the config following adapts. What runs is chosen in the side panel's Controller box, the
  * config editor is the other tabs.
  */
 export function DspTab(props: {
@@ -161,99 +160,58 @@ function FileCheckBox(props: { openConfigFile: (name: string) => Promise<void> }
     }
   }
 
-  const specific = checks?.specific
   const adapt = checks?.adapt
   return (
     <Box
       title="Config check"
-      tooltip="Load every config following can use, as the stored settings have them.<br>Reads every file, so it runs only when asked."
+      tooltip="Load the active config that following adapts, the way CamillaDSP does.<br>Reads its coefficient files too, so it runs only when asked."
     >
-      <Button text="Check the configs" onClick={check} />
+      <Button text="Check the active config" onClick={check} />
       {error && <div className="error-text">{error}</div>}
-      {checks && !specific && !adapt && <div>Following is off.</div>}
+      {checks && !adapt && <div>Following is off.</div>}
       {adapt && (
-        <>
-          <h4>Adapt, starting from the active config</h4>
-          <CheckTable
-            rows={[
-              {
-                file: adapt.file ?? "(sent by the GUI or another client)",
-                samplerate: adapt.samplerates?.length ? adapt.samplerates.join(", ") : adapt.samplerate,
-                channels: adapt.channels,
-                format: adapt.format ?? "any",
-                problem: adapt.problem,
-                openable: adapt.file != null,
-              },
-            ]}
-            rateHeader={adapt.samplerates?.length ? "Native rates" : "Rate"}
-            open={props.openConfigFile}
-          />
-        </>
-      )}
-      {specific && (
-        <>
-          <h4>Specific files</h4>
-          {specific.length === 0 ? (
-            <div>No file matches the template.</div>
-          ) : (
-            <CheckTable
-              rows={specific.map((file) => ({
-                file: file.file,
-                samplerate: file.samplerate,
-                channels: file.channels,
-                format: file.format ?? "any",
-                problem: file.problem,
-                openable: true,
-              }))}
-              rateHeader="Rate"
-              open={props.openConfigFile}
-            />
-          )}
-        </>
+        <table style={{ width: "100%" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left" }}>File</th>
+              <th>Rate</th>
+              <th>Alternate rates</th>
+              <th>Ch</th>
+              <th>Format</th>
+              <th>OK</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                {adapt.file != null ? (
+                  <FileLink name={adapt.file} open={props.openConfigFile} />
+                ) : (
+                  "(sent by the GUI or another client)"
+                )}
+              </td>
+              <td style={{ textAlign: "right" }}>{adapt.samplerate ?? "any"}</td>
+              <td
+                style={{ textAlign: "right" }}
+                data-tooltip-html="The rates that run natively besides the config's own.<br>A source at any other rate is resampled."
+                data-tooltip-id="main-tooltip"
+              >
+                {adapt.alternate_samplerates.length > 0 ? adapt.alternate_samplerates.join(", ") : "none"}
+              </td>
+              <td style={{ textAlign: "right" }}>{adapt.channels ?? "any"}</td>
+              <td>{adapt.format ?? "any"}</td>
+              <td
+                data-tooltip-html={adapt.problem ?? "Usable"}
+                data-tooltip-id="main-tooltip"
+                style={{ textAlign: "center" }}
+              >
+                {adapt.problem ? CONFIG_FILE_STATUS_ICONS.errors : CONFIG_FILE_STATUS_ICONS.valid}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       )}
     </Box>
-  )
-}
-
-interface CheckRow {
-  file: string
-  samplerate?: number | string | null
-  channels?: number | null
-  format: string
-  problem?: string | null
-  openable: boolean
-}
-
-function CheckTable(props: { rows: CheckRow[]; rateHeader: string; open: (name: string) => Promise<void> }) {
-  return (
-    <table style={{ width: "100%" }}>
-      <thead>
-        <tr>
-          <th style={{ textAlign: "left" }}>File</th>
-          <th>{props.rateHeader}</th>
-          <th>Ch</th>
-          <th>Format</th>
-          <th>OK</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.rows.map((row) => (
-          <tr key={row.file}>
-            <td>{row.openable ? <FileLink name={row.file} open={props.open} /> : row.file}</td>
-            <td style={{ textAlign: "right" }}>{row.samplerate ?? "any"}</td>
-            <td style={{ textAlign: "right" }}>{row.channels ?? "any"}</td>
-            <td>{row.format}</td>
-            <td
-              data-tooltip-html={row.problem ?? "Usable"}
-              data-tooltip-id="main-tooltip"
-              style={{ textAlign: "center" }}
-            >
-              {row.problem ? CONFIG_FILE_STATUS_ICONS.errors : CONFIG_FILE_STATUS_ICONS.valid}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   )
 }
 

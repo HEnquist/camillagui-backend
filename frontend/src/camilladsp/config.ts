@@ -21,6 +21,7 @@ export function defaultConfig(): Config {
   return {
     devices: {
       samplerate: 48000,
+      alternate_samplerates: null,
 
       //Buffers
       chunksize: 1024,
@@ -73,24 +74,6 @@ export function defaultConfig(): Config {
     title: null,
     description: null,
   }
-}
-
-/**
- * The rate a config runs at, the first one when `samplerate` is a list of native rates. That one
- * is used unless following picks another listed rate.
- */
-export function preferredSamplerate(devices: Devices): number {
-  return Array.isArray(devices.samplerate) ? devices.samplerate[0] : devices.samplerate
-}
-
-/** The native rates after the preferred one, empty for a single `samplerate`. */
-export function otherNativeSamplerates(devices: Devices): number[] {
-  return Array.isArray(devices.samplerate) ? devices.samplerate.slice(1) : []
-}
-
-/** A single rate when there are no other native rates, otherwise the list, preferred first. */
-export function setSamplerates(devices: Devices, preferred: number, others: number[]) {
-  devices.samplerate = others.length > 0 ? [preferred, ...others] : preferred
 }
 
 export const FilterSortKeys = ["Name", "Type", "Subtype", "Frequency", "Q-value", "Gain"]

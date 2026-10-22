@@ -12,7 +12,7 @@ import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
-import { Config, defaultConfig, getCaptureDeviceChannelCount, preferredSamplerate } from "./camilladsp/config"
+import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { ControllerSettings, ControllerStatus, isFileless } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import type { CustomPageComponent } from "./custom-pages/types"
@@ -120,7 +120,6 @@ class CamillaConfig extends React.Component<
     const name = json.config_file_name ?? undefined
     let message = ""
     if (json.source === "dsp") message = "Loaded the config CamillaDSP runs"
-    else if (json.source === "variant") message = `Loaded ${name}, which following picked`
     else if (json.source === "adapted")
       message = `Loaded ${name}, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
     else if (json.source === "active") message = "Loaded the active config"
@@ -130,7 +129,7 @@ class CamillaConfig extends React.Component<
     this.setState({
       unsavedChanges: false,
       // Only the config CamillaDSP runs as it is equals the editor's.
-      unappliedChanges: json.source !== "dsp" && json.source !== "variant",
+      unappliedChanges: json.source !== "dsp",
       currentConfigFile: name,
       undoRedo: new UndoRedo(json.config),
       message,
@@ -403,7 +402,7 @@ class CamillaConfig extends React.Component<
           <TabPanel>
             <FiltersTab
               config={config}
-              samplerate={preferredSamplerate(config.devices)}
+              samplerate={config.devices.samplerate}
               channels={getCaptureDeviceChannelCount(config.devices.capture)}
               coeffDir={this.state.guiConfig.coeff_dir}
               allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}

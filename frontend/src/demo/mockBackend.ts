@@ -300,43 +300,6 @@ function defaultState(): DemoState {
   }
 }
 
-/** The demo source, a 48 kHz stereo player. */
-const DEMO_SOURCE = { samplerate: 48000, channels: 2, format: "S32_LE" }
-
-const TEMPLATE_TOKENS: Record<string, string> = {
-  $samplerate$: "(?<samplerate>\\d+)",
-  $channels$: "(?<channels>\\d+)",
-  $format$: "(?<format>[A-Za-z0-9_]+)",
-}
-
-/** The stored configs a Specific template matches, with the format read from each name. */
-function demoTemplateMatches(template: string): Schemas["FileCheck"][] {
-  const pattern = template
-    .split(/(\$samplerate\$|\$channels\$|\$format\$)/)
-    .map((part) => TEMPLATE_TOKENS[part] ?? part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("")
-  const regex = new RegExp(`^${pattern}$`)
-  return Object.keys(state.storedConfigs).flatMap((name) => {
-    const groups = regex.exec(name)?.groups
-    if (!groups) return []
-    const config = state.storedConfigs[name]
-    const rate = groups.samplerate ? parseInt(groups.samplerate) : null
-    const preferred = Array.isArray(config.devices.samplerate)
-      ? config.devices.samplerate[0]
-      : config.devices.samplerate
-    const ratesDiffer = rate !== null && config.devices.resampler === null && rate !== preferred
-    return [
-      {
-        file: name,
-        samplerate: rate,
-        channels: groups.channels ? parseInt(groups.channels) : null,
-        format: groups.format ?? null,
-        problem: ratesDiffer ? `The file name says ${rate} Hz, but the config runs at ${preferred} Hz` : null,
-      },
-    ]
-  })
-}
-
 /** Load the active config again, like CamillaDSP's Reload, which goes back to files. */
 function demoReload() {
   const active = state.activeConfigFileName
@@ -346,29 +309,18 @@ function demoReload() {
 }
 
 function demoControllerStatus(): Schemas["ControllerStatusReport"] {
-  const follow = state.controllerSettings?.follow_capture
-  const following = !state.fileless && (follow?.adapt === true || follow?.specific != null)
-  const running =
-    following && follow?.specific
-      ? demoTemplateMatches(follow.specific).find(
-          (file) =>
-            !file.problem &&
-            (file.samplerate ?? DEMO_SOURCE.samplerate) === DEMO_SOURCE.samplerate &&
-            (file.channels ?? DEMO_SOURCE.channels) === DEMO_SOURCE.channels,
-        )
-      : undefined
-  const waiting = following && !running && !follow?.adapt
+  const following = !state.fileless && state.controllerSettings?.follow_capture === true
   let provider: Schemas["ConfigProvider"] | null = null
-  if (!state.fileless && !waiting) provider = running ? "Specific" : following ? "Adapt" : "Single"
+  if (!state.fileless) provider = following ? "Adapt" : "Single"
   return {
     source: state.fileless ? "Websocket" : "Files",
     provider,
-    config_file: running?.file ?? (provider ? state.activeConfigFileName : null),
+    config_file: provider ? state.activeConfigFileName : null,
     entry_config_file: state.activeConfigFileName,
     recovering: false,
     attempts: 0,
     next_retry_s: null,
-    waiting_for_source: waiting ? DEMO_SOURCE : null,
+    waiting_for_source: null,
     following,
     error_recovery: state.controllerSettings?.error_recovery === true,
     stop_reason: "None",
@@ -376,22 +328,20 @@ function demoControllerStatus(): Schemas["ControllerStatusReport"] {
 }
 
 function demoControllerFileChecks(): Schemas["ControllerFileChecks"] {
-  const follow = state.controllerSettings?.follow_capture
   const entryName = state.activeConfigFileName
   const entry = entryName ? state.storedConfigs[entryName] : state.currentConfig
-  const rates = entry ? entry.devices.samplerate : null
   return {
-    specific: follow?.specific ? demoTemplateMatches(follow.specific) : null,
-    adapt: follow?.adapt
-      ? {
-          file: entryName,
-          samplerate: Array.isArray(rates) ? rates[0] : rates,
-          samplerates: Array.isArray(rates) ? rates : null,
-          channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
-          format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
-          problem: null,
-        }
-      : null,
+    adapt:
+      state.controllerSettings?.follow_capture === true
+        ? {
+            file: entryName,
+            samplerate: entry ? entry.devices.samplerate : null,
+            alternate_samplerates: entry?.devices.alternate_samplerates ?? [],
+            channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
+            format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
+            problem: null,
+          }
+        : null,
   }
 }
 
@@ -846,14 +796,10 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
   if (pathname === "/api/runfromfiles" && method === "POST") {
     const { file, follow } = await requestJson<Schemas["RunFromFilesBody"]>(input, init)
     if (!state.storedConfigs[file]) return errorResponse(`Config file '${file}' not found.`, 400)
-    if (follow) {
-      const following = follow.adapt || follow.specific != null
+    if (follow !== null) {
       const errorRecovery = state.controllerSettings?.error_recovery ?? null
-      const settings = {
-        follow_capture: following ? { adapt: follow.adapt ? true : null, specific: follow.specific } : null,
-        error_recovery: errorRecovery,
-      }
-      state.controllerSettings = following || errorRecovery ? settings : null
+      const settings = { follow_capture: follow ? true : null, error_recovery: errorRecovery }
+      state.controllerSettings = follow || errorRecovery ? settings : null
     }
     state.activeConfigFileName = file
     demoReload()

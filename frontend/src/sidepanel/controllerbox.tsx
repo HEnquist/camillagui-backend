@@ -3,35 +3,15 @@ import { useState } from "react"
 import { mdiFileSearch, mdiLifebuoy, mdiSync, mdiSyncAlert, mdiSyncOff } from "@mdi/js"
 import { Icon } from "@mdi/react"
 import { api, errorMessage } from "../api/client"
-import {
-  describeFormat,
-  FOLLOW_MODES,
-  followChoiceOf,
-  FollowMode,
-  followModeOf,
-  isCdspOnline,
-  isFileless,
-  Status,
-  templateProblem,
-  TEMPLATE_TOKENS,
-  usesTemplate,
-} from "../camilladsp/status"
+import { describeFormat, followsCapture, isCdspOnline, isFileless, Status } from "../camilladsp/status"
 import { FileInfo, loadFiles } from "../utilities/files"
-import {
-  Box,
-  EnumInput,
-  ERROR_BACKGROUND_STYLE,
-  FileSelectPopup,
-  MdiButton,
-  SuccessFailureButton,
-  TextInput,
-} from "../utilities/ui-components"
+import { Box, FileSelectPopup, MdiButton, SuccessFailureButton } from "../utilities/ui-components"
 
 const ON_COLOR = "var(--success-text-color)"
 const WARNING_COLOR = "var(--warning-text-color)"
 const OFF_COLOR = "var(--disabled-text-color)"
 
-const PROVIDER_NAMES = { Single: "single file", Adapt: "adapt", Specific: "specific" }
+const PROVIDER_NAMES = { Single: "as written", Adapt: "adapted" }
 
 /**
  * CamillaDSP's built-in controller: where the config comes from, the file that runs, following
@@ -92,7 +72,7 @@ export function ControllerBox(props: { status: Status; children?: React.ReactNod
           data-tooltip-html={
             fileless
               ? "CamillaDSP runs a config applied from the editor, which belongs to no file"
-              : "CamillaDSP runs a config file, picked by the controller"
+              : "CamillaDSP runs the active config file, as written or adapted to the capture source"
           }
           data-tooltip-id="main-tooltip"
         >
@@ -168,21 +148,17 @@ export function ControllerControls(props: {
   const controller = status.controller
   const fileless = isFileless(controller)
   const [file, setFile] = useState<Staged<string | null> | null>(null)
-  const [mode, setMode] = useState<Staged<FollowMode> | null>(null)
-  const [template, setTemplate] = useState<Staged<string> | null>(null)
+  const [follow, setFollow] = useState<Staged<boolean> | null>(null)
   const [files, setFiles] = useState<FileInfo[]>([])
   const [popupOpen, setPopupOpen] = useState(false)
   const [message, setMessage] = useState("")
 
   const currentFile = controller?.entry_config_file ?? null
-  const currentMode = followModeOf(status.controller_settings)
-  const currentTemplate = status.controller_settings?.follow_capture?.specific ?? ""
+  const currentFollow = followsCapture(status.controller_settings)
   const stagedFile = stagedOr(file, currentFile)
-  const stagedMode = controller ? stagedOr(mode, currentMode) : "single"
-  const stagedTemplate = stagedOr(template, currentTemplate)
-  const followChanged = stagedMode !== currentMode || (usesTemplate(stagedMode) && stagedTemplate !== currentTemplate)
+  const stagedFollow = controller ? stagedOr(follow, currentFollow) : false
+  const followChanged = stagedFollow !== currentFollow
   const changed = stagedFile !== currentFile || followChanged
-  const problem = usesTemplate(stagedMode) ? templateProblem(stagedTemplate) : undefined
 
   async function openPicker() {
     const all = await loadFiles("config")
@@ -195,7 +171,7 @@ export function ControllerControls(props: {
     const { error, response } = await api.POST("/api/runfromfiles", {
       body: {
         file: stagedFile,
-        follow: controller && followChanged ? followChoiceOf(stagedMode, stagedTemplate) : null,
+        follow: controller && followChanged ? stagedFollow : null,
       },
     })
     if (error) {
@@ -207,9 +183,7 @@ export function ControllerControls(props: {
   }
 
   function marker(name: string): string {
-    if (name === currentFile) return "★"
-    if (controller?.provider === "Specific" && name === controller.config_file) return "▶"
-    return ""
+    return name === currentFile ? "★" : ""
   }
 
   // Without a controller, Apply to DSP runs the config like any other, and applying it after
@@ -238,26 +212,17 @@ export function ControllerControls(props: {
         {controller && (
           <>
             <div className="alignRight">Follow:</div>
-            <EnumInput
-              value={stagedMode}
-              options={FOLLOW_MODES}
-              desc="follow"
-              tooltip="How to follow the capture source when running from files.<br>Adapt changes the file's rate to the source's.<br>Specific switches to the file made for the source format, named by the template.<br>Specific, else adapt adapts the file for a format without its own file."
-              className="setting-input"
-              onChange={(value) => setMode({ value, base: currentMode })}
-            />
-          </>
-        )}
-        {controller && usesTemplate(stagedMode) && (
-          <>
-            <div className="alignRight">Template:</div>
-            <TextInput
-              value={stagedTemplate}
-              tooltip={`File name of the config for each format, in the config folder.<br>Use the tokens ${TEMPLATE_TOKENS.join(", ")}.${problem ? `<br>${problem}` : ""}`}
-              className="setting-input"
-              style={problem ? ERROR_BACKGROUND_STYLE : undefined}
-              onChange={(value) => setTemplate({ value, base: currentTemplate })}
-            />
+            <label
+              data-tooltip-html="Follow the capture source when running from files, adapting the file to its format.<br>A source at samplerate or one of the alternate_samplerates runs natively,<br>any other rate is resampled to samplerate."
+              data-tooltip-id="main-tooltip"
+            >
+              <input
+                type="checkbox"
+                checked={stagedFollow}
+                onChange={(e) => setFollow({ value: e.target.checked, base: currentFollow })}
+              />
+              the capture source
+            </label>
           </>
         )}
       </div>
@@ -273,7 +238,7 @@ export function ControllerControls(props: {
           onClick={props.applyConfig}
         />
         <SuccessFailureButton
-          enabled={stagedFile !== null && problem === undefined}
+          enabled={stagedFile !== null}
           highlighted={changed || fileless}
           text="Run from files"
           tooltip="Make the file the active config and run it, following the source as chosen.<br>A config applied from the editor is dropped, save it to a file first to keep it."
@@ -298,7 +263,7 @@ export function ControllerControls(props: {
         </label>
         {changed && (
           <span
-            data-tooltip-html="The file or the way to follow differs from what CamillaDSP runs,<br>Run from files to use them"
+            data-tooltip-html="The file or following differs from what CamillaDSP runs,<br>Run from files to use them"
             data-tooltip-id="main-tooltip"
           >
             Not running: ⚠️
@@ -320,7 +285,7 @@ export function ControllerControls(props: {
       {message && <div className="error-text">{message}</div>}
       <FileSelectPopup
         open={popupOpen}
-        header={<span>Pick the config file to run from. ★ is the active config, ▶ the file following runs.</span>}
+        header={<span>Pick the config file to run from. ★ is the active config.</span>}
         files={files}
         marker={marker}
         onSelect={(name) => setFile({ value: name, base: currentFile })}
