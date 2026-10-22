@@ -5,7 +5,7 @@ import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
-import { ControllerBox, ControllerControls } from "./controllerbox"
+import { ControllerBox } from "./controllerbox"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
@@ -143,16 +143,7 @@ export class SidePanel extends React.Component<
           )}
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
           <CdspStateBox status={this.state.cdspStatus}>{this.dspControls()}</CdspStateBox>
-          <ControllerBox status={this.state.cdspStatus}>
-            <ControllerControls
-              status={this.state.cdspStatus}
-              canChooseFile={this.props.guiConfig.can_update_active_config}
-              applyConfig={this.props.applyConfig}
-              applyAutomatically={this.state.applyConfigAutomatically}
-              setApplyAutomatically={(on) => this.setState({ applyConfigAutomatically: on })}
-              unappliedChanges={this.props.unappliedChanges}
-            />
-          </ControllerBox>
+          <ControllerBox status={this.state.cdspStatus} />
           {this.editorBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
@@ -168,30 +159,81 @@ export class SidePanel extends React.Component<
     )
   }
 
-  /** Reading what CamillaDSP runs into the editor, and stopping it. None of it changes the source. */
+  /**
+   * Applying the editor's config to CamillaDSP, which runs it file-less, reading what CamillaDSP
+   * runs into the editor, and stopping it. Running from files is in the Controller tab.
+   */
   private dspControls() {
-    const online = isCdspOnline(this.state.cdspStatus)
+    const status = this.state.cdspStatus
+    const online = isCdspOnline(status)
+    const controller = status.controller
+    const fileless = isFileless(controller)
+    const unapplied = this.props.unappliedChanges
+    // Without a controller, Apply to DSP runs the config like any other, and applying it after
+    // each change is fine. With one, it would leave files at the first edit.
+    const autoApplies = this.state.applyConfigAutomatically && (fileless || !controller)
     return (
-      <div className="two-column-grid" style={{ marginTop: "5px" }}>
-        <SuccessFailureButton
-          enabled={online}
-          text="Load into editor"
-          tooltip="Load the config CamillaDSP runs into the editor, under the name of its file.<br>While it runs the active config adapted to the source, the file itself is loaded."
-          onClick={this.props.fetchConfig}
-        />
-        <SuccessFailureButton
-          enabled={online}
-          text="Compare"
-          tooltip="Compare the config CamillaDSP runs with the editor's"
-          onClick={() => this.compareConfig()}
-        />
-        <SuccessFailureButton
-          enabled={online}
-          text="Stop processing"
-          tooltip="Stop the DSP processing"
-          onClick={() => this.stopProcessing()}
-        />
-      </div>
+      <>
+        <div className="two-column-grid" style={{ marginTop: "5px" }}>
+          <SuccessFailureButton
+            enabled={online && !autoApplies}
+            text="Apply to DSP"
+            tooltip={
+              controller
+                ? "Run the editor's config in CamillaDSP as it is, without a file.<br>Following stops until Run from files in the Controller tab."
+                : "Run the editor's config in CamillaDSP as it is, without saving it to a file."
+            }
+            onClick={this.props.applyConfig}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Load into editor"
+            tooltip="Load the config CamillaDSP runs into the editor, under the name of its file.<br>While it runs the startup config adapted to the source, the file itself is loaded."
+            onClick={this.props.fetchConfig}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Compare"
+            tooltip="Compare the config CamillaDSP runs with the editor's"
+            onClick={() => this.compareConfig()}
+          />
+          <SuccessFailureButton
+            enabled={online}
+            text="Stop processing"
+            tooltip="Stop the DSP processing"
+            onClick={() => this.stopProcessing()}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
+          <label
+            data-tooltip-html={
+              controller
+                ? "Apply the editor's config to CamillaDSP after each change,<br>while it runs file-less. Running from files is left alone."
+                : "Apply the editor's config to CamillaDSP after each change"
+            }
+            data-tooltip-id="main-tooltip"
+          >
+            <input
+              type="checkbox"
+              checked={this.state.applyConfigAutomatically}
+              onChange={(e) => this.setState({ applyConfigAutomatically: e.target.checked })}
+            />
+            Apply automatically
+          </label>
+          {(fileless || !controller) && (
+            <span
+              data-tooltip-html={
+                unapplied
+                  ? "CamillaDSP does not run the editor's config as it is now"
+                  : "CamillaDSP runs the editor's config"
+              }
+              data-tooltip-id="main-tooltip"
+            >
+              {unapplied ? "Runs the editor's config: ⚠️" : "Runs the editor's config: ✔️"}
+            </span>
+          )}
+        </div>
+      </>
     )
   }
 
@@ -274,8 +316,8 @@ export class SidePanel extends React.Component<
 function EditorFileNote(props: { controller: ControllerStatus | null; file?: string }) {
   const { controller, file } = props
   if (!controller || !file) return null
-  if (controller.entry_config_file !== file) return null
-  const note = "This is the active config."
+  if (controller.startup_config_file !== file) return null
+  const note = "This is the startup config."
   return (
     <div
       style={{

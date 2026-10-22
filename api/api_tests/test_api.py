@@ -845,7 +845,7 @@ def controller_status(**fields):
         "source": "Files",
         "provider": None,
         "config_file": None,
-        "entry_config_file": None,
+        "startup_config_file": None,
         "recovering": False,
         "attempts": 0,
         "next_retry_s": None,
@@ -861,7 +861,17 @@ def enable_controller(server, **status):
     server.fake.state["controller"] = {
         "settings": None,
         "status": controller_status(**status),
-        "checks": {"adapt": None},
+        "checks": {
+            "adapt": {
+                "file": str(server.config_dir / "config.yml"),
+                "samplerate": 44100,
+                "alternate_samplerates": [],
+                "channels": 2,
+                "format": None,
+                "problem": None,
+                "warnings": [],
+            },
+        },
     }
 
 
@@ -877,7 +887,7 @@ def test_controller_status_names_the_files_in_config_dir(server):
         following=True,
         provider="Adapt",
         config_file=str(server.config_dir / "config2.yml"),
-        entry_config_file="/elsewhere/entry.yml",
+        startup_config_file="/elsewhere/entry.yml",
         stop_reason={"CaptureFormatChange": {"samplerate": 96000, "channels": None, "format": None}},
     )
     server.fake.state["controller"]["settings"] = {"follow_capture": True, "error_recovery": None}
@@ -887,7 +897,7 @@ def test_controller_status_names_the_files_in_config_dir(server):
         time.sleep(0.05)
     controller = status["controller"]
     assert controller["config_file"] == "config2.yml"
-    assert controller["entry_config_file"] == "/elsewhere/entry.yml"
+    assert controller["startup_config_file"] == "/elsewhere/entry.yml"
     assert controller["stop_reason"]["CaptureFormatChange"]["samplerate"] == 96000
     assert status["controller_settings"]["follow_capture"] is True
 
@@ -958,7 +968,7 @@ def test_controller_file_checks_name_the_file_in_config_dir(server):
 
 def test_startup_config_file_less_has_no_file(server):
     # A config sent over the websocket runs, so it belongs to no file, not even the active one.
-    enable_controller(server, source="Websocket", entry_config_file=str(server.config_dir / "config.yml"))
+    enable_controller(server, source="Websocket", startup_config_file=str(server.config_dir / "config.yml"))
     content = server.get("/api/getstartconfig").json()
     assert content["source"] == "fileless"
     assert content["config_file_name"] is None
@@ -967,7 +977,7 @@ def test_startup_config_file_less_has_no_file(server):
 
 def test_startup_config_is_the_active_file_when_it_runs_adapted(server):
     entry = str(server.config_dir / "config.yml")
-    enable_controller(server, following=True, provider="Adapt", config_file=entry, entry_config_file=entry)
+    enable_controller(server, following=True, provider="Adapt", config_file=entry, startup_config_file=entry)
     # Running as it is, so the running config is the one to start with, as without following.
     content = server.get("/api/getstartconfig").json()
     assert content["source"] == "dsp"

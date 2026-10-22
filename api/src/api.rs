@@ -1238,8 +1238,8 @@ pub fn controller_status_for_gui(app: &AppState, status: &mut ControllerStatusRe
         .config_file
         .take()
         .map(|path| config_file_for_gui(app, path));
-    status.entry_config_file = status
-        .entry_config_file
+    status.startup_config_file = status
+        .startup_config_file
         .take()
         .map(|path| config_file_for_gui(app, path));
 }
@@ -1350,9 +1350,10 @@ pub async fn run_from_files(
     Ok(NoContent)
 }
 
-/// Check the entry config the built-in controller adapts when it follows the
-/// source. Loads the config and its coefficient files, so it is run on demand
-/// rather than polled. A file in config_dir is given as a file name.
+/// Check the startup config the built-in controller adapts when it follows the
+/// source, whether following is on or not. Loads the config and its coefficient
+/// files, so it is run on demand rather than polled. A file in config_dir is
+/// given as a file name.
 #[utoipa::path(
     get,
     path = "/controller/checkfiles",
@@ -1367,12 +1368,11 @@ pub async fn check_controller_files(State(app): Shared) -> ApiResult<Reply<Contr
         .check_controller_files()
         .await
         .map_err(refused)?;
-    if let Some(adapt) = checks.adapt.as_mut() {
-        adapt.file = adapt
-            .file
-            .take()
-            .map(|file| config_file_for_gui(&app, file));
-    }
+    checks.adapt.file = checks
+        .adapt
+        .file
+        .take()
+        .map(|file| config_file_for_gui(&app, file));
     Ok(Reply(checks))
 }
 
@@ -1430,14 +1430,19 @@ async fn following_start_config(
         return None;
     }
     let config_dir = &app.settings.config_dir;
-    let entry = status.entry_config_file?;
+    let entry = status.startup_config_file?;
     let name = files::verify_path_in_config_dir(Some(&entry), config_dir)?;
     let path = config_dir.join(&name);
     let file_app = app.clone();
     let config = tokio::task::spawn_blocking(move || read_config_for_gui(&file_app, &path))
         .await
         .ok()?
-        .inspect_err(|err| log::warn!("Could not read the entry config {name}: {}", err.message()))
+        .inspect_err(|err| {
+            log::warn!(
+                "Could not read the startup config {name}: {}",
+                err.message()
+            )
+        })
         .ok()?;
     if config.devices == running.devices {
         return None;

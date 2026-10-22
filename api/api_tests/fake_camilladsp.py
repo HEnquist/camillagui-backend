@@ -368,6 +368,6 @@ class FakeCamillaDSP:
             # Back to files, running the active file as it is.
             if controller is not None:
                 path = s["config_file_path"]
-                controller["status"].update(source="Files", provider="Single", config_file=path, entry_config_file=path)
+                controller["status"].update(source="Files", provider="Single", config_file=path, startup_config_file=path)
             return ok(has_value=False)
         return {"reply": "Invalid", "error": f"Unknown command {name}"}

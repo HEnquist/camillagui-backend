@@ -316,7 +316,7 @@ function demoControllerStatus(): Schemas["ControllerStatusReport"] {
     source: state.fileless ? "Websocket" : "Files",
     provider,
     config_file: provider ? state.activeConfigFileName : null,
-    entry_config_file: state.activeConfigFileName,
+    startup_config_file: state.activeConfigFileName,
     recovering: false,
     attempts: 0,
     next_retry_s: null,
@@ -331,18 +331,15 @@ function demoControllerFileChecks(): Schemas["ControllerFileChecks"] {
   const entryName = state.activeConfigFileName
   const entry = entryName ? state.storedConfigs[entryName] : state.currentConfig
   return {
-    adapt:
-      state.controllerSettings?.follow_capture === true
-        ? {
-            file: entryName,
-            samplerate: entry ? entry.devices.samplerate : null,
-            alternate_samplerates: entry?.devices.alternate_samplerates ?? [],
-            channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
-            format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
-            problem: null,
-            warnings: [],
-          }
-        : null,
+    adapt: {
+      file: entryName,
+      samplerate: entry ? entry.devices.samplerate : null,
+      alternate_samplerates: entry?.devices.alternate_samplerates ?? [],
+      channels: entry && "channels" in entry.devices.capture ? entry.devices.capture.channels : null,
+      format: entry && "format" in entry.devices.capture ? (entry.devices.capture.format ?? null) : null,
+      problem: null,
+      warnings: [],
+    },
   }
 }
 

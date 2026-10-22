@@ -32,9 +32,10 @@ export interface paths {
       cookie?: never
     }
     /**
-     * Check the entry config the built-in controller adapts when it follows the
-     *     source. Loads the config and its coefficient files, so it is run on demand
-     *     rather than polled. A file in config_dir is given as a file name.
+     * Check the startup config the built-in controller adapts when it follows the
+     *     source, whether following is on or not. Loads the config and its coefficient
+     *     files, so it is run on demand rather than polled. A file in config_dir is
+     *     given as a file name.
      */
     get: operations["check_controller_files"]
     put?: never
@@ -723,12 +724,12 @@ export interface components {
       config_file_name: string | null
     }
     /**
-     * @description The entry config that the Adapt provider starts from, and what is wrong with it, if
+     * @description The startup config that the Adapt provider starts from, and what is wrong with it, if
      *     anything. The format is the one the config is written for, after the command line
      *     overrides. Adapt changes the rate and the sample format, but not the channel count.
      */
     AdaptCheck: {
-      /** @description Path of the entry config file, `null` for a config that was sent over the websocket. */
+      /** @description Path of the startup config file, `null` for a config that was sent over the websocket. */
       file?: string | null
       /** @description Capture sample rate, `null` when no config is loaded. */
       samplerate?: number | null
@@ -1152,8 +1153,8 @@ export interface components {
     /**
      * @description The provider that supplied a config of the files source.
      *
-     *     - `Single`: the entry config file as is.
-     *     - `Adapt`: the entry config file adapted to the source format.
+     *     - `Single`: the startup config file as is.
+     *     - `Adapt`: the startup config file adapted to the source format.
      * @enum {string}
      */
     ConfigProvider: "Single" | "Adapt"
@@ -1180,11 +1181,15 @@ export interface components {
     }
     /** @description Value of the `CheckControllerFiles` reply. */
     ControllerFileChecks: {
-      adapt?: components["schemas"]["AdaptCheck"] | null
+      /**
+       * @description The startup config Adapt starts from. It is checked whether following is on or not, so
+       *     that it can be checked before following is turned on.
+       */
+      adapt: components["schemas"]["AdaptCheck"]
     }
     /** @description The `controller` section of the statefile. */
     ControllerSettings: {
-      /** @description Follow the capture source format, adapting the entry config to it. */
+      /** @description Follow the capture source format, adapting the startup config to it. */
       follow_capture?: boolean | null
       /** @description Retry after a device error. */
       error_recovery?: boolean | null
@@ -1195,7 +1200,7 @@ export interface components {
     /**
      * @description Where the config the controller runs comes from.
      *
-     *     - `Files`: the controller loads it from the entry config file, through a provider.
+     *     - `Files`: the controller loads it from the startup config file, through a provider.
      *     - `Websocket`: it was sent over the websocket, and runs exactly as sent.
      * @enum {string}
      */
@@ -1205,13 +1210,13 @@ export interface components {
       /** @description Where the config comes from. It stays until the next switch, also while nothing runs. */
       source: components["schemas"]["ControllerSource"]
       provider?: components["schemas"]["ConfigProvider"] | null
-      /** @description The entry config file that runs, `null` when `provider` is. */
+      /** @description The startup config file that runs, `null` when `provider` is. */
       config_file?: string | null
       /**
-       * @description The entry config file, the one `GetConfigFilePath` gives, and the one `Reload`
+       * @description The startup config file, the one `GetConfigFilePath` gives, and the one `Reload`
        *     loads.
        */
-      entry_config_file?: string | null
+      startup_config_file?: string | null
       /** @description Waiting to retry after a device error. */
       recovering: boolean
       /** @description Retries since the last session that ran long enough. */

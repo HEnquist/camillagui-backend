@@ -73,7 +73,7 @@ export function DashboardView(props: {
             <div className="dashboard-config-summary box">
               <div className="dashboard-config-title">{cdspStatus.title || "Untitled configuration"}</div>
               <div className="dashboard-config-description">{cdspStatus.description || "No description"}</div>
-              <div className="dashboard-config-filename">{dspConfigFileName || "No active config file"}</div>
+              <div className="dashboard-config-filename">{dspConfigFileName || "No startup config file"}</div>
             </div>
           </div>
         </div>

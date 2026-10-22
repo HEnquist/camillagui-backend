@@ -55,7 +55,7 @@ mixerstab.tsx
 processorstab.tsx
 shortcuts.tsx
 filestab.tsx
-dsptab.tsx                  # The controller's details: recovery, what runs now, the file check
+controllertab.tsx           # The controller: what runs now, run from files, recovery, the file check
 playbacktab.tsx             # Playing an audio file through the pipeline
 
 custom-pages/               # Extra tabs: a .tsx here is a tab, see its README.md
@@ -69,7 +69,7 @@ sidepanel/
   volumebox.tsx             # Volume fader
   auxfaderbox.tsx           # Aux fader
   cdspstatebox.tsx          # DSP running/offline state badge
-  controllerbox.tsx         # The built-in controller, Apply to DSP and Run from files
+  controllerbox.tsx         # The built-in controller's status, the controls are in its tab
   vumeter.tsx               # VU meter bars
   logfileviewer.tsx         # Log file modal
   configcheckmessage.tsx    # Config error banner
@@ -159,7 +159,7 @@ Key endpoints used by the frontend:
   `GET /api/controller/checkfiles`: the built-in controller of CamillaDSP 6.0, which follows the
   capture source format and recovers from device errors. Its status and settings come with
   `/api/status` as `controller` and `controller_settings`, null without one. The `SidePanel`
-  passes them up when they change, for the Files and CamillaDSP tabs. While following, the
+  passes them up when they change, for the Files and Controller tabs. While following, the
   config that runs is the active one adapted to the source format, see `getstartconfig`. A
   source at `samplerate` or one of the `alternate_samplerates` runs natively, any other rate is
   resampled to `samplerate`. `runfromfiles` stores the active file and, unless `follow` is null,
@@ -168,23 +168,31 @@ Key endpoints used by the frontend:
 ## Editor and CamillaDSP
 
 The GUI keeps the config editor apart from what CamillaDSP runs, in the tabs and in the side
-panel alike:
+panel alike.
+
+The file CamillaDSP loads when it starts or reloads (`startup_config_file`) is the *startup
+config*, in the GUI and in CamillaDSP alike. It used to be the "active config", a name that
+confused people, and the GUI's own API, its code and the `on_set_active_config` and
+`on_get_active_config` settings still say active.
 
 - The editor is the Title to Pipeline tabs and Files, and the side panel's Editor box: one
   config, the file it belongs to, Save, Revert and auto-save. The Files table only marks the
-  active config (★), it does not change it.
-- CamillaDSP is the side panel's CamillaDSP and Controller boxes and the CamillaDSP tab. The
-  CamillaDSP box shows its state, with "Load into editor", "Compare" and "Stop processing",
-  none of which changes what runs. The Controller box shows the *source* (files, with the
-  provider, or file-less), the file that runs, following and recovery, and is where the user
-  chooses what runs. The tab holds the details: the error recovery toggle, which applies at
-  once, what runs now, and the check of the active config that following adapts.
+  startup config (★), it does not change it.
+- CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Controller tab. The
+  CamillaDSP box shows its state, with "Apply to DSP", "Load into editor", "Compare" and "Stop
+  processing". The Controller box only shows the *source* (file, with the provider, or
+  file-less), the file that runs, following and recovery. The Controller tab holds the
+  controls and details: what runs now, the startup config and following with "Run from
+  files", the error recovery toggle, which applies at once, and the check of the startup config
+  that following adapts. "Running from" is the file the running config came from
+  (`config_file`); the startup config is listed under it only when it differs, which is when
+  the config runs file-less or the file was changed without a reload.
 - CamillaDSP's config comes from one of two sources, and each direction has one button:
   - "Apply to DSP" sends the editor's config (`setconfig`). It runs *file-less*, exactly as
     sent: nothing follows the source, and recovery restarts it. `source` is `Websocket`.
-  - "Run from files" (`runfromfiles`) stores the active config file and whether to follow the
+  - "Run from files" (`runfromfiles`) stores the startup config file and whether to follow the
     capture source, then reloads. The file (picked in a `FileSelectPopup`) and the follow
-    checkbox are only staged in the side panel until then, with "Not running: ⚠️" while they
+    checkbox are only staged in the Controller tab until then, with "Not running: ⚠️" while they
     differ from what runs.
   - "Apply automatically" only resends a config that already runs file-less, it never leaves
     files. Without a controller it applies after every change, as there are no files to leave.

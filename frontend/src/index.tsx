@@ -15,11 +15,11 @@ import { api, errorMessage } from "./api/client"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { ControllerSettings, ControllerStatus, isFileless } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
+import { ControllerTab } from "./controllertab"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
-import { DspTab } from "./dsptab"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
 import { defaultGuiConfig, GuiConfig } from "./guiconfig"
@@ -122,7 +122,7 @@ class CamillaConfig extends React.Component<
     if (json.source === "dsp") message = "Loaded the config CamillaDSP runs"
     else if (json.source === "adapted")
       message = `Loaded ${name}, which CamillaDSP runs adapted to ${json.adapted_to_samplerate} Hz`
-    else if (json.source === "active") message = "Loaded the active config"
+    else if (json.source === "active") message = "Loaded the startup config"
     else if (json.source === "default") message = "Loaded the default config"
     else if (json.source === "fileless")
       message = "Loaded the file-less config CamillaDSP runs, it is not saved to any file"
@@ -380,7 +380,7 @@ class CamillaConfig extends React.Component<
             <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
             <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
             <Tab>Files</Tab>
-            <Tab>CamillaDSP</Tab>
+            <Tab>Controller</Tab>
             {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
             <Tab>Shortcuts</Tab>
             {customPages.map((customPage) => (
@@ -432,10 +432,11 @@ class CamillaConfig extends React.Component<
             />
           </TabPanel>
           <TabPanel>
-            <DspTab
+            <ControllerTab
               status={this.state.controllerStatus}
               settings={this.state.controllerSettings}
               inactive={this.state.dspInactive}
+              canChooseFile={this.state.guiConfig.can_update_active_config}
               openConfigFile={this.openConfigFile}
             />
           </TabPanel>

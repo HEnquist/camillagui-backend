@@ -92,7 +92,7 @@ export function Files(props: {
             setCurrentConfig={props.setCurrentConfig}
             setCurrentConfigFileName={props.setCurrentConfigFileName}
             saveNotify={props.saveNotify}
-            activeConfigFile={controller?.entry_config_file}
+            activeConfigFile={controller?.startup_config_file}
           />
           <FileTable title="Filters" type="coeff" />
         </div>
@@ -556,7 +556,7 @@ class FileTable extends Component<
             {row.original.name === activeConfigFile && (
               <MdiIcon
                 icon={mdiStar}
-                tooltip="The active config, which CamillaDSP starts from.<br>Pick another one in the side panel's Controller box."
+                tooltip="The startup config, which CamillaDSP loads when it starts or reloads.<br>Pick another one in the Controller tab."
                 style={{ marginLeft: "5px" }}
               />
             )}

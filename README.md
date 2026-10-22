@@ -158,8 +158,11 @@ time constant to one tenth of that value.
 `level_max_update_hz` sets the maximum event rate from CamillaDSP to the GUI.
 Lower values reduce CPU usage and network traffic, while higher values make the meters respond faster.
 
-### Active config file
-The active config file path is memorized via the CamillaDSP state file.
+### Startup config file
+The *startup config* is the config file CamillaDSP loads when it starts or reloads,
+and the one it runs from when running from files.
+Earlier versions of the GUI called it the *active config*.
+Its path is memorized via the CamillaDSP state file.
 Set the `statefile_path` to point at the statefile that the CamillaDSP process uses.
 For this to work, CamillaDSP must be running with a statefile.
 That is achieved by starting it with the `-s` parameter,
@@ -168,14 +171,14 @@ giving the same path to the statefile as in `camillagui.yml`:
 camilladsp -p 1234 -w -s /path/to/statefile.yml
 ```
 
-If the CamillaDSP process is running, the active config file path
+If the CamillaDSP process is running, the startup config file path
 will be fetched by querying the running process.
 If its not running, it will instead be read directly from the statefile.
 
-The active config will be loaded into the web interface when it is opened.
-If there is no active config, the `default_config` will be used.
+The startup config will be loaded into the web interface when it is opened.
+If there is no startup config, the `default_config` will be used.
 If this does not exist, the internal default config is used.
-Note: the active config will NOT be automatically applied to CamillaDSP, when the GUI starts.
+Note: the startup config will NOT be automatically applied to CamillaDSP, when the GUI starts.
 
 See also [Integrating with other software](#integrating-with-other-software)
 
@@ -193,11 +196,11 @@ These lists also limit the device types offered in the GUI.
 If you want to integrate CamillaGUI with other software,
 there are some options to customize the UI for your particular needs.
 
-#### Setting and getting the active config
+#### Setting and getting the startup config
 The configuration options `on_set_active_config` and `on_get_active_config` can be used to customize
-the way the active config file path is stored.
-These are shell commands that will be run to set and get the active config.
-Setting these options will override the normal way of getting and setting the active config path.
+the way the startup config file path is stored.
+These are shell commands that will be run to set and get the startup config.
+Setting these options will override the normal way of getting and setting the startup config path.
 Since the commands are run in the operating system shell, the syntax depends on which operating system is used.
 The examples given below are for Linux.
 

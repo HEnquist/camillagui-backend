@@ -168,7 +168,7 @@ def with_controller(page, server):
             "source": "Files",
             "provider": "Single",
             "config_file": path,
-            "entry_config_file": path,
+            "startup_config_file": path,
             "recovering": False,
             "attempts": 0,
             "next_retry_s": None,
@@ -177,11 +177,21 @@ def with_controller(page, server):
             "error_recovery": False,
             "stop_reason": "None",
         },
-        "checks": {"adapt": None},
+        "checks": {
+            "adapt": {
+                "file": path,
+                "samplerate": 44100,
+                "alternate_samplerates": [96000],
+                "channels": 2,
+                "format": None,
+                "problem": None,
+                "warnings": [],
+            },
+        },
     }
     page.reload()
     source = page.locator(".sidepanel").get_by_text("Source:", exact=True).locator("xpath=following-sibling::div[1]")
-    expect(source).to_have_text("files, as written")
+    expect(source).to_have_text("file, as written")
     return source
 
 
@@ -192,9 +202,10 @@ def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     expect(source).to_have_text("file-less")
     expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
-    sidepanel.get_by_text("Run from files", exact=True).click()
+    page.get_by_role("tab", name="Controller").click()
+    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
-    expect(source).to_have_text("files, as written")
+    expect(source).to_have_text("file, as written")
 
 
 def test_apply_automatically_leaves_files_alone(page, server):
@@ -204,30 +215,39 @@ def test_apply_automatically_leaves_files_alone(page, server):
     # Well past the delay before an automatic apply.
     time.sleep(1.5)
     assert not server.fake.commands("SetConfigJson")
-    expect(source).to_have_text("files, as written")
+    expect(source).to_have_text("file, as written")
 
 
 def test_a_picked_file_runs_with_run_from_files(page, server):
     with_controller(page, server)
-    sidepanel = page.locator(".sidepanel")
-    sidepanel.locator('[data-tooltip-html^="Pick the config file"]').click()
+    page.get_by_role("tab", name="Controller").click()
+    page.locator('[data-tooltip-html^="Pick the config file"]').click()
     page.get_by_text("config2.yml", exact=True).click()
     # Staged only, until Run from files.
-    expect(sidepanel.get_by_text("Not running: ⚠️")).to_be_visible()
+    expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
     assert not server.fake.commands("SetConfigFilePath")
-    sidepanel.get_by_text("Run from files", exact=True).click()
+    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml"))
     wait_for(lambda: server.fake.commands("Reload"))
-    expect(sidepanel.get_by_text("Not running: ⚠️")).to_have_count(0)
+    expect(page.get_by_text("Not running: ⚠️")).to_have_count(0)
 
 
 def test_following_is_set_with_run_from_files(page, server):
     with_controller(page, server)
-    sidepanel = page.locator(".sidepanel")
-    sidepanel.get_by_text("the capture source", exact=True).click()
+    page.get_by_role("tab", name="Controller").click()
+    page.get_by_text("Follow the capture device", exact=True).click()
     # Staged only, until Run from files.
-    expect(sidepanel.get_by_text("Not running: ⚠️")).to_be_visible()
+    expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
     assert not server.fake.commands("SetControllerSettings")
-    sidepanel.get_by_text("Run from files", exact=True).click()
+    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
     assert server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": None}
+
+
+def test_the_startup_config_is_checked_with_following_off(page, server):
+    with_controller(page, server)
+    page.get_by_role("tab", name="Controller").click()
+    page.get_by_text("Check the startup config", exact=True).click()
+    check = page.locator(".tabpanel table")
+    expect(check.get_by_text("config.yml", exact=True)).to_be_visible()
+    expect(check.get_by_text("96000", exact=True)).to_be_visible()
