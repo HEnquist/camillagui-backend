@@ -91,6 +91,8 @@ def default_state(config_file_path):
         # the built-in controller, None for a CamillaDSP without one: "settings", "status" and
         # "checks", the values of its Get and Check commands
         "controller": None,
+        # the value of GetStartupArgs, None for a CamillaDSP too old to have it
+        "startup_args": None,
         # every command received, in order
         "received": [],
     }
@@ -353,6 +355,8 @@ class FakeCamillaDSP:
             if device not in s[key]:
                 return error("DeviceNotFoundError", "device not found", CAPTURE_CAPABILITIES)
             return ok(s[key][device])
+        if name == "GetStartupArgs" and s["startup_args"] is not None:
+            return ok(s["startup_args"])
         controller = s["controller"]
         if controller is not None:
             if name == "GetControllerSettings":

@@ -158,8 +158,9 @@ Key endpoints used by the frontend:
 - `POST /api/runfromfiles`, `GET` and `POST /api/controller/settings`,
   `GET /api/controller/checkfiles`: the built-in controller of CamillaDSP 6.0, which follows the
   capture source format and recovers from device errors. Its status and settings come with
-  `/api/status` as `controller` and `controller_settings`, null without one. The `SidePanel`
-  passes them up when they change, for the Files and Controller tabs. While following, the
+  `/api/status` as `controller` and `controller_settings`, null without one, and the command
+  line CamillaDSP was started with as `startup_args`. The `SidePanel` passes them up when they
+  change, for the Files and Controller tabs. While following, the
   config that runs is the active one adapted to the source format, see `getstartconfig`. A
   source at `samplerate` or one of the `alternate_samplerates` runs natively, any other rate is
   resampled to `samplerate`. `runfromfiles` stores the active file and, unless `follow` is null,
@@ -182,9 +183,13 @@ confused people, and the GUI's own API, its code and the `on_set_active_config` 
   CamillaDSP box shows its state, with "Apply to DSP", "Load into editor", "Compare" and "Stop
   processing". The Controller box only shows the *source* (file, with the provider, or
   file-less), the file that runs, following and recovery. The Controller tab holds the
-  controls and details: what runs now, the startup config and following with "Run from
-  files", the error recovery toggle, which applies at once, and the check of the startup config
-  that following adapts. "Running from" is the file the running config came from
+  controls and details: what runs now, what runs after a restart, the startup config and
+  following with "Run from files", the error recovery toggle, which applies at once, and the
+  check of the startup config that following adapts. "After a restart" (`afterRestart` in
+  `camilladsp/status.ts`) takes each value from the command line when it is given there, since
+  CamillaDSP applies those over the statefile at every start, and from the statefile otherwise.
+  It marks what differs from what runs now. Where the command line sets the startup config,
+  following or recovery, the controls for it say that a change lasts until a restart. "Running from" is the file the running config came from
   (`config_file`); the startup config is listed under it only when it differs, which is when
   the config runs file-less or the file was changed without a reload.
 - CamillaDSP's config comes from one of two sources, and each direction has one button:

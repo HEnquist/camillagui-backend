@@ -17,6 +17,7 @@ import {
   isCdspOnline,
   isCdspRunning,
   isFileless,
+  StartupArgs,
   Status,
   StatusPoller,
 } from "../camilladsp/status"
@@ -35,10 +36,15 @@ interface SidePanelProps {
   revertConfig: () => Promise<void>
   setErrors: (errors: Errors) => void
   /**
-   * Called when the controller status or settings change, null when there are none, or
-   * processing stops or starts.
+   * Called when the controller status, its settings or the startup args change, null when there
+   * are none, or processing stops or starts.
    */
-  onControllerStatus: (status: ControllerStatus | null, settings: ControllerSettings | null, inactive: boolean) => void
+  onControllerStatus: (
+    status: ControllerStatus | null,
+    settings: ControllerSettings | null,
+    startupArgs: StartupArgs | null,
+    inactive: boolean,
+  ) => void
   currentConfigFile?: string
   message: string
   unsavedChanges: boolean
@@ -69,9 +75,15 @@ export class SidePanel extends React.Component<
     if (
       !isEqual(cdspStatus.controller, previous.controller) ||
       !isEqual(cdspStatus.controller_settings, previous.controller_settings) ||
+      !isEqual(cdspStatus.startup_args, previous.startup_args) ||
       inactive !== (previous.cdsp_status === "Inactive")
     )
-      this.props.onControllerStatus(cdspStatus.controller, cdspStatus.controller_settings, inactive)
+      this.props.onControllerStatus(
+        cdspStatus.controller,
+        cdspStatus.controller_settings,
+        cdspStatus.startup_args,
+        inactive,
+      )
     this.setState({ cdspStatus })
   }, this.props.guiConfig.status_update_interval)
 

@@ -28,6 +28,92 @@ export function followsCapture(settings: ControllerSettings | null): boolean {
   return settings?.follow_capture === true
 }
 
+/**
+ * The command line arguments CamillaDSP was started with. Each one given overrides the statefile
+ * at every start, with its config file as a name in the config folder where it is in it.
+ */
+export type StartupArgs = Schemas["StartupArgs"]
+
+/**
+ * Where a value after a restart comes from: the command line, the statefile, or neither, when
+ * there is no statefile to keep it in.
+ */
+export type StartupOrigin = "command line" | "statefile" | "default"
+
+export interface StartupValue<T> {
+  value: T
+  origin: StartupOrigin
+  /** Whether it differs from what runs now. */
+  differs: boolean
+}
+
+/** What CamillaDSP runs after a restart, from its startup args and statefile. */
+export interface AfterRestart {
+  /** Whether a statefile keeps what is changed while running. */
+  kept: boolean
+  /** Whether CamillaDSP runs with --wait, without which following and error recovery are off. */
+  wait: boolean
+  configFile: StartupValue<string | null>
+  following: StartupValue<boolean>
+  errorRecovery: StartupValue<boolean>
+  /** The config overrides given on the command line, like "--samplerate 44100". */
+  overrides: string[]
+  /** The faders the command line sets, like "Main: -6 dB, muted". */
+  faders: string[]
+}
+
+const FADER_NAMES = ["Main", "Aux1", "Aux2", "Aux3", "Aux4"]
+
+export function afterRestart(
+  status: ControllerStatus | null,
+  settings: ControllerSettings | null,
+  args: StartupArgs,
+): AfterRestart {
+  const kept = args.statefile != null
+
+  let file: Omit<StartupValue<string | null>, "differs">
+  if (args.config_file != null) file = { value: args.config_file, origin: "command line" }
+  else if (args.no_config) file = { value: null, origin: "command line" }
+  else if (kept) file = { value: status?.startup_config_file ?? null, origin: "statefile" }
+  else file = { value: null, origin: "default" }
+  // Nothing to compare with while nothing runs from a file.
+  const runningFile = isFileless(status) || (status?.provider != null && status.config_file !== file.value)
+
+  function setting(flag: boolean, stored: boolean | null | undefined, now: boolean): StartupValue<boolean> {
+    let value: Omit<StartupValue<boolean>, "differs">
+    if (flag) value = { value: true, origin: "command line" }
+    else if (kept) value = { value: stored === true, origin: "statefile" }
+    else value = { value: false, origin: "default" }
+    if (!args.wait) value.value = false
+    return { ...value, differs: status !== null && value.value !== now }
+  }
+
+  const overrides = [
+    args.samplerate != null ? `--samplerate ${args.samplerate}` : null,
+    args.channels != null ? `--channels ${args.channels}` : null,
+    args.sample_format != null ? `--format ${args.sample_format}` : null,
+    args.extra_samples != null ? `--extra_samples ${args.extra_samples}` : null,
+  ].filter((arg) => arg !== null)
+
+  const faders = FADER_NAMES.flatMap((name, fader) => {
+    const volume = args.volume[fader]
+    const parts = [volume != null ? `${volume} dB` : null, args.mute[fader] ? "muted" : null].filter(
+      (part) => part !== null,
+    )
+    return parts.length > 0 ? [`${name}: ${parts.join(", ")}`] : []
+  })
+
+  return {
+    kept,
+    wait: args.wait,
+    configFile: { ...file, differs: runningFile },
+    following: setting(args.follow_capture, settings?.follow_capture, status?.following ?? false),
+    errorRecovery: setting(args.error_recovery, settings?.error_recovery, status?.error_recovery ?? false),
+    overrides,
+    faders,
+  }
+}
+
 export function describeFormat(format: Schemas["SourceFormat"]): string {
   const parts = [
     format.samplerate != null ? `${format.samplerate} Hz` : null,
@@ -121,6 +207,7 @@ function offlineStatus(): Status {
     description: null,
     controller: null,
     controller_settings: null,
+    startup_args: null,
   }
 }
 

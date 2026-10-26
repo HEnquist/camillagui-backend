@@ -244,6 +244,39 @@ def test_following_is_set_with_run_from_files(page, server):
     assert server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": None}
 
 
+def test_the_command_line_shows_in_after_a_restart(page, server):
+    # The startup args are read once per connection, so the fake starts again with them.
+    server.fake.go_offline()
+    server.fake.state["startup_args"] = {
+        "statefile": "/state.yml",
+        "config_file": str(server.config_dir / "config.yml"),
+        "no_config": False,
+        "wait": True,
+        "follow_capture": True,
+        "error_recovery": False,
+        "samplerate": None,
+        "channels": None,
+        "extra_samples": None,
+        "sample_format": None,
+        "volume": [None, None, None, None, None],
+        "mute": [False, False, False, False, False],
+    }
+    server.fake.state["online"] = True
+    wait_for(lambda: server.get("/api/param/volume").status == 200)
+    wait_for(lambda: server.get("/api/status").json()["startup_args"] is not None)
+    with_controller(page, server)
+    page.get_by_role("tab", name="Controller").click()
+    panel = page.locator(".tabpanel")
+    expect(panel.get_by_text("After a restart", exact=True)).to_be_visible()
+    # The startup config and following.
+    expect(panel.get_by_text("(set on the command line)", exact=True)).to_have_count(2)
+    expect(panel.get_by_text("(from the statefile)", exact=True)).to_have_count(1)
+    expect(panel.get_by_text("The command line gives config.yml, a restart goes back to it.")).to_be_visible()
+    expect(panel.get_by_text("The command line gives --follow_capture", exact=False)).to_be_visible()
+    # Offline again, so the next reset reconnects to a CamillaDSP without them.
+    server.fake.go_offline()
+
+
 def test_the_startup_config_is_checked_with_following_off(page, server):
     with_controller(page, server)
     page.get_by_role("tab", name="Controller").click()

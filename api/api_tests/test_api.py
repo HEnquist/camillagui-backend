@@ -92,9 +92,11 @@ def test_read_status(server):
         "description",
         "controller",
         "controller_settings",
+        "startup_args",
     }
     # The fake has no built-in controller, and refuses its commands like an older CamillaDSP.
     assert status["controller"] is None
+    assert status["startup_args"] is None
     assert server.get("/api/backends").json() == {
         "playback": ["Alsa", "Stdout"],
         "capture": ["Alsa", "Stdin"],
@@ -900,6 +902,49 @@ def test_controller_status_names_the_files_in_config_dir(server):
     assert controller["startup_config_file"] == "/elsewhere/entry.yml"
     assert controller["stop_reason"]["CaptureFormatChange"]["samplerate"] == 96000
     assert status["controller_settings"]["follow_capture"] is True
+
+
+def startup_args(**fields):
+    args = {
+        "statefile": None,
+        "config_file": None,
+        "no_config": False,
+        "wait": False,
+        "follow_capture": False,
+        "error_recovery": False,
+        "samplerate": None,
+        "channels": None,
+        "extra_samples": None,
+        "sample_format": None,
+        "volume": [None, None, None, None, None],
+        "mute": [False, False, False, False, False],
+    }
+    return {**args, **fields}
+
+
+def restart_with_startup_args(server, args):
+    """Restart the fake CamillaDSP with these startup args, which are read once per connection,
+    and wait until the status has them."""
+    server.fake.go_offline()
+    server.fake.state["startup_args"] = args
+    server.fake.state["online"] = True
+    deadline = time.time() + 5
+    while server.get("/api/param/volume").status != 200:
+        assert time.time() < deadline
+    while (status := server.get("/api/status").json())["startup_args"] is None:
+        assert time.time() < deadline
+        time.sleep(0.05)
+    return status
+
+
+def test_status_has_the_startup_args(server):
+    assert server.get("/api/status").json()["startup_args"] is None
+    args = startup_args(statefile="/state.yml", config_file=str(server.config_dir / "config.yml"), wait=True)
+    status = restart_with_startup_args(server, args)
+    # The config file is given as a name in config_dir, like the controller's.
+    assert status["startup_args"] == {**args, "config_file": "config.yml"}
+    # Offline again, so the next reset reconnects to a CamillaDSP without them.
+    server.fake.go_offline()
 
 
 def test_controller_settings_round_trip(server):

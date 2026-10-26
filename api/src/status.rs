@@ -4,7 +4,7 @@
 use crate::camilla::{CamillaClient, DspError};
 use crate::validate::DeviceTypeLists;
 use camilladsp_schema::protocol::{
-    AudioDeviceDescriptor, ChannelLabels, ControllerSettings, ControllerStatusReport,
+    AudioDeviceDescriptor, ChannelLabels, ControllerSettings, ControllerStatusReport, StartupArgs,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -80,6 +80,12 @@ pub struct Status {
     /// CamillaDSP has none, or when its statefile has no controller section.
     #[schema(required)]
     pub controller_settings: Option<ControllerSettings>,
+    /// The command line arguments CamillaDSP was started with, which it comes
+    /// back to at every start. Null while offline, or when CamillaDSP is too
+    /// old to tell. Read once per connection, since they can't change. Its
+    /// config file is given as a name in config_dir, when it is in it.
+    #[schema(required)]
+    pub startup_args: Option<StartupArgs>,
 }
 
 impl Status {
@@ -99,6 +105,7 @@ impl Status {
             description: None,
             controller: None,
             controller_settings: None,
+            startup_args: None,
         }
     }
 }
@@ -265,7 +272,12 @@ impl StatusCache {
     /// so they are fetched in the background.
     async fn on_reconnect(self: &Arc<Self>, camilla: &Arc<CamillaClient>) -> Result<(), DspError> {
         let version = camilla.version().await?;
-        self.status.lock().unwrap().cdsp_version = Some(version);
+        let startup_args = value(camilla.startup_args().await)?;
+        {
+            let mut status = self.status.lock().unwrap();
+            status.cdsp_version = Some(version);
+            status.startup_args = startup_args;
+        }
         let cache = self.clone();
         let camilla = camilla.clone();
         tokio::spawn(async move {
@@ -436,7 +448,8 @@ mod tests {
                             }
                             // Like a CamillaDSP without the built-in controller.
                             WsCommand::GetControllerStatus {}
-                            | WsCommand::GetControllerSettings {} => WsReply::Invalid {
+                            | WsCommand::GetControllerSettings {}
+                            | WsCommand::GetStartupArgs {} => WsReply::Invalid {
                                 error: "Unknown command".to_string(),
                             },
                             command => panic!("unexpected command {command:?}"),

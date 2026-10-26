@@ -13,7 +13,7 @@ import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
-import { ControllerSettings, ControllerStatus, isFileless } from "./camilladsp/status"
+import { ControllerSettings, ControllerStatus, isFileless, StartupArgs } from "./camilladsp/status"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
 import { ControllerTab } from "./controllertab"
 import type { CustomPageComponent } from "./custom-pages/types"
@@ -55,6 +55,7 @@ class CamillaConfig extends React.Component<
     unappliedChanges: boolean
     controllerStatus: ControllerStatus | null
     controllerSettings: ControllerSettings | null
+    startupArgs: StartupArgs | null
     /** Whether processing is stopped, as the side panel saw it with the controller status. */
     dspInactive: boolean
   }
@@ -86,6 +87,7 @@ class CamillaConfig extends React.Component<
       unappliedChanges: true,
       controllerStatus: null,
       controllerSettings: null,
+      startupArgs: null,
       dspInactive: false,
     }
     this.loadGuiConfig()
@@ -315,10 +317,11 @@ class CamillaConfig extends React.Component<
           saveConfig={this.saveConfig}
           revertConfig={this.revertConfig}
           setErrors={this.setErrors}
-          onControllerStatus={(controllerStatus, controllerSettings, dspInactive) =>
+          onControllerStatus={(controllerStatus, controllerSettings, startupArgs, dspInactive) =>
             this.setState((prev) => ({
               controllerStatus,
               controllerSettings,
+              startupArgs,
               dspInactive,
               // CamillaDSP went back to files, so it no longer runs the config applied from the
               // editor.
@@ -435,6 +438,7 @@ class CamillaConfig extends React.Component<
             <ControllerTab
               status={this.state.controllerStatus}
               settings={this.state.controllerSettings}
+              startupArgs={this.state.startupArgs}
               inactive={this.state.dspInactive}
               canChooseFile={this.state.guiConfig.can_update_active_config}
               openConfigFile={this.openConfigFile}

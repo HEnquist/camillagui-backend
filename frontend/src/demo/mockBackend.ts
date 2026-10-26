@@ -831,6 +831,21 @@ async function handleApiRequest(input: RequestInfo | URL, init?: RequestInit): P
       description: state.currentConfig.description,
       controller: demoControllerStatus(),
       controller_settings: state.controllerSettings,
+      // Started like a typical service, with a statefile and in wait mode.
+      startup_args: {
+        statefile: "/home/demo/camilladsp/statefile.yml",
+        config_file: null,
+        no_config: false,
+        wait: true,
+        follow_capture: false,
+        error_recovery: false,
+        samplerate: null,
+        channels: null,
+        extra_samples: null,
+        sample_format: null,
+        volume: [null, null, null, null, null],
+        mute: [false, false, false, false, false],
+      },
     }
     return jsonResponse(status)
   }

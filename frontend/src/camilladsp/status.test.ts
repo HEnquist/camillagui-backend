@@ -1,5 +1,96 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
-import { EventStreamManager, SpectrumSubscriptionParams, StateEvent, Status, StatusPoller } from "./status"
+import {
+  afterRestart,
+  ControllerStatus,
+  EventStreamManager,
+  SpectrumSubscriptionParams,
+  StartupArgs,
+  StateEvent,
+  Status,
+  StatusPoller,
+} from "./status"
+
+describe("afterRestart", () => {
+  const args: StartupArgs = {
+    statefile: "/state.yml",
+    config_file: null,
+    no_config: false,
+    wait: true,
+    follow_capture: false,
+    error_recovery: false,
+    samplerate: null,
+    channels: null,
+    extra_samples: null,
+    sample_format: null,
+    volume: [null, null, null, null, null],
+    mute: [false, false, false, false, false],
+  }
+  const running: ControllerStatus = {
+    source: "Files",
+    provider: "Single",
+    config_file: "a.yml",
+    startup_config_file: "a.yml",
+    recovering: false,
+    attempts: 0,
+    next_retry_s: null,
+    waiting_for_source: null,
+    following: false,
+    error_recovery: false,
+    stop_reason: "None",
+  }
+
+  test("takes what the command line doesn't give from the statefile", () => {
+    const after = afterRestart(running, { follow_capture: true, error_recovery: null }, args)
+    expect(after.kept).toBe(true)
+    expect(after.configFile).toEqual({ value: "a.yml", origin: "statefile", differs: false })
+    // Enabled in the statefile, but the running session was started without following.
+    expect(after.following).toEqual({ value: true, origin: "statefile", differs: true })
+    expect(after.errorRecovery).toEqual({ value: false, origin: "statefile", differs: false })
+    expect(after.overrides).toEqual([])
+    expect(after.faders).toEqual([])
+  })
+
+  test("the command line wins over the statefile", () => {
+    const after = afterRestart(
+      { ...running, startup_config_file: "b.yml" },
+      { follow_capture: null, error_recovery: null },
+      {
+        ...args,
+        config_file: "a.yml",
+        follow_capture: true,
+        samplerate: 96000,
+        volume: [-6, null, null, null, null],
+        mute: [false, true, false, false, false],
+      },
+    )
+    expect(after.configFile).toEqual({ value: "a.yml", origin: "command line", differs: false })
+    expect(after.following).toEqual({ value: true, origin: "command line", differs: true })
+    expect(after.overrides).toEqual(["--samplerate 96000"])
+    expect(after.faders).toEqual(["Main: -6 dB", "Aux1: muted"])
+  })
+
+  test("without a statefile, nothing set while running is kept", () => {
+    const after = afterRestart(
+      { ...running, startup_config_file: "b.yml", config_file: "b.yml", error_recovery: true },
+      { follow_capture: null, error_recovery: true },
+      { ...args, statefile: null },
+    )
+    expect(after.kept).toBe(false)
+    expect(after.configFile).toEqual({ value: null, origin: "default", differs: true })
+    expect(after.errorRecovery).toEqual({ value: false, origin: "default", differs: true })
+  })
+
+  test("a config applied from the editor is gone after a restart", () => {
+    const after = afterRestart({ ...running, source: "Websocket", provider: null, config_file: null }, null, args)
+    expect(after.configFile.differs).toBe(true)
+  })
+
+  test("following and recovery need --wait", () => {
+    const after = afterRestart(running, null, { ...args, wait: false, follow_capture: true })
+    expect(after.wait).toBe(false)
+    expect(after.following.value).toBe(false)
+  })
+})
 
 /** Stands in for the browser's EventSource, so a test can push events and errors. */
 class FakeEventSource extends EventTarget {

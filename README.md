@@ -175,6 +175,13 @@ If the CamillaDSP process is running, the startup config file path
 will be fetched by querying the running process.
 If its not running, it will instead be read directly from the statefile.
 
+A config file given on the CamillaDSP command line overrides the statefile at every start.
+The startup config can still be changed from the GUI, but a restart of CamillaDSP goes back to
+the file on the command line.
+The same goes for `--follow_capture` and `--error_recovery`.
+The "After a restart" box in the Controller tab shows what CamillaDSP runs after a restart,
+and which of it is set on the command line.
+
 The startup config will be loaded into the web interface when it is opened.
 If there is no startup config, the `default_config` will be used.
 If this does not exist, the internal default config is used.

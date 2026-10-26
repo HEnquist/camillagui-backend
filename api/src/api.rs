@@ -155,6 +155,12 @@ pub async fn get_status(State(app): Shared) -> Reply<Status> {
     if let Some(controller) = status.controller.as_mut() {
         controller_status_for_gui(&app, controller);
     }
+    if let Some(args) = status.startup_args.as_mut() {
+        args.config_file = args
+            .config_file
+            .take()
+            .map(|path| config_file_for_gui(&app, path));
+    }
     Reply(status)
 }
 

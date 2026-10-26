@@ -1227,7 +1227,11 @@ export interface components {
        */
       next_retry_s?: number | null
       waiting_for_source?: components["schemas"]["SourceFormat"] | null
-      /** @description Whether following is on, enabled and in wait mode. `false` for the websocket source. */
+      /**
+       * @description Whether the running session follows the source format. It was started with following
+       *     enabled and in wait mode, and runs from the files source. A change to the setting only
+       *     applies at the next session start. While nothing runs, whether the next session will.
+       */
       following: boolean
       /** @description Whether error recovery is on, enabled and in wait mode. */
       error_recovery: boolean
@@ -2285,6 +2289,58 @@ export interface components {
        */
       adapted_to_samplerate?: number
     }
+    /**
+     * @description The command line arguments CamillaDSP was started with that decide what runs, returned by
+     *     the `GetStartupArgs` command. Each one given overrides its own field of the statefile at
+     *     every start, so a client can't change it permanently.
+     */
+    StartupArgs: {
+      /**
+       * @description `--statefile`, `null` without one. Without a statefile nothing that is changed while
+       *     running is kept over a restart.
+       */
+      statefile?: string | null
+      /**
+       * @description The config file given on the command line. It runs at every start, in place of the
+       *     statefile's `config_path`.
+       */
+      config_file?: string | null
+      /** @description `--no_config`: start without a config, ignoring the statefile's `config_path`. */
+      no_config: boolean
+      /**
+       * @description `--wait`. Without it the process exits when processing stops, and following and error
+       *     recovery are off.
+       */
+      wait: boolean
+      /**
+       * @description `--follow_capture`: following is on at every start. `false` means it was not given,
+       *     and the statefile decides.
+       */
+      follow_capture: boolean
+      /**
+       * @description `--error_recovery`: error recovery is on at every start. `false` means it was not
+       *     given, and the statefile decides.
+       */
+      error_recovery: boolean
+      /** @description `--samplerate`, overriding the one in the config. */
+      samplerate?: number | null
+      /** @description `--channels`, overriding the capture channels in the config. */
+      channels?: number | null
+      /** @description `--extra_samples`, overriding the one of a file capture device. */
+      extra_samples?: number | null
+      /** @description `--format`, overriding the capture sample format in the config. */
+      sample_format?: string | null
+      /**
+       * @description `--gain` and `--gain1` to `--gain4`, the starting volume of each fader in dB, `null`
+       *     for one that was not given.
+       */
+      volume: (number | null)[]
+      /**
+       * @description `--mute` and `--mute1` to `--mute4`. `false` means it was not given, and the statefile
+       *     decides.
+       */
+      mute: boolean[]
+    }
     /** @description Payload of a [`WsReply::StateEvent`] pushed by [`WsCommand::SubscribeState`]. */
     StateUpdate: {
       /** @description The new processing state. */
@@ -2328,6 +2384,7 @@ export interface components {
       description: string | null
       controller: components["schemas"]["ControllerStatusReport"] | null
       controller_settings: components["schemas"]["ControllerSettings"] | null
+      startup_args: components["schemas"]["StartupArgs"] | null
     }
     /** @description Reason a processing run ended. */
     StopReason:

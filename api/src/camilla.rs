@@ -4,7 +4,8 @@
 use camilladsp_schema::config::{self, Configuration};
 use camilladsp_schema::protocol::{
     AudioDeviceDescriptor, ChannelLabels, ControllerFileChecks, ControllerSettings,
-    ControllerStatusReport, Fader, ProcessingState, StopReason, WsCommand, WsReply, WsResult,
+    ControllerStatusReport, Fader, ProcessingState, StartupArgs, StopReason, WsCommand, WsReply,
+    WsResult,
 };
 use futures_util::{SinkExt, StreamExt};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -368,6 +369,14 @@ impl CamillaClient {
 
     pub async fn version(&self) -> Result<String, DspError> {
         value_of!(self.request(WsCommand::GetVersion {}).await?, GetVersion)
+    }
+
+    /// The command line arguments CamillaDSP was started with that decide what runs.
+    pub async fn startup_args(&self) -> Result<StartupArgs, DspError> {
+        value_of!(
+            self.request(WsCommand::GetStartupArgs {}).await?,
+            GetStartupArgs
+        )
     }
 
     pub async fn state(&self) -> Result<ProcessingState, DspError> {

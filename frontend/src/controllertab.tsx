@@ -3,12 +3,15 @@ import { mdiFileSearch } from "@mdi/js"
 import "./index.css"
 import { api, errorMessage, Schemas } from "./api/client"
 import {
+  afterRestart,
   ControllerSettings,
   ControllerStatus,
   describeFormat,
   describeStopReason,
   followsCapture,
   isFileless,
+  StartupArgs,
+  StartupValue,
   stoppingFormat,
 } from "./camilladsp/status"
 import { CONFIG_FILE_STATUS_ICONS, FileInfo, loadFiles } from "./utilities/files"
@@ -30,13 +33,15 @@ const PROVIDER_DESCRIPTIONS = {
 }
 
 /**
- * CamillaDSP's built-in controller: what runs now, running from files and following the capture
- * device, error recovery, and a check of the config following adapts. The config editor is the
- * other tabs, and the side panel applies its config file-less.
+ * CamillaDSP's built-in controller: what runs now, what runs after a restart, running from files
+ * and following the capture device, error recovery, and a check of the config following adapts.
+ * The config editor is the other tabs, and the side panel applies its config file-less.
  */
 export function ControllerTab(props: {
   status: ControllerStatus | null
   settings: ControllerSettings | null
+  /** Null for a CamillaDSP too old to tell. */
+  startupArgs: StartupArgs | null
   /** Whether processing is stopped. */
   inactive: boolean
   /** Whether the backend may change the active config file. */
@@ -48,8 +53,19 @@ export function ControllerTab(props: {
       <div className="tabcontainer">
         <div className="tabpanel" style={{ width: "700px" }}>
           <RunningBox status={props.status} inactive={props.inactive} openConfigFile={props.openConfigFile} />
-          <RunFromFilesBox status={props.status} settings={props.settings} canChooseFile={props.canChooseFile} />
-          <RecoveryBox status={props.status} settings={props.settings} />
+          <AfterRestartBox
+            status={props.status}
+            settings={props.settings}
+            startupArgs={props.startupArgs}
+            openConfigFile={props.openConfigFile}
+          />
+          <RunFromFilesBox
+            status={props.status}
+            settings={props.settings}
+            startupArgs={props.startupArgs}
+            canChooseFile={props.canChooseFile}
+          />
+          <RecoveryBox status={props.status} settings={props.settings} startupArgs={props.startupArgs} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>
         <div className="tabspacer" />
@@ -79,9 +95,11 @@ function stagedOr<T>(staged: Staged<T> | null, current: T): T {
 function RunFromFilesBox(props: {
   status: ControllerStatus | null
   settings: ControllerSettings | null
+  startupArgs: StartupArgs | null
   canChooseFile: boolean
 }) {
   const controller = props.status
+  const args = props.startupArgs
   const [file, setFile] = useState<Staged<string | null> | null>(null)
   const [follow, setFollow] = useState<Staged<boolean> | null>(null)
   const [files, setFiles] = useState<FileInfo[]>([])
@@ -142,6 +160,12 @@ function RunFromFilesBox(props: {
           }}
         />
       </div>
+      {args?.config_file != null && (
+        <LastsUntilRestart>The command line gives {args.config_file}, a restart goes back to it.</LastsUntilRestart>
+      )}
+      {args?.no_config && args.config_file == null && (
+        <LastsUntilRestart>The command line gives --no_config, a restart starts without a config.</LastsUntilRestart>
+      )}
       {controller && (
         <label
           style={{ display: "block", marginTop: "5px" }}
@@ -155,6 +179,11 @@ function RunFromFilesBox(props: {
           />
           Follow the capture device
         </label>
+      )}
+      {controller && args?.follow_capture && (
+        <LastsUntilRestart>
+          The command line gives --follow_capture, so following is on again after a restart.
+        </LastsUntilRestart>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
         <SuccessFailureButton
@@ -187,7 +216,11 @@ function RunFromFilesBox(props: {
 }
 
 /** Error recovery, which applies at once, whether CamillaDSP runs from files or file-less. */
-function RecoveryBox(props: { status: ControllerStatus | null; settings: ControllerSettings | null }) {
+function RecoveryBox(props: {
+  status: ControllerStatus | null
+  settings: ControllerSettings | null
+  startupArgs: StartupArgs | null
+}) {
   const { status, settings } = props
   // A change shows in the settings at the next status poll, until then the value set counts.
   const [pending, setPending] = useState<{ value: boolean; base: boolean } | null>(null)
@@ -228,6 +261,11 @@ function RecoveryBox(props: { status: ControllerStatus | null; settings: Control
       />
       {on && !status.error_recovery && !waiting && (
         <div>CamillaDSP does not run with --wait, so error recovery is off.</div>
+      )}
+      {props.startupArgs?.error_recovery && (
+        <LastsUntilRestart>
+          The command line gives --error_recovery, so error recovery is on again after a restart.
+        </LastsUntilRestart>
       )}
       {message && <div className="error-text">{message}</div>}
     </Box>
@@ -293,6 +331,77 @@ function RunningBox(props: {
       </div>
     </Box>
   )
+}
+
+const ORIGIN_NOTES = {
+  "command line": "set on the command line",
+  statefile: "from the statefile",
+  default: "no statefile",
+}
+
+/**
+ * What CamillaDSP comes back to after a restart: the command line arguments it was started with,
+ * and the statefile for the rest. Marks what differs from what runs now.
+ */
+function AfterRestartBox(props: {
+  status: ControllerStatus | null
+  settings: ControllerSettings | null
+  startupArgs: StartupArgs | null
+  openConfigFile: (name: string) => Promise<void>
+}) {
+  if (!props.startupArgs) return null
+  const after = afterRestart(props.status, props.settings, props.startupArgs)
+
+  function described<T>(item: StartupValue<T>, value: React.ReactNode, note?: string): React.ReactNode {
+    return (
+      <span>
+        {value} <span style={{ opacity: 0.75 }}>({note ?? ORIGIN_NOTES[item.origin]})</span>
+        {item.differs && (
+          <span data-tooltip-html="Differs from what runs now" data-tooltip-id="main-tooltip">
+            {" "}
+            ⚠️
+          </span>
+        )}
+      </span>
+    )
+  }
+
+  const noWait = after.wait ? undefined : "CamillaDSP runs without --wait"
+  const rows: [string, React.ReactNode][] = [
+    [
+      "Startup config",
+      described(after.configFile, <FileLink name={after.configFile.value} open={props.openConfigFile} />),
+    ],
+    ["Following", described(after.following, after.following.value ? "on" : "off", noWait)],
+    ["Error recovery", described(after.errorRecovery, after.errorRecovery.value ? "on" : "off", noWait)],
+  ]
+  if (after.overrides.length > 0) rows.push(["Overrides", after.overrides.join(" ")])
+  if (after.faders.length > 0) rows.push(["Faders", after.faders.join("; ")])
+  return (
+    <Box
+      title="After a restart"
+      tooltip="What CamillaDSP runs when it starts again, for example after a reboot.<br>Arguments on its command line override the statefile at every start, so they can't be changed from here."
+    >
+      {!after.kept && (
+        <div style={{ color: "var(--warning-text-color)", marginBottom: "5px" }}>
+          CamillaDSP runs without a statefile, so nothing changed while it runs is kept over a restart.
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "max-content auto", columnGap: "15px", rowGap: "3px" }}>
+        {rows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <span style={{ fontWeight: "bold" }}>{label}</span>
+            <span>{value}</span>
+          </React.Fragment>
+        ))}
+      </div>
+    </Box>
+  )
+}
+
+/** A note that a choice lasts only until CamillaDSP restarts, since its command line sets it. */
+function LastsUntilRestart(props: { children: React.ReactNode }) {
+  return <div style={{ color: "var(--warning-text-color)", marginTop: "3px" }}>{props.children}</div>
 }
 
 function FileCheckBox(props: { openConfigFile: (name: string) => Promise<void> }) {
