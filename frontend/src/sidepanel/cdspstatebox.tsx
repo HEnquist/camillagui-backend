@@ -1,13 +1,17 @@
 import * as React from "react"
-import { LogFileViewerPopup } from "./logfileviewer"
-import { isBackendOnline, isCdspRunning, Status } from "../camilladsp/status"
-import { Button, Box } from "../utilities/ui-components"
+import { api, errorMessage } from "../api/client"
+import { isCdspOnline, isCdspRunning, Status } from "../camilladsp/status"
+import { Box, SuccessFailureButton } from "../utilities/ui-components"
 
-/** The state of CamillaDSP, with a message row when given one, and the children below. */
-export function CdspStateBox(props: { status: Status; message?: string; children?: React.ReactNode }) {
-  const { status, message } = props
+/** The state of CamillaDSP, and stopping it. Its log file is on the Control area's Overview. */
+export function CdspStateBox(props: { status: Status }) {
+  const { status } = props
   const running = isCdspRunning(status)
-  const [logFileViewerOpen, setLogFileViewerOpen] = React.useState(false)
+
+  async function stopProcessing() {
+    const { error, response } = await api.POST("/api/stop")
+    if (error) throw new Error(errorMessage(error, response))
+  }
 
   return (
     <Box title="CamillaDSP">
@@ -26,21 +30,15 @@ export function CdspStateBox(props: { status: Status; message?: string; children
         <div>{running && status.processingload ? status.processingload.toFixed(1) + "%" : ""} </div>
         <div className="alignRight">Resampler load:</div>
         <div>{running && status.resamplerload ? status.resamplerload.toFixed(1) + "%" : ""} </div>
-        {message !== undefined && (
-          <>
-            <div className="alignRight">Message:</div>
-            <div>{message}</div>
-          </>
-        )}
       </div>
-      {props.children}
-      <Button
-        text="Show log file"
-        onClick={() => setLogFileViewerOpen(true)}
-        style={{ marginTop: "10px" }}
-        enabled={isBackendOnline(status)}
-      />
-      <LogFileViewerPopup open={logFileViewerOpen} onClose={() => setLogFileViewerOpen(false)} />
+      <div className="two-column-grid" style={{ marginTop: "5px" }}>
+        <SuccessFailureButton
+          enabled={isCdspOnline(status)}
+          text="Stop processing"
+          tooltip="Stop the DSP processing"
+          onClick={stopProcessing}
+        />
+      </div>
     </Box>
   )
 }

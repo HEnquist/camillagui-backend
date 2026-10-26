@@ -204,7 +204,7 @@ def test_config_and_volume_reach_camilladsp(page, server):
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
     expect(page.locator(".editor-toolbar .config-status")).to_have_text("OK")
-    sidepanel.get_by_text("Apply to DSP", exact=True).click()
+    page.locator(".editor-toolbar").get_by_text("Apply to DSP", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     # The volume box only sends a change once it has read the volume.
     wait_for(lambda: server.fake.commands("GetMute"))
@@ -253,11 +253,10 @@ def with_controller(page, server):
 def test_apply_to_dsp_runs_file_less_until_a_file_is_run(page, server):
     source = with_controller(page, server)
     page.get_by_role("tab", name="Edit", exact=True).click()
-    sidepanel = page.locator(".sidepanel")
-    sidepanel.get_by_text("Apply to DSP", exact=True).click()
+    page.locator(".editor-toolbar").get_by_text("Apply to DSP", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     expect(source).to_have_text("file-less")
-    expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
+    expect(page.locator(".sidepanel").get_by_text("Not saved to any file", exact=False)).to_be_visible()
     open_tab(page, "Control", "Configs")
     # The startup config is marked with a star.
     page.locator(".tabpanel").get_by_text("★ config.yml", exact=True).click()
@@ -268,7 +267,7 @@ def test_apply_to_dsp_runs_file_less_until_a_file_is_run(page, server):
 def test_apply_automatically_leaves_files_alone(page, server):
     source = with_controller(page, server)
     open_tab(page, "Edit", "Title")
-    page.locator(".sidepanel").get_by_text("Apply automatically").click()
+    page.locator(".editor-toolbar").get_by_text("Apply automatically").click()
     page.locator('[data-tooltip-html="Optional title for the configuration"]').fill("Edited")
     # Well past the delay before an automatic apply.
     time.sleep(1.5)

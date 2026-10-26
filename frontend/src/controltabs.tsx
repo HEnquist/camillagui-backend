@@ -11,12 +11,14 @@ import {
   isFileless,
   StartupArgs,
   StartupValue,
+  isBackendOnline,
   isCdspOnline,
   isCdspRunning,
   stoppingFormat,
 } from "./camilladsp/status"
 import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
+import { LogFileViewerPopup } from "./sidepanel/logfileviewer"
 import { SpectrumBox } from "./spectrumbox"
 import { CONFIG_FILE_STATUS_ICONS, FileInfo, loadFiles } from "./utilities/files"
 import { BoolOption, Box, Button, ErrorBoundary, SuccessFailureButton } from "./utilities/ui-components"
@@ -43,8 +45,8 @@ function controlPanelWidth(): number {
 }
 
 /**
- * What CamillaDSP does: what runs now and after a restart, and the spectrum. The landing tab of
- * the Control area.
+ * What CamillaDSP does: what runs now and after a restart, the spectrum, and its log file. The
+ * landing tab of the Control area.
  */
 export function OverviewTab(
   props: ControllerProps & {
@@ -54,6 +56,7 @@ export function OverviewTab(
   },
 ) {
   const cdspStatus = useCdspStatus(props.guiConfig)
+  const [logFileViewerOpen, setLogFileViewerOpen] = useState(false)
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
@@ -73,6 +76,15 @@ export function OverviewTab(
               isRunning={isCdspRunning(cdspStatus)}
             />
           )}
+          <Box title="Log">
+            <Button
+              text="Show log file"
+              tooltip="Show the CamillaDSP log file that the GUI is set up to read"
+              onClick={() => setLogFileViewerOpen(true)}
+              enabled={isBackendOnline(cdspStatus)}
+            />
+          </Box>
+          <LogFileViewerPopup open={logFileViewerOpen} onClose={() => setLogFileViewerOpen(false)} />
         </div>
         <div className="tabspacer" />
       </div>

@@ -55,7 +55,7 @@ devicecapabilitiespopup.tsx # A device's capabilities, from the devices tab
 filterstab.tsx
 mixerstab.tsx
 processorstab.tsx
-editortoolbar.tsx           # Above the Edit tabs: undo, the file, Save, Save as, New, Import, check
+editortoolbar.tsx           # Above the Edit tabs: undo, the file and saving, Apply and Compare, check
 
 # Control area tabs
 controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
@@ -70,7 +70,7 @@ pipeline/
   pipelineplotter.tsx       # SVG pipeline diagram
 
 sidepanel/
-  sidepanel.tsx             # Left panel with the Apply buttons and status
+  sidepanel.tsx             # Left panel: volume, CamillaDSP and controller status
   volumebox.tsx             # Volume fader
   auxfaderbox.tsx           # Aux fader
   cdspstatebox.tsx          # DSP running/offline state badge
@@ -173,8 +173,9 @@ Key endpoints used by the frontend:
 The GUI keeps the config editor apart from what CamillaDSP runs, in two areas with tabs of their
 own, switched above the tabs: *Control*, for what CamillaDSP does and runs, and *Edit*, for the
 config editor. Control is the default, and the area shown is kept in localStorage
-(`areas.ts`). The side panel stays mounted in both, so the automatic apply carries on, and the
-automatic save is kept in `CamillaConfig` for the same reason.
+(`areas.ts`). The logo sits at the right end of the area switch, and the side panel is the same in
+both areas. The automatic save and apply are kept in `CamillaConfig`, not in the toolbar, so
+they carry on while Control is shown, for example when a shortcut changes the config.
 The old `?compactview` and `?dashboardview` bookmarks open Control. Below 760 px the side panel
 goes above the tabs, which makes Control usable on a phone. Edit needs a wider screen.
 
@@ -185,19 +186,21 @@ confused people, and the GUI's own API, its code and the `on_set_active_config` 
 
 - The editor is the Edit area: its toolbar and the tabs Title to Pipeline. One config, the file
   it belongs to, and in the toolbar undo, redo, Save, Revert, Save as (a prompt, which asks
-  before it overwrites another file), New from the default or blank, Import, auto-save, the
-  config check and the last message. The toolbar is above the tabs rather than in the side
-  panel, so it stays in view on a short screen.
+  before it overwrites another file), New from the default or blank, Import, auto-save, then
+  "Apply to DSP", "Load from DSP", "Compare with DSP", "Apply automatically" with whether
+  CamillaDSP runs the editor's config, the config check and the last message. The toolbar is
+  above the tabs rather than in the side panel, so the side panel fits a 13" screen and the
+  toolbar stays in view.
 - The Files tab, in Control, manages the files available to CamillaDSP: uploads, downloads,
   renames, deletes, comparing and plotting. Its Load puts a config into the editor and switches
   to Edit. It only marks the startup config (★), it does not change it, and it doesn't save the
   editor's config, which is the toolbar's job.
 - CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Control area. The
-  CamillaDSP box shows its state and "Stop processing", and in Edit also "Apply to DSP", "Load
-  into editor" and "Compare". The Controller box only shows the *source* (file, with the
-  provider, or file-less), the file that runs, following and recovery.
+  CamillaDSP box shows its state and "Stop processing", the log file is on Overview. The
+  Controller box only shows the *source* (file, with the provider, or file-less), the file that
+  runs, following and recovery.
 - The Control area has Overview, Configs, Files, Shortcuts, File playback and the custom pages.
-  Overview has what runs now, what runs after a restart, and the spectrum. Configs has the
+  Overview has what runs now, what runs after a restart, the spectrum and the log file. Configs has the
   config files and the follow checkbox, the error recovery toggle, and the check of the
   startup config that following adapts. All of them apply at once, nothing is staged. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from
   the command line when it is given there, since CamillaDSP applies those over the statefile at

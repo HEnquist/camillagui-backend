@@ -29,6 +29,7 @@ import { PipelineTab } from "./pipeline/pipelinetab"
 import { FilePlayback } from "./playbacktab"
 import { ProcessorsTab } from "./processorstab"
 import { Shortcuts } from "./shortcuts"
+import camillalogo from "./sidepanel/camilladsp.svg"
 import { SidePanel } from "./sidepanel/sidepanel"
 import { TitleTab } from "./titletab"
 import { Update } from "./utilities/common"
@@ -56,10 +57,11 @@ class CamillaConfig extends React.Component<
     unsavedChanges: boolean
     unappliedChanges: boolean
     /**
-     * Save the editor's config to its file after each change. Kept here rather than in the
-     * toolbar, so that it carries on while the Control area is shown.
+     * Save the editor's config to its file, and apply it to CamillaDSP, after each change. Kept
+     * here rather than in the toolbar, so that they carry on while the Control area is shown.
      */
     saveConfigAutomatically: boolean
+    applyConfigAutomatically: boolean
     controllerStatus: ControllerStatus | null
     controllerSettings: ControllerSettings | null
     startupArgs: StartupArgs | null
@@ -94,6 +96,7 @@ class CamillaConfig extends React.Component<
       unsavedChanges: false,
       unappliedChanges: true,
       saveConfigAutomatically: defaultGuiConfig().save_config_automatically,
+      applyConfigAutomatically: defaultGuiConfig().apply_config_automatically,
       controllerStatus: null,
       controllerSettings: null,
       startupArgs: null,
@@ -106,7 +109,12 @@ class CamillaConfig extends React.Component<
   private async loadGuiConfig() {
     try {
       const { data, error, response } = await api.GET("/api/guiconfig")
-      if (data) this.setState({ guiConfig: data, saveConfigAutomatically: data.save_config_automatically })
+      if (data)
+        this.setState({
+          guiConfig: data,
+          saveConfigAutomatically: data.save_config_automatically,
+          applyConfigAutomatically: data.apply_config_automatically,
+        })
       else console.log("Failed to fetch guiconfig", errorMessage(error, response))
     } catch (err) {
       console.log("Failed to fetch guiconfig", err)
@@ -273,13 +281,22 @@ class CamillaConfig extends React.Component<
   }
 
   private readonly autoSaveTimer = delayedExecutor(500)
+  private readonly autoApplyTimer = delayedExecutor(500)
 
   componentDidUpdate(_prevProps: unknown, prevState: { undoRedo: UndoRedo<Config> }) {
     //ReactTooltip.rebuild()
     document.title = this.state.guiConfig.page_title
-    if (this.state.saveConfigAutomatically && !isEqual(prevState.undoRedo.current(), this.state.undoRedo.current()))
+    if (isEqual(prevState.undoRedo.current(), this.state.undoRedo.current())) return
+    if (this.state.saveConfigAutomatically)
       this.autoSaveTimer(() => {
         this.saveConfig().catch(() => {})
+      })
+    // Applying never leaves files, only a file-less config follows the editor. Without a
+    // controller there are no files to leave.
+    const controller = this.state.controllerStatus
+    if (this.state.applyConfigAutomatically && (!controller || isFileless(controller)))
+      this.autoApplyTimer(() => {
+        this.applyConfig().catch(() => {})
       })
   }
 
@@ -293,11 +310,7 @@ class CamillaConfig extends React.Component<
       <div className="configapp">
         <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
         <SidePanel
-          editing={area === "edit"}
-          config={this.state.undoRedo.current()}
           guiConfig={this.state.guiConfig}
-          applyConfig={this.applyConfig}
-          fetchConfig={this.fetchConfig}
           onControllerStatus={(controllerStatus, controllerSettings, startupArgs, dspInactive) =>
             this.setState((prev) => ({
               controllerStatus,
@@ -310,24 +323,26 @@ class CamillaConfig extends React.Component<
                 prev.unappliedChanges || (isFileless(prev.controllerStatus) && !isFileless(controllerStatus)),
             }))
           }
-          unappliedChanges={this.state.unappliedChanges}
         />
         <div className="mainarea">
-          <div className="area-switch" role="tablist">
-            {AREAS.map(([key, label, tooltip]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={area === key}
-                className={area === key ? "area-tab area-tab-selected" : "area-tab"}
-                data-tooltip-html={tooltip}
-                data-tooltip-id="main-tooltip"
-                onClick={() => this.setArea(key)}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="mainarea-header">
+            <div className="area-switch" role="tablist">
+              {AREAS.map(([key, label, tooltip]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={area === key}
+                  className={area === key ? "area-tab area-tab-selected" : "area-tab"}
+                  data-tooltip-html={tooltip}
+                  data-tooltip-id="main-tooltip"
+                  onClick={() => this.setArea(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <img className="mainarea-logo" src={camillalogo} alt="CamillaDSP" />
           </div>
           {area === "control" ? <this.ControlArea /> : <this.EditArea />}
         </div>
@@ -412,8 +427,8 @@ class CamillaConfig extends React.Component<
   }
 
   /**
-   * The config editor: the toolbar with its file, saving and history, and the tabs for each part
-   * of the config.
+   * The config editor: the toolbar with its file, saving, history and the way to CamillaDSP, and
+   * the tabs for each part of the config.
    */
   private EditArea() {
     const { errors, undoRedo } = this.state
@@ -423,8 +438,9 @@ class CamillaConfig extends React.Component<
         <EditorToolbar
           config={config}
           currentConfigFile={this.state.currentConfigFile}
-          startupConfigFile={this.state.controllerStatus?.startup_config_file}
+          controller={this.state.controllerStatus}
           unsavedChanges={this.state.unsavedChanges}
+          unappliedChanges={this.state.unappliedChanges}
           message={this.state.message}
           canUndo={undoRedo.canUndo()}
           canRedo={undoRedo.canRedo()}
@@ -440,6 +456,10 @@ class CamillaConfig extends React.Component<
           setErrors={this.setErrors}
           saveAutomatically={this.state.saveConfigAutomatically}
           setSaveAutomatically={(on) => this.setState({ saveConfigAutomatically: on })}
+          applyConfig={this.applyConfig}
+          fetchConfig={this.fetchConfig}
+          applyAutomatically={this.state.applyConfigAutomatically}
+          setApplyAutomatically={(on) => this.setState({ applyConfigAutomatically: on })}
         />
         <Tabs
           className="configtabs"
