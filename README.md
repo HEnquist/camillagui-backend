@@ -179,8 +179,8 @@ A config file given on the CamillaDSP command line overrides the statefile at ev
 The startup config can still be changed from the GUI, but a restart of CamillaDSP goes back to
 the file on the command line.
 The same goes for `--follow_capture` and `--error_recovery`.
-The "After a restart" box in the Controller tab shows what CamillaDSP runs after a restart,
-and which of it is set on the command line.
+The "After a restart" box on the Overview tab of the Control area shows what CamillaDSP runs
+after a restart, and which of it is set on the command line.
 
 The startup config will be loaded into the web interface when it is opened.
 If there is no startup config, the `default_config` will be used.
@@ -243,7 +243,7 @@ the valkues of `volume_range` and `volume_max`.
 The default values are a range of 50 dB and a maximum of 0 dB.
 
 ### Adding custom shortcut settings
-It is possible to configure custom shortcuts for the `Shortcuts` section and the compact view.
+It is possible to configure custom shortcuts for the `Shortcuts` tab of the Control area.
 The included config file contains the default Bass and Treble filters,
 as well as a few commented out examples.
 
@@ -357,6 +357,13 @@ The gui should now be available at: http://localhost:5005/gui/index.html
 
 If accessing the gui from a different machine, replace "localhost" by the IP
 or hostname of the machine running the gui server.
+
+The GUI has two areas, switched with the buttons above the tabs.
+*Control* is for what CamillaDSP does: what runs now and after a restart, which config runs,
+shortcuts and file playback.
+It also works on a phone.
+*Edit* is the config editor, with a tab for each part of the config, and the config files.
+The GUI opens in the area that was used last.
 
 ### Command line options
 The logging level is `warn` by default.

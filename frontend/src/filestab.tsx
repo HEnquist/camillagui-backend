@@ -556,7 +556,7 @@ class FileTable extends Component<
             {row.original.name === activeConfigFile && (
               <MdiIcon
                 icon={mdiStar}
-                tooltip="The startup config, which CamillaDSP loads when it starts or reloads.<br>Pick another one in the Controller tab."
+                tooltip="The startup config, which CamillaDSP loads when it starts or reloads.<br>A change saved to it runs at the next reload or restart."
                 style={{ marginLeft: "5px" }}
               />
             )}

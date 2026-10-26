@@ -21,6 +21,11 @@ export class Configcheckmessage extends React.Component<ConfigcheckmessageProps,
 
   private timer = delayedExecutor(500)
 
+  // Mounted again each time the Edit area is shown, and the config may have changed meanwhile.
+  componentDidMount() {
+    this.timer(() => this.get_config_errors(this.props.config))
+  }
+
   componentDidUpdate(prevProps: { config: Config }) {
     if (!isEqual(prevProps.config, this.props.config)) this.timer(() => this.get_config_errors(this.props.config))
   }

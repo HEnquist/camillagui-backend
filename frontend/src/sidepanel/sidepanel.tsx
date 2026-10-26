@@ -49,12 +49,18 @@ interface SidePanelProps {
   message: string
   unsavedChanges: boolean
   unappliedChanges: boolean
+  /**
+   * Whether the Edit area is shown. The editor box, and the buttons between the editor and
+   * CamillaDSP, are only there while it is.
+   */
+  editing: boolean
 }
 
 /**
  * The volume, then CamillaDSP, its controller and what it runs, then the config editor and its
  * file. The editor reaches CamillaDSP only by applying its config there, which is not saved
- * anywhere and runs file-less.
+ * anywhere and runs file-less. The panel stays mounted in both areas, so its settings and the
+ * automatic apply and save carry on while the Control area is shown.
  */
 export class SidePanel extends React.Component<
   SidePanelProps,
@@ -156,7 +162,7 @@ export class SidePanel extends React.Component<
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
           <CdspStateBox status={this.state.cdspStatus}>{this.dspControls()}</CdspStateBox>
           <ControllerBox status={this.state.cdspStatus} />
-          {this.editorBox()}
+          {this.props.editing && this.editorBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
         <DiffPopup
@@ -173,7 +179,8 @@ export class SidePanel extends React.Component<
 
   /**
    * Applying the editor's config to CamillaDSP, which runs it file-less, reading what CamillaDSP
-   * runs into the editor, and stopping it. Running from files is in the Controller tab.
+   * runs into the editor, and stopping it. Running from files is in the Control area's Configs
+   * tab. Outside the Edit area, only stopping.
    */
   private dspControls() {
     const status = this.state.cdspStatus
@@ -184,6 +191,17 @@ export class SidePanel extends React.Component<
     // Without a controller, Apply to DSP runs the config like any other, and applying it after
     // each change is fine. With one, it would leave files at the first edit.
     const autoApplies = this.state.applyConfigAutomatically && (fileless || !controller)
+    if (!this.props.editing)
+      return (
+        <div className="two-column-grid" style={{ marginTop: "5px" }}>
+          <SuccessFailureButton
+            enabled={online}
+            text="Stop processing"
+            tooltip="Stop the DSP processing"
+            onClick={() => this.stopProcessing()}
+          />
+        </div>
+      )
     return (
       <>
         <div className="two-column-grid" style={{ marginTop: "5px" }}>
@@ -192,7 +210,7 @@ export class SidePanel extends React.Component<
             text="Apply to DSP"
             tooltip={
               controller
-                ? "Run the editor's config in CamillaDSP as it is, without a file.<br>Following stops until Run from files in the Controller tab."
+                ? "Run the editor's config in CamillaDSP as it is, without a file.<br>Following stops until Run from files, in Control, Configs."
                 : "Run the editor's config in CamillaDSP as it is, without saving it to a file."
             }
             onClick={this.props.applyConfig}

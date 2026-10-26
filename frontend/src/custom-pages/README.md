@@ -1,7 +1,8 @@
 # Custom Pages
 
-Drop a `.tsx` file in this directory and rebuild, and it becomes a new tab in the GUI. This document
-is a full reference for implementing a custom page from scratch.
+Drop a `.tsx` file in this directory and rebuild, and it becomes a new tab in the GUI's Control
+area, after the built-in tabs. This document is a full reference for implementing a custom page
+from scratch.
 
 ## How it works
 

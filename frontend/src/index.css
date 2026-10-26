@@ -100,18 +100,6 @@ textarea.logfileviewer {
   min-width: 320px;
 }
 
-.sidepanel-expanded {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  box-sizing: border-box;
-  width: 100vw;
-  min-width: 0;
-  height: 100vh;
-  padding: 10px;
-  background-color: var(--background-color);
-}
-
 .sidepanel-header {
   width: 100%;
   display: flex;
@@ -129,37 +117,10 @@ textarea.logfileviewer {
   flex: 1;
 }
 
-.sidepanel-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .sidepanel-logo {
   width: 100%;
   max-width: 220px;
   height: auto;
-}
-
-.sidepanel-expanded .sidepanel-header {
-  align-items: flex-start;
-}
-
-.sidepanel-expanded .sidepanel-header-main {
-  align-items: stretch;
-}
-
-.dashboard-header-info {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.dashboard-header-actions {
-  justify-content: flex-start;
 }
 
 .sidepanel-content {
@@ -167,40 +128,6 @@ textarea.logfileviewer {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-}
-
-.sidepanel-content-expanded {
-  max-width: 1200px;
-  align-self: center;
-}
-
-.dashboard-config-summary {
-  box-sizing: border-box;
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-.sidepanel-expanded .dashboard-config-summary {
-  margin-bottom: 0;
-  flex: 1;
-}
-
-.dashboard-config-title {
-  font-size: 1.4rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.dashboard-config-description {
-  margin-top: 6px;
-  white-space: pre-wrap;
-  opacity: 0.9;
-}
-
-.dashboard-config-filename {
-  margin-top: 8px;
-  font-size: 0.9rem;
-  opacity: 0.75;
 }
 
 .tabpanel {
@@ -361,6 +288,77 @@ textarea.logfileviewer {
   width: 100%;
   min-width: 800px;
   flex-direction: column;
+}
+
+/* The Control and Edit areas, each with its own tabs below the switch. */
+.mainarea {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.area-switch {
+  display: flex;
+  gap: 4px;
+  margin: 2px 2px 8px;
+}
+
+.area-tab {
+  font-size: 1.05rem;
+  padding: 4px 24px;
+  color: var(--button-text-color);
+  background-color: var(--button-background-color);
+  border: var(--button-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.area-tab:hover {
+  background-color: var(--hovered-button-background-color);
+}
+
+.area-tab-selected {
+  font-weight: bold;
+  background-color: var(--highlighted-button-background-color);
+  border: var(--highlighted-button-border);
+}
+
+.controltabs {
+  text-align: left;
+  padding: 2px;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.control-tabpanel {
+  width: 700px;
+}
+
+/* On a phone, the side panel goes above the Control area. The Edit area needs a wider screen. */
+@media (max-width: 760px) {
+  .configapp {
+    flex-direction: column;
+  }
+
+  .configapp > :last-child {
+    margin-left: 0;
+  }
+
+  .sidepanel {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    overflow-y: visible;
+  }
+
+  .tabpanel.control-tabpanel {
+    width: 100%;
+    height: auto;
+    padding-right: 0;
+  }
 }
 
 .setting {

@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { mdiFileSearch } from "@mdi/js"
 import "./index.css"
 import { api, errorMessage, Schemas } from "./api/client"
+import { Config } from "./camilladsp/config"
 import {
   afterRestart,
   ControllerSettings,
@@ -12,8 +13,14 @@ import {
   isFileless,
   StartupArgs,
   StartupValue,
+  isCdspOnline,
+  isCdspRunning,
   stoppingFormat,
 } from "./camilladsp/status"
+import { useCdspStatus } from "./camilladsp/usevumeterstatus"
+import { GuiConfig } from "./guiconfig"
+import { QuickConfigSwitch } from "./shortcuts"
+import { SpectrumBox } from "./spectrumbox"
 import { CONFIG_FILE_STATUS_ICONS, FileInfo, loadFiles } from "./utilities/files"
 import {
   BoolOption,
@@ -32,26 +39,36 @@ const PROVIDER_DESCRIPTIONS = {
   Adapt: "the startup config adapted to the source",
 }
 
-/**
- * CamillaDSP's built-in controller: what runs now, what runs after a restart, running from files
- * and following the capture device, error recovery, and a check of the config following adapts.
- * The config editor is the other tabs, and the side panel applies its config file-less.
- */
-export function ControllerTab(props: {
+/** What the tabs of the Control area know about CamillaDSP's built-in controller. */
+interface ControllerProps {
   status: ControllerStatus | null
   settings: ControllerSettings | null
   /** Null for a CamillaDSP too old to tell. */
   startupArgs: StartupArgs | null
-  /** Whether processing is stopped. */
-  inactive: boolean
-  /** Whether the backend may change the active config file. */
-  canChooseFile: boolean
   openConfigFile: (name: string) => Promise<void>
-}) {
+}
+
+/** The width of a Control tab, as in .control-tabpanel, less on a narrow screen. */
+function controlPanelWidth(): number {
+  return typeof window === "undefined" ? 700 : Math.max(290, Math.min(window.innerWidth - 30, 700))
+}
+
+/**
+ * What CamillaDSP does: what runs now and after a restart, and the spectrum. The landing tab of
+ * the Control area.
+ */
+export function OverviewTab(
+  props: ControllerProps & {
+    guiConfig: GuiConfig
+    /** Whether processing is stopped. */
+    inactive: boolean
+  },
+) {
+  const cdspStatus = useCdspStatus(props.guiConfig)
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel" style={{ width: "700px" }}>
+        <div className="tabpanel control-tabpanel">
           <RunningBox status={props.status} inactive={props.inactive} openConfigFile={props.openConfigFile} />
           <AfterRestartBox
             status={props.status}
@@ -59,12 +76,44 @@ export function ControllerTab(props: {
             startupArgs={props.startupArgs}
             openConfigFile={props.openConfigFile}
           />
+          {isCdspOnline(cdspStatus) && (
+            <SpectrumBox
+              guiConfig={props.guiConfig}
+              labels={cdspStatus.labels}
+              width={controlPanelWidth() - 20}
+              isRunning={isCdspRunning(cdspStatus)}
+            />
+          )}
+        </div>
+        <div className="tabspacer" />
+      </div>
+    </ErrorBoundary>
+  )
+}
+
+/**
+ * Which config CamillaDSP runs: the startup config and following, run from files, error recovery,
+ * the check of the startup config, and the quick switch between config files.
+ */
+export function ConfigsTab(
+  props: ControllerProps & {
+    /** Whether the backend may change the startup config file. */
+    canChooseFile: boolean
+    currentConfigName?: string
+    setConfig: (name: string, config: Config) => void
+  },
+) {
+  return (
+    <ErrorBoundary>
+      <div className="tabcontainer">
+        <div className="tabpanel control-tabpanel">
           <RunFromFilesBox
             status={props.status}
             settings={props.settings}
             startupArgs={props.startupArgs}
             canChooseFile={props.canChooseFile}
           />
+          <QuickConfigSwitch setConfig={props.setConfig} currentConfigName={props.currentConfigName} />
           <RecoveryBox status={props.status} settings={props.settings} startupArgs={props.startupArgs} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>

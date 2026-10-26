@@ -8,19 +8,20 @@ import { loadConfigJson, loadFilenames } from "./utilities/files"
 import { Box, Button, ErrorBoundary, ErrorMessage, MdiIcon } from "./utilities/ui-components"
 
 export function Shortcuts(props: {
-  currentConfigName?: string
   config: Config
   updateConfig: (update: Update<Config>) => void
-  setConfig: (name: string, config: Config) => void
   shortcutSections: ShortcutSection[]
 }) {
-  const { currentConfigName, config, setConfig, updateConfig, shortcutSections } = props
+  const { config, updateConfig, shortcutSections } = props
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel">
-          <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig} />
-          <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName} />
+        <div className="tabpanel control-tabpanel">
+          {shortcutSections.length > 0 ? (
+            <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig} />
+          ) : (
+            <Box title="Shortcuts">No shortcuts are set up, see custom_shortcuts in gui-config.yml.</Box>
+          )}
         </div>
         <div className="tabspacer" />
       </div>

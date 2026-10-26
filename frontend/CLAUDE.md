@@ -46,19 +46,23 @@ camilladsp/                 # Domain types + status polling
     params.ts               # Narrowing helpers for the untyped parameter bag
     fixtures/variants.json  # every schema-valid filter config, see below
 
-# Tab components (one per GUI tab)
+areas.ts                    # The Control and Edit areas, and which one is shown
+
+# Edit area tabs
 titletab.tsx
 devicestab.tsx
 devicecapabilitiespopup.tsx # A device's capabilities, from the devices tab
 filterstab.tsx
 mixerstab.tsx
 processorstab.tsx
-shortcuts.tsx
 filestab.tsx
-controllertab.tsx           # The controller: what runs now, run from files, recovery, the file check
+
+# Control area tabs
+controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
+shortcuts.tsx               # Shortcuts, and the quick config switch used by Configs
 playbacktab.tsx             # Playing an audio file through the pipeline
 
-custom-pages/               # Extra tabs: a .tsx here is a tab, see its README.md
+custom-pages/               # Extra Control tabs: a .tsx here is a tab, see its README.md
 
 pipeline/
   pipelinetab.tsx           # Pipeline tab
@@ -73,9 +77,6 @@ sidepanel/
   vumeter.tsx               # VU meter bars
   logfileviewer.tsx         # Log file modal
   configcheckmessage.tsx    # Config error banner
-
-compactview.tsx             # Alternate compact UI mode
-dashboardview.tsx           # Dashboard view mode
 
 spectrum.tsx                # Spectrum analyser (D3)
 spectrumbox.tsx             # Spectrum analyser wrapper/container
@@ -160,7 +161,7 @@ Key endpoints used by the frontend:
   capture source format and recovers from device errors. Its status and settings come with
   `/api/status` as `controller` and `controller_settings`, null without one, and the command
   line CamillaDSP was started with as `startup_args`. The `SidePanel` passes them up when they
-  change, for the Files and Controller tabs. While following, the
+  change, for the Files tab and the Control area. While following, the
   config that runs is the active one adapted to the source format, see `getstartconfig`. A
   source at `samplerate` or one of the `alternate_samplerates` runs natively, any other rate is
   resampled to `samplerate`. `runfromfiles` stores the active file and, unless `follow` is null,
@@ -168,28 +169,34 @@ Key endpoints used by the frontend:
 
 ## Editor and CamillaDSP
 
-The GUI keeps the config editor apart from what CamillaDSP runs, in the tabs and in the side
-panel alike.
+The GUI keeps the config editor apart from what CamillaDSP runs, in two areas with tabs of their
+own, switched above the tabs: *Control*, for what CamillaDSP does and runs, and *Edit*, for the
+config editor. Control is the default, and the area shown is kept in localStorage
+(`areas.ts`). The side panel stays mounted in both, so the automatic apply and save carry on.
+The old `?compactview` and `?dashboardview` bookmarks open Control. Below 760 px the side panel
+goes above the tabs, which makes Control usable on a phone. Edit needs a wider screen.
 
 The file CamillaDSP loads when it starts or reloads (`startup_config_file`) is the *startup
 config*, in the GUI and in CamillaDSP alike. It used to be the "active config", a name that
 confused people, and the GUI's own API, its code and the `on_set_active_config` and
 `on_get_active_config` settings still say active.
 
-- The editor is the Title to Pipeline tabs and Files, and the side panel's Editor box: one
-  config, the file it belongs to, Save, Revert and auto-save. The Files table only marks the
-  startup config (★), it does not change it.
-- CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Controller tab. The
-  CamillaDSP box shows its state, with "Apply to DSP", "Load into editor", "Compare" and "Stop
-  processing". The Controller box only shows the *source* (file, with the provider, or
-  file-less), the file that runs, following and recovery. The Controller tab holds the
-  controls and details: what runs now, what runs after a restart, the startup config and
-  following with "Run from files", the error recovery toggle, which applies at once, and the
-  check of the startup config that following adapts. "After a restart" (`afterRestart` in
-  `camilladsp/status.ts`) takes each value from the command line when it is given there, since
-  CamillaDSP applies those over the statefile at every start, and from the statefile otherwise.
-  It marks what differs from what runs now. Where the command line sets the startup config,
-  following or recovery, the controls for it say that a change lasts until a restart. "Running from" is the file the running config came from
+- The editor is the Edit area, Title to Pipeline and Files, and the side panel's Editor box: one
+  config, the file it belongs to, Save, Revert and auto-save. The Editor box is only there in
+  Edit. The Files table only marks the startup config (★), it does not change it.
+- CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Control area. The
+  CamillaDSP box shows its state and "Stop processing", and in Edit also "Apply to DSP", "Load
+  into editor" and "Compare". The Controller box only shows the *source* (file, with the
+  provider, or file-less), the file that runs, following and recovery.
+- The Control area has Overview, Configs, Shortcuts, File playback and the custom pages.
+  Overview has what runs now, what runs after a restart, and the spectrum. Configs has the
+  startup config and following with "Run from files", the quick config switch, the error
+  recovery toggle, which applies at once, and the check of the startup config that following
+  adapts. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from
+  the command line when it is given there, since CamillaDSP applies those over the statefile at
+  every start, and from the statefile otherwise. It marks what differs from what runs now. Where
+  the command line sets the startup config, following or recovery, the controls for it say that
+  a change lasts until a restart. "Running from" is the file the running config came from
   (`config_file`); the startup config is listed under it only when it differs, which is when
   the config runs file-less or the file was changed without a reload.
 - CamillaDSP's config comes from one of two sources, and each direction has one button:
@@ -197,12 +204,12 @@ confused people, and the GUI's own API, its code and the `on_set_active_config` 
     sent: nothing follows the source, and recovery restarts it. `source` is `Websocket`.
   - "Run from files" (`runfromfiles`) stores the startup config file and whether to follow the
     capture source, then reloads. The file (picked in a `FileSelectPopup`) and the follow
-    checkbox are only staged in the Controller tab until then, with "Not running: ⚠️" while they
-    differ from what runs.
+    checkbox are only staged in Configs until then, with "Not running: ⚠️" while they differ
+    from what runs.
   - "Apply automatically" only resends a config that already runs file-less, it never leaves
     files. Without a controller it applies after every change, as there are no files to leave.
-  - The quick config switch in the Shortcuts tab and the compact view picks a file, so it runs
-    it from files (`runfromfiles` with `follow` null), keeping the follow setting.
+  - The quick config switch in Configs picks a file, so it runs it from files (`runfromfiles`
+    with `follow` null), keeping the follow setting.
 - The editor meets CamillaDSP in those buttons, in "Load into editor" (`getstartconfig`, the
   same as at startup, so an adapted config is never loaded), and in "Open in editor" on a file
   name. When the source goes from file-less back to files, the GUI marks the editor's config as

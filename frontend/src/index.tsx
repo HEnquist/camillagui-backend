@@ -5,19 +5,18 @@ import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop, mdiImageSizeSelectSmall, mdiPoll } from "@mdi/js"
+import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop } from "@mdi/js"
 import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
 import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
+import { Area, getArea, storeArea } from "./areas"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { ControllerSettings, ControllerStatus, isFileless, StartupArgs } from "./camilladsp/status"
-import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
-import { ControllerTab } from "./controllertab"
+import { ConfigsTab, OverviewTab } from "./controltabs"
 import type { CustomPageComponent } from "./custom-pages/types"
-import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
 import { Files } from "./filestab"
@@ -44,12 +43,14 @@ const customPages = Object.values(customPageModules)
 class CamillaConfig extends React.Component<
   unknown,
   {
-    activetab: number
+    area: Area
+    controlTab: number
+    /** The Edit area's tab, where 0 is the undo and redo buttons and 1 is Title. */
+    editTab: number
     currentConfigFile?: string
     guiConfig: GuiConfig
     undoRedo: UndoRedo<Config>
     errors: Errors
-    viewMode: ViewMode
     message: string
     unsavedChanges: boolean
     unappliedChanges: boolean
@@ -71,17 +72,18 @@ class CamillaConfig extends React.Component<
     this.openConfigFile = this.openConfigFile.bind(this)
     this.revertConfig = this.revertConfig.bind(this)
     this.setErrors = this.setErrors.bind(this)
-    this.switchTab = this.switchTab.bind(this)
-    this.setViewMode = this.setViewMode.bind(this)
-    this.NormalContent = this.NormalContent.bind(this)
+    this.setArea = this.setArea.bind(this)
+    this.ControlArea = this.ControlArea.bind(this)
+    this.EditArea = this.EditArea.bind(this)
     this.saveNotify = this.saveNotify.bind(this)
     this.applyNotify = this.applyNotify.bind(this)
     this.state = {
-      activetab: 1,
+      area: getArea(),
+      controlTab: 0,
+      editTab: 1,
       guiConfig: defaultGuiConfig(),
       undoRedo: new UndoRedo(defaultConfig()),
       errors: NoErrors,
-      viewMode: getViewMode(),
       message: "",
       unsavedChanges: false,
       unappliedChanges: true,
@@ -148,9 +150,9 @@ class CamillaConfig extends React.Component<
     }
   }
 
-  private setViewMode(mode: ViewMode) {
-    setViewMode(mode)
-    this.setState({ viewMode: mode })
+  private setArea(area: Area) {
+    storeArea(area)
+    this.setState({ area })
   }
 
   private saveNotify() {
@@ -247,7 +249,8 @@ class CamillaConfig extends React.Component<
   private async openConfigFile(name: string) {
     const config = await loadConfigJson(name, (reason) => this.setState({ message: reason }))
     this.setCurrentConfig(name, config)
-    this.setState({ activetab: 2, message: `Opened ${name}` })
+    storeArea("edit")
+    this.setState({ area: "edit", editTab: 2, message: `Opened ${name}` })
   }
 
   private setCurrentConfigFileName(filename: string | undefined) {
@@ -269,48 +272,15 @@ class CamillaConfig extends React.Component<
     document.title = this.state.guiConfig.page_title
   }
 
-  private switchTab(index: number) {
-    this.setState({ activetab: index })
-  }
-
   render() {
+    const { area, currentConfigFile } = this.state
     return (
       <div className="configapp">
         <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
-        {this.state.viewMode === "compact" ? (
-          <CompactView
-            currentConfigName={this.state.currentConfigFile}
-            config={this.state.undoRedo.current()}
-            setConfig={(filename, config) => {
-              this.runConfigFile(filename, config).catch(() => {})
-            }}
-            updateConfig={(update) => this.updateConfig(update, true)}
-            switchToNormalView={() => this.setViewMode("normal")}
-            switchToDashboardView={() => this.setViewMode("dashboard")}
-            guiConfig={this.state.guiConfig}
-          />
-        ) : this.state.viewMode === "dashboard" ? (
-          <DashboardView
-            guiConfig={this.state.guiConfig}
-            message={this.state.message}
-            switchToNormalView={() => this.setViewMode("normal")}
-            switchToCompactView={() => this.setViewMode("compact")}
-          />
-        ) : (
-          <this.NormalContent />
-        )}
-      </div>
-    )
-  }
-
-  private NormalContent() {
-    const { errors, undoRedo, currentConfigFile } = this.state
-    const config = undoRedo.current()
-    return (
-      <>
         <SidePanel
+          editing={area === "edit"}
           currentConfigFile={currentConfigFile}
-          config={config}
+          config={this.state.undoRedo.current()}
           guiConfig={this.state.guiConfig}
           applyConfig={this.applyConfig}
           fetchConfig={this.fetchConfig}
@@ -333,153 +303,192 @@ class CamillaConfig extends React.Component<
           unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
         />
-        <Tabs className="configtabs" selectedIndex={this.state.activetab} onSelect={this.switchTab}>
-          <TabList>
-            <Tab disabled={true}>
-              <MdiButton
-                icon={mdiPoll}
-                tooltip="Change to dashboard view"
-                onClick={() => this.setViewMode("dashboard")}
-                buttonSize="tiny"
-                rotation={90}
-              />
-              <MdiButton
-                icon={mdiImageSizeSelectSmall}
-                tooltip="Change to compact view"
-                onClick={() => this.setViewMode("compact")}
-                buttonSize="tiny"
-              />
-              <MdiButton
-                icon={mdiArrowULeftTop}
-                tooltip={"Undo last change<br>" + undoRedo.undoDiff()}
-                buttonSize="tiny"
-                style={{
-                  marginLeft: "10px",
-                  marginRight: "10px",
-                }}
-                onClick={() =>
-                  this.setState((prevState) => ({
-                    undoRedo: prevState.undoRedo.undo(),
-                  }))
-                }
-                enabled={undoRedo.canUndo()}
-              />
-              <MdiButton
-                icon={mdiArrowURightTop}
-                tooltip={"Redo last change<br>" + undoRedo.redoDiff()}
-                buttonSize="tiny"
-                onClick={() =>
-                  this.setState((prevState) => ({
-                    undoRedo: prevState.undoRedo.redo(),
-                  }))
-                }
-                enabled={undoRedo.canRedo()}
-              />
-            </Tab>
-            <Tab>Title</Tab>
-            <Tab>Devices {errors.hasErrorsFor("devices") && <ErrorIcon />}</Tab>
-            <Tab>Filters {errors.hasErrorsFor("filters") && <ErrorIcon />}</Tab>
-            <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
-            <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
-            <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
-            <Tab>Files</Tab>
-            <Tab>Controller</Tab>
-            {this.state.guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
-            <Tab>Shortcuts</Tab>
-            {customPages.map((customPage) => (
-              <Tab key={customPage.tabLabel}>{customPage.tabLabel}</Tab>
+        <div className="mainarea">
+          <div className="area-switch" role="tablist">
+            {AREAS.map(([key, label, tooltip]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={area === key}
+                className={area === key ? "area-tab area-tab-selected" : "area-tab"}
+                data-tooltip-html={tooltip}
+                data-tooltip-id="main-tooltip"
+                onClick={() => this.setArea(key)}
+              >
+                {label}
+              </button>
             ))}
-          </TabList>
-          <TabPanel />
+          </div>
+          {area === "control" ? <this.ControlArea /> : <this.EditArea />}
+        </div>
+      </div>
+    )
+  }
+
+  /** What CamillaDSP does and runs: the overview, the configs, shortcuts, playback, custom pages. */
+  private ControlArea() {
+    const { guiConfig, currentConfigFile, errors } = this.state
+    const config = this.state.undoRedo.current()
+    const controller = {
+      status: this.state.controllerStatus,
+      settings: this.state.controllerSettings,
+      startupArgs: this.state.startupArgs,
+      openConfigFile: this.openConfigFile,
+    }
+    return (
+      <Tabs
+        className="controltabs"
+        selectedIndex={this.state.controlTab}
+        onSelect={(index) => this.setState({ controlTab: index })}
+      >
+        <TabList>
+          <Tab>Overview</Tab>
+          <Tab>Configs</Tab>
+          <Tab>Shortcuts</Tab>
+          {guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
+          {customPages.map((customPage) => (
+            <Tab key={customPage.tabLabel}>{customPage.tabLabel}</Tab>
+          ))}
+        </TabList>
+        <TabPanel>
+          <OverviewTab {...controller} guiConfig={guiConfig} inactive={this.state.dspInactive} />
+        </TabPanel>
+        <TabPanel>
+          <ConfigsTab
+            {...controller}
+            canChooseFile={guiConfig.can_update_active_config}
+            currentConfigName={currentConfigFile}
+            setConfig={(filename, config) => {
+              this.runConfigFile(filename, config).catch(() => {})
+            }}
+          />
+        </TabPanel>
+        <TabPanel>
+          <Shortcuts
+            config={config}
+            updateConfig={(update) => this.updateConfig(update, true)}
+            shortcutSections={guiConfig.custom_shortcuts}
+          />
+        </TabPanel>
+        {guiConfig.audiofiles_supported && (
           <TabPanel>
-            <TitleTab config={config} updateConfig={this.updateConfig} />
+            <FilePlayback loadConfig={(config) => this.setCurrentConfig(undefined, config)} />
           </TabPanel>
-          <TabPanel>
-            <DevicesTab
-              devices={config.devices}
-              guiConfig={this.state.guiConfig}
-              updateConfig={this.updateConfig}
-              errors={errors.forSubpath("devices")}
-            />
-          </TabPanel>
-          <TabPanel>
-            <FiltersTab
-              config={config}
-              samplerate={config.devices.samplerate}
-              channels={getCaptureDeviceChannelCount(config.devices.capture)}
-              coeffDir={this.state.guiConfig.coeff_dir}
-              allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}
-              updateConfig={this.updateConfig}
-              errors={errors.forSubpath("filters")}
-            />
-          </TabPanel>
-          <TabPanel>
-            <MixersTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("mixers")} />
-          </TabPanel>
-          <TabPanel>
-            <ProcessorsTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("processors")} />
-          </TabPanel>
-          <TabPanel>
-            <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
-          </TabPanel>
-          <TabPanel>
-            <Files
-              currentConfigFile={currentConfigFile}
-              config={config}
-              setCurrentConfig={this.setCurrentConfig}
-              setCurrentConfigFileName={this.setCurrentConfigFileName}
-              updateConfig={this.updateConfig}
-              saveNotify={this.saveNotify}
-              guiConfig={this.state.guiConfig}
-              controllerStatus={this.state.controllerStatus}
-            />
-          </TabPanel>
-          <TabPanel>
-            <ControllerTab
-              status={this.state.controllerStatus}
-              settings={this.state.controllerSettings}
-              startupArgs={this.state.startupArgs}
-              inactive={this.state.dspInactive}
-              canChooseFile={this.state.guiConfig.can_update_active_config}
-              openConfigFile={this.openConfigFile}
-            />
-          </TabPanel>
-          {this.state.guiConfig.audiofiles_supported && (
-            <TabPanel>
-              <FilePlayback loadConfig={(config) => this.setCurrentConfig(undefined, config)} />
+        )}
+        {customPages.map((customPage) => {
+          const CustomPage = customPage
+          return (
+            <TabPanel key={CustomPage.tabLabel}>
+              <ErrorBoundary>
+                <CustomPage config={config} updateConfig={this.updateConfig} guiConfig={guiConfig} errors={errors} />
+              </ErrorBoundary>
             </TabPanel>
-          )}
-          <TabPanel>
-            <Shortcuts
-              currentConfigName={currentConfigFile}
-              config={this.state.undoRedo.current()}
-              setConfig={(filename, config) => {
-                this.runConfigFile(filename, config).catch(() => {})
+          )
+        })}
+      </Tabs>
+    )
+  }
+
+  /** The config editor: undo and redo, the tabs for each part of the config, and the files. */
+  private EditArea() {
+    const { errors, undoRedo, currentConfigFile } = this.state
+    const config = undoRedo.current()
+    return (
+      <Tabs
+        className="configtabs"
+        selectedIndex={this.state.editTab}
+        onSelect={(index) => this.setState({ editTab: index })}
+      >
+        <TabList>
+          <Tab disabled={true}>
+            <MdiButton
+              icon={mdiArrowULeftTop}
+              tooltip={"Undo last change<br>" + undoRedo.undoDiff()}
+              buttonSize="tiny"
+              style={{
+                marginRight: "10px",
               }}
-              updateConfig={(update) => this.updateConfig(update, true)}
-              shortcutSections={this.state.guiConfig.custom_shortcuts}
+              onClick={() =>
+                this.setState((prevState) => ({
+                  undoRedo: prevState.undoRedo.undo(),
+                }))
+              }
+              enabled={undoRedo.canUndo()}
             />
-          </TabPanel>
-          {customPages.map((customPage) => {
-            const CustomPage = customPage
-            return (
-              <TabPanel key={CustomPage.tabLabel}>
-                <ErrorBoundary>
-                  <CustomPage
-                    config={config}
-                    updateConfig={this.updateConfig}
-                    guiConfig={this.state.guiConfig}
-                    errors={errors}
-                  />
-                </ErrorBoundary>
-              </TabPanel>
-            )
-          })}
-        </Tabs>
-      </>
+            <MdiButton
+              icon={mdiArrowURightTop}
+              tooltip={"Redo last change<br>" + undoRedo.redoDiff()}
+              buttonSize="tiny"
+              onClick={() =>
+                this.setState((prevState) => ({
+                  undoRedo: prevState.undoRedo.redo(),
+                }))
+              }
+              enabled={undoRedo.canRedo()}
+            />
+          </Tab>
+          <Tab>Title</Tab>
+          <Tab>Devices {errors.hasErrorsFor("devices") && <ErrorIcon />}</Tab>
+          <Tab>Filters {errors.hasErrorsFor("filters") && <ErrorIcon />}</Tab>
+          <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
+          <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
+          <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
+          <Tab>Files</Tab>
+        </TabList>
+        <TabPanel />
+        <TabPanel>
+          <TitleTab config={config} updateConfig={this.updateConfig} />
+        </TabPanel>
+        <TabPanel>
+          <DevicesTab
+            devices={config.devices}
+            guiConfig={this.state.guiConfig}
+            updateConfig={this.updateConfig}
+            errors={errors.forSubpath("devices")}
+          />
+        </TabPanel>
+        <TabPanel>
+          <FiltersTab
+            config={config}
+            samplerate={config.devices.samplerate}
+            channels={getCaptureDeviceChannelCount(config.devices.capture)}
+            coeffDir={this.state.guiConfig.coeff_dir}
+            allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}
+            updateConfig={this.updateConfig}
+            errors={errors.forSubpath("filters")}
+          />
+        </TabPanel>
+        <TabPanel>
+          <MixersTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("mixers")} />
+        </TabPanel>
+        <TabPanel>
+          <ProcessorsTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("processors")} />
+        </TabPanel>
+        <TabPanel>
+          <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
+        </TabPanel>
+        <TabPanel>
+          <Files
+            currentConfigFile={currentConfigFile}
+            config={config}
+            setCurrentConfig={this.setCurrentConfig}
+            setCurrentConfigFileName={this.setCurrentConfigFileName}
+            updateConfig={this.updateConfig}
+            saveNotify={this.saveNotify}
+            guiConfig={this.state.guiConfig}
+            controllerStatus={this.state.controllerStatus}
+          />
+        </TabPanel>
+      </Tabs>
     )
   }
 }
+
+const AREAS: [Area, string, string][] = [
+  ["control", "Control", "What CamillaDSP runs: the overview, the configs, shortcuts and playback"],
+  ["edit", "Edit", "The config editor"],
+]
 
 function ErrorIcon() {
   return <MdiIcon icon={mdiAlert} tooltip="There are errors on this tab" style={{ color: "var(--error-text-color)" }} />

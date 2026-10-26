@@ -12,7 +12,7 @@ const PROVIDER_NAMES = { Single: "as written", Adapt: "adapted" }
 
 /**
  * CamillaDSP's built-in controller at a glance: where the config comes from, the file that runs,
- * following and recovery. What runs is chosen in the Controller tab. Nothing while CamillaDSP is
+ * following and recovery. What runs is chosen in the Control area. Nothing while CamillaDSP is
  * offline or has no controller.
  */
 export function ControllerBox(props: { status: Status }) {
@@ -47,7 +47,7 @@ export function ControllerBox(props: { status: Status }) {
   return (
     <Box
       title="Controller"
-      tooltip="Following and error recovery are on only when enabled and CamillaDSP runs with --wait.<br>Set them in the Controller tab."
+      tooltip="Following and error recovery are on only when enabled and CamillaDSP runs with --wait.<br>Set them in Control, Configs."
     >
       <div className="two-column-grid" style={{ gridTemplateColumns: "max-content auto" }}>
         <div className="alignRight">Source:</div>

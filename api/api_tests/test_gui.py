@@ -28,10 +28,28 @@ def wait_for(condition, timeout=5):
         time.sleep(0.05)
 
 
+def open_tab(page, area, tab):
+    """Show a tab of the Control or the Edit area."""
+    page.get_by_role("tab", name=area, exact=True).click()
+    page.get_by_role("tab", name=tab, exact=True).click()
+
+
 def sidebar_state(page):
     """The value next to "State:" in the side panel's CamillaDSP box."""
     label = page.locator(".sidepanel").get_by_text("State:", exact=True)
     return label.locator("xpath=following-sibling::div[1]")
+
+
+def test_the_area_is_remembered(page, server):
+    """Control is the default, the area picked is kept over a reload, and the bookmarks of
+    the old compact and dashboard views open Control."""
+    expect(page.get_by_role("tab", name="Overview", exact=True)).to_be_visible()
+    page.get_by_role("tab", name="Edit", exact=True).click()
+    page.reload()
+    expect(page.get_by_role("tab", name="Pipeline", exact=True)).to_be_visible()
+    page.goto(f"http://127.0.0.1:{server.port}/gui/index.html?compactview")
+    expect(page.get_by_role("tab", name="Overview", exact=True)).to_be_visible()
+    assert "compactview" not in page.url
 
 
 def test_state_changes_show_at_once(page, server):
@@ -54,7 +72,7 @@ def test_offline_when_camilladsp_goes_away(page, server):
 def test_files_tab_lists_the_files(page, server):
     """Also those added and removed behind the GUI's back, which it notices
     by polling /api/files/fingerprints, within a check or so."""
-    page.get_by_role("tab", name="Files").click()
+    open_tab(page, "Edit", "Files")
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
     added = server.config_dir / "added_tmp.yml"
     shutil.copy(server.config_dir / "config2.yml", added)
@@ -69,28 +87,28 @@ def test_files_tab_in_a_second_gui_tab(page, server):
     """A browser has six connections to the backend for all its tabs, and each
     open event stream holds one, so a second GUI tab must leave room for its
     requests."""
-    page.get_by_role("tab", name="Files").click()
+    open_tab(page, "Edit", "Files")
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
     second = page.context.new_page()
     second.goto(page.url)
-    second.get_by_role("tab", name="Files").click()
+    open_tab(second, "Edit", "Files")
     expect(second.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
 def test_five_gui_tabs_leave_room_for_requests(page, server):
     """Each GUI tab holds one connection with its event stream, whatever it
-    shows. Four tabs with the spectrum, the levels and the state on the
-    dashboard leave room for a fifth to list its files."""
+    shows. Four tabs with the spectrum on the overview, the levels and the
+    state leave room for a fifth to list its files."""
     url = f"http://127.0.0.1:{server.port}/gui/index.html"
     for index in range(4):
         tab = page if index == 0 else page.context.new_page()
-        tab.goto(f"{url}?dashboardview")
+        tab.goto(url)
         tab.locator('[data-tooltip-html="Show spectrum"]').click()
         expect(tab.locator('[data-tooltip-html="Hide spectrum"]')).to_be_visible()
     wait_for(lambda: len(server.fake.commands("SubscribeSpectrum")) >= 4)
     fifth = page.context.new_page()
     fifth.goto(url)
-    fifth.get_by_role("tab", name="Files").click()
+    open_tab(fifth, "Edit", "Files")
     expect(fifth.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
@@ -100,9 +118,9 @@ def test_config_with_errors_loads_into_the_gui(page, server):
     config["pipeline"] = [{"type": "Filter", "channels": [0], "names": ["nosuchfilter"]}]
     (server.config_dir / "errors_tmp.yml").write_text(yaml.dump(config))
     try:
-        page.get_by_role("tab", name="Files").click()
+        open_tab(page, "Edit", "Files")
         page.locator("""[data-tooltip-html='Load "errors_tmp.yml" into the GUI.']""").click()
-        page.get_by_role("tab", name="Pipeline").click()
+        open_tab(page, "Edit", "Pipeline")
         expect(page.get_by_text("nosuchfilter").first).to_be_visible()
         expect(page.locator(".sidepanel .config-status")).not_to_have_text("OK")
     finally:
@@ -113,7 +131,7 @@ def test_zip_download_goes_to_the_browser(page, server, tmp_path):
     """The zip is a native download, and a refusal still shows its message."""
     gone = server.config_dir / "gone.yml"
     shutil.copy(server.config_dir / "config2.yml", gone)
-    page.get_by_role("tab", name="Files").click()
+    open_tab(page, "Edit", "Files")
     configs = page.locator(".box").filter(has_text="config2.yml").first
     rows = configs.get_by_role("row")
     download_button = configs.locator('[data-tooltip-html="Download 1 file as zip file"]')
@@ -135,7 +153,7 @@ def test_zip_download_goes_to_the_browser(page, server, tmp_path):
 
 
 def test_device_capabilities_show_the_supported_rates(page, server):
-    page.get_by_role("tab", name="Devices").click()
+    open_tab(page, "Edit", "Devices")
     page.locator('label[data-tooltip-html="Audio backend for capture"] select').select_option("Alsa")
     page.locator('[data-tooltip-html="Pick a device"]').first.click()
     page.get_by_text("hw:Aaaa,0,0: Dev A", exact=True).click()
@@ -146,6 +164,7 @@ def test_device_capabilities_show_the_supported_rates(page, server):
 
 
 def test_config_and_volume_reach_camilladsp(page, server):
+    page.get_by_role("tab", name="Edit", exact=True).click()
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
     expect(sidepanel.locator(".config-status")).to_have_text("OK")
@@ -197,12 +216,13 @@ def with_controller(page, server):
 
 def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
     source = with_controller(page, server)
+    page.get_by_role("tab", name="Edit", exact=True).click()
     sidepanel = page.locator(".sidepanel")
     sidepanel.get_by_text("Apply to DSP", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     expect(source).to_have_text("file-less")
     expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
-    page.get_by_role("tab", name="Controller").click()
+    open_tab(page, "Control", "Configs")
     page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
     expect(source).to_have_text("file, as written")
@@ -210,6 +230,7 @@ def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
 
 def test_apply_automatically_leaves_files_alone(page, server):
     source = with_controller(page, server)
+    open_tab(page, "Edit", "Title")
     page.locator(".sidepanel").get_by_text("Apply automatically").click()
     page.locator('[data-tooltip-html="Optional title for the configuration"]').fill("Edited")
     # Well past the delay before an automatic apply.
@@ -220,9 +241,9 @@ def test_apply_automatically_leaves_files_alone(page, server):
 
 def test_a_picked_file_runs_with_run_from_files(page, server):
     with_controller(page, server)
-    page.get_by_role("tab", name="Controller").click()
+    open_tab(page, "Control", "Configs")
     page.locator('[data-tooltip-html^="Pick the config file"]').click()
-    page.get_by_text("config2.yml", exact=True).click()
+    page.locator("#popup-root").get_by_text("config2.yml", exact=True).click()
     # Staged only, until Run from files.
     expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
     assert not server.fake.commands("SetConfigFilePath")
@@ -234,7 +255,7 @@ def test_a_picked_file_runs_with_run_from_files(page, server):
 
 def test_following_is_set_with_run_from_files(page, server):
     with_controller(page, server)
-    page.get_by_role("tab", name="Controller").click()
+    open_tab(page, "Control", "Configs")
     page.get_by_text("Follow the capture device", exact=True).click()
     # Staged only, until Run from files.
     expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
@@ -265,12 +286,13 @@ def test_the_command_line_shows_in_after_a_restart(page, server):
     wait_for(lambda: server.get("/api/param/volume").status == 200)
     wait_for(lambda: server.get("/api/status").json()["startup_args"] is not None)
     with_controller(page, server)
-    page.get_by_role("tab", name="Controller").click()
+    open_tab(page, "Control", "Overview")
     panel = page.locator(".tabpanel")
     expect(panel.get_by_text("After a restart", exact=True)).to_be_visible()
     # The startup config and following.
     expect(panel.get_by_text("(set on the command line)", exact=True)).to_have_count(2)
     expect(panel.get_by_text("(from the statefile)", exact=True)).to_have_count(1)
+    open_tab(page, "Control", "Configs")
     expect(panel.get_by_text("The command line gives config.yml, a restart goes back to it.")).to_be_visible()
     expect(panel.get_by_text("The command line gives --follow_capture", exact=False)).to_be_visible()
     # Offline again, so the next reset reconnects to a CamillaDSP without them.
@@ -279,7 +301,7 @@ def test_the_command_line_shows_in_after_a_restart(page, server):
 
 def test_the_startup_config_is_checked_with_following_off(page, server):
     with_controller(page, server)
-    page.get_by_role("tab", name="Controller").click()
+    open_tab(page, "Control", "Configs")
     page.get_by_text("Check the startup config", exact=True).click()
     check = page.locator(".tabpanel table")
     expect(check.get_by_text("config.yml", exact=True)).to_be_visible()
