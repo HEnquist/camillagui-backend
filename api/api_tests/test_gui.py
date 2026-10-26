@@ -214,7 +214,7 @@ def with_controller(page, server):
     return source
 
 
-def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
+def test_apply_to_dsp_runs_file_less_until_a_file_is_run(page, server):
     source = with_controller(page, server)
     page.get_by_role("tab", name="Edit", exact=True).click()
     sidepanel = page.locator(".sidepanel")
@@ -223,7 +223,8 @@ def test_apply_to_dsp_runs_file_less_until_run_from_files(page, server):
     expect(source).to_have_text("file-less")
     expect(sidepanel.get_by_text("Not saved to any file", exact=False)).to_be_visible()
     open_tab(page, "Control", "Configs")
-    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
+    # The startup config is marked with a star.
+    page.locator(".tabpanel").get_by_text("★ config.yml", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
     expect(source).to_have_text("file, as written")
 
@@ -239,30 +240,34 @@ def test_apply_automatically_leaves_files_alone(page, server):
     expect(source).to_have_text("file, as written")
 
 
-def test_a_picked_file_runs_with_run_from_files(page, server):
+def test_a_config_file_runs_with_one_click(page, server):
+    """It becomes the startup config, runs from files, and is loaded into the editor."""
     with_controller(page, server)
     open_tab(page, "Control", "Configs")
-    page.locator('[data-tooltip-html^="Pick the config file"]').click()
-    page.locator("#popup-root").get_by_text("config2.yml", exact=True).click()
-    # Staged only, until Run from files.
-    expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
-    assert not server.fake.commands("SetConfigFilePath")
-    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
+    page.locator(".tabpanel").get_by_text("config2.yml", exact=True).click()
     wait_for(lambda: server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml"))
     wait_for(lambda: server.fake.commands("Reload"))
-    expect(page.get_by_text("Not running: ⚠️")).to_have_count(0)
+    page.get_by_role("tab", name="Edit", exact=True).click()
+    expect(page.locator(".sidepanel").get_by_text("config2.yml", exact=True)).to_be_visible()
 
 
-def test_following_is_set_with_run_from_files(page, server):
+def test_following_applies_at_once(page, server):
     with_controller(page, server)
     open_tab(page, "Control", "Configs")
     page.get_by_text("Follow the capture device", exact=True).click()
-    # Staged only, until Run from files.
-    expect(page.get_by_text("Not running: ⚠️")).to_be_visible()
-    assert not server.fake.commands("SetControllerSettings")
-    page.locator(".tabpanel").get_by_text("Run from files", exact=True).click()
     wait_for(lambda: server.fake.commands("Reload"))
     assert server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": None}
+
+
+def test_following_is_only_stored_while_file_less(page, server):
+    """Turning it on doesn't reload, which would drop the config applied from the editor."""
+    with_controller(page, server)
+    server.fake.state["controller"]["status"].update(source="Websocket", provider=None, config_file=None)
+    open_tab(page, "Control", "Configs")
+    expect(page.get_by_text("(when running from files)", exact=True)).to_be_visible()
+    page.locator(".tabpanel input[type=checkbox]").first.click()
+    wait_for(lambda: server.fake.state["controller"]["settings"] == {"follow_capture": True, "error_recovery": None})
+    assert not server.fake.commands("Reload")
 
 
 def test_the_command_line_shows_in_after_a_restart(page, server):

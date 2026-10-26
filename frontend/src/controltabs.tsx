@@ -1,8 +1,6 @@
-import React, { useState } from "react"
-import { mdiFileSearch } from "@mdi/js"
+import React, { useEffect, useState } from "react"
 import "./index.css"
 import { api, errorMessage, Schemas } from "./api/client"
-import { Config } from "./camilladsp/config"
 import {
   afterRestart,
   ControllerSettings,
@@ -19,18 +17,9 @@ import {
 } from "./camilladsp/status"
 import { useCdspStatus } from "./camilladsp/usevumeterstatus"
 import { GuiConfig } from "./guiconfig"
-import { QuickConfigSwitch } from "./shortcuts"
 import { SpectrumBox } from "./spectrumbox"
 import { CONFIG_FILE_STATUS_ICONS, FileInfo, loadFiles } from "./utilities/files"
-import {
-  BoolOption,
-  Box,
-  Button,
-  ErrorBoundary,
-  FileSelectPopup,
-  MdiButton,
-  SuccessFailureButton,
-} from "./utilities/ui-components"
+import { BoolOption, Box, Button, ErrorBoundary, SuccessFailureButton } from "./utilities/ui-components"
 
 type FileChecks = Schemas["ControllerFileChecks"]
 
@@ -92,28 +81,30 @@ export function OverviewTab(
 }
 
 /**
- * Which config CamillaDSP runs: the startup config and following, run from files, error recovery,
- * the check of the startup config, and the quick switch between config files.
+ * Which config CamillaDSP runs: the config files and following, error recovery, and the check of
+ * the startup config.
  */
 export function ConfigsTab(
   props: ControllerProps & {
     /** Whether the backend may change the startup config file. */
     canChooseFile: boolean
+    /** The editor's file, the best guess of the startup config without a controller. */
     currentConfigName?: string
-    setConfig: (name: string, config: Config) => void
+    runConfigFile: (name: string) => Promise<void>
   },
 ) {
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
         <div className="tabpanel control-tabpanel">
-          <RunFromFilesBox
+          <ConfigFilesBox
             status={props.status}
             settings={props.settings}
             startupArgs={props.startupArgs}
             canChooseFile={props.canChooseFile}
+            currentConfigName={props.currentConfigName}
+            runConfigFile={props.runConfigFile}
           />
-          <QuickConfigSwitch setConfig={props.setConfig} currentConfigName={props.currentConfigName} />
           <RecoveryBox status={props.status} settings={props.settings} startupArgs={props.startupArgs} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>
@@ -124,91 +115,107 @@ export function ConfigsTab(
 }
 
 /**
- * A value picked in the tab, with the stored value it was picked against. It counts only while
- * the stored value is still that one, so it drops away once CamillaDSP has it after Run from
- * files, and gives way to a change made elsewhere.
+ * The config files, one click each to run from files, which makes it the startup config, and
+ * whether to follow the capture device. Both apply at once. The file runs as before, following
+ * or not, and is loaded into the editor so that the shortcuts work on what runs. While a config
+ * applied from the editor runs file-less, a click on a file, or on the startup config's button,
+ * goes back to files. Without a controller, only the files.
  */
-interface Staged<T> {
-  value: T
-  base: T
-}
-
-function stagedOr<T>(staged: Staged<T> | null, current: T): T {
-  return staged !== null && staged.base === current ? staged.value : current
-}
-
-/**
- * Running from files: the active config file and whether to follow the capture device, both only
- * staged until Run from files. Without a controller, only the file.
- */
-function RunFromFilesBox(props: {
+function ConfigFilesBox(props: {
   status: ControllerStatus | null
   settings: ControllerSettings | null
   startupArgs: StartupArgs | null
   canChooseFile: boolean
+  currentConfigName?: string
+  runConfigFile: (name: string) => Promise<void>
 }) {
   const controller = props.status
   const args = props.startupArgs
-  const [file, setFile] = useState<Staged<string | null> | null>(null)
-  const [follow, setFollow] = useState<Staged<boolean> | null>(null)
   const [files, setFiles] = useState<FileInfo[]>([])
-  const [popupOpen, setPopupOpen] = useState(false)
   const [message, setMessage] = useState("")
+  // A change shows in the settings at the next status poll, until then the value set counts.
+  const [pendingFollow, setPendingFollow] = useState<{ value: boolean; base: boolean } | null>(null)
 
-  const currentFile = controller?.startup_config_file ?? null
-  const currentFollow = followsCapture(props.settings)
-  const stagedFile = stagedOr(file, currentFile)
-  const stagedFollow = controller ? stagedOr(follow, currentFollow) : false
-  const followChanged = stagedFollow !== currentFollow
-  const changed = stagedFile !== currentFile || followChanged
-
-  async function openPicker() {
-    const all = await loadFiles("config")
-    setFiles(all.filter((info) => info.loadable === true && info.outdated !== true))
-    setPopupOpen(true)
-  }
-
-  async function runFromFiles() {
-    if (stagedFile === null) return
-    const { error, response } = await api.POST("/api/runfromfiles", {
-      body: {
-        file: stagedFile,
-        follow: controller && followChanged ? stagedFollow : null,
-      },
-    })
-    if (error) {
-      const message = errorMessage(error, response)
-      setMessage(message)
-      throw new Error(message)
+  useEffect(() => {
+    let cancelled = false
+    loadFiles("config")
+      .then((all) => {
+        if (!cancelled) setFiles(all.filter((info) => info.loadable === true && info.outdated !== true))
+      })
+      .catch((error) => setMessage(error instanceof Error ? error.message : String(error)))
+    return () => {
+      cancelled = true
     }
-    setMessage("")
+  }, [])
+
+  const fileless = isFileless(controller)
+  const startup = controller ? controller.startup_config_file : (props.currentConfigName ?? null)
+  // The file that runs from files, as written or adapted.
+  const running = controller && !fileless ? controller.config_file : null
+  const storedFollow = followsCapture(props.settings)
+  const follow = pendingFollow !== null && pendingFollow.base === storedFollow ? pendingFollow.value : storedFollow
+
+  async function run(name: string) {
+    try {
+      await props.runConfigFile(name)
+      setMessage("")
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      setMessage(reason)
+      throw error
+    }
   }
 
-  function marker(name: string): string {
-    return name === currentFile ? "★" : ""
+  /** Running from files, following changes at once, with a reload. File-less, it is only stored. */
+  async function setFollow(on: boolean) {
+    setPendingFollow({ value: on, base: storedFollow })
+    const result =
+      !fileless && startup
+        ? await api.POST("/api/runfromfiles", { body: { file: startup, follow: on } })
+        : await api.POST("/api/controller/settings", {
+            body: {
+              settings:
+                on || props.settings?.error_recovery != null
+                  ? { follow_capture: on ? true : null, error_recovery: props.settings?.error_recovery ?? null }
+                  : null,
+            },
+          })
+    if (result.error) {
+      setPendingFollow(null)
+      setMessage(errorMessage(result.error, result.response))
+    } else {
+      setMessage("")
+    }
   }
 
   return (
     <Box
-      title="Startup config"
-      tooltip="The config file CamillaDSP loads when it starts or reloads, and runs from files,<br>as written or adapted to the capture device. Changes here are staged until Run from files."
+      title="Config files"
+      tooltip="Click a config file to run it from files. It becomes the startup config, the file<br>CamillaDSP loads when it starts or reloads, and is loaded into the editor.<br>★ is the startup config, the highlighted file is the one that runs."
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <span style={{ overflowWrap: "anywhere" }}>{stagedFile ?? "(none)"}</span>
-        <MdiButton
-          icon={mdiFileSearch}
-          buttonSize="small"
-          tooltip={
-            props.canChooseFile
-              ? "Pick the config file to run from, the startup config"
-              : "The backend cannot change the startup config, check its settings"
-          }
-          enabled={props.canChooseFile}
-          onClick={() => {
-            openPicker().catch(() => {})
-          }}
-        />
+      {fileless && (
+        <div style={{ marginBottom: "5px" }}>
+          CamillaDSP runs a config applied from the editor, which is not saved to any file. Click a file to go back to
+          running from files.
+        </div>
+      )}
+      <div className="quick-config-switch">
+        {files.map((info) => (
+          <SuccessFailureButton
+            key={info.name}
+            text={info.name === startup ? `★ ${info.name}` : info.name}
+            highlighted={info.name === running}
+            enabled={props.canChooseFile}
+            tooltip={
+              props.canChooseFile
+                ? `Run ${info.name} from files, and make it the startup config`
+                : "The backend cannot change the startup config, check its settings"
+            }
+            onClick={() => run(info.name)}
+          />
+        ))}
       </div>
+      {files.length === 0 && !message && <div>No config files that CamillaDSP can load.</div>}
       {args?.config_file != null && (
         <LastsUntilRestart>The command line gives {args.config_file}, a restart goes back to it.</LastsUntilRestart>
       )}
@@ -218,15 +225,18 @@ function RunFromFilesBox(props: {
       {controller && (
         <label
           style={{ display: "block", marginTop: "5px" }}
-          data-tooltip-html="Follow the capture device when running from files, adapting the file to its format.<br>A source at samplerate or one of the alternate_samplerates runs natively,<br>any other rate is resampled to samplerate."
+          data-tooltip-html="Follow the capture device when running from files, adapting the file to its format.<br>A source at samplerate or one of the alternate_samplerates runs natively,<br>any other rate is resampled to samplerate.<br>Applies at once while running from files, with a reload."
           data-tooltip-id="main-tooltip"
         >
           <input
             type="checkbox"
-            checked={stagedFollow}
-            onChange={(e) => setFollow({ value: e.target.checked, base: currentFollow })}
+            checked={follow}
+            onChange={(e) => {
+              setFollow(e.target.checked).catch(() => {})
+            }}
           />
           Follow the capture device
+          {fileless && <span style={{ opacity: 0.75 }}> (when running from files)</span>}
         </label>
       )}
       {controller && args?.follow_capture && (
@@ -234,32 +244,7 @@ function RunFromFilesBox(props: {
           The command line gives --follow_capture, so following is on again after a restart.
         </LastsUntilRestart>
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
-        <SuccessFailureButton
-          enabled={stagedFile !== null}
-          highlighted={changed || isFileless(controller)}
-          text="Run from files"
-          tooltip="Make the file the startup config and run it, following the capture device as chosen.<br>A config applied from the editor is dropped, save it to a file first to keep it."
-          onClick={runFromFiles}
-        />
-        {changed && (
-          <span
-            data-tooltip-html="The file or following differs from what CamillaDSP runs,<br>Run from files to use them"
-            data-tooltip-id="main-tooltip"
-          >
-            Not running: ⚠️
-          </span>
-        )}
-      </div>
       {message && <div className="error-text">{message}</div>}
-      <FileSelectPopup
-        open={popupOpen}
-        header={<span>Pick the config file to run from. ★ is the startup config.</span>}
-        files={files}
-        marker={marker}
-        onSelect={(name) => setFile({ value: name, base: currentFile })}
-        onClose={() => setPopupOpen(false)}
-      />
     </Box>
   )
 }

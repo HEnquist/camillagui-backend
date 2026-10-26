@@ -1,11 +1,9 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
 import { mdiHelpCircleOutline, mdiAlert } from "@mdi/js"
 import { Config } from "./camilladsp/config"
 import { ShortcutSection } from "./guiconfig"
 import { numberValues, setNumberValues, Update, boolValues, setBoolValues } from "./utilities/common"
-import { loadConfigJson, loadFilenames } from "./utilities/files"
-import { Box, Button, ErrorBoundary, ErrorMessage, MdiIcon } from "./utilities/ui-components"
+import { Box, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
 
 export function Shortcuts(props: {
   config: Config
@@ -169,42 +167,5 @@ function Checkbox(props: { value?: boolean; setValue: (value: boolean) => void }
       checked={value}
       onChange={(e) => props.setValue(e.target.checked)}
     />
-  )
-}
-
-export function QuickConfigSwitch(props: {
-  currentConfigName?: string
-  setConfig: (name: string, config: Config) => void
-}) {
-  const { currentConfigName, setConfig } = props
-  const [configFiles, setConfigFiles] = useState<string[]>([])
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | undefined>(undefined)
-  useEffect(() => {
-    loadFilenames("config").then((files) => setConfigFiles(files))
-  }, [])
-  return (
-    <Box title="Quick Config Switch">
-      <ErrorMessage message={loadErrorMessage} />
-      <div className="quick-config-switch">
-        {configFiles.map((configFile) => (
-          <Button
-            key={configFile}
-            text={configFile}
-            onClick={() => {
-              loadConfigJson(configFile)
-                .then((config) => {
-                  setLoadErrorMessage(undefined)
-                  setConfig(configFile, config)
-                })
-                .catch((error) => {
-                  const reason = error instanceof Error ? error.message : String(error)
-                  setLoadErrorMessage(`Could not load '${configFile}': ${reason}`)
-                })
-            }}
-            highlighted={configFile === currentConfigName}
-          />
-        ))}
-      </div>
-    </Box>
   )
 }

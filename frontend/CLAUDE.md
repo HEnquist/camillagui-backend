@@ -59,7 +59,7 @@ filestab.tsx
 
 # Control area tabs
 controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
-shortcuts.tsx               # Shortcuts, and the quick config switch used by Configs
+shortcuts.tsx               # Shortcuts
 playbacktab.tsx             # Playing an audio file through the pipeline
 
 custom-pages/               # Extra Control tabs: a .tsx here is a tab, see its README.md
@@ -190,26 +190,28 @@ confused people, and the GUI's own API, its code and the `on_set_active_config` 
   provider, or file-less), the file that runs, following and recovery.
 - The Control area has Overview, Configs, Shortcuts, File playback and the custom pages.
   Overview has what runs now, what runs after a restart, and the spectrum. Configs has the
-  startup config and following with "Run from files", the quick config switch, the error
-  recovery toggle, which applies at once, and the check of the startup config that following
-  adapts. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from
+  config files and the follow checkbox, the error recovery toggle, and the check of the
+  startup config that following adapts. All of them apply at once, nothing is staged. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from
   the command line when it is given there, since CamillaDSP applies those over the statefile at
   every start, and from the statefile otherwise. It marks what differs from what runs now. Where
   the command line sets the startup config, following or recovery, the controls for it say that
   a change lasts until a restart. "Running from" is the file the running config came from
   (`config_file`); the startup config is listed under it only when it differs, which is when
   the config runs file-less or the file was changed without a reload.
-- CamillaDSP's config comes from one of two sources, and each direction has one button:
+- CamillaDSP's config comes from one of two sources:
   - "Apply to DSP" sends the editor's config (`setconfig`). It runs *file-less*, exactly as
     sent: nothing follows the source, and recovery restarts it. `source` is `Websocket`.
-  - "Run from files" (`runfromfiles`) stores the startup config file and whether to follow the
-    capture source, then reloads. The file (picked in a `FileSelectPopup`) and the follow
-    checkbox are only staged in Configs until then, with "Not running: ⚠️" while they differ
-    from what runs.
+  - A click on a file in Configs' "Config files" runs it from files (`runfromfiles` with
+    `follow` null, keeping the follow setting): it becomes the startup config, CamillaDSP
+    reloads, and the file is loaded into the editor, so that the shortcuts work on what runs.
+    This is the way back from file-less too. ★ marks the startup config, the highlighted file
+    is the one that runs from files. It is the only place that picks the file, so there is no
+    staged picker next to a quick switch doing the same.
+  - The follow checkbox applies at once: while running from files with `runfromfiles` on the
+    startup config, which reloads. While file-less it only stores the setting, since a reload
+    would drop the applied config.
   - "Apply automatically" only resends a config that already runs file-less, it never leaves
     files. Without a controller it applies after every change, as there are no files to leave.
-  - The quick config switch in Configs picks a file, so it runs it from files (`runfromfiles`
-    with `follow` null), keeping the follow setting.
 - The editor meets CamillaDSP in those buttons, in "Load into editor" (`getstartconfig`, the
   same as at startup, so an adapted config is never loaded), and in "Open in editor" on a file
   name. When the source goes from file-less back to files, the GUI marks the editor's config as

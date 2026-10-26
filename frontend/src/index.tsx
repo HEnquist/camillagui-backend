@@ -66,6 +66,7 @@ class CamillaConfig extends React.Component<
     this.updateConfig = this.updateConfig.bind(this)
     this.applyConfig = this.applyConfig.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
+    this.runConfigFile = this.runConfigFile.bind(this)
     this.saveConfig = this.saveConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
     this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
@@ -214,15 +215,14 @@ class CamillaConfig extends React.Component<
   }
 
   /**
-   * Run a config file from files, following the source as before, and load it into the editor.
-   * For the quick config switch, which picks a file rather than a config to apply.
+   * Run a config file from files, following the source as before, and load it into the editor, so
+   * that the shortcuts work on what runs. For the config files in Configs, which pick a file
+   * rather than a config to apply. Throws with the message when CamillaDSP refuses.
    */
-  private async runConfigFile(filename: string, config: Config) {
+  private async runConfigFile(filename: string) {
+    const config = await loadConfigJson(filename)
     const { error, response } = await api.POST("/api/runfromfiles", { body: { file: filename, follow: null } })
-    if (error) {
-      this.setState({ message: errorMessage(error, response) })
-      return
-    }
+    if (error) throw new Error(errorMessage(error, response))
     this.setCurrentConfig(filename, config)
     this.setState({ message: `Running ${filename} from files`, unappliedChanges: false })
   }
@@ -359,9 +359,7 @@ class CamillaConfig extends React.Component<
             {...controller}
             canChooseFile={guiConfig.can_update_active_config}
             currentConfigName={currentConfigFile}
-            setConfig={(filename, config) => {
-              this.runConfigFile(filename, config).catch(() => {})
-            }}
+            runConfigFile={this.runConfigFile}
           />
         </TabPanel>
         <TabPanel>
