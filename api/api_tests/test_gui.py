@@ -6,6 +6,7 @@ CamillaDSP through an event stream to the screen. Keep them few, a browser
 test costs far more than an API test.
 """
 
+import re
 import shutil
 import time
 import zipfile
@@ -72,7 +73,7 @@ def test_offline_when_camilladsp_goes_away(page, server):
 def test_files_tab_lists_the_files(page, server):
     """Also those added and removed behind the GUI's back, which it notices
     by polling /api/files/fingerprints, within a check or so."""
-    open_tab(page, "Edit", "Files")
+    open_tab(page, "Control", "Files")
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
     added = server.config_dir / "added_tmp.yml"
     shutil.copy(server.config_dir / "config2.yml", added)
@@ -87,11 +88,11 @@ def test_files_tab_in_a_second_gui_tab(page, server):
     """A browser has six connections to the backend for all its tabs, and each
     open event stream holds one, so a second GUI tab must leave room for its
     requests."""
-    open_tab(page, "Edit", "Files")
+    open_tab(page, "Control", "Files")
     expect(page.get_by_text("config2.yml", exact=True).first).to_be_visible()
     second = page.context.new_page()
     second.goto(page.url)
-    open_tab(second, "Edit", "Files")
+    open_tab(second, "Control", "Files")
     expect(second.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
@@ -108,7 +109,7 @@ def test_five_gui_tabs_leave_room_for_requests(page, server):
     wait_for(lambda: len(server.fake.commands("SubscribeSpectrum")) >= 4)
     fifth = page.context.new_page()
     fifth.goto(url)
-    open_tab(fifth, "Edit", "Files")
+    open_tab(fifth, "Control", "Files")
     expect(fifth.get_by_text("config2.yml", exact=True).first).to_be_visible()
 
 
@@ -118,20 +119,45 @@ def test_config_with_errors_loads_into_the_gui(page, server):
     config["pipeline"] = [{"type": "Filter", "channels": [0], "names": ["nosuchfilter"]}]
     (server.config_dir / "errors_tmp.yml").write_text(yaml.dump(config))
     try:
-        open_tab(page, "Edit", "Files")
-        page.locator("""[data-tooltip-html='Load "errors_tmp.yml" into the GUI.']""").click()
-        open_tab(page, "Edit", "Pipeline")
+        open_tab(page, "Control", "Files")
+        page.locator("""[data-tooltip-html='Load "errors_tmp.yml" into the editor.']""").click()
+        # Loading switches to the editor.
+        page.get_by_role("tab", name="Pipeline").click()
         expect(page.get_by_text("nosuchfilter").first).to_be_visible()
         expect(page.locator(".sidepanel .config-status")).not_to_have_text("OK")
     finally:
         (server.config_dir / "errors_tmp.yml").unlink()
 
 
+def test_save_as_from_the_editor_box(page, server):
+    """Saving under a new name makes it the editor's file, and an existing name asks first."""
+    page.get_by_role("tab", name="Edit", exact=True).click()
+    sidepanel = page.locator(".sidepanel")
+    name = sidepanel.locator('[data-tooltip-html="The name to save the editor\'s config as"]')
+    save_as = sidepanel.locator(".button", has_text="Save as")
+    saved = server.config_dir / "saved_tmp.yml"
+    try:
+        name.fill("saved_tmp.yml")
+        # Enabled once the side panel has seen the backend online.
+        expect(save_as).not_to_have_class(re.compile("disabled-button"))
+        save_as.click()
+        wait_for(lambda: saved.exists())
+        expect(sidepanel.get_by_text("saved_tmp.yml", exact=True)).to_be_visible()
+        before = (server.config_dir / "config2.yml").read_text()
+        page.once("dialog", lambda dialog: dialog.dismiss())
+        name.fill("config2.yml")
+        save_as.click()
+        time.sleep(0.5)
+        assert (server.config_dir / "config2.yml").read_text() == before
+    finally:
+        saved.unlink(missing_ok=True)
+
+
 def test_zip_download_goes_to_the_browser(page, server, tmp_path):
     """The zip is a native download, and a refusal still shows its message."""
     gone = server.config_dir / "gone.yml"
     shutil.copy(server.config_dir / "config2.yml", gone)
-    open_tab(page, "Edit", "Files")
+    open_tab(page, "Control", "Files")
     configs = page.locator(".box").filter(has_text="config2.yml").first
     rows = configs.get_by_role("row")
     download_button = configs.locator('[data-tooltip-html="Download 1 file as zip file"]')

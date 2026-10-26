@@ -360,9 +360,11 @@ or hostname of the machine running the gui server.
 
 The GUI has two areas, switched with the buttons above the tabs.
 *Control* is for what CamillaDSP does: what runs now and after a restart, which config runs,
-shortcuts and file playback.
+the config and filter files available to it, shortcuts and file playback.
 It also works on a phone.
-*Edit* is the config editor, with a tab for each part of the config, and the config files.
+*Edit* is the config editor, with a tab for each part of the config.
+Saving the config, also under a new name, and starting a new one are in the Editor box of the
+side panel.
 The GUI opens in the area that was used last.
 
 ### Command line options

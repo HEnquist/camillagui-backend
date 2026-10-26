@@ -55,10 +55,10 @@ devicecapabilitiespopup.tsx # A device's capabilities, from the devices tab
 filterstab.tsx
 mixerstab.tsx
 processorstab.tsx
-filestab.tsx
 
 # Control area tabs
 controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
+filestab.tsx                # The config and filter files available to CamillaDSP
 shortcuts.tsx               # Shortcuts
 playbacktab.tsx             # Playing an audio file through the pipeline
 
@@ -70,6 +70,7 @@ pipeline/
 
 sidepanel/
   sidepanel.tsx             # Left panel with Save/Apply buttons, status
+  editorfiles.tsx           # The Editor box's Save as, New and Import
   volumebox.tsx             # Volume fader
   auxfaderbox.tsx           # Aux fader
   cdspstatebox.tsx          # DSP running/offline state badge
@@ -181,14 +182,18 @@ config*, in the GUI and in CamillaDSP alike. It used to be the "active config", 
 confused people, and the GUI's own API, its code and the `on_set_active_config` and
 `on_get_active_config` settings still say active.
 
-- The editor is the Edit area, Title to Pipeline and Files, and the side panel's Editor box: one
-  config, the file it belongs to, Save, Revert and auto-save. The Editor box is only there in
-  Edit. The Files table only marks the startup config (★), it does not change it.
+- The editor is the Edit area, Title to Pipeline, and the side panel's Editor box: one config,
+  the file it belongs to, Save, Revert, auto-save, Save as (warning before it overwrites another
+  file), New from default, New blank and Import. The Editor box is only there in Edit.
+- The Files tab, in Control, manages the files available to CamillaDSP: uploads, downloads,
+  renames, deletes, comparing and plotting. Its Load puts a config into the editor and switches
+  to Edit. It only marks the startup config (★), it does not change it, and it doesn't save the
+  editor's config, which is the Editor box's job.
 - CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Control area. The
   CamillaDSP box shows its state and "Stop processing", and in Edit also "Apply to DSP", "Load
   into editor" and "Compare". The Controller box only shows the *source* (file, with the
   provider, or file-less), the file that runs, following and recovery.
-- The Control area has Overview, Configs, Shortcuts, File playback and the custom pages.
+- The Control area has Overview, Configs, Files, Shortcuts, File playback and the custom pages.
   Overview has what runs now, what runs after a restart, and the spectrum. Configs has the
   config files and the follow checkbox, the error recovery toggle, and the check of the
   startup config that following adapts. All of them apply at once, nothing is staged. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from

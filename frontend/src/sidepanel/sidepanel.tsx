@@ -6,6 +6,7 @@ import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
 import { Configcheckmessage } from "./configcheckmessage"
 import { ControllerBox } from "./controllerbox"
+import { EditorFileActions } from "./editorfiles"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
@@ -23,6 +24,7 @@ import {
 } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
+import { Update } from "../utilities/common"
 import { DiffPopup } from "../utilities/diffpopup"
 import { Errors } from "../utilities/errors"
 import { Box, delayedExecutor, SuccessFailureButton } from "../utilities/ui-components"
@@ -33,7 +35,11 @@ interface SidePanelProps {
   applyConfig: () => Promise<void>
   fetchConfig: () => Promise<void>
   saveConfig: () => Promise<void>
+  /** Save the editor's config to a file, which becomes the editor's file. */
+  saveConfigAs: (filename: string) => Promise<void>
   revertConfig: () => Promise<void>
+  setCurrentConfig: (filename: string | undefined, config: Config) => void
+  updateConfig: (update: Update<Config>) => void
   setErrors: (errors: Errors) => void
   /**
    * Called when the controller status, its settings or the startup args change, null when there
@@ -289,7 +295,7 @@ export class SidePanel extends React.Component<
           <SuccessFailureButton
             enabled={isBackendOnline(status) && Boolean(file) && !this.state.saveConfigAutomatically}
             text="Save"
-            tooltip={file ? `Save the editor's config to ${file}` : "No file, use Save as in the Files tab"}
+            tooltip={file ? `Save the editor's config to ${file}` : "No file, use Save as below"}
             onClick={this.props.saveConfig}
           />
           <SuccessFailureButton
@@ -299,6 +305,15 @@ export class SidePanel extends React.Component<
             onClick={this.props.revertConfig}
           />
         </div>
+        <EditorFileActions
+          key={file ?? ""}
+          currentConfigFile={file}
+          config={this.props.config}
+          setCurrentConfig={this.props.setCurrentConfig}
+          updateConfig={this.props.updateConfig}
+          saveConfigAs={this.props.saveConfigAs}
+          online={isBackendOnline(status)}
+        />
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
           <label data-tooltip-html="Save the config to its file<br>after each change" data-tooltip-id="main-tooltip">
             <input

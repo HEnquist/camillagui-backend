@@ -67,16 +67,15 @@ class CamillaConfig extends React.Component<
     this.applyConfig = this.applyConfig.bind(this)
     this.fetchConfig = this.fetchConfig.bind(this)
     this.runConfigFile = this.runConfigFile.bind(this)
+    this.saveConfigAs = this.saveConfigAs.bind(this)
     this.saveConfig = this.saveConfig.bind(this)
     this.setCurrentConfig = this.setCurrentConfig.bind(this)
-    this.setCurrentConfigFileName = this.setCurrentConfigFileName.bind(this)
     this.openConfigFile = this.openConfigFile.bind(this)
     this.revertConfig = this.revertConfig.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.setArea = this.setArea.bind(this)
     this.ControlArea = this.ControlArea.bind(this)
     this.EditArea = this.EditArea.bind(this)
-    this.saveNotify = this.saveNotify.bind(this)
     this.applyNotify = this.applyNotify.bind(this)
     this.state = {
       area: getArea(),
@@ -156,10 +155,6 @@ class CamillaConfig extends React.Component<
     this.setState({ area })
   }
 
-  private saveNotify() {
-    this.setState({ unsavedChanges: false })
-  }
-
   private applyNotify() {
     this.setState({ unappliedChanges: false })
   }
@@ -214,6 +209,19 @@ class CamillaConfig extends React.Component<
     }
   }
 
+  /** Save the editor's config to a file, which becomes the editor's file. */
+  private async saveConfigAs(filename: string) {
+    const { error, response } = await api.POST("/api/saveconfigfile", {
+      body: { filename, config: this.state.undoRedo.current() },
+    })
+    if (error) {
+      const message = errorMessage(error, response)
+      this.setState({ message })
+      throw new Error(message)
+    }
+    this.setState({ currentConfigFile: filename, unsavedChanges: false, message: `Saved as ${filename}` })
+  }
+
   /**
    * Run a config file from files, following the source as before, and load it into the editor, so
    * that the shortcuts work on what runs. For the config files in Configs, which pick a file
@@ -253,12 +261,6 @@ class CamillaConfig extends React.Component<
     this.setState({ area: "edit", editTab: 2, message: `Opened ${name}` })
   }
 
-  private setCurrentConfigFileName(filename: string | undefined) {
-    this.setState({
-      currentConfigFile: filename,
-    })
-  }
-
   private setErrors(errors: Errors) {
     this.setState({ errors: errors })
   }
@@ -285,7 +287,10 @@ class CamillaConfig extends React.Component<
           applyConfig={this.applyConfig}
           fetchConfig={this.fetchConfig}
           saveConfig={this.saveConfig}
+          saveConfigAs={this.saveConfigAs}
           revertConfig={this.revertConfig}
+          setCurrentConfig={this.setCurrentConfig}
+          updateConfig={this.updateConfig}
           setErrors={this.setErrors}
           onControllerStatus={(controllerStatus, controllerSettings, startupArgs, dspInactive) =>
             this.setState((prev) => ({
@@ -326,7 +331,10 @@ class CamillaConfig extends React.Component<
     )
   }
 
-  /** What CamillaDSP does and runs: the overview, the configs, shortcuts, playback, custom pages. */
+  /**
+   * What CamillaDSP does and runs: the overview, the configs, the files available to it, shortcuts,
+   * playback, and the custom pages.
+   */
   private ControlArea() {
     const { guiConfig, currentConfigFile, errors } = this.state
     const config = this.state.undoRedo.current()
@@ -345,6 +353,7 @@ class CamillaConfig extends React.Component<
         <TabList>
           <Tab>Overview</Tab>
           <Tab>Configs</Tab>
+          <Tab>Files</Tab>
           <Tab>Shortcuts</Tab>
           {guiConfig.audiofiles_supported && <Tab>File playback</Tab>}
           {customPages.map((customPage) => (
@@ -360,6 +369,16 @@ class CamillaConfig extends React.Component<
             canChooseFile={guiConfig.can_update_active_config}
             currentConfigName={currentConfigFile}
             runConfigFile={this.runConfigFile}
+          />
+        </TabPanel>
+        <TabPanel>
+          <Files
+            currentConfigFile={currentConfigFile}
+            config={config}
+            setCurrentConfig={this.setCurrentConfig}
+            showEditor={() => this.setArea("edit")}
+            guiConfig={guiConfig}
+            controllerStatus={this.state.controllerStatus}
           />
         </TabPanel>
         <TabPanel>
@@ -388,9 +407,9 @@ class CamillaConfig extends React.Component<
     )
   }
 
-  /** The config editor: undo and redo, the tabs for each part of the config, and the files. */
+  /** The config editor: undo and redo, and the tabs for each part of the config. */
   private EditArea() {
-    const { errors, undoRedo, currentConfigFile } = this.state
+    const { errors, undoRedo } = this.state
     const config = undoRedo.current()
     return (
       <Tabs
@@ -432,7 +451,6 @@ class CamillaConfig extends React.Component<
           <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
           <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
           <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
-          <Tab>Files</Tab>
         </TabList>
         <TabPanel />
         <TabPanel>
@@ -465,18 +483,6 @@ class CamillaConfig extends React.Component<
         </TabPanel>
         <TabPanel>
           <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
-        </TabPanel>
-        <TabPanel>
-          <Files
-            currentConfigFile={currentConfigFile}
-            config={config}
-            setCurrentConfig={this.setCurrentConfig}
-            setCurrentConfigFileName={this.setCurrentConfigFileName}
-            updateConfig={this.updateConfig}
-            saveNotify={this.saveNotify}
-            guiConfig={this.state.guiConfig}
-            controllerStatus={this.state.controllerStatus}
-          />
         </TabPanel>
       </Tabs>
     )

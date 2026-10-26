@@ -1,24 +1,12 @@
 import React, { Component } from "react"
-import {
-  mdiAlertCircle,
-  mdiCheck,
-  mdiFileExport,
-  mdiFileImport,
-  mdiMenu,
-  mdiScaleUnbalanced,
-  mdiStar,
-  mdiUpdate,
-} from "@mdi/js"
+import { mdiAlertCircle, mdiCheck, mdiFileImport, mdiMenu, mdiScaleUnbalanced, mdiStar, mdiUpdate } from "@mdi/js"
 import { ColumnDef } from "@tanstack/react-table"
 import { isEqual } from "lodash"
-import { api, errorMessage } from "./api/client"
-import { Config, defaultConfig } from "./camilladsp/config"
+import { Config } from "./camilladsp/config"
 import { clearCoefficientCache } from "./camilladsp/eval"
 import { ControllerStatus } from "./camilladsp/status"
 import { GuiConfig } from "./guiconfig"
-import { ImportPopup, ImportPopupProps } from "./import/importpopup"
 import { PipelinePopup } from "./pipeline/pipelineplotter"
-import { Update } from "./utilities/common"
 import { DataTable, sortByRows } from "./utilities/data-table"
 import { DiffPopup } from "./utilities/diffpopup"
 import {
@@ -40,11 +28,9 @@ import {
   downloadAsZip,
   downloadFromUrl,
   FileInfo,
-  fileNamesOf,
   fileStatusDesc,
   loadActiveConfigFilename,
   loadConfigJson,
-  loadDefaultConfigJson,
   loadFiles,
   renameFile,
   StoredFileType,
@@ -52,7 +38,6 @@ import {
 } from "./utilities/files"
 import {
   Box,
-  Button,
   DropdownBox,
   ErrorBoundary,
   fileDateSort,
@@ -64,14 +49,18 @@ import {
   PlotButton,
 } from "./utilities/ui-components"
 
+/**
+ * The config and filter files available to CamillaDSP: uploading, downloading, renaming and
+ * deleting them, and loading a config into the editor, which then shows the Edit area. Saving
+ * the editor's config, and new and imported configs, are in the side panel's Editor box.
+ */
 export function Files(props: {
   guiConfig: GuiConfig
   currentConfigFile?: string
   config: Config
   setCurrentConfig: (filename: string | undefined, config: Config) => void
-  setCurrentConfigFileName: (filename: string | undefined) => void
-  updateConfig: (update: Update<Config>) => void
-  saveNotify: () => void
+  /** Show the editor, after a config was loaded into it. */
+  showEditor: () => void
   controllerStatus: ControllerStatus | null
 }) {
   const controller = props.controllerStatus
@@ -79,19 +68,13 @@ export function Files(props: {
     <ErrorBoundary>
       <div className="tabcontainer">
         <div className="wide-tabpanel" style={{ width: "900px" }}>
-          <NewConfig
-            currentConfig={props.config}
-            setCurrentConfig={props.setCurrentConfig}
-            updateConfig={props.updateConfig}
-          />
           <FileTable
             title="Configs"
             type="config"
             currentConfigFile={props.currentConfigFile}
             config={props.config}
             setCurrentConfig={props.setCurrentConfig}
-            setCurrentConfigFileName={props.setCurrentConfigFileName}
-            saveNotify={props.saveNotify}
+            showEditor={props.showEditor}
             activeConfigFile={controller?.startup_config_file}
           />
           <FileTable title="Filters" type="coeff" />
@@ -115,8 +98,7 @@ interface FileTableProps {
    */
   activeConfigFile?: string | null
   setCurrentConfig?: (filename: string, config: Config) => void
-  setCurrentConfigFileName?: (filename: string | undefined) => void
-  saveNotify?: () => void
+  showEditor?: () => void
 }
 
 class FileTable extends Component<
@@ -127,7 +109,6 @@ class FileTable extends Component<
     loaded: boolean
     selectedFiles: FileInfo[]
     activeConfigFileName: string | null
-    newFileName: string
     fileStatus: FileStatus | null
     stopTimer: () => void
     filterText: string
@@ -151,8 +132,6 @@ class FileTable extends Component<
     this.upload = this.upload.bind(this)
     this.delete = this.delete.bind(this)
     this.downloadAsZip = this.downloadAsZip.bind(this)
-    this.overwriteConfig = this.overwriteConfig.bind(this)
-    this.saveConfig = this.saveConfig.bind(this)
     this.loadConfig = this.loadConfig.bind(this)
     this.compareConfig = this.compareConfig.bind(this)
     this.compareConfigFiles = this.compareConfigFiles.bind(this)
@@ -166,7 +145,6 @@ class FileTable extends Component<
       loaded: false,
       selectedFiles: [],
       activeConfigFileName: null,
-      newFileName: "New config.yml",
       fileStatus: null,
       stopTimer: () => {},
       filterText: "",
@@ -258,6 +236,7 @@ class FileTable extends Component<
       const jsonConfig = await loadConfigJson(name)
       this.props.setCurrentConfig!(name, jsonConfig)
       this.showSuccess(name, "load")
+      this.props.showEditor?.()
     } catch (e) {
       const error = e as Error
       const message = error instanceof Error ? error.message : String(error)
@@ -346,12 +325,6 @@ class FileTable extends Component<
     }
   }
 
-  private overwriteConfig(name: string) {
-    const del = window.confirm("Overwrite?\n" + name)
-    if (!del) return
-    this.saveConfig(name)
-  }
-
   private setSelected(selected: { allSelected: boolean; selectedCount: number; selectedRows: FileInfo[] }) {
     this.setState({ selectedFiles: selected.selectedRows })
   }
@@ -359,24 +332,6 @@ class FileTable extends Component<
   private toggleFileMenu(index: number) {
     if (this.state.fileMenuOpen === index) this.setState({ fileMenuOpen: null })
     else this.setState({ fileMenuOpen: index })
-  }
-
-  private async saveConfig(name: string) {
-    const { config, setCurrentConfig } = this.props
-    try {
-      const { error, response } = await api.POST("/api/saveconfigfile", { body: { filename: name, config: config! } })
-      if (!error) {
-        setCurrentConfig!(name, config!)
-        this.showSuccess(name, "save")
-        if (this.props.saveNotify !== undefined) this.props.saveNotify()
-        this.update()
-      } else {
-        this.showErrorMessage(name, "save", errorMessage(error, response))
-      }
-    } catch (e) {
-      const err = e as Error
-      this.showErrorMessage(name, "save", err.message)
-    }
   }
 
   private async rename(filename: string, type: "coeff" | "config") {
@@ -399,7 +354,6 @@ class FileTable extends Component<
       files,
       selectedFiles,
       fileStatus,
-      newFileName,
       activeConfigFileName,
       filterText,
       showDiffPopup,
@@ -486,7 +440,6 @@ class FileTable extends Component<
         header: "",
         cell: ({ row }) => (
           <div style={{ display: "flex", flexDirection: "row" }}>
-            <SaveButton filename={row.original.name} fileStatus={fileStatus} saveConfig={this.overwriteConfig} />
             <LoadButton
               filename={row.original.name}
               fileStatus={fileStatus}
@@ -676,41 +629,6 @@ class FileTable extends Component<
             selectableRows
             onSelectedRowsChange={this.setSelected}
           />
-
-          {
-            // "Save to new config" row
-            this.type === "config" && (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <SaveButton
-                    disableReason={reasonToDisableSaveNewFileButton(newFileName, files)}
-                    filename={newFileName}
-                    fileStatus={fileStatus}
-                    saveConfig={this.saveConfig}
-                  />
-                  <input
-                    type="text"
-                    value={newFileName}
-                    data-tooltip-html="Enter a name for the new config file"
-                    data-tooltip-id="main-tooltip"
-                    spellCheck="false"
-                    onChange={(e) =>
-                      this.setState({
-                        newFileName: e.target.value,
-                      })
-                    }
-                  />
-                  <FileStatusMessage filename={newFileName} fileStatus={fileStatus} type={this.type} />
-                </div>
-              </>
-            )
-          }
         </div>
         <DiffPopup
           open={showDiffPopup}
@@ -744,32 +662,6 @@ class FileTable extends Component<
   }
 }
 
-function SaveButton(props: {
-  filename: string
-  disableReason?: string
-  fileStatus: FileStatus | null
-  saveConfig: (filename: string) => void
-}) {
-  const { disableReason, filename, fileStatus, saveConfig } = props
-  let saveIcon: { icon: string; className?: string } = {
-    icon: mdiFileExport,
-  }
-  if (!disableReason && fileStatus !== null && fileStatus.action === "save" && fileStatus.filename === filename) {
-    saveIcon = fileStatus.success
-      ? { icon: mdiCheck, className: "success-text" }
-      : { icon: mdiAlertCircle, className: "error-text" }
-  }
-  return (
-    <MdiButton
-      icon={saveIcon.icon}
-      className={saveIcon.className}
-      enabled={!disableReason}
-      tooltip={disableReason ? disableReason : `Save from GUI to ${filename}`}
-      onClick={() => saveConfig(filename)}
-    />
-  )
-}
-
 function LoadButton(props: {
   filename: string
   fileStatus: FileStatus | null
@@ -789,8 +681,8 @@ function LoadButton(props: {
   }
 
   const tooltipAction = outdated
-    ? `Load "${filename}" into the GUI with automatic migration.`
-    : `Load "${filename}" into the GUI.`
+    ? `Load "${filename}" into the editor with automatic migration.`
+    : `Load "${filename}" into the editor.`
   const disabledReason = loadable ? "" : "<br>Disabled because this config file cannot be loaded."
 
   return (
@@ -869,92 +761,4 @@ function FileDownloadLink(props: { type: string; filename: string; isCurrentConf
       {filename}
     </button>
   )
-}
-
-function reasonToDisableSaveNewFileButton(newFileName: string, files: FileInfo[]): string | undefined {
-  if (!isValidFilename(newFileName)) return "Please enter a valid file name."
-  else if (fileNamesOf(files).includes(newFileName)) return `File "${newFileName}" already exists`
-  return undefined
-}
-
-function isValidFilename(newFileName: string) {
-  return newFileName.trim().length > 0
-}
-
-interface NewConfigProps {
-  currentConfig: Config
-  setCurrentConfig?: (filename: string | undefined, config: Config) => void
-  updateConfig: (update: Update<Config>) => void
-}
-
-class NewConfig extends Component<NewConfigProps, { importPopupProps: ImportPopupProps }> {
-  constructor(props: NewConfigProps) {
-    super(props)
-    this.loadDefaultConfig = this.loadDefaultConfig.bind(this)
-    this.state = { importPopupProps: {} }
-  }
-
-  componentDidUpdate() {
-    //ReactTooltip.rebuild()
-  }
-
-  private async loadDefaultConfig() {
-    try {
-      const config = await loadDefaultConfigJson()
-      this.props.setCurrentConfig!(undefined, config)
-    } catch (e) {
-      console.log(e)
-    }
-  }
-
-  private loadBlankConfig() {
-    const config = defaultConfig()
-    this.props.setCurrentConfig!(undefined, config)
-  }
-
-  private openImportConfigPopup() {
-    this.setState({
-      importPopupProps: {
-        currentConfig: this.props.currentConfig,
-        updateConfig: this.props.updateConfig,
-        close: () => this.setState({ importPopupProps: {} }),
-      },
-    })
-  }
-
-  render() {
-    return (
-      <Box title="Create or import config">
-        <div
-          style={{
-            marginTop: "10px",
-            display: "grid",
-            alignItems: "center",
-            gridTemplateColumns: "40% 28% 28%",
-            columnGap: "2%",
-          }}
-        >
-          <Button
-            text="New config from default"
-            onClick={() => this.loadDefaultConfig()}
-            enabled={true}
-            tooltip="Create and load a new config using the default config as a template.<br>Any unsaved changes will be lost."
-          />
-          <Button
-            text="New blank config"
-            onClick={() => this.loadBlankConfig()}
-            enabled={true}
-            tooltip="Create and load a new blank config.<br>Any unsaved changes will be lost."
-          />
-          <Button
-            text="Import config"
-            onClick={() => this.openImportConfigPopup()}
-            enabled={true}
-            tooltip="Import items from another config into this one."
-          />
-        </div>
-        <ImportPopup {...this.state.importPopupProps} />
-      </Box>
-    )
-  }
 }
