@@ -366,6 +366,10 @@ It also works on a phone.
 Saving the config, also under a new name, and starting a new one are in the toolbar above its tabs.
 The GUI opens in the area that was used last.
 
+The Dashboard tab in Control shows big level meters, the spectrum and the faders.
+Its full screen button makes it fill the window, for a tablet or a wall display.
+The address then ends in `?dashboardview`, and a bookmark of it opens the full screen dashboard directly.
+
 ### Command line options
 The logging level is `warn` by default.
 It can be changed with a command line argument, which may be useful when debugging some problem.

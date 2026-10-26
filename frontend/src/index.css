@@ -172,6 +172,114 @@ textarea.logfileviewer {
   align-items: flex-start;
 }
 
+/* The full screen dashboard, which takes the side panel's classes and fills the window */
+.sidepanel-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  width: 100vw;
+  min-width: 0;
+  height: 100vh;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  background-color: var(--background-color);
+}
+
+.sidepanel.sidepanel-expanded .sidepanel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidepanel-header-main {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 14px;
+  flex: 1;
+}
+
+.sidepanel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidepanel-logo {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+
+/* Goes under the logo when the two do not fit side by side */
+.dashboard-header-info {
+  min-width: min(260px, 100%);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.dashboard-header-actions {
+  justify-content: flex-start;
+}
+
+.sidepanel-content-expanded {
+  max-width: 1200px;
+  align-self: center;
+}
+
+.dashboard-config-summary {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.sidepanel-expanded .dashboard-config-summary {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.dashboard-config-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dashboard-config-description {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  opacity: 0.9;
+}
+
+.dashboard-config-filename {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+/* The dashboard as a Control tab: wider than the other tabs, with the full screen button next to
+   the config summary */
+.wide-tabpanel.dashboard-tabpanel {
+  --content-width: 1140px;
+}
+
+.dashboard-tab-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.dashboard-tab-header .dashboard-config-summary {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 /* The selected tab fills the height left under the tab list. A tab scrolls in its .tabcontainer,
    or in the panel itself when it has none. */
 .configtabs > .react-tabs__tab-panel--selected {

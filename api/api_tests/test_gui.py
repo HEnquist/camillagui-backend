@@ -41,8 +41,8 @@ def sidebar_state(page):
 
 
 def test_the_area_is_remembered(page, server):
-    """Control is the default, the area picked is kept over a reload, and the bookmarks of
-    the old compact and dashboard views open Control."""
+    """Control is the default, the area picked is kept over a reload, and a bookmark of the
+    old compact view opens Control."""
     expect(page.get_by_role("tab", name="Overview", exact=True)).to_be_visible()
     page.get_by_role("tab", name="Edit", exact=True).click()
     page.reload()
@@ -50,6 +50,24 @@ def test_the_area_is_remembered(page, server):
     page.goto(f"http://127.0.0.1:{server.port}/gui/index.html?compactview")
     expect(page.get_by_role("tab", name="Overview", exact=True)).to_be_visible()
     assert "compactview" not in page.url
+
+
+def test_the_dashboard_goes_full_screen_and_back(page, server):
+    """A Control tab, which fills the window with a button, a reload or a bookmark with
+    ?dashboardview, and leaves it with another button."""
+    open_tab(page, "Control", "Dashboard")
+    expect(page.locator(".dashboard-config-summary")).to_be_visible()
+    page.locator('[data-tooltip-html^="Show the dashboard full screen"]').click()
+    expect(page.locator(".sidepanel-expanded")).to_be_visible()
+    expect(page.get_by_role("tab", name="Control", exact=True)).to_have_count(0)
+    assert "dashboardview" in page.url
+    page.reload()
+    expect(page.locator(".sidepanel-expanded")).to_be_visible()
+    page.locator('[data-tooltip-html="Leave the full screen dashboard"]').click()
+    expect(page.get_by_role("tab", name="Dashboard", exact=True)).to_be_visible()
+    assert "dashboardview" not in page.url
+    page.goto(f"http://127.0.0.1:{server.port}/gui/index.html?dashboardview")
+    expect(page.locator(".sidepanel-expanded")).to_be_visible()
 
 
 def test_state_changes_show_at_once(page, server):

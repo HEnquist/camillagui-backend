@@ -46,7 +46,7 @@ camilladsp/                 # Domain types + status polling
     params.ts               # Narrowing helpers for the untyped parameter bag
     fixtures/variants.json  # every schema-valid filter config, see below
 
-areas.ts                    # The Control and Edit areas, and which one is shown
+areas.ts                    # The Control and Edit areas, which one is shown, the full screen dashboard
 
 # Edit area tabs
 titletab.tsx
@@ -59,6 +59,7 @@ editortoolbar.tsx           # Above the Edit tabs: undo, the file and saving, Ap
 
 # Control area tabs
 controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
+dashboardview.tsx           # Big meters, spectrum and faders, as a tab or full screen
 filestab.tsx                # The config and filter files available to CamillaDSP
 shortcuts.tsx               # Shortcuts
 playbacktab.tsx             # Playing an audio file through the pipeline
@@ -176,7 +177,10 @@ config editor. Control is the default, and the area shown is kept in localStorag
 (`areas.ts`). The logo sits at the right end of the area switch, and the side panel is the same in
 both areas. The automatic save and apply are kept in `CamillaConfig`, not in the toolbar, so
 they carry on while Control is shown, for example when a shortcut changes the config.
-The old `?compactview` and `?dashboardview` bookmarks open Control, which is what a phone uses.
+An old `?compactview` bookmark opens Control, which is what a phone uses. `?dashboardview` is the
+full screen dashboard, for a tablet or a wall display, which renders on its own in place of the
+side panel and the areas. Its button on the Dashboard tab sets the parameter, so it can be
+bookmarked.
 Below 1000 px the side panel is a drawer, opened from a status strip with the state, and the
 areas and their tabs take the whole width.
 
@@ -200,7 +204,9 @@ confused people, and the GUI's own API, its code and the `on_set_active_config` 
   CamillaDSP box shows its state and "Stop processing", the log file is on Overview. The
   Controller box only shows the *source* (file, with the provider, or file-less), the file that
   runs, following and recovery.
-- The Control area has Overview, Configs, Files, Shortcuts, File playback and the custom pages.
+- The Control area has Overview, Dashboard, Configs, Files, Shortcuts, File playback and the
+  custom pages. Dashboard has big meters, the spectrum, the aux faders with their volumes, the
+  state and the title of the config that runs.
   Overview has what runs now, what runs after a restart, the spectrum and the log file. Configs has the
   config files and the follow checkbox, the error recovery toggle, and the check of the
   startup config that following adapts. All of them apply at once, nothing is staged. "After a restart" (`afterRestart` in `camilladsp/status.ts`) takes each value from

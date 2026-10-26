@@ -11,11 +11,12 @@ import isEqual from "lodash/isEqual"
 import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
 import { api, errorMessage } from "./api/client"
-import { Area, getArea, storeArea } from "./areas"
+import { Area, getArea, isDashboardFullscreen, setDashboardFullscreen, storeArea } from "./areas"
 import { Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { ControllerSettings, ControllerStatus, isFileless, StartupArgs } from "./camilladsp/status"
 import { ConfigsTab, OverviewTab } from "./controltabs"
 import type { CustomPageComponent } from "./custom-pages/types"
+import { DashboardView } from "./dashboardview"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
 import { EditorToolbar } from "./editortoolbar"
@@ -45,6 +46,8 @@ class CamillaConfig extends React.Component<
   unknown,
   {
     area: Area
+    /** The dashboard fills the window, in place of the side panel and the areas. */
+    dashboardFullscreen: boolean
     controlTab: number
     /** The Edit area's tab, where 0 is Title. */
     editTab: number
@@ -81,11 +84,13 @@ class CamillaConfig extends React.Component<
     this.revertConfig = this.revertConfig.bind(this)
     this.setErrors = this.setErrors.bind(this)
     this.setArea = this.setArea.bind(this)
+    this.setDashboardFullscreen = this.setDashboardFullscreen.bind(this)
     this.ControlArea = this.ControlArea.bind(this)
     this.EditArea = this.EditArea.bind(this)
     this.applyNotify = this.applyNotify.bind(this)
     this.state = {
       area: getArea(),
+      dashboardFullscreen: isDashboardFullscreen(),
       controlTab: 0,
       editTab: 0,
       guiConfig: defaultGuiConfig(),
@@ -167,6 +172,11 @@ class CamillaConfig extends React.Component<
   private setArea(area: Area) {
     storeArea(area)
     this.setState({ area })
+  }
+
+  private setDashboardFullscreen(on: boolean) {
+    setDashboardFullscreen(on)
+    this.setState({ dashboardFullscreen: on })
   }
 
   private applyNotify() {
@@ -312,6 +322,17 @@ class CamillaConfig extends React.Component<
 
   render() {
     const { area } = this.state
+    if (this.state.dashboardFullscreen)
+      return (
+        <div className="configapp">
+          <MainTooltip />
+          <DashboardView
+            guiConfig={this.state.guiConfig}
+            fullscreen={true}
+            setFullscreen={this.setDashboardFullscreen}
+          />
+        </div>
+      )
     return (
       <div className="configapp configapp-normal">
         <MainTooltip />
@@ -377,6 +398,7 @@ class CamillaConfig extends React.Component<
       >
         <TabList>
           <Tab>Overview</Tab>
+          <Tab>Dashboard</Tab>
           <Tab>Configs</Tab>
           <Tab>Files</Tab>
           <Tab>Shortcuts</Tab>
@@ -387,6 +409,9 @@ class CamillaConfig extends React.Component<
         </TabList>
         <TabPanel>
           <OverviewTab {...controller} guiConfig={guiConfig} inactive={this.state.dspInactive} />
+        </TabPanel>
+        <TabPanel>
+          <DashboardView guiConfig={guiConfig} fullscreen={false} setFullscreen={this.setDashboardFullscreen} />
         </TabPanel>
         <TabPanel>
           <ConfigsTab
