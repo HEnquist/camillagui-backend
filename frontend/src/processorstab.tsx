@@ -133,8 +133,8 @@ export class ProcessorsTab extends React.Component<
     const processors = config.processors ? config.processors : {}
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
-        <div>
-          <div className="horizontally-spaced-content" style={{ width: "700px" }}>
+        <div className="tab-with-header">
+          <div className="horizontally-spaced-content tab-header">
             <EnumOption
               value={this.state.sortBy}
               options={ProcessorSortKeys}
@@ -150,7 +150,7 @@ export class ProcessorsTab extends React.Component<
             />
           </div>
           <div className="tabcontainer">
-            <div className="tabpanel-with-header" style={{ width: "700px" }}>
+            <div className="tabpanel editor-grid">
               <ErrorMessage message={errors.rootMessage()} />
               {this.processorNames().map((name) => (
                 <ProcessorView
@@ -167,7 +167,6 @@ export class ProcessorsTab extends React.Component<
               ))}
               <AddButton tooltip="Add a new processor" onClick={this.addProcessor} />
             </div>
-            <div className="tabspacer" />
           </div>
         </div>
       </ErrorBoundary>
@@ -206,10 +205,9 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
     const channel_labels = getProcessorChannelLabels(config, name)
     return (
       <Box
-        style={{ width: "700px" }}
         title={
           <ParsedInput
-            style={{ width: "300px" }}
+            className="box-name-input"
             value={name}
             asString={(x) => x}
             parseValue={(newName) => (isValidProcessorName(newName) ? newName : undefined)}
@@ -219,15 +217,8 @@ class ProcessorView extends React.Component<ProcessorViewProps, ProcessorViewSta
           />
         }
       >
-        <div style={{ display: "flex", flexDirection: "row" }}>
-          <div
-            className="vertically-spaced-content"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
+        <div className="view-row">
+          <div className="view-row-buttons">
             <DeleteButton tooltip={"Delete this processor"} onClick={this.props.remove} />
           </div>
           <ProcessorParams

@@ -46,7 +46,8 @@ export function DashboardView(props: {
 
   const meterSize = {
     width: typeof window === "undefined" ? 1100 : Math.max(290, Math.min(window.innerWidth - 80, 1100)),
-    channelHeight: 24,
+    // The labels grow with the channel height, and need the width to go with it
+    channelHeight: typeof window !== "undefined" && window.innerWidth < 600 ? 10 : 24,
   }
 
   return (

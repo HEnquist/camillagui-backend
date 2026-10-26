@@ -10,7 +10,6 @@ import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
 import { createRoot } from "react-dom/client"
 import { Tab, TabList, TabPanel, Tabs } from "react-tabs"
-import { Tooltip } from "react-tooltip"
 import { api, errorMessage } from "./api/client"
 import { completeConfig, Config, defaultConfig, getCaptureDeviceChannelCount } from "./camilladsp/config"
 import { CompactView, getViewMode, setViewMode, ViewMode } from "./compactview"
@@ -32,7 +31,7 @@ import { TitleTab } from "./titletab"
 import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
 import { loadStartupConfig } from "./utilities/files"
-import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
+import { delayedExecutor, ErrorBoundary, MainTooltip, MdiButton, MdiIcon } from "./utilities/ui-components"
 
 const customPageModules = import.meta.glob<{ default: CustomPageComponent }>("./custom-pages/*.tsx", { eager: true })
 const customPages = Object.values(customPageModules)
@@ -225,13 +224,16 @@ class CamillaConfig extends React.Component<
   }
 
   private switchTab(index: number) {
-    this.setState({ activetab: index })
+    // On a narrow window the tab list scrolls sideways, keep the selected tab in view
+    this.setState({ activetab: index }, () =>
+      document.querySelector(".react-tabs__tab--selected")?.scrollIntoView({ block: "nearest", inline: "nearest" }),
+    )
   }
 
   render() {
     return (
-      <div className="configapp">
-        <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
+      <div className={this.state.viewMode === "normal" ? "configapp configapp-normal" : "configapp"}>
+        <MainTooltip />
         {this.state.viewMode === "compact" ? (
           <CompactView
             currentConfigName={this.state.currentConfigFile}

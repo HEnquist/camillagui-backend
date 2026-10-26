@@ -22,7 +22,6 @@ export function Shortcuts(props: {
           <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig} />
           <QuickConfigSwitch setConfig={setConfig} currentConfigName={currentConfigName} />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

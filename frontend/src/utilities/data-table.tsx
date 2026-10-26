@@ -24,6 +24,8 @@ export interface DataTableColumnMeta {
   maxWidth?: string
   right?: boolean
   compact?: boolean
+  /** Left out when the table has little room, as on a phone */
+  optional?: boolean
 }
 
 export interface SelectedRowsChange<RowData extends TanStackRowData> {
@@ -155,7 +157,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
                 return (
                   <th
                     key={header.id}
-                    className={column?.compact ? "data-table-compact" : undefined}
+                    className={columnClass(column)}
                     aria-sort={ariaSort(sortState)}
                     style={columnStyle(column)}
                   >
@@ -207,7 +209,7 @@ export function DataTable<RowData extends TanStackRowData>(props: {
                   return (
                     <td
                       key={cell.id}
-                      className={column?.compact ? "data-table-compact" : undefined}
+                      className={columnClass(column)}
                       style={columnStyle(column)}
                       onClick={(event) => {
                         if (!clickable) {
@@ -248,6 +250,13 @@ const tableGlobalFilter: FilterFn<TanStackRowData> = (row, columnId, filterValue
 
 function normalizeFilterValue(value: unknown): string {
   return String(value).trim().toLowerCase()
+}
+
+function columnClass(column: DataTableColumnMeta | undefined): string | undefined {
+  const classes = []
+  if (column?.compact) classes.push("data-table-compact")
+  if (column?.optional) classes.push("data-table-optional")
+  return classes.length > 0 ? classes.join(" ") : undefined
 }
 
 function columnStyle(column: DataTableColumnMeta | undefined): React.CSSProperties | undefined {
