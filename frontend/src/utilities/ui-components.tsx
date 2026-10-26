@@ -3,6 +3,7 @@ import { mdiChartBellCurveCumulative, mdiDelete, mdiMenuDown, mdiPlusThick, mdiS
 import { Icon } from "@mdi/react"
 import { ColumnDef } from "@tanstack/react-table"
 import { Range } from "immutable"
+import { Tooltip } from "react-tooltip"
 import ReactjsPopup from "reactjs-popup"
 import "reactjs-popup/dist/index.css"
 import { DataTable, sortByRows } from "./data-table"
@@ -31,8 +32,88 @@ export function Box(props: {
           {props.title}
         </div>
       </legend>
-      {props.children}
+      <div className="box-content">{props.children}</div>
     </fieldset>
+  )
+}
+
+/** Whether a media query matches now. False where there is no matchMedia, as in the tests. */
+export function mediaMatches(query: string): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(query).matches
+}
+
+/** Whether a media query matches, following changes, such as a mouse being plugged in or the
+ * window being resized. */
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => mediaMatches(query))
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return
+    const list = window.matchMedia(query)
+    const update = () => setMatches(list.matches)
+    update()
+    list.addEventListener("change", update)
+    return () => list.removeEventListener("change", update)
+  }, [query])
+  return matches
+}
+
+/** True when some input can hover, a mouse or a trackpad. False on a phone or a tablet used by
+ * touch alone, where a tap fakes a hover that then stays. */
+export function useCanHover(): boolean {
+  return useMediaQuery("(any-hover: hover)")
+}
+
+/** What a tap already does something on, so it gets no tooltip where tooltips open on a tap */
+const TAPPABLE = [
+  ".button:not(.disabled-button)",
+  "button:not(:disabled)",
+  "input",
+  "select",
+  "textarea",
+  ".centered-button",
+  ".mapping-cell",
+  ".mapping-cell-empty",
+].join(", ")
+
+/** The tooltip for every data-tooltip-id="main-tooltip". Where nothing can hover it opens on a
+ * tap instead, and only on what has no other use for a tap: not on an enabled button, and not
+ * around an input. That still covers the icons and status cells that carry information. */
+export function MainTooltip() {
+  const canHover = useCanHover()
+  if (canHover) return <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
+  return (
+    <Tooltip
+      id="main-tooltip"
+      className="tooltip"
+      border="var(--box-border)"
+      openEvents={{ click: true }}
+      globalCloseEvents={{ clickOutsideAnchor: true, scroll: true }}
+      disableTooltip={(anchor) =>
+        anchor === null || anchor.matches(TAPPABLE) || anchor.querySelector("input, select, textarea") !== null
+      }
+    />
+  )
+}
+
+/** Scrolls its content sideways when the content is wider than the space it gets, and only then,
+ * since a box that scrolls also clips what sticks out below it, such as an open dropdown. */
+export function ScrollX(props: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  useEffect(() => {
+    const element = ref.current
+    const content = element?.firstElementChild
+    if (!element || !(content instanceof HTMLElement) || typeof ResizeObserver === "undefined") return
+    const check = () => setOverflows(content.offsetWidth > element.clientWidth)
+    const observer = new ResizeObserver(check)
+    observer.observe(element)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className={overflows ? "scroll-x" : undefined}>
+      {props.children}
+    </div>
   )
 }
 
@@ -271,15 +352,13 @@ export function OptionLine(props: {
   small?: boolean
   style?: CSSProperties
 }) {
-  const settingStyle = props.small ? { width: "min-content" } : {}
-  const combinedStyle = Object.assign(settingStyle, props.style)
   return (
     <label
       htmlFor={props.desc}
-      className="setting"
+      className={props.small ? "setting setting-small" : "setting"}
       data-tooltip-html={props.tooltip}
       data-tooltip-id="main-tooltip"
-      style={combinedStyle}
+      style={props.style}
     >
       <span className="setting-label">{props.desc}</span>
       {props.children}
@@ -748,13 +827,17 @@ export const PENDING_BACKGROUND_STYLE: CSSProperties = Object.freeze({
 
 export function ErrorMessage(props: { message?: string }) {
   return props.message ? (
-    <div style={{ color: "var(--error-text-color)", whiteSpace: "pre-wrap" }}>{props.message}</div>
+    <div className="message" style={{ color: "var(--error-text-color)", whiteSpace: "pre-wrap" }}>
+      {props.message}
+    </div>
   ) : null
 }
 
 export function WarningMessage(props: { message?: string }) {
   return props.message ? (
-    <div style={{ color: "var(--warning-text-color)", whiteSpace: "pre-wrap" }}>{props.message}</div>
+    <div className="message" style={{ color: "var(--warning-text-color)", whiteSpace: "pre-wrap" }}>
+      {props.message}
+    </div>
   ) : null
 }
 
@@ -1273,7 +1356,7 @@ export function FileSelectPopup(props: {
     },
   ]
   return (
-    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "900px" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1283,7 +1366,6 @@ export function FileSelectPopup(props: {
       <div
         style={{
           margin: "5px",
-          width: "60vw",
           height: "80vh",
           overflowY: "scroll",
         }}
@@ -1341,7 +1423,7 @@ export function KeyValueSelectPopup(props: {
     onClose()
   }
   return (
-    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "max-content" }}>
+    <ReactjsPopup open={open} closeOnDocumentClick={true} onClose={onClose} contentStyle={{ width: "500px" }}>
       <div style={{ margin: "5px" }}>
         <span style={{ float: "right" }}>
           <CloseButton onClick={onClose} />
@@ -1351,7 +1433,6 @@ export function KeyValueSelectPopup(props: {
       <div
         style={{
           margin: "5px",
-          width: "30vw",
           height: "80vh",
           overflowY: "scroll",
         }}

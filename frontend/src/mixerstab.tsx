@@ -45,6 +45,7 @@ import {
   cssStyles,
   ErrorBoundary,
   DropdownBox,
+  ScrollX,
 } from "./utilities/ui-components"
 
 const styles = cssStyles()
@@ -138,7 +139,7 @@ export class MixersTab extends React.Component<
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
         <div className="tabcontainer">
-          <div className="tabpanel" style={{ width: "700px" }}>
+          <div className="tabpanel editor-grid">
             <ErrorMessage message={errors.rootMessage()} />
             {this.mixerNames().map((name) => (
               <MixerView
@@ -157,7 +158,6 @@ export class MixersTab extends React.Component<
               <AddButton tooltip="Add a new mixer" onClick={this.addMixer} />
             </div>
           </div>
-          <div className="tabspacer"></div>
         </div>
       </ErrorBoundary>
     )
@@ -196,7 +196,7 @@ function MixerView(props: {
         <>
           <ParsedInput
             value={name}
-            style={{ width: "300px" }}
+            className="box-name-input"
             tooltip="Mixer name, must be unique"
             onChange={rename}
             asString={(name) => name}
@@ -358,7 +358,7 @@ function MappingMatrix(props: {
     }
   }
   return (
-    <div>
+    <ScrollX>
       <table className="mixer-table">
         <tr>
           <td colSpan={5} rowSpan={4}></td>
@@ -521,7 +521,7 @@ function MappingMatrix(props: {
           )
         })}
       </table>
-    </div>
+    </ScrollX>
   )
 }
 

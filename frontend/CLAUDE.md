@@ -176,8 +176,9 @@ config editor. Control is the default, and the area shown is kept in localStorag
 (`areas.ts`). The logo sits at the right end of the area switch, and the side panel is the same in
 both areas. The automatic save and apply are kept in `CamillaConfig`, not in the toolbar, so
 they carry on while Control is shown, for example when a shortcut changes the config.
-The old `?compactview` and `?dashboardview` bookmarks open Control. Below 760 px the side panel
-goes above the tabs, which makes Control usable on a phone. Edit needs a wider screen.
+The old `?compactview` and `?dashboardview` bookmarks open Control, which is what a phone uses.
+Below 1000 px the side panel is a drawer, opened from a status strip with the state, and the
+areas and their tabs take the whole width.
 
 The file CamillaDSP loads when it starts or reloads (`startup_config_file`) is the *startup
 config*, in the GUI and in CamillaDSP alike. It used to be the "active config", a name that

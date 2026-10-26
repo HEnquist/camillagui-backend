@@ -11,7 +11,7 @@ function ConfigSummary({ config }: CustomPageProps) {
 
   return (
     <div className="tabcontainer">
-      <div className="tabpanel" style={{ width: "500px" }}>
+      <div className="tabpanel">
         <Box title="Devices">
           <table>
             <tbody>
@@ -62,7 +62,6 @@ function ConfigSummary({ config }: CustomPageProps) {
           </Box>
         )}
       </div>
-      <div className="tabspacer" />
     </div>
   )
 }

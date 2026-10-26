@@ -39,7 +39,7 @@ interface ControllerProps {
   openConfigFile: (name: string) => Promise<void>
 }
 
-/** The width of a Control tab, as in .control-tabpanel, less on a narrow screen. */
+/** The width for the spectrum, within the cap of .tabpanel, less on a narrow screen. */
 function controlPanelWidth(): number {
   return typeof window === "undefined" ? 700 : Math.max(290, Math.min(window.innerWidth - 30, 700))
 }
@@ -60,7 +60,7 @@ export function OverviewTab(
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel control-tabpanel">
+        <div className="tabpanel">
           <RunningBox status={props.status} inactive={props.inactive} openConfigFile={props.openConfigFile} />
           <AfterRestartBox
             status={props.status}
@@ -86,7 +86,6 @@ export function OverviewTab(
           </Box>
           <LogFileViewerPopup open={logFileViewerOpen} onClose={() => setLogFileViewerOpen(false)} />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )
@@ -108,7 +107,7 @@ export function ConfigsTab(
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel control-tabpanel">
+        <div className="tabpanel">
           <ConfigFilesBox
             status={props.status}
             settings={props.settings}
@@ -120,7 +119,6 @@ export function ConfigsTab(
           <RecoveryBox status={props.status} settings={props.settings} startupArgs={props.startupArgs} />
           <FileCheckBox openConfigFile={props.openConfigFile} />
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

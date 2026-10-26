@@ -14,14 +14,13 @@ export function Shortcuts(props: {
   return (
     <ErrorBoundary>
       <div className="tabcontainer">
-        <div className="tabpanel control-tabpanel">
+        <div className="tabpanel">
           {shortcutSections.length > 0 ? (
             <ShortcutSections sections={shortcutSections} config={config} updateConfig={updateConfig} />
           ) : (
             <Box title="Shortcuts">No shortcuts are set up, see custom_shortcuts in gui-config.yml.</Box>
           )}
         </div>
-        <div className="tabspacer" />
       </div>
     </ErrorBoundary>
   )

@@ -130,7 +130,7 @@ export class PipelineTab extends React.Component<
       <ErrorBoundary errorMessage={errors.asText()}>
         <div className="tabcontainer">
           <DndContainer>
-            <div className="tabpanel" style={{ width: "700px" }}>
+            <div className="tabpanel">
               <ErrorMessage message={errors.rootMessage()} />
               <div className="pipeline-channel">Capture: {this.state.capture_channels} channels in</div>
               {pipeline?.map((step: PipelineStep, index: number) => {
@@ -240,7 +240,6 @@ export class PipelineTab extends React.Component<
               )}
             </div>
           </DndContainer>
-          <div className="tabspacer" />
         </div>
       </ErrorBoundary>
     )
@@ -506,7 +505,7 @@ function FilterStepFilter(props: {
   )
   return (
     <DndSortable isDragging={isDragging} canDrop={canDrop} drag={drag} preview={preview} drop={drop}>
-      <div className={`horizontally-spaced-content`}>
+      <div className="horizontally-spaced-content" style={{ flex: 1, minWidth: 0 }}>
         <DragHandle drag={drag} tooltip="Drag filter to change order" />
         <EnumInput
           value={name}

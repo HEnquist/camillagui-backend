@@ -289,13 +289,15 @@ import { Box, CheckBox, FloatInput, IntInput, EnumOption, MdiButton, ErrorBounda
 Wrap your page content like existing tabs do:
 
 ```tsx
-<div className="tabcontainer">        {/* outer flex container */}
-  <div className="tabpanel" style={{ width: "700px" }}>
+<div className="tabcontainer">        {/* scrolls the page vertically */}
+  <div className="tabpanel">          {/* content column, adapts to the window width */}
     {/* your content here */}
   </div>
-  <div className="tabspacer" />       {/* flexible right spacer */}
 </div>
 ```
+
+The children of `tabpanel` are capped at 760 px wide, and those of `wide-tabpanel` at 1000 px.
+Avoid fixed pixel widths, so the page also works on a narrow window or a phone.
 
 Use `className="textbox"` on text inputs to match the app's styling.
 
@@ -325,7 +327,7 @@ function ConfigInfo({ config }: CustomPageProps) {
 
   return (
     <div className="tabcontainer">
-      <div className="tabpanel" style={{ width: "500px" }}>
+      <div className="tabpanel">
         <Box title="Devices">
           <p>Samplerate: {config.devices.samplerate} Hz</p>
           <p>Capture channels: {"channels" in capture ? capture.channels : "N/A"}</p>
@@ -346,7 +348,6 @@ function ConfigInfo({ config }: CustomPageProps) {
           </ul>
         </Box>
       </div>
-      <div className="tabspacer" />
     </div>
   )
 }
@@ -382,7 +383,7 @@ function QuickEQ({ config, updateConfig }: CustomPageProps) {
 
   return (
     <div className="tabcontainer">
-      <div className="tabpanel" style={{ width: "400px" }}>
+      <div className="tabpanel">
         <Box title={FILTER_NAME}>
           <FloatOption
             desc="Frequency (Hz)"
@@ -404,7 +405,6 @@ function QuickEQ({ config, updateConfig }: CustomPageProps) {
           />
         </Box>
       </div>
-      <div className="tabspacer" />
     </div>
   )
 }
@@ -443,7 +443,7 @@ function FilterPlot({ config }: CustomPageProps) {
 
   return (
     <div className="tabcontainer">
-      <div className="tabpanel" style={{ width: "600px" }}>
+      <div className="tabpanel">
         <Box title={`Frequency response: ${FILTER_NAME}`}>
           {magnitude && freqs ? (
             <pre style={{ fontSize: "11px" }}>
@@ -457,7 +457,6 @@ function FilterPlot({ config }: CustomPageProps) {
           )}
         </Box>
       </div>
-      <div className="tabspacer" />
     </div>
   )
 }

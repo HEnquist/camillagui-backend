@@ -35,7 +35,7 @@ export function DiffPopup(props: {
         style={{
           height: "90vh",
           overflowY: "auto",
-          overflowX: "clip",
+          overflowX: "auto",
           padding: "5px",
         }}
       >

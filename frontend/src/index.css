@@ -4,8 +4,6 @@ body {
   color: var(--text-color);
   background-color: var(--background-color);
   margin: 0;
-  height: 100vh;
-  width: 100vw;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -87,7 +85,7 @@ textarea.logfileviewer {
 }
 
 .sidepanel {
-  border: 4px;
+  box-sizing: border-box;
   text-align: left;
   padding: 10px 10px 0 0;
   display: flex;
@@ -95,9 +93,76 @@ textarea.logfileviewer {
   align-items: flex-start;
   overflow-y: auto;
   overflow-x: hidden;
-  height: 95vh;
+  flex: none;
   width: 320px;
-  min-width: 320px;
+}
+
+/* The bar that stands in for the side panel while it is a drawer, see the media query below */
+.status-strip {
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 2px 4px 4px;
+  border-bottom: var(--box-border);
+}
+
+.drawer-backdrop,
+.sidepanel .sidepanel-header {
+  display: none;
+}
+
+/* Below this width the side panel leaves the page and slides in over it as a drawer.
+   It stays mounted, since it owns the status poller. */
+@media (max-width: 1000px) {
+  .configapp.configapp-normal {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .status-strip {
+    display: flex;
+  }
+
+  .configapp-normal > .sidepanel .sidepanel-header {
+    display: flex;
+  }
+
+  .configapp-normal > .sidepanel {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    max-width: 100%;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    background-color: var(--background-color);
+    border-right: var(--box-border);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0.2s;
+  }
+
+  .configapp-normal > .sidepanel.sidepanel-open {
+    transform: none;
+    visibility: visible;
+  }
+
+  .drawer-backdrop.drawer-backdrop-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* In the drawer, the header holds only the close button */
+.sidepanel-header {
+  width: 100%;
+  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 
 .sidepanel-content {
@@ -107,27 +172,96 @@ textarea.logfileviewer {
   align-items: flex-start;
 }
 
-.tabpanel {
-  border: 4px;
-  /*border-right: var(--box-border);*/
-  text-align: left;
-  padding: 10px 20px 0 0;
+/* The selected tab fills the height left under the tab list. A tab scrolls in its .tabcontainer,
+   or in the panel itself when it has none. */
+.configtabs > .react-tabs__tab-panel--selected {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  width: 450px;
-  /*overflow: auto;*/
-  height: 90vh;
+  overflow-y: auto;
+}
+
+/* A tab with a header row above the part that scrolls */
+.tab-with-header {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-header {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 760px;
+  flex-wrap: wrap;
+}
+
+.tab-header > .setting {
+  width: auto;
+  flex: 1 1 250px;
 }
 
 .tabcontainer {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   overflow-y: auto;
 }
 
+/* The content column of a tab. It takes the whole width, and its children are capped at
+   --content-width. */
+.tabpanel,
+.wide-tabpanel {
+  --content-width: 760px;
+  box-sizing: border-box;
+  container-type: inline-size;
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.wide-tabpanel {
+  --content-width: 1000px;
+}
+
+.tabpanel > *,
+.wide-tabpanel > * {
+  box-sizing: border-box;
+  max-width: var(--content-width);
+}
+
+/* The filters, mixers and processors tabs put their boxes in as many columns as fit. Anything
+   that is not a box takes a row of its own. */
+.tabpanel.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(640px, 100%), 1fr));
+  align-items: start;
+  column-gap: 10px;
+}
+
+.tabpanel.editor-grid > * {
+  max-width: none;
+}
+
+.tabpanel.editor-grid > :not(.box) {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 .data-table-shell {
+  container-type: inline-size;
   width: 100%;
   overflow-x: auto;
+}
+
+@container (max-width: 700px) {
+  .data-table-optional {
+    display: none;
+  }
 }
 
 .data-table-toolbar {
@@ -212,67 +346,42 @@ textarea.logfileviewer {
   padding-right: 4px;
 }
 
-.tabspacer {
-  width: 100%;
-}
-
-.tabpanel-with-header {
-  border: 4px;
-  /*border-right: var(--box-border);*/
-  text-align: left;
-  padding: 10px 20px 0 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 450px;
-  /*overflow: auto;*/
-  height: 86vh;
-}
-
-.wide-tabpanel {
-  border: 4px;
-  /*border-right: var(--box-border);*/
-  text-align: left;
-  padding: 10px 20px 0 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 550px;
-  /*overflow: auto;*/
-  height: 90vh;
-}
-
 .tabpanel > * {
   margin: 5px 0;
 }
 
+/* The paddings keep clear of a notch and rounded corners, which index.html lets the page extend
+   under with viewport-fit=cover */
 .configapp {
-  padding: 5px;
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  padding: max(5px, env(safe-area-inset-top)) max(5px, env(safe-area-inset-right))
+    max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left));
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
-}
-
-.configapp > :last-child {
-  margin-left: 10px;
+  gap: 10px;
 }
 
 .configtabs {
-  float: left;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   text-align: left;
   padding: 2px;
   display: flex;
-  width: 100%;
-  min-width: 800px;
   flex-direction: column;
 }
 
-/* The Control and Edit areas, each with its own tabs below the switch. */
-.mainarea {
+/* The Control and Edit areas, each with its own tabs below the switch. Like .configtabs, they
+   pass the height down, so that the selected tab scrolls by itself. */
+.mainarea,
+.edit-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-width: 0;
 }
 
 /* The area switch, with the logo in the otherwise empty top right corner. */
@@ -316,21 +425,7 @@ textarea.logfileviewer {
   border: var(--highlighted-button-border);
 }
 
-.controltabs {
-  text-align: left;
-  padding: 2px;
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-}
-
-/* The Edit area: the editor's toolbar above its tabs. */
-.edit-area {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
+/* The Edit area's toolbar, above its tabs */
 .editor-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -354,61 +449,88 @@ textarea.logfileviewer {
   opacity: 0.8;
 }
 
-.control-tabpanel {
-  width: 700px;
+.import-file-selection {
+  box-sizing: border-box;
+  width: 450px;
+  max-width: 100%;
+  padding: 10px 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-/* On a phone, the side panel goes above the Control area. The Edit area needs a wider screen. */
-@media (max-width: 760px) {
-  .configapp {
-    flex-direction: column;
-  }
-
-  .configapp > :last-child {
-    margin-left: 0;
-  }
-
-  .sidepanel {
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    padding: 0;
-    overflow-y: visible;
-  }
-
-  .tabpanel.control-tabpanel {
-    width: 100%;
-    height: auto;
-    padding-right: 0;
-  }
+.import-file-selection > * {
+  margin: 5px 0;
 }
 
+/* A row with a label and one or more inputs sharing the rest of the width. A message in the row
+   goes on a line of its own. In a narrow container the label goes above the inputs. */
 .setting {
   box-sizing: border-box;
-  display: table;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   width: 100%;
-  height: 28px;
+  min-height: 28px;
   text-align: left;
 }
 
-.setting-label {
-  display: table-cell;
-  width: 45%;
-  text-align: right;
-  border-right: 5px solid transparent;
+.setting > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-.setting-label-wide {
-  display: table-cell;
-  width: 75%;
+.setting > .setting-label,
+.setting > .setting-label-wide {
+  box-sizing: border-box;
+  flex: 0 0 40%;
+  min-width: 8em;
+  padding-right: 5px;
   text-align: right;
-  border-right: 5px solid transparent;
+  overflow-wrap: anywhere;
+}
+
+.setting > .setting-label-wide {
+  flex-basis: 75%;
+}
+
+.setting > input[type='checkbox'] {
+  flex: none;
+}
+
+.setting > .message {
+  flex-basis: 100%;
+}
+
+.setting.setting-small {
+  width: auto;
+  flex-wrap: nowrap;
+}
+
+.setting.setting-small > * {
+  flex: none;
+  min-width: 0;
+}
+
+@container (max-width: 420px) {
+  .setting:not(.setting-small) > .setting-label,
+  .setting:not(.setting-small) > .setting-label ~ * {
+    text-align: left;
+  }
+
+  .setting:not(.setting-small) > .setting-label {
+    flex-basis: 100%;
+  }
+
+  /* With a basis of zero an input would still fit on the line of the label */
+  .setting:not(.setting-small) > .setting-label ~ :not(.message) {
+    flex-basis: 8em;
+  }
 }
 
 .setting-input {
-  display: table-cell;
+  box-sizing: border-box;
   width: 100%;
-  vertical-align: middle;
 }
 
 .setting-button {
@@ -461,55 +583,96 @@ textarea.logfileviewer {
 }
 
 .textbox {
-  display: table-cell;
+  box-sizing: border-box;
   width: 100%;
-  vertical-align: middle;
-}
-
-.textbox-large {
-  display: table-cell;
-  width: 100%;
-  vertical-align: middle;
-}
-
-.setting-input-default {
-  display: table-cell;
-  width: 100%;
-  vertical-align: middle;
-  color: var(--disabled-text-color);
 }
 
 .small-setting-input {
   width: 5em;
 }
 
-.optional-setting-input {
-  display: table-cell;
-  width: 67%;
-  vertical-align: middle;
-}
-
-.small-optinal-setting-input {
-  width: 4em;
-}
-
 .box {
   box-sizing: border-box;
   width: 100%;
+  min-inline-size: 0;
   border-radius: var(--border-radius);
   border: var(--box-border);
   padding: 5px 12px 12px 12px;
 }
 
+.box > legend {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.box > legend > div {
+  flex-wrap: wrap;
+}
+
+/* What is inside a box responds to the box's width, not the window's */
+.box-content {
+  container-type: inline-size;
+}
+
+/* The name field in the title of a filter, mixer or processor */
+.box-name-input {
+  width: 300px;
+  min-width: 0;
+}
+
+.unused-filter {
+  white-space: nowrap;
+}
+
+/* The button column and the parameters of a filter or a processor, or the button row above the
+   parameters when narrow */
+.view-row {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
+
+.view-row > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-row-buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+@container (max-width: 420px) {
+  .view-row {
+    flex-direction: column;
+  }
+
+  .view-row-buttons {
+    flex-direction: row;
+  }
+}
+
+/* A chart, a table or a matrix that is wider than the space it gets scrolls by itself */
+.scroll-x {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 div .popup-content {
   width: 50%;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  box-sizing: border-box;
   background-color: var(--background-color);
   border: var(--box-border);
   border-radius: var(--border-radius);
 }
 
 .device-capabilities-popup {
-  min-width: 320px;
   max-width: 520px;
   padding: 12px;
 }
@@ -633,7 +796,6 @@ div .popup-content {
 
 .diff-table {
   border-collapse: collapse;
-  min-width: 30vw;
 }
 
 .diff-table > td {
@@ -759,17 +921,6 @@ div .popup-content {
 
 .two-column-grid .alignRight {
   justify-self: right;
-}
-
-.split-10-90 {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 10% 90%;
-  grid-gap: 5px;
-}
-
-.split-10-90 > * {
-  align-self: center;
 }
 
 .button {
@@ -1026,4 +1177,85 @@ div .popup-content {
   margin-right: 4px;
   margin-left: 2px;
   vertical-align: middle;
+}
+
+/* The chart popup on a phone: a header, then the chart taking the rest of the height */
+.chart-popup-full {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+/* Chart.js sizes a chart that keeps no aspect ratio to its parent, which has to be positioned */
+.chart-fill {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* A touch screen as the main input: targets a finger can hit, and text inputs at 16px, below
+   which iOS zooms in on the page when one gets the focus. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  input:not([type='checkbox']):not([type='range']),
+  select {
+    height: 40px;
+  }
+
+  input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+  }
+
+  input[type='range'] {
+    min-height: 32px;
+  }
+
+  .setting {
+    min-height: 40px;
+  }
+
+  .button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .react-tabs__tab {
+    padding: 10px 12px;
+  }
+}
+
+/* Dragging needs a mouse or a trackpad. Without one, the up and down buttons do the job. */
+@media not all and (any-pointer: fine) {
+  .drag-handle {
+    display: none;
+  }
+}
+
+/* A narrow window gets the tabs in one row that scrolls sideways, rather than several rows */
+@media (max-width: 760px) {
+  .react-tabs__tab-list {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .react-tabs__tab {
+    flex: none;
+    white-space: nowrap;
+  }
 }

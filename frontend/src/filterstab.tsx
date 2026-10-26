@@ -1,13 +1,6 @@
 import React from "react"
 import "./index.css"
-import {
-  mdiAlertCircle,
-  mdiChartBellCurveCumulative,
-  mdiFileSearch,
-  mdiUpload,
-  mdiArrowCollapse,
-  mdiArrowExpand,
-} from "@mdi/js"
+import { mdiAlertCircle, mdiChartBellCurveCumulative, mdiFileSearch, mdiUpload, mdiArrowExpand } from "@mdi/js"
 import { isEqual } from "lodash"
 import cloneDeep from "lodash/cloneDeep"
 import { api, Schemas } from "./api/client"
@@ -33,7 +26,7 @@ import {
   PeqBand,
 } from "./camilladsp/config"
 import { clearCoefficientCache, evalFilter } from "./camilladsp/eval"
-import { Chart, ChartContent, PlotVolumeSlider } from "./utilities/chart"
+import { Chart, ChartContent, ChartPopup, PlotVolumeSlider } from "./utilities/chart"
 import { modifiedCopyOf, Update } from "./utilities/common"
 import { Errors } from "./utilities/errors"
 import { doUpload, loadFiles, FileInfo } from "./utilities/files"
@@ -189,8 +182,8 @@ export class FiltersTab extends React.Component<
     }
     return (
       <ErrorBoundary errorMessage={errors.asText()}>
-        <div>
-          <div className="horizontally-spaced-content" style={{ width: "700px" }}>
+        <div className="tab-with-header">
+          <div className="horizontally-spaced-content tab-header">
             <EnumOption
               value={this.state.sortBy}
               options={FilterSortKeys}
@@ -206,7 +199,7 @@ export class FiltersTab extends React.Component<
             />
           </div>
           <div className="tabcontainer">
-            <div className="tabpanel-with-header" style={{ width: "700px" }}>
+            <div className="tabpanel editor-grid">
               <ErrorMessage message={errors.rootMessage()} />
               {this.filterNames().map((name) => (
                 <FilterView
@@ -230,7 +223,6 @@ export class FiltersTab extends React.Component<
               ))}
               <AddButton tooltip="Add a new filter" onClick={this.addFilter} />
             </div>
-            <div className="tabspacer" />
           </div>
         </div>
       </ErrorBoundary>
@@ -306,7 +298,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     this.updateDefaults = this.updateDefaults.bind(this)
     this.updateFilterParamsWithDefaults = this.updateFilterParamsWithDefaults.bind(this)
     this.toggleFilterPlot = this.toggleFilterPlot.bind(this)
-    this.toggleExpand = this.toggleExpand.bind(this)
+    this.expandPlot = this.expandPlot.bind(this)
     this.setPlotVolume = this.setPlotVolume.bind(this)
     this.plotFilterInitially = this.plotFilterInitially.bind(this)
     this.plotFilter = this.plotFilter.bind(this)
@@ -417,16 +409,15 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
     const showFilterPlot = !this.state.showFilterPlot
     this.setState({ showFilterPlot })
     if (showFilterPlot) this.plotFilter()
-    else this.setState({ data: undefined })
+    else this.setState({ data: undefined, expandPlot: false })
   }
 
   private setPlotVolume(volume: number) {
     this.setState({ plot_at_volume: volume })
   }
 
-  private toggleExpand() {
-    const expandPlot = !this.state.expandPlot
-    this.setState({ expandPlot })
+  private expandPlot() {
+    this.setState({ expandPlot: true })
   }
 
   private plotFilterInitially(file: string) {
@@ -467,11 +458,10 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
       }
     return (
       <Box
-        style={{ width: "700px" }}
         title={
           <>
             <ParsedInput
-              style={{ width: "300px" }}
+              className="box-name-input"
               value={name}
               asString={(x) => x}
               parseValue={(newName) => (isValidFilterName(newName) ? newName : undefined)}
@@ -491,21 +481,8 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           </>
         }
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            width: "670px",
-          }}
-        >
-          <div
-            className="vertically-spaced-content"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
+        <div className="view-row">
+          <div className="view-row-buttons">
             <MdiButton
               icon={mdiChartBellCurveCumulative}
               tooltip="Plot frequency response of this filter"
@@ -554,11 +531,7 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
           onSelect={this.pickFilterFile}
         />
         {this.state.showFilterPlot && this.state.data ? (
-          <div
-            style={{
-              width: this.state.expandPlot && this.state.showFilterPlot ? "1100px" : "670px",
-            }}
-          >
+          <div>
             <Chart data={this.state.data} onChange={this.plotFilterInitially} />
             <div
               style={{
@@ -566,15 +539,19 @@ class FilterView extends React.Component<FilterViewProps, FilterViewState> {
                 flexDirection: "row",
               }}
             >
-              <MdiButton
-                icon={this.state.expandPlot ? mdiArrowCollapse : mdiArrowExpand}
-                tooltip={this.state.expandPlot ? "Collapse plot" : "Expand plot"}
-                onClick={this.toggleExpand}
-              />
+              <MdiButton icon={mdiArrowExpand} tooltip="Expand plot" onClick={this.expandPlot} />
               {this.props.filter.type === "Loudness" ? (
                 <PlotVolumeSlider volume={this.state.plot_at_volume} onChange={this.setPlotVolume} />
               ) : null}
             </div>
+            <ChartPopup
+              open={this.state.expandPlot}
+              data={this.state.data}
+              onChange={this.plotFilterInitially}
+              onClose={() => this.setState({ expandPlot: false })}
+              volume={this.props.filter.type === "Loudness" ? this.state.plot_at_volume : undefined}
+              onVolumeChange={this.setPlotVolume}
+            />
           </div>
         ) : null}
       </Box>
@@ -1350,25 +1327,21 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
     else return <ErrorMessage message={error} />
     return (
       <>
-        <label htmlFor={desc} className="setting" style={{ textAlign: "right" }} data-tooltip-html={props.tooltip}>
-          <EnumInput
-            value={parameter}
-            options={descOptions}
-            desc={desc}
-            style={{
-              display: "table-cell",
-              width: "min-content",
-              textAlign: "right",
-              marginRight: "5px",
-            }}
-            tooltip={props.tooltip}
-            onChange={onDescChange}
-          />
+        <label htmlFor={desc} className="setting" data-tooltip-html={props.tooltip}>
+          <span className="setting-label">
+            <EnumInput
+              value={parameter}
+              options={descOptions}
+              desc={desc}
+              style={{ maxWidth: "100%" }}
+              tooltip={props.tooltip}
+              onChange={onDescChange}
+            />
+          </span>
           <FloatInput
             className="setting-input"
             error={error !== undefined}
             value={value}
-            style={{ width: "55%" }}
             tooltip={props.tooltip}
             onChange={onChange}
           />

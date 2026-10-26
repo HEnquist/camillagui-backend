@@ -1,5 +1,6 @@
 import React from "react"
 import "../index.css"
+import { mdiClose, mdiMenu } from "@mdi/js"
 import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import { CdspStateBox } from "./cdspstatebox"
@@ -17,6 +18,7 @@ import {
 } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
+import { MdiButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   guiConfig: GuiConfig
@@ -35,9 +37,12 @@ interface SidePanelProps {
 /**
  * The volume, then CamillaDSP, its controller and what it runs. The same in both areas. What goes
  * between the editor and CamillaDSP, applying, loading and comparing, is in the Edit area's
- * toolbar.
+ * toolbar. On a narrow window it is a drawer, opened from a status strip.
  */
-export class SidePanel extends React.Component<SidePanelProps, { cdspStatus: Status; msg: string }> {
+export class SidePanel extends React.Component<
+  SidePanelProps,
+  { cdspStatus: Status; msg: string; drawerOpen: boolean }
+> {
   private statusPoller = new StatusPoller((cdspStatus) => {
     // Passed on only when it changes, since it re-renders the whole GUI.
     const previous = this.state.cdspStatus
@@ -62,6 +67,7 @@ export class SidePanel extends React.Component<SidePanelProps, { cdspStatus: Sta
     this.state = {
       cdspStatus: defaultStatus(),
       msg: "",
+      drawerOpen: false,
     }
   }
 
@@ -76,25 +82,48 @@ export class SidePanel extends React.Component<SidePanelProps, { cdspStatus: Sta
   }
 
   render() {
+    const { drawerOpen } = this.state
+    const closeDrawer = () => this.setState({ drawerOpen: false })
     return (
-      <section className="sidepanel">
-        <div className="sidepanel-content">
-          {isCdspOnline(this.state.cdspStatus) && (
-            <VolumeBox
-              setMessage={(message) => this.setState({ msg: message })}
-              inputLabels={this.state.cdspStatus.labels.capture}
-              outputLabels={this.state.cdspStatus.labels.playback}
-              guiConfig={this.props.guiConfig}
-              meterSize={{ width: 290, channelHeight: 10 }}
-              isRunning={isCdspRunning(this.state.cdspStatus)}
-            />
-          )}
-          {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
-          <CdspStateBox status={this.state.cdspStatus} />
-          <ControllerBox status={this.state.cdspStatus} />
-          <VersionLabels versions={this.state.cdspStatus} />
+      <>
+        <div className="status-strip">
+          <MdiButton
+            icon={mdiMenu}
+            tooltip="Show the side panel"
+            buttonSize="small"
+            onClick={() => this.setState({ drawerOpen: true })}
+          />
+          <span>State: {this.state.cdspStatus.cdsp_status}</span>
         </div>
-      </section>
+        <div className={"drawer-backdrop" + (drawerOpen ? " drawer-backdrop-open" : "")} onClick={closeDrawer} />
+        <section className={"sidepanel" + (drawerOpen ? " sidepanel-open" : "")}>
+          <div className="sidepanel-header">
+            <MdiButton
+              icon={mdiClose}
+              tooltip="Hide the side panel"
+              buttonSize="small"
+              className="drawer-close"
+              onClick={closeDrawer}
+            />
+          </div>
+          <div className="sidepanel-content">
+            {isCdspOnline(this.state.cdspStatus) && (
+              <VolumeBox
+                setMessage={(message) => this.setState({ msg: message })}
+                inputLabels={this.state.cdspStatus.labels.capture}
+                outputLabels={this.state.cdspStatus.labels.playback}
+                guiConfig={this.props.guiConfig}
+                meterSize={{ width: 290, channelHeight: 10 }}
+                isRunning={isCdspRunning(this.state.cdspStatus)}
+              />
+            )}
+            {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
+            <CdspStateBox status={this.state.cdspStatus} />
+            <ControllerBox status={this.state.cdspStatus} />
+            <VersionLabels versions={this.state.cdspStatus} />
+          </div>
+        </section>
+      </>
     )
   }
 }
