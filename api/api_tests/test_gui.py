@@ -6,7 +6,6 @@ CamillaDSP through an event stream to the screen. Keep them few, a browser
 test costs far more than an API test.
 """
 
-import re
 import shutil
 import time
 import zipfile
@@ -124,31 +123,42 @@ def test_config_with_errors_loads_into_the_gui(page, server):
         # Loading switches to the editor.
         page.get_by_role("tab", name="Pipeline").click()
         expect(page.get_by_text("nosuchfilter").first).to_be_visible()
-        expect(page.locator(".sidepanel .config-status")).not_to_have_text("OK")
+        expect(page.locator(".editor-toolbar .config-status")).not_to_have_text("OK")
     finally:
         (server.config_dir / "errors_tmp.yml").unlink()
 
 
-def test_save_as_from_the_editor_box(page, server):
+def test_save_as_from_the_editor_toolbar(page, server):
     """Saving under a new name makes it the editor's file, and an existing name asks first."""
     page.get_by_role("tab", name="Edit", exact=True).click()
-    sidepanel = page.locator(".sidepanel")
-    name = sidepanel.locator('[data-tooltip-html="The name to save the editor\'s config as"]')
-    save_as = sidepanel.locator(".button", has_text="Save as")
+    toolbar = page.locator(".editor-toolbar")
+    save_as = toolbar.locator(".button", has_text="Save as")
     saved = server.config_dir / "saved_tmp.yml"
+    # The name prompt, then the overwrite question for an existing file, which is declined.
+    answers = ["saved_tmp.yml", "config2.yml", None]
+
+    def answer(dialog):
+        reply = answers.pop(0)
+        if reply is None:
+            dialog.dismiss()
+        else:
+            dialog.accept(reply)
+
+    page.on("dialog", answer)
     try:
-        name.fill("saved_tmp.yml")
-        # Enabled once the side panel has seen the backend online.
-        expect(save_as).not_to_have_class(re.compile("disabled-button"))
         save_as.click()
         wait_for(lambda: saved.exists())
-        expect(sidepanel.get_by_text("saved_tmp.yml", exact=True)).to_be_visible()
+        expect(toolbar.locator(".editor-toolbar-file")).to_contain_text("saved_tmp.yml")
         before = (server.config_dir / "config2.yml").read_text()
-        page.once("dialog", lambda dialog: dialog.dismiss())
-        name.fill("config2.yml")
         save_as.click()
-        time.sleep(0.5)
+        # Dialogs are only handled while Playwright runs, which time.sleep doesn't.
+        deadline = time.time() + 5
+        while answers:
+            assert time.time() < deadline
+            page.wait_for_timeout(50)
+        page.wait_for_timeout(500)
         assert (server.config_dir / "config2.yml").read_text() == before
+        expect(toolbar.locator(".editor-toolbar-file")).to_contain_text("saved_tmp.yml")
     finally:
         saved.unlink(missing_ok=True)
 
@@ -193,7 +203,7 @@ def test_config_and_volume_reach_camilladsp(page, server):
     page.get_by_role("tab", name="Edit", exact=True).click()
     sidepanel = page.locator(".sidepanel")
     # The startup config came from CamillaDSP, and the backend found nothing wrong with it.
-    expect(sidepanel.locator(".config-status")).to_have_text("OK")
+    expect(page.locator(".editor-toolbar .config-status")).to_have_text("OK")
     sidepanel.get_by_text("Apply to DSP", exact=True).click()
     wait_for(lambda: server.fake.commands("SetConfigJson"))
     # The volume box only sends a change once it has read the volume.
@@ -274,7 +284,7 @@ def test_a_config_file_runs_with_one_click(page, server):
     wait_for(lambda: server.fake.state["config_file_path"] == str(server.config_dir / "config2.yml"))
     wait_for(lambda: server.fake.commands("Reload"))
     page.get_by_role("tab", name="Edit", exact=True).click()
-    expect(page.locator(".sidepanel").get_by_text("config2.yml", exact=True)).to_be_visible()
+    expect(page.locator(".editor-toolbar-file")).to_contain_text("config2.yml")
 
 
 def test_following_applies_at_once(page, server):

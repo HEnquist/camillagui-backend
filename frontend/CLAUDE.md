@@ -55,6 +55,7 @@ devicecapabilitiespopup.tsx # A device's capabilities, from the devices tab
 filterstab.tsx
 mixerstab.tsx
 processorstab.tsx
+editortoolbar.tsx           # Above the Edit tabs: undo, the file, Save, Save as, New, Import, check
 
 # Control area tabs
 controltabs.tsx             # Overview (now, after a restart, spectrum) and Configs (what runs)
@@ -69,8 +70,7 @@ pipeline/
   pipelineplotter.tsx       # SVG pipeline diagram
 
 sidepanel/
-  sidepanel.tsx             # Left panel with Save/Apply buttons, status
-  editorfiles.tsx           # The Editor box's Save as, New and Import
+  sidepanel.tsx             # Left panel with the Apply buttons and status
   volumebox.tsx             # Volume fader
   auxfaderbox.tsx           # Aux fader
   cdspstatebox.tsx          # DSP running/offline state badge
@@ -173,7 +173,8 @@ Key endpoints used by the frontend:
 The GUI keeps the config editor apart from what CamillaDSP runs, in two areas with tabs of their
 own, switched above the tabs: *Control*, for what CamillaDSP does and runs, and *Edit*, for the
 config editor. Control is the default, and the area shown is kept in localStorage
-(`areas.ts`). The side panel stays mounted in both, so the automatic apply and save carry on.
+(`areas.ts`). The side panel stays mounted in both, so the automatic apply carries on, and the
+automatic save is kept in `CamillaConfig` for the same reason.
 The old `?compactview` and `?dashboardview` bookmarks open Control. Below 760 px the side panel
 goes above the tabs, which makes Control usable on a phone. Edit needs a wider screen.
 
@@ -182,13 +183,15 @@ config*, in the GUI and in CamillaDSP alike. It used to be the "active config", 
 confused people, and the GUI's own API, its code and the `on_set_active_config` and
 `on_get_active_config` settings still say active.
 
-- The editor is the Edit area, Title to Pipeline, and the side panel's Editor box: one config,
-  the file it belongs to, Save, Revert, auto-save, Save as (warning before it overwrites another
-  file), New from default, New blank and Import. The Editor box is only there in Edit.
+- The editor is the Edit area: its toolbar and the tabs Title to Pipeline. One config, the file
+  it belongs to, and in the toolbar undo, redo, Save, Revert, Save as (a prompt, which asks
+  before it overwrites another file), New from the default or blank, Import, auto-save, the
+  config check and the last message. The toolbar is above the tabs rather than in the side
+  panel, so it stays in view on a short screen.
 - The Files tab, in Control, manages the files available to CamillaDSP: uploads, downloads,
   renames, deletes, comparing and plotting. Its Load puts a config into the editor and switches
   to Edit. It only marks the startup config (★), it does not change it, and it doesn't save the
-  editor's config, which is the Editor box's job.
+  editor's config, which is the toolbar's job.
 - CamillaDSP is the side panel's CamillaDSP and Controller boxes and the Control area. The
   CamillaDSP box shows its state and "Stop processing", and in Edit also "Apply to DSP", "Load
   into editor" and "Compare". The Controller box only shows the *source* (file, with the

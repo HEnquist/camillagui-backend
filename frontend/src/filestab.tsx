@@ -52,7 +52,7 @@ import {
 /**
  * The config and filter files available to CamillaDSP: uploading, downloading, renaming and
  * deleting them, and loading a config into the editor, which then shows the Edit area. Saving
- * the editor's config, and new and imported configs, are in the side panel's Editor box.
+ * the editor's config, and new and imported configs, are in the Edit area's toolbar.
  */
 export function Files(props: {
   guiConfig: GuiConfig

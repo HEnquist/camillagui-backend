@@ -5,7 +5,7 @@ import "react-tooltip/dist/react-tooltip.css"
 import "./index.css"
 
 import * as React from "react"
-import { mdiAlert, mdiArrowULeftTop, mdiArrowURightTop } from "@mdi/js"
+import { mdiAlert } from "@mdi/js"
 import { cloneDeep } from "lodash"
 import isEqual from "lodash/isEqual"
 import { createRoot } from "react-dom/client"
@@ -19,6 +19,7 @@ import { ConfigsTab, OverviewTab } from "./controltabs"
 import type { CustomPageComponent } from "./custom-pages/types"
 import { installDemoBackend } from "./demo/mockBackend"
 import { DevicesTab } from "./devicestab"
+import { EditorToolbar } from "./editortoolbar"
 import { Files } from "./filestab"
 import { FiltersTab } from "./filterstab"
 import { defaultGuiConfig, GuiConfig } from "./guiconfig"
@@ -33,7 +34,7 @@ import { TitleTab } from "./titletab"
 import { Update } from "./utilities/common"
 import { Errors, NoErrors } from "./utilities/errors"
 import { loadConfigJson, loadStartupConfig } from "./utilities/files"
-import { delayedExecutor, ErrorBoundary, MdiButton, MdiIcon } from "./utilities/ui-components"
+import { delayedExecutor, ErrorBoundary, MdiIcon } from "./utilities/ui-components"
 
 const customPageModules = import.meta.glob<{ default: CustomPageComponent }>("./custom-pages/*.tsx", { eager: true })
 const customPages = Object.values(customPageModules)
@@ -45,7 +46,7 @@ class CamillaConfig extends React.Component<
   {
     area: Area
     controlTab: number
-    /** The Edit area's tab, where 0 is the undo and redo buttons and 1 is Title. */
+    /** The Edit area's tab, where 0 is Title. */
     editTab: number
     currentConfigFile?: string
     guiConfig: GuiConfig
@@ -54,6 +55,11 @@ class CamillaConfig extends React.Component<
     message: string
     unsavedChanges: boolean
     unappliedChanges: boolean
+    /**
+     * Save the editor's config to its file after each change. Kept here rather than in the
+     * toolbar, so that it carries on while the Control area is shown.
+     */
+    saveConfigAutomatically: boolean
     controllerStatus: ControllerStatus | null
     controllerSettings: ControllerSettings | null
     startupArgs: StartupArgs | null
@@ -80,13 +86,14 @@ class CamillaConfig extends React.Component<
     this.state = {
       area: getArea(),
       controlTab: 0,
-      editTab: 1,
+      editTab: 0,
       guiConfig: defaultGuiConfig(),
       undoRedo: new UndoRedo(defaultConfig()),
       errors: NoErrors,
       message: "",
       unsavedChanges: false,
       unappliedChanges: true,
+      saveConfigAutomatically: defaultGuiConfig().save_config_automatically,
       controllerStatus: null,
       controllerSettings: null,
       startupArgs: null,
@@ -99,7 +106,7 @@ class CamillaConfig extends React.Component<
   private async loadGuiConfig() {
     try {
       const { data, error, response } = await api.GET("/api/guiconfig")
-      if (data) this.setState({ guiConfig: data })
+      if (data) this.setState({ guiConfig: data, saveConfigAutomatically: data.save_config_automatically })
       else console.log("Failed to fetch guiconfig", errorMessage(error, response))
     } catch (err) {
       console.log("Failed to fetch guiconfig", err)
@@ -258,16 +265,22 @@ class CamillaConfig extends React.Component<
     const config = await loadConfigJson(name, (reason) => this.setState({ message: reason }))
     this.setCurrentConfig(name, config)
     storeArea("edit")
-    this.setState({ area: "edit", editTab: 2, message: `Opened ${name}` })
+    this.setState({ area: "edit", editTab: 1, message: `Opened ${name}` })
   }
 
   private setErrors(errors: Errors) {
     this.setState({ errors: errors })
   }
 
-  componentDidUpdate() {
+  private readonly autoSaveTimer = delayedExecutor(500)
+
+  componentDidUpdate(_prevProps: unknown, prevState: { undoRedo: UndoRedo<Config> }) {
     //ReactTooltip.rebuild()
     document.title = this.state.guiConfig.page_title
+    if (this.state.saveConfigAutomatically && !isEqual(prevState.undoRedo.current(), this.state.undoRedo.current()))
+      this.autoSaveTimer(() => {
+        this.saveConfig().catch(() => {})
+      })
   }
 
   componentDidMount() {
@@ -275,23 +288,16 @@ class CamillaConfig extends React.Component<
   }
 
   render() {
-    const { area, currentConfigFile } = this.state
+    const { area } = this.state
     return (
       <div className="configapp">
         <Tooltip id="main-tooltip" className="tooltip" border="var(--box-border)" />
         <SidePanel
           editing={area === "edit"}
-          currentConfigFile={currentConfigFile}
           config={this.state.undoRedo.current()}
           guiConfig={this.state.guiConfig}
           applyConfig={this.applyConfig}
           fetchConfig={this.fetchConfig}
-          saveConfig={this.saveConfig}
-          saveConfigAs={this.saveConfigAs}
-          revertConfig={this.revertConfig}
-          setCurrentConfig={this.setCurrentConfig}
-          updateConfig={this.updateConfig}
-          setErrors={this.setErrors}
           onControllerStatus={(controllerStatus, controllerSettings, startupArgs, dspInactive) =>
             this.setState((prev) => ({
               controllerStatus,
@@ -304,8 +310,6 @@ class CamillaConfig extends React.Component<
                 prev.unappliedChanges || (isFileless(prev.controllerStatus) && !isFileless(controllerStatus)),
             }))
           }
-          message={this.state.message}
-          unsavedChanges={this.state.unsavedChanges}
           unappliedChanges={this.state.unappliedChanges}
         />
         <div className="mainarea">
@@ -407,84 +411,82 @@ class CamillaConfig extends React.Component<
     )
   }
 
-  /** The config editor: undo and redo, and the tabs for each part of the config. */
+  /**
+   * The config editor: the toolbar with its file, saving and history, and the tabs for each part
+   * of the config.
+   */
   private EditArea() {
     const { errors, undoRedo } = this.state
     const config = undoRedo.current()
     return (
-      <Tabs
-        className="configtabs"
-        selectedIndex={this.state.editTab}
-        onSelect={(index) => this.setState({ editTab: index })}
-      >
-        <TabList>
-          <Tab disabled={true}>
-            <MdiButton
-              icon={mdiArrowULeftTop}
-              tooltip={"Undo last change<br>" + undoRedo.undoDiff()}
-              buttonSize="tiny"
-              style={{
-                marginRight: "10px",
-              }}
-              onClick={() =>
-                this.setState((prevState) => ({
-                  undoRedo: prevState.undoRedo.undo(),
-                }))
-              }
-              enabled={undoRedo.canUndo()}
+      <div className="edit-area">
+        <EditorToolbar
+          config={config}
+          currentConfigFile={this.state.currentConfigFile}
+          startupConfigFile={this.state.controllerStatus?.startup_config_file}
+          unsavedChanges={this.state.unsavedChanges}
+          message={this.state.message}
+          canUndo={undoRedo.canUndo()}
+          canRedo={undoRedo.canRedo()}
+          undoDiff={undoRedo.undoDiff()}
+          redoDiff={undoRedo.redoDiff()}
+          undo={() => this.setState((prevState) => ({ undoRedo: prevState.undoRedo.undo() }))}
+          redo={() => this.setState((prevState) => ({ undoRedo: prevState.undoRedo.redo() }))}
+          saveConfig={this.saveConfig}
+          revertConfig={this.revertConfig}
+          saveConfigAs={this.saveConfigAs}
+          setCurrentConfig={this.setCurrentConfig}
+          updateConfig={this.updateConfig}
+          setErrors={this.setErrors}
+          saveAutomatically={this.state.saveConfigAutomatically}
+          setSaveAutomatically={(on) => this.setState({ saveConfigAutomatically: on })}
+        />
+        <Tabs
+          className="configtabs"
+          selectedIndex={this.state.editTab}
+          onSelect={(index) => this.setState({ editTab: index })}
+        >
+          <TabList>
+            <Tab>Title</Tab>
+            <Tab>Devices {errors.hasErrorsFor("devices") && <ErrorIcon />}</Tab>
+            <Tab>Filters {errors.hasErrorsFor("filters") && <ErrorIcon />}</Tab>
+            <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
+            <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
+            <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
+          </TabList>
+          <TabPanel>
+            <TitleTab config={config} updateConfig={this.updateConfig} />
+          </TabPanel>
+          <TabPanel>
+            <DevicesTab
+              devices={config.devices}
+              guiConfig={this.state.guiConfig}
+              updateConfig={this.updateConfig}
+              errors={errors.forSubpath("devices")}
             />
-            <MdiButton
-              icon={mdiArrowURightTop}
-              tooltip={"Redo last change<br>" + undoRedo.redoDiff()}
-              buttonSize="tiny"
-              onClick={() =>
-                this.setState((prevState) => ({
-                  undoRedo: prevState.undoRedo.redo(),
-                }))
-              }
-              enabled={undoRedo.canRedo()}
+          </TabPanel>
+          <TabPanel>
+            <FiltersTab
+              config={config}
+              samplerate={config.devices.samplerate}
+              channels={getCaptureDeviceChannelCount(config.devices.capture)}
+              coeffDir={this.state.guiConfig.coeff_dir}
+              allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}
+              updateConfig={this.updateConfig}
+              errors={errors.forSubpath("filters")}
             />
-          </Tab>
-          <Tab>Title</Tab>
-          <Tab>Devices {errors.hasErrorsFor("devices") && <ErrorIcon />}</Tab>
-          <Tab>Filters {errors.hasErrorsFor("filters") && <ErrorIcon />}</Tab>
-          <Tab>Mixers {errors.hasErrorsFor("mixers") && <ErrorIcon />}</Tab>
-          <Tab>Processors {errors.hasErrorsFor("processors") && <ErrorIcon />}</Tab>
-          <Tab>Pipeline {errors.hasErrorsFor("pipeline") && <ErrorIcon />}</Tab>
-        </TabList>
-        <TabPanel />
-        <TabPanel>
-          <TitleTab config={config} updateConfig={this.updateConfig} />
-        </TabPanel>
-        <TabPanel>
-          <DevicesTab
-            devices={config.devices}
-            guiConfig={this.state.guiConfig}
-            updateConfig={this.updateConfig}
-            errors={errors.forSubpath("devices")}
-          />
-        </TabPanel>
-        <TabPanel>
-          <FiltersTab
-            config={config}
-            samplerate={config.devices.samplerate}
-            channels={getCaptureDeviceChannelCount(config.devices.capture)}
-            coeffDir={this.state.guiConfig.coeff_dir}
-            allowAbsolutePaths={this.state.guiConfig.allow_absolute_paths}
-            updateConfig={this.updateConfig}
-            errors={errors.forSubpath("filters")}
-          />
-        </TabPanel>
-        <TabPanel>
-          <MixersTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("mixers")} />
-        </TabPanel>
-        <TabPanel>
-          <ProcessorsTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("processors")} />
-        </TabPanel>
-        <TabPanel>
-          <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
-        </TabPanel>
-      </Tabs>
+          </TabPanel>
+          <TabPanel>
+            <MixersTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("mixers")} />
+          </TabPanel>
+          <TabPanel>
+            <ProcessorsTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("processors")} />
+          </TabPanel>
+          <TabPanel>
+            <PipelineTab config={config} updateConfig={this.updateConfig} errors={errors.forSubpath("pipeline")} />
+          </TabPanel>
+        </Tabs>
+      </div>
     )
   }
 }

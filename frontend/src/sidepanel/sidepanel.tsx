@@ -4,9 +4,7 @@ import isEqual from "lodash/isEqual"
 import { AuxFadersBox } from "./auxfaderbox"
 import camillalogo from "./camilladsp.svg"
 import { CdspStateBox } from "./cdspstatebox"
-import { Configcheckmessage } from "./configcheckmessage"
 import { ControllerBox } from "./controllerbox"
-import { EditorFileActions } from "./editorfiles"
 import { VolumeBox } from "./volumebox"
 import { api, errorMessage } from "../api/client"
 import { Config } from "../camilladsp/config"
@@ -14,7 +12,6 @@ import {
   ControllerSettings,
   ControllerStatus,
   defaultStatus,
-  isBackendOnline,
   isCdspOnline,
   isCdspRunning,
   isFileless,
@@ -24,23 +21,14 @@ import {
 } from "../camilladsp/status"
 import { VersionLabels } from "../camilladsp/versions"
 import { GuiConfig } from "../guiconfig"
-import { Update } from "../utilities/common"
 import { DiffPopup } from "../utilities/diffpopup"
-import { Errors } from "../utilities/errors"
-import { Box, delayedExecutor, SuccessFailureButton } from "../utilities/ui-components"
+import { delayedExecutor, SuccessFailureButton } from "../utilities/ui-components"
 
 interface SidePanelProps {
   config: Config
   guiConfig: GuiConfig
   applyConfig: () => Promise<void>
   fetchConfig: () => Promise<void>
-  saveConfig: () => Promise<void>
-  /** Save the editor's config to a file, which becomes the editor's file. */
-  saveConfigAs: (filename: string) => Promise<void>
-  revertConfig: () => Promise<void>
-  setCurrentConfig: (filename: string | undefined, config: Config) => void
-  updateConfig: (update: Update<Config>) => void
-  setErrors: (errors: Errors) => void
   /**
    * Called when the controller status, its settings or the startup args change, null when there
    * are none, or processing stops or starts.
@@ -51,29 +39,25 @@ interface SidePanelProps {
     startupArgs: StartupArgs | null,
     inactive: boolean,
   ) => void
-  currentConfigFile?: string
-  message: string
-  unsavedChanges: boolean
   unappliedChanges: boolean
   /**
-   * Whether the Edit area is shown. The editor box, and the buttons between the editor and
-   * CamillaDSP, are only there while it is.
+   * Whether the Edit area is shown. The buttons between the editor and CamillaDSP are only there
+   * while it is.
    */
   editing: boolean
 }
 
 /**
- * The volume, then CamillaDSP, its controller and what it runs, then the config editor and its
- * file. The editor reaches CamillaDSP only by applying its config there, which is not saved
- * anywhere and runs file-less. The panel stays mounted in both areas, so its settings and the
- * automatic apply and save carry on while the Control area is shown.
+ * The volume, then CamillaDSP, its controller and what it runs. The editor reaches CamillaDSP only
+ * by applying its config there, which is not saved anywhere and runs file-less. The panel stays
+ * mounted in both areas, so its settings and the automatic apply carry on while the Control area
+ * is shown. The editor's own file and saving are in the Edit area's toolbar.
  */
 export class SidePanel extends React.Component<
   SidePanelProps,
   {
     cdspStatus: Status
     applyConfigAutomatically: boolean
-    saveConfigAutomatically: boolean
     msg: string
     diffConfigDSP: Config
     diffConfigGUI: Config
@@ -100,14 +84,12 @@ export class SidePanel extends React.Component<
   }, this.props.guiConfig.status_update_interval)
 
   private applyTimer = delayedExecutor(500)
-  private saveTimer = delayedExecutor(500)
 
   constructor(props: SidePanelProps) {
     super(props)
     this.state = {
       cdspStatus: defaultStatus(),
       applyConfigAutomatically: props.guiConfig.apply_config_automatically,
-      saveConfigAutomatically: props.guiConfig.save_config_automatically,
       msg: "",
       diffConfigDSP: {} as Config,
       diffConfigGUI: {} as Config,
@@ -120,14 +102,10 @@ export class SidePanel extends React.Component<
   }
 
   componentDidUpdate(prevProps: SidePanelProps) {
-    const { apply_config_automatically, save_config_automatically } = this.props.guiConfig
+    const { apply_config_automatically } = this.props.guiConfig
     if (apply_config_automatically !== prevProps.guiConfig.apply_config_automatically)
       this.setState({
         applyConfigAutomatically: apply_config_automatically,
-      })
-    if (save_config_automatically !== prevProps.guiConfig.save_config_automatically)
-      this.setState({
-        saveConfigAutomatically: save_config_automatically,
       })
     const { status_update_interval } = this.props.guiConfig
     if (status_update_interval !== prevProps.guiConfig.status_update_interval)
@@ -139,10 +117,6 @@ export class SidePanel extends React.Component<
     if (applies && !isEqual(prevProps.config, this.props.config))
       this.applyTimer(() => {
         this.props.applyConfig().catch(() => {})
-      })
-    if (this.state.saveConfigAutomatically && !isEqual(prevProps.config, this.props.config))
-      this.saveTimer(() => {
-        this.props.saveConfig().catch(() => {})
       })
   }
 
@@ -168,7 +142,6 @@ export class SidePanel extends React.Component<
           {isCdspOnline(this.state.cdspStatus) && <AuxFadersBox guiConfig={this.props.guiConfig} />}
           <CdspStateBox status={this.state.cdspStatus}>{this.dspControls()}</CdspStateBox>
           <ControllerBox status={this.state.cdspStatus} />
-          {this.props.editing && this.editorBox()}
           <VersionLabels versions={this.state.cdspStatus} />
         </div>
         <DiffPopup
@@ -273,69 +246,6 @@ export class SidePanel extends React.Component<
     )
   }
 
-  /** The editor's config, the file it belongs to, and saving it. */
-  private editorBox() {
-    const status = this.state.cdspStatus
-    const file = this.props.currentConfigFile
-    const unsaved = this.props.unsavedChanges
-    return (
-      <Box title="Editor">
-        <div
-          style={{
-            width: "220px",
-            overflowWrap: "break-word",
-            textAlign: "center",
-            margin: "0 auto 5px",
-          }}
-        >
-          {file ? file : "(no file)"}
-        </div>
-        <EditorFileNote controller={status.controller} file={file} />
-        <div className="two-column-grid">
-          <SuccessFailureButton
-            enabled={isBackendOnline(status) && Boolean(file) && !this.state.saveConfigAutomatically}
-            text="Save"
-            tooltip={file ? `Save the editor's config to ${file}` : "No file, use Save as below"}
-            onClick={this.props.saveConfig}
-          />
-          <SuccessFailureButton
-            enabled={isBackendOnline(status) && Boolean(file) && unsaved}
-            text="Revert"
-            tooltip={file ? `Drop the changes, and load ${file} again` : "No file to revert to"}
-            onClick={this.props.revertConfig}
-          />
-        </div>
-        <EditorFileActions
-          key={file ?? ""}
-          currentConfigFile={file}
-          config={this.props.config}
-          setCurrentConfig={this.props.setCurrentConfig}
-          updateConfig={this.props.updateConfig}
-          saveConfigAs={this.props.saveConfigAs}
-          online={isBackendOnline(status)}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
-          <label data-tooltip-html="Save the config to its file<br>after each change" data-tooltip-id="main-tooltip">
-            <input
-              type="checkbox"
-              checked={this.state.saveConfigAutomatically}
-              onChange={(e) => this.setState({ saveConfigAutomatically: e.target.checked })}
-            />
-            Save automatically
-          </label>
-          <span
-            data-tooltip-html={unsaved ? "The editor has changes not saved to the file" : "All changes are saved"}
-            data-tooltip-id="main-tooltip"
-          >
-            {unsaved ? "Saved: ⚠️" : "Saved: ✔️"}
-          </span>
-        </div>
-        {this.props.message && <div style={{ marginTop: "5px" }}>{this.props.message}</div>}
-        <Configcheckmessage config={this.props.config} setErrors={this.props.setErrors} />
-      </Box>
-    )
-  }
-
   private async fetchDSPConfig() {
     const { data, error, response } = await api.GET("/api/getconfig")
     if (error) throw new Error(errorMessage(error, response))
@@ -355,25 +265,4 @@ export class SidePanel extends React.Component<
       diffConfigGUI: this.props.config,
     })
   }
-}
-
-/** How the editor's file relates to what CamillaDSP runs, when the controller says. */
-function EditorFileNote(props: { controller: ControllerStatus | null; file?: string }) {
-  const { controller, file } = props
-  if (!controller || !file) return null
-  if (controller.startup_config_file !== file) return null
-  const note = "This is the startup config."
-  return (
-    <div
-      style={{
-        width: "220px",
-        overflowWrap: "break-word",
-        textAlign: "center",
-        margin: "0 auto 5px",
-        fontStyle: "italic",
-      }}
-    >
-      {note}
-    </div>
-  )
 }

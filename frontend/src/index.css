@@ -332,6 +332,36 @@ textarea.logfileviewer {
   flex-direction: column;
 }
 
+/* The Edit area: the editor's toolbar above its tabs. */
+.edit-area {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 0 2px 8px;
+}
+
+.editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.editor-toolbar-file {
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.editor-toolbar-message {
+  opacity: 0.8;
+}
+
 .control-tabpanel {
   width: 700px;
 }

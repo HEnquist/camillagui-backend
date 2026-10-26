@@ -363,8 +363,7 @@ The GUI has two areas, switched with the buttons above the tabs.
 the config and filter files available to it, shortcuts and file playback.
 It also works on a phone.
 *Edit* is the config editor, with a tab for each part of the config.
-Saving the config, also under a new name, and starting a new one are in the Editor box of the
-side panel.
+Saving the config, also under a new name, and starting a new one are in the toolbar above its tabs.
 The GUI opens in the area that was used last.
 
 ### Command line options
