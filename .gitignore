@@ -1,3 +1,7 @@
 *.pyc
-build/*
 .venv
+.DS_Store
+.vscode/
+*.crt
+*.key
+*.pem
