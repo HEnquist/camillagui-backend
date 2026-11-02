@@ -615,6 +615,7 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
     this.addBand = this.addBand.bind(this)
     this.removeBand = this.removeBand.bind(this)
     this.adjustBand = this.adjustBand.bind(this)
+    this.addPeqBand = this.addPeqBand.bind(this)
   }
 
   //private timer = delayedExecutor(1000)
@@ -867,8 +868,8 @@ class FilterParams extends React.Component<FilterParamsProps, unknown> {
   }
 
   /**
-   * Insert after the band being extended, keeping the list in rising frequency
-   * order, which the DSP requires. A new last band takes over as the high shelf.
+   * Append a copy of the last band with zero gain, keeping the list in rising
+   * frequency order, which the DSP requires. A new last band takes over as the high shelf.
    */
   private addPeqBand() {
     this.props.updateFilter((filter) => {
